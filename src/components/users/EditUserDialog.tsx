@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
-import { Check, Eye, Loader2, X, Tag, FileText, Upload, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Check, Eye, Loader2, X, Tag, Upload, ChevronRight, ChevronLeft, ChevronDown, FileText } from 'lucide-react';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,8 @@ import { checkEmployeeEmailExists, checkEmployeeIdExists } from '@/services/empl
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
 import WizardProgress from '@/components/ui/wizard-progress';
+import { EMPLOYEE_COMPLIANCE_DOCUMENTS } from '@/constants/employeeComplianceDocuments';
+import { fileToBase64 } from '@/utils/fileToBase64';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -26,7 +28,18 @@ interface EditUserDialogProps {
   formData: {
     firstName: string;
     lastName: string;
+    personalDetails?: {
+      middleName?: string;
+      fatherName?: string;
+      gender?: string;
+      dob?: string;
+      religion?: string;
+      nationality?: string;
+      bloodGroup?: string;
+      residenceAddress?: string;
+    };
     email: string;
+  
     phone?: string;
     designation?: string;
     tags?: string[];
@@ -34,12 +47,22 @@ interface EditUserDialogProps {
     employeeType?: EmployeeType;
     department?: DepartmentType;
     joiningDate?: string;
+    professionalOtherDetails?: {
+      aadharNo?: string;
+      panNo?: string;
+      esiNo?: string;
+      pfNo?: string;
+      exitDate?: string;
+      biometricUserId?: string;
+    };
     moduleAccessPayload?: ModuleAccessItem[];
     documents?: Array<{
       key?: string;
       fileName: string;
       filePath?: string;
       uploadedAt: string;
+      fileData?: string;
+      contentType?: string;
     }>;
     is_cpd_involved?: boolean;
   };
@@ -69,21 +92,25 @@ const EditUserDialog = ({
   const steps = useMemo(
     () =>
       hasEmail
-        ? (['Basic Information', 'Professional Details', 'Module Access', 'Documents & Compliance'] as const)
-        : (['Basic Information', 'Professional Details', 'Documents & Compliance'] as const),
+        ? ([
+            'Basic Information',
+            'Personal Details',
+            'Professional Details',
+            'Module Access',
+            'Documents & Compliance'
+          ] as const)
+        : ([
+            'Basic Information',
+            'Personal Details',
+            'Professional Details',
+            'Documents & Compliance'
+          ] as const),
     [hasEmail]
   );
-  const moduleAccessStepIndex = hasEmail ? 2 : -1;
-  const documentsStepIndex = hasEmail ? 3 : 2;
-  const complianceDocuments = [
-    { key: 'letterOfAppointment', label: 'Letter of Appointment' },
-    { key: 'marksheets10And12', label: '10th/12th Marksheets' },
-    { key: 'aadhaarCard', label: 'Aadhaar Card' },
-    { key: 'panCard', label: 'PAN Card' },
-    { key: 'passport', label: 'Passport' },
-    { key: 'bankPassbook', label: 'Bank Passbook' },
-    { key: 'esiProof', label: 'ESI Number Proof' }
-  ] as const;
+  const personalDetailsStepIndex = 1;
+  const professionalDetailsStepIndex = 2;
+  const moduleAccessStepIndex = hasEmail ? 3 : -1;
+  const documentsStepIndex = hasEmail ? 4 : 3;
   const [currentStep, setCurrentStep] = useState(0);
   const completedSteps = useMemo(
     () => Array.from({ length: currentStep }, (_, index) => index),
@@ -109,6 +136,9 @@ const EditUserDialog = ({
   const debouncedEmployeeEmail = useDebounce(formData.email || '', 500);
   const joiningDateRef = useRef<HTMLInputElement>(null);
   const [joiningDateError, setJoiningDateError] = useState('');
+  const [showOtherDetails, setShowOtherDetails] = useState(false);
+  const personalDetails = formData.personalDetails || {};
+  const professionalOtherDetails = formData.professionalOtherDetails || {};
   // Determine super admin flag based on the TARGET user being edited, not the current operator
   const targetIsSuperAdmin = currentUser?.isSuperAdmin === true;
   
@@ -348,8 +378,18 @@ const EditUserDialog = ({
     if (isOpen) {
       setCurrentStep(0);
       setUploadedDocuments({});
+      const details = formData.professionalOtherDetails || {};
+      const hasExistingOtherDetails = Boolean(
+        details.aadharNo ||
+        details.panNo ||
+        details.esiNo ||
+        details.pfNo ||
+        details.exitDate ||
+        details.biometricUserId
+      );
+      setShowOtherDetails(hasExistingOtherDetails);
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser?.id]);
 
   useEffect(() => {
     if (currentStep > steps.length - 1) {
@@ -422,9 +462,76 @@ const EditUserDialog = ({
     return nameRegex.test(name);
   };
 
+  const isValidLettersAndSpaces = (value: string) => /^[a-zA-Z\s]+$/.test(value);
+
+  const getPersonalDetailsErrors = () => {
+    const minLength = 3;
+    const validateOptionalTextField = (value: string, label: string) => {
+      const trimmed = (value || '').trim();
+      if (!trimmed) return '';
+      if (trimmed.length < minLength) return `${label} must be at least ${minLength} characters`;
+      if (!isValidLettersAndSpaces(trimmed)) return `${label} can only contain letters and spaces`;
+      return '';
+    };
+
+    return {
+      middleName: validateOptionalTextField(personalDetails.middleName || '', 'Middle name'),
+      fatherName: validateOptionalTextField(personalDetails.fatherName || '', "Father's name"),
+      religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
+      nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
+      bloodGroup:
+        (personalDetails.bloodGroup || '').trim() &&
+        !/^(A|B|AB|O)[+-]$/i.test((personalDetails.bloodGroup || '').trim())
+          ? 'Blood group must be in format A+, O-, AB+, B-'
+          : '',
+    };
+  };
+
+  const personalDetailsErrors = getPersonalDetailsErrors();
+  const hasPersonalDetailsErrors = Object.values(personalDetailsErrors).some(Boolean);
+
   const isValidPhone = (phone: string) => {
     return /^[6-9]\d{9}$/.test(phone);
   };
+
+  const formatAadhaarNumber = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 12);
+    return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+  };
+
+  const getProfessionalOtherDetailsErrors = () => {
+    const aadharNo = (professionalOtherDetails.aadharNo || '').trim();
+    const panNo = (professionalOtherDetails.panNo || '').trim().toUpperCase();
+    const esiNo = (professionalOtherDetails.esiNo || '').trim();
+    const pfNo = (professionalOtherDetails.pfNo || '').trim();
+    const biometricUserId = (professionalOtherDetails.biometricUserId || '').trim();
+
+    return {
+      aadharNo:
+        aadharNo && !/^\d{12}$/.test(aadharNo)
+          ? 'Aadhaar number must be exactly 12 digits'
+          : '',
+      panNo:
+        panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(panNo)
+          ? 'PAN must be in format FTEPB4343S'
+          : '',
+      esiNo:
+        esiNo && !/^\d{10}$/.test(esiNo)
+          ? 'ESI number must be exactly 10 digits'
+          : '',
+      pfNo:
+        pfNo && !/^\d{12}$/.test(pfNo)
+          ? 'PF number must be exactly 12 digits'
+          : '',
+      biometricUserId:
+        biometricUserId && !/^\d{1,20}$/.test(biometricUserId)
+          ? 'Biometric User ID must contain digits only'
+          : '',
+    };
+  };
+
+  const professionalOtherDetailsErrors = getProfessionalOtherDetailsErrors();
+  const hasProfessionalOtherDetailsErrors = Object.values(professionalOtherDetailsErrors).some(Boolean);
 
   const sanitizeTag = (value: string) => value.replace(/,/g, '').trim().slice(0, MAX_TAG_LENGTH);
   const currentTags = Array.isArray(formData.tags) ? formData.tags : [];
@@ -432,7 +539,9 @@ const EditUserDialog = ({
   const updateTags = (nextTags: string[]) => {
     setFormData({
       ...formData,
-      tags: nextTags
+      tags: nextTags,
+      // Keep designation in sync so clearing tags removes old stored value.
+      designation: nextTags.join(', ')
     });
   };
 
@@ -467,6 +576,7 @@ const EditUserDialog = ({
     setDocumentMetaByKey({});
     setRemovedProfilePaths([]);
     setJoiningDateError(''); 
+    setShowOtherDetails(false);
     resetForm();    
   };
 
@@ -540,6 +650,8 @@ const EditUserDialog = ({
       isValidEmployeeId(formData.employeeId) &&
       (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
       !joiningDateError &&
+      !hasPersonalDetailsErrors &&
+      !hasProfessionalOtherDetailsErrors &&
       employeeIdValidation !== 'exists' &&
       emailValidation !== 'exists' &&
       employeeIdValidation !== 'checking' &&
@@ -571,14 +683,30 @@ const EditUserDialog = ({
       isValidEmployeeId(formData.employeeId) &&
       (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
       !joiningDateError &&
+      !hasProfessionalOtherDetailsErrors &&
       employeeIdValidation !== 'exists' &&
       employeeIdValidation !== 'checking'
     );
   };
 
+  const isPersonalDetailsStepValid = () => {
+    // Personal detail fields are optional, but if present must be valid.
+    return !hasPersonalDetailsErrors;
+  };
+
   const canProceedToNextStep = () => {
-    if (currentStep === 0) return isBasicStepValid() && emailValidation !== 'checking';
-    if (currentStep === 1) return isProfessionalStepValid();
+    if (currentStep === 0) {
+      return isBasicStepValid() && emailValidation !== 'checking';
+    }
+
+    if (currentStep === personalDetailsStepIndex) {
+      return isPersonalDetailsStepValid();
+    }
+
+    if (currentStep === professionalDetailsStepIndex) {
+      return isProfessionalStepValid();
+    }
+
     return true;
   };
 
@@ -676,29 +804,20 @@ const EditUserDialog = ({
       const documentsPayload: Array<{
         key: string;
         fileName: string;
-        filePath: string;
         uploadedAt: string;
+        fileData: string;
+        contentType: string;
       }> = [];
 
-      const bucketName = 'employee_profile_documents';
-      const activeClientId = clientId || 'unknown-client';
-      const activeEmployeeKey = formData.employeeId || currentUser.employeeId || 'unknown-employee';
-
-      for (const doc of complianceDocuments) {
+      for (const doc of EMPLOYEE_COMPLIANCE_DOCUMENTS) {
         const file = uploadedDocumentFiles[doc.key];
         if (!file) continue;
 
-        const safeFileName = file.name.replace(/\s+/g, '_');
-        const storagePath = `${activeClientId}/${activeEmployeeKey}/${doc.key}/${Date.now()}_${safeFileName}`;
-        const { error: uploadError } = await supabase.storage
-          .from(bucketName)
-          .upload(storagePath, file, {
-            upsert: false,
-            contentType: file.type || 'application/octet-stream'
-          });
-
-        if (uploadError) {
-          toast.error(`Failed to upload ${doc.label}`);
+        let fileData = '';
+        try {
+          fileData = await fileToBase64(file);
+        } catch {
+          toast.error(`Failed to process ${doc.label}`);
           setIsUpdating(false);
           return;
         }
@@ -706,8 +825,9 @@ const EditUserDialog = ({
         documentsPayload.push({
           key: doc.key,
           fileName: file.name,
-          filePath: storagePath,
-          uploadedAt: new Date().toISOString()
+          uploadedAt: new Date().toISOString(),
+          fileData,
+          contentType: file.type || 'application/octet-stream'
         });
       }
 
@@ -715,7 +835,7 @@ const EditUserDialog = ({
       documentsPayload.forEach((doc) => {
         const existingIndex = mergedDocuments.findIndex(
           (item) =>
-            ((item as any).filePath || (item as any).file_path || (item as any).storagePath || (item as any).storage_path) === doc.filePath
+            (item as any).key === doc.key
         );
         if (existingIndex === -1) mergedDocuments.push(doc);
         else mergedDocuments[existingIndex] = doc;
@@ -734,6 +854,12 @@ const EditUserDialog = ({
         employeeId: formData.employeeId,
         phone: formData.phone,
         designation: formData.designation || currentTags.join(', '),
+        personalDetails: {
+          ...personalDetails,
+        },
+        professionalOtherDetails: {
+          ...professionalOtherDetails,
+        },
         employeeType: formData.employeeType ?? undefined,
         department: formData.department ?? undefined,
         joiningDate: formData.joiningDate,
@@ -802,13 +928,16 @@ const EditUserDialog = ({
       return;
     }
 
-    if (currentStep === 1) {
+    if (currentStep === 1 || currentStep === professionalDetailsStepIndex) {
       if (!isProfessionalStepValid()) {
         toast.error('Please fill in all required fields correctly before saving');
         return;
       }
       await persistUserChanges(true);
+      return;
     }
+
+    await persistUserChanges(true);
   };
 
   return (
@@ -838,7 +967,7 @@ const EditUserDialog = ({
         >
           <div className="grid gap-4">
             {currentStep === 0 && (
-              <>
+              <div className="min-h-[420px]">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name <span className="text-red-500">*</span></Label>
@@ -898,7 +1027,7 @@ const EditUserDialog = ({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 mb-3">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -951,6 +1080,25 @@ const EditUserDialog = ({
             </div>
 
             <div className="space-y-2">
+              <Label>Address</Label>
+
+              <textarea
+                value={personalDetails.residenceAddress || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    personalDetails: {
+                      ...personalDetails,
+                      residenceAddress: e.target.value
+                    }
+                  })
+                }
+                placeholder="Enter residence address"
+                className="min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="employee-tags" className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-gray-500" />
@@ -1000,13 +1148,170 @@ const EditUserDialog = ({
               </p>
               {tagError && <p className="text-xs text-red-500">{tagError}</p>}
             </div>
-              </>
+              </div>
             )}
 
-            {currentStep === 1 && (
-              <>
+              {currentStep === personalDetailsStepIndex && (  <div>
+
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Middle Name</Label>
+                        <Input
+                          value={personalDetails.middleName || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              personalDetails: {
+                                ...personalDetails,
+                                middleName: e.target.value
+                              }
+                            })
+                          }
+                          placeholder="Enter middle name"
+                          className={personalDetailsErrors.middleName ? 'border-red-500' : ''}
+                        />
+                        {personalDetailsErrors.middleName && (
+                          <p className="text-xs text-red-500">{personalDetailsErrors.middleName}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Father's Name</Label>
+                        <Input
+                          value={personalDetails.fatherName || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              personalDetails: {
+                                ...personalDetails,
+                                fatherName: e.target.value
+                              }
+                            })
+                          }
+                          placeholder="Enter father's name"
+                          className={personalDetailsErrors.fatherName ? 'border-red-500' : ''}
+                        />
+                        {personalDetailsErrors.fatherName && (
+                          <p className="text-xs text-red-500">{personalDetailsErrors.fatherName}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label>Gender</Label>
+                        <Select
+                          value={personalDetails.gender || ''}
+                          onValueChange={(value) =>
+                            setFormData({
+                              ...formData,
+                              personalDetails: {
+                                ...personalDetails,
+                                gender: value
+                              }
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>DOB</Label>
+                        <Input
+                          type="date"
+                          value={personalDetails.dob || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              personalDetails: {
+                                ...personalDetails,
+                                dob: e.target.value
+                              }
+                            })
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Religion</Label>
+                        <Input
+                          value={personalDetails.religion || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              personalDetails: {
+                                ...personalDetails,
+                                religion: e.target.value
+                              }
+                            })
+                          }
+                          placeholder="Enter religion"
+                          className={personalDetailsErrors.religion ? 'border-red-500' : ''}
+                        />
+                        {personalDetailsErrors.religion && (
+                          <p className="text-xs text-red-500">{personalDetailsErrors.religion}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Nationality</Label>
+                        <Input
+                          value={personalDetails.nationality || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              personalDetails: {
+                                ...personalDetails,
+                                nationality: e.target.value
+                              }
+                            })
+                          }
+                          placeholder="Enter nationality"
+                          className={personalDetailsErrors.nationality ? 'border-red-500' : ''}
+                        />
+                        {personalDetailsErrors.nationality && (
+                          <p className="text-xs text-red-500">{personalDetailsErrors.nationality}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Blood Group</Label>
+                        <Input
+                          value={personalDetails.bloodGroup || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              personalDetails: {
+                                ...personalDetails,
+                                bloodGroup: e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 3)
+                              }
+                            })
+                          }
+                          placeholder="Enter blood group"
+                          className={personalDetailsErrors.bloodGroup ? 'border-red-500' : ''}
+                        />
+                        {personalDetailsErrors.bloodGroup && (
+                          <p className="text-xs text-red-500">{personalDetailsErrors.bloodGroup}</p>
+                        )}
+                      </div>
+                    </div>
+                  {/* </div> */}
+                </div>
+              )}
+
+            {currentStep === professionalDetailsStepIndex && (
+              <div className="h-[420px] overflow-y-auto no-scrollbar ps-1 pe-1">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2 pr-2">
                       <Label htmlFor="employeeId">Employee ID <span className="text-red-500">*</span></Label>
                       <div className="relative">
                         <Input
@@ -1064,7 +1369,7 @@ const EditUserDialog = ({
                   </div>
 
                   <div className="space-y-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2 mt-3">
                       <Label htmlFor="employeeType">Employee Type</Label>
                       <Select
                         value={formData.employeeType}
@@ -1104,6 +1409,133 @@ const EditUserDialog = ({
                     </div>
                   </div>
 
+                  <div className="space-y-2 pt-1 relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowOtherDetails((prev) => !prev)}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background mt-3 px-3 py-2 text-sm"
+                      aria-expanded={showOtherDetails}
+                      aria-label="Toggle other details"
+                    >
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Other Details
+                    </Label>
+
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 ${
+                        showOtherDetails ? "rotate-180" : ""
+                      }`}
+                    />
+                    </button>
+
+                    {showOtherDetails && (
+                      <div className="mt-2 p-1">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label>Aadhaar No</Label>
+                            <Input
+                              value={formatAadhaarNumber(professionalOtherDetails.aadharNo || '')}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                professionalOtherDetails: {
+                                  ...professionalOtherDetails,
+                                  aadharNo: e.target.value.replace(/\D/g, '').slice(0, 12)
+                                }
+                              })}
+                              inputMode="numeric"
+                              placeholder="Enter Aadhaar number"
+                            />
+                            {professionalOtherDetailsErrors.aadharNo && (
+                              <p className="text-xs text-red-500">{professionalOtherDetailsErrors.aadharNo}</p>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>PAN No</Label>
+                            <Input
+                              value={professionalOtherDetails.panNo || ''}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                professionalOtherDetails: {
+                                  ...professionalOtherDetails,
+                                  panNo: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10)
+                                }
+                              })}
+                              placeholder="Enter PAN number"
+                            />
+                            {professionalOtherDetailsErrors.panNo && (
+                              <p className="text-xs text-red-500">{professionalOtherDetailsErrors.panNo}</p>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>ESI No</Label>
+                            <Input
+                              value={professionalOtherDetails.esiNo || ''}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                professionalOtherDetails: {
+                                  ...professionalOtherDetails,
+                                  esiNo: e.target.value.replace(/\D/g, '').slice(0, 10)
+                                }
+                              })}
+                              placeholder="Enter ESI number"
+                            />
+                            {professionalOtherDetailsErrors.esiNo && (
+                              <p className="text-xs text-red-500">{professionalOtherDetailsErrors.esiNo}</p>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>PF No</Label>
+                            <Input
+                              value={professionalOtherDetails.pfNo || ''}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                professionalOtherDetails: {
+                                  ...professionalOtherDetails,
+                                  pfNo: e.target.value.replace(/\D/g, '').slice(0, 12)
+                                }
+                              })}
+                              placeholder="Enter PF number"
+                            />
+                            {professionalOtherDetailsErrors.pfNo && (
+                              <p className="text-xs text-red-500">{professionalOtherDetailsErrors.pfNo}</p>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Resigning / Termination Date</Label>
+                            <Input
+                              type="date"
+                              value={professionalOtherDetails.exitDate || ''}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                professionalOtherDetails: {
+                                  ...professionalOtherDetails,
+                                  exitDate: e.target.value
+                                }
+                              })}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Biometric User ID</Label>
+                            <Input
+                              value={professionalOtherDetails.biometricUserId || ''}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                professionalOtherDetails: {
+                                  ...professionalOtherDetails,
+                                  biometricUserId: e.target.value.replace(/\D/g, '').slice(0, 20)
+                                }
+                              })}
+                              placeholder="Enter biometric user ID"
+                            />
+                            {professionalOtherDetailsErrors.biometricUserId && (
+                              <p className="text-xs text-red-500">{professionalOtherDetailsErrors.biometricUserId}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2 pt-2 border-t border-gray-100 mt-3 mb-4">
                     <Label htmlFor="cpd-toggle-edit">CPD Involved</Label>
                     <div className="flex items-center gap-2">
@@ -1131,7 +1563,7 @@ const EditUserDialog = ({
                       </span>
                     </div>
                   </div>
-              </>
+              </div>
             )}
 
             {moduleAccessStepIndex !== -1 && currentStep === moduleAccessStepIndex && (
@@ -1159,26 +1591,27 @@ const EditUserDialog = ({
 
             {currentStep === documentsStepIndex && (
               <>
-                <div className="h-[420px] overflow-y-auto mb-5 no-scrollbar">
-                  <div className="flex items-center gap-2 mb-3">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <h3 className="text-base font-semibold text-blue-600">Documents & Compliance</h3>
-                  </div>
-
-                  <div className="space-y-3">
-                    {complianceDocuments.map((document) => {
+                <div className="h-[420px] overflow-y-auto mb-5 pr-1 pb-2">
+                  <div className="space-y-4">
+                    {EMPLOYEE_COMPLIANCE_DOCUMENTS.map((document) => {
                       const fileName = uploadedDocuments[document.key];
                       const fileMeta = documentMetaByKey[document.key];
                       return (
-                        <div key={document.key} className="space-y-1.5">
-                          <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <div key={document.key} className="space-y-2">
+                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                             {document.label}
                           </Label>
-                          <div className="flex items-center justify-between rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2">
-                            <span className="text-sm text-slate-500 truncate pr-2">
-                              {fileName || `Upload ${document.label}`}
-                            </span>
-                            <div className="flex items-center gap-2">
+                          <div className="group flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 transition-colors hover:border-blue-400 hover:shadow-sm">
+                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                              <FileText
+                                className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600"
+                                aria-hidden
+                              />
+                              <span className="truncate text-sm text-slate-600 transition-colors group-hover:text-slate-900">
+                                {fileName || `Upload ${document.label}`}
+                              </span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
                               {fileName && fileMeta?.bucket && fileMeta?.storagePath && (
                                 <button
                                   type="button"

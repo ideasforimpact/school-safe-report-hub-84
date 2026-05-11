@@ -15,11 +15,19 @@ type MergedDocumentRow = {
 const COMPLIANCE_DOCUMENT_SPECS = [
   { key: "letterOfAppointment", label: "Letter of Appointment" },
   { key: "marksheets10And12", label: "10th/12th Marksheets" },
+  { key: "bachelorsMastersCertificates", label: "Bachelors/Masters Degree Certificates" },
+  { key: "previousEmploymentLetter", label: "Previous Employment Discharge Letter" },
+  { key: "lastEarnedPayslip", label: "Last Earned Pay Slip" },
+  { key: "birthCertificate", label: "Birth Certificate" },
   { key: "aadhaarCard", label: "Aadhaar Card" },
   { key: "panCard", label: "PAN Card" },
   { key: "passport", label: "Passport" },
+  { key: "passportPhoto", label: "Passport Size Photo" },
   { key: "bankPassbook", label: "Bank Passbook" },
-  { key: "esiProof", label: "ESI Number Proof" },
+  { key: "additionalQualificationCertificates", label: "Certificates of Additional Qualifications Pursued" },
+  { key: "addressConfirmation", label: "Confirmation Whether Permanent Address Is Same As Residential Address" },
+  { key: "providentFundNumber", label: "Provident Fund Number (If Any)" },
+  { key: "employeeStateInsurance", label: "Employee State Insurance Corporation Number/Card (If Any)" },
 ] as const;
 
 function inferDocumentKey(doc: {
@@ -36,20 +44,42 @@ function inferDocumentKey(doc: {
   if (normalizedKey || normalizedLabel) {
     if (byText.includes("letterofappointment") || byText.includes("appointmentletter")) return "letterOfAppointment";
     if (byText.includes("marksheet") || byText.includes("10th") || byText.includes("12th")) return "marksheets10And12";
+    if (byText.includes("bachelorsmasterscertificates")) return "bachelorsMastersCertificates";
+    if (byText.includes("previousemploymentletter") || byText.includes("dischargeletter")) return "previousEmploymentLetter";
+    if (byText.includes("lastearnedpayslip") || byText.includes("lastpayslip") || byText.includes("payslip")) return "lastEarnedPayslip";
+    if (byText.includes("birthcertificate")) return "birthCertificate";
     if (byText.includes("aadhaar") || byText.includes("aadhar")) return "aadhaarCard";
     if (byText.includes("pancard") || byText.includes("pan")) return "panCard";
+    if (byText.includes("passportphoto") || byText.includes("passportsizephoto")) return "passportPhoto";
     if (byText.includes("passport")) return "passport";
     if (byText.includes("bankpassbook") || byText.includes("passbook")) return "bankPassbook";
-    if (byText.includes("esiproof") || byText.includes("esinumber") || byText.includes("esi")) return "esiProof";
+    if (byText.includes("additionalqualificationcertificates")) return "additionalQualificationCertificates";
+    if (byText.includes("addressconfirmation")) return "addressConfirmation";
+    if (byText.includes("providentfundnumber") || byText.includes("pfnumber") || byText.includes("providentfund")) return "providentFundNumber";
+    if (
+      byText.includes("employeestateinsurance") ||
+      byText.includes("esiproof") ||
+      byText.includes("esinumber") ||
+      byText.includes("esi")
+    ) return "employeeStateInsurance";
   }
   const path = doc.storagePath || doc.storage_path || doc.filePath || doc.file_path || "";
   if (path.includes("/letterOfAppointment/")) return "letterOfAppointment";
   if (path.includes("/marksheets10And12/")) return "marksheets10And12";
+  if (path.includes("/bachelorsMastersCertificates/")) return "bachelorsMastersCertificates";
+  if (path.includes("/previousEmploymentLetter/")) return "previousEmploymentLetter";
+  if (path.includes("/lastEarnedPayslip/")) return "lastEarnedPayslip";
+  if (path.includes("/birthCertificate/")) return "birthCertificate";
   if (path.includes("/aadhaarCard/")) return "aadhaarCard";
   if (path.includes("/panCard/")) return "panCard";
   if (path.includes("/passport/")) return "passport";
+  if (path.includes("/passportPhoto/")) return "passportPhoto";
   if (path.includes("/bankPassbook/")) return "bankPassbook";
-  if (path.includes("/esiProof/")) return "esiProof";
+  if (path.includes("/additionalQualificationCertificates/")) return "additionalQualificationCertificates";
+  if (path.includes("/addressConfirmation/")) return "addressConfirmation";
+  if (path.includes("/providentFundNumber/")) return "providentFundNumber";
+  if (path.includes("/employeeStateInsurance/")) return "employeeStateInsurance";
+  if (path.includes("/esiProof/")) return "employeeStateInsurance"; // Backward compat
   return "";
 }
 

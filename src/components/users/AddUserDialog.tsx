@@ -6,19 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
-import { Loader2, Check, X, Tag, Upload, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Check, X, Tag, Upload, ChevronLeft, ChevronRight, ChevronDown, FileText } from 'lucide-react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 import { checkEmployeeIdExists,checkEmployeeEmailExists } from '@/services/employee/employeeValidationService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import defaultModules from "@/utils/default-modules.json";
 import { applyDefaultModules } from "@/utils/moduleDefault";
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
 import WizardProgress from '@/components/ui/wizard-progress';
+import { EMPLOYEE_COMPLIANCE_DOCUMENTS } from '@/constants/employeeComplianceDocuments';
+import { fileToBase64 } from '@/utils/fileToBase64';
 
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS } from '@/constant/employeeConstant';
 
@@ -28,6 +29,17 @@ interface AddUserDialogProps {
   formData: {
     firstName: string;
     lastName: string;
+    personalDetails?: {
+      middleName?: string;
+      fatherName?: string;
+      gender?: string;
+      dob?: string;
+      religion?: string;
+      nationality?: string;
+      bloodGroup?: string;
+      residenceAddress?: string;
+    };
+
     email: string;
     phone?: string;
     designation?: string;
@@ -36,12 +48,23 @@ interface AddUserDialogProps {
     employeeType?: EmployeeType;
     department?: DepartmentType;
     joiningDate?: string;
+    professionalOtherDetails?: {
+      aadharNo?: string;
+      panNo?: string;
+      esiNo?: string;
+      pfNo?: string;
+      exitDate?: string;
+      biometricUserId?: string;
+    };
     moduleAccessPayload?: ModuleAccessItem[];
+
     documents?: Array<{
       key?: string;
       fileName: string;
       filePath?: string;
       uploadedAt: string;
+      fileData?: string;
+      contentType?: string;
     }>;
     clientId?: string;
     is_cpd_involved?: boolean;
@@ -63,21 +86,14 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const steps = useMemo(
     () =>
       hasEmail
-        ? (['Basic Information', 'Professional Details', 'Module Access', 'Documents & Compliance'] as const)
-        : (['Basic Information', 'Professional Details', 'Documents & Compliance'] as const),
+        ? (['Basic Information', 'Personal Details', 'Professional Details', 'Module Access', 'Documents & Compliance'] as const)
+        : (['Basic Information', 'Personal Details', 'Professional Details', 'Documents & Compliance'] as const),
     [hasEmail]
   );
-  const moduleAccessStepIndex = hasEmail ? 2 : -1;
-  const documentsStepIndex = hasEmail ? 3 : 2;
-  const complianceDocuments = [
-    { key: 'letterOfAppointment', label: 'Letter of Appointment' },
-    { key: 'marksheets10And12', label: '10th/12th Marksheets' },
-    { key: 'aadhaarCard', label: 'Aadhaar Card' },
-    { key: 'panCard', label: 'PAN Card' },
-    { key: 'passport', label: 'Passport' },
-    { key: 'bankPassbook', label: 'Bank Passbook' },
-    { key: 'esiProof', label: 'ESI Number Proof' }
-  ] as const;
+  const personalDetailsStepIndex = 1;
+  const professionalDetailsStepIndex = 2;
+  const moduleAccessStepIndex = hasEmail ? 3 : -1;
+  const documentsStepIndex = hasEmail ? 4 : 3;
   const { state } = useEmployeeStore();
   const { employeeTypes, loading: employeeTypesLoading } = useEmployeeTypes();
   const { employeeDepartments, loading: employeeDepartmentsLoading } = useEmployeeDepartments();
@@ -96,6 +112,9 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const joiningDateRef = useRef<HTMLInputElement>(null);
   const documentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [joiningDateError, setJoiningDateError] = useState('');
+  const [showOtherDetails, setShowOtherDetails] = useState(false);
+  const personalDetails = formData.personalDetails || {};
+  const professionalOtherDetails = formData.professionalOtherDetails || {};
 
   const formDataRef = useRef(formData);
   const mapModulesWithConfigured = (
@@ -158,6 +177,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setTagInput('');
     setTagError('');
     setUploadedDocuments({});
+    setShowOtherDetails(false);
   }
     // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [isOpen, state.configuredModules]);
@@ -265,6 +285,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setUploadedDocuments({});
     setUploadedDocumentFiles({});
     setJoiningDateError('');
+    setShowOtherDetails(false);
   };
 
   const handleSubmit = async () => {
@@ -312,37 +333,29 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     const documentsPayload: Array<{
       key: string;
       fileName: string;
-      filePath: string;
       uploadedAt: string;
+      fileData: string;
+      contentType: string;
     }> = [];
 
-    const bucketName = 'employee_profile_documents';
-    const activeClientId = formData.clientId || clientId ;
-    const activeEmployeeKey = formData.employeeId ;
-
-    for (const doc of complianceDocuments) {
+    for (const doc of EMPLOYEE_COMPLIANCE_DOCUMENTS) {
       const file = uploadedDocumentFiles[doc.key];
       if (!file) continue;
 
-      const safeFileName = file.name.replace(/\s+/g, '_');
-      const storagePath = `${activeClientId}/${activeEmployeeKey}/${doc.key}/${Date.now()}_${safeFileName}`;
-      const { error: uploadError } = await supabase.storage
-        .from(bucketName)
-        .upload(storagePath, file, {
-          upsert: false,
-          contentType: file.type || 'application/octet-stream'
-        });
-
-      if (uploadError) {
-        toast.error(`Failed to upload ${doc.label}`);
+      let fileData = '';
+      try {
+        fileData = await fileToBase64(file);
+      } catch {
+        toast.error(`Failed to process ${doc.label}`);
         return;
       }
 
       documentsPayload.push({
         key: doc.key,
         fileName: file.name,
-        filePath: storagePath,
-        uploadedAt: new Date().toISOString()
+        uploadedAt: new Date().toISOString(),
+        fileData,
+        contentType: file.type || 'application/octet-stream'
       });
     }
     
@@ -433,6 +446,45 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     return /^[6-9]\d{9}$/.test(phone);
   };
 
+  const formatAadhaarNumber = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 12);
+    return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+  };
+
+  const getProfessionalOtherDetailsErrors = () => {
+    const aadharNo = (professionalOtherDetails.aadharNo || '').trim();
+    const panNo = (professionalOtherDetails.panNo || '').trim().toUpperCase();
+    const esiNo = (professionalOtherDetails.esiNo || '').trim();
+    const pfNo = (professionalOtherDetails.pfNo || '').trim();
+    const biometricUserId = (professionalOtherDetails.biometricUserId || '').trim();
+
+    return {
+      aadharNo:
+        aadharNo && !/^\d{12}$/.test(aadharNo)
+          ? 'Aadhaar number must be exactly 12 digits'
+          : '',
+      panNo:
+        panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(panNo)
+          ? 'PAN must be in format FTEPB4343S'
+          : '',
+      esiNo:
+        esiNo && !/^\d{10}$/.test(esiNo)
+          ? 'ESI number must be exactly 10 digits'
+          : '',
+      pfNo:
+        pfNo && !/^\d{12}$/.test(pfNo)
+          ? 'PF number must be exactly 12 digits'
+          : '',
+      biometricUserId:
+        biometricUserId && !/^\d{1,20}$/.test(biometricUserId)
+          ? 'Biometric User ID must contain digits only'
+          : '',
+    };
+  };
+
+  const professionalOtherDetailsErrors = getProfessionalOtherDetailsErrors();
+  const hasProfessionalOtherDetailsErrors = Object.values(professionalOtherDetailsErrors).some(Boolean);
+
   // Name validation function (letters and spaces only, no special characters)
   const isValidName = (name: string) => {
     const trimmed = name.trim();
@@ -440,6 +492,34 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     const nameRegex = /^[a-zA-Z\s]{1,25}$/;
     return nameRegex.test(name);
   };
+
+  const isValidLettersAndSpaces = (value: string) => /^[a-zA-Z\s]+$/.test(value);
+
+  const getPersonalDetailsErrors = () => {
+    const minLength = 3;
+    const validateOptionalTextField = (value: string, label: string) => {
+      const trimmed = (value || '').trim();
+      if (!trimmed) return '';
+      if (trimmed.length < minLength) return `${label} must be at least ${minLength} characters`;
+      if (!isValidLettersAndSpaces(trimmed)) return `${label} can only contain letters and spaces`;
+      return '';
+    };
+
+    return {
+      middleName: validateOptionalTextField(personalDetails.middleName || '', 'Middle name'),
+      fatherName: validateOptionalTextField(personalDetails.fatherName || '', "Father's name"),
+      religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
+      nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
+      bloodGroup:
+        (personalDetails.bloodGroup || '').trim() &&
+        !/^(A|B|AB|O)[+-]$/i.test((personalDetails.bloodGroup || '').trim())
+          ? 'Blood group must be in format A+, O-, AB+, B-'
+          : '',
+    };
+  };
+
+  const personalDetailsErrors = getPersonalDetailsErrors();
+  const hasPersonalDetailsErrors = Object.values(personalDetailsErrors).some(Boolean);
 
   const sanitizeTag = (value: string) => value.replace(/,/g, '').trim().slice(0, MAX_TAG_LENGTH);
   const currentTags = Array.isArray(formData.tags) ? formData.tags : [];
@@ -581,6 +661,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     employeeIdValidation === 'available' &&
     (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
     !joiningDateError && 
+    !hasPersonalDetailsErrors &&
+    !hasProfessionalOtherDetailsErrors &&
     !isLoading
   );
 };
@@ -613,15 +695,34 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       isValidEmployeeId(formData.employeeId) &&
       employeeIdValidation === 'available' &&
       (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
-      !joiningDateError
+      !joiningDateError &&
+      !hasProfessionalOtherDetailsErrors
     );
   };
 
-  const canProceedToNextStep = () => {
-    if (currentStep === 0) return isBasicStepValid() && emailValidation !== 'checking';
-    if (currentStep === 1) return isProfessionalStepValid() && employeeIdValidation !== 'checking';
-    return true;
+  const isPersonalDetailsStepValid = () => {
+    // Personal detail fields are optional, but if present must be valid.
+    return !hasPersonalDetailsErrors;
   };
+
+const canProceedToNextStep = () => {
+  if (currentStep === 0) {
+    return isBasicStepValid() && emailValidation !== 'checking';
+  }
+
+  if (currentStep === personalDetailsStepIndex) {
+    return isPersonalDetailsStepValid();
+  }
+
+  if (currentStep === professionalDetailsStepIndex) {
+    return (
+      isProfessionalStepValid() &&
+      employeeIdValidation !== 'checking'
+    );
+  }
+
+  return true;
+};
 
   const handleStepClick = (stepIndex: number) => {
     if (stepIndex === currentStep) return;
@@ -782,6 +883,25 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                 </div>
 
                 <div className="space-y-2">
+                  <Label>Address</Label>
+
+                  <textarea
+                    value={personalDetails.residenceAddress || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        personalDetails: {
+                          ...personalDetails,
+                          residenceAddress: e.target.value
+                        }
+                      })
+                    }
+                    placeholder="Enter residence address"
+                    className="min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="employee-tags" className="flex items-center gap-2">
                       <Tag className="h-4 w-4 text-gray-500" />
@@ -834,11 +954,177 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
               </>
             )}
 
-            {currentStep === 1 && (
-              <>
+
+          {currentStep === personalDetailsStepIndex && (
+            <>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Middle Name</Label>
+                    <Input
+                      value={personalDetails.middleName || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            middleName: e.target.value
+                          }
+                        })
+                      }
+                      placeholder="Enter middle name"
+                      className={personalDetailsErrors.middleName ? 'border-red-500' : ''}
+                    />
+                    {personalDetailsErrors.middleName && (
+                      <p className="text-xs text-red-500">{personalDetailsErrors.middleName}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>
+                      Father's Name 
+                    </Label>
+                    <Input
+                      value={personalDetails.fatherName || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            fatherName: e.target.value
+                          }
+                        })
+                      }
+                      placeholder="Enter father's name"
+                      className={personalDetailsErrors.fatherName ? 'border-red-500' : ''}
+                    />
+                    {personalDetailsErrors.fatherName && (
+                      <p className="text-xs text-red-500">{personalDetailsErrors.fatherName}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label>
+                      Gender 
+                      {/* <span className="text-red-500">*</span> */}
+                    </Label>
+                    <Select
+                      value={personalDetails.gender || ''}
+                      onValueChange={(value) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            gender: value
+                          }
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        <SelectItem value="male">Male </SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>DOB </Label>
+                    <Input
+                      type="date"
+                      value={personalDetails.dob || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            dob: e.target.value
+                          }
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Religion</Label>
+                    <Input
+                      value={personalDetails.religion || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            religion: e.target.value
+                          }
+                        })
+                      }
+                      placeholder="Enter religion"
+                      className={personalDetailsErrors.religion ? 'border-red-500' : ''}
+                    />
+                    {personalDetailsErrors.religion && (
+                      <p className="text-xs text-red-500">{personalDetailsErrors.religion}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Nationality</Label>
+                    <Input
+                      value={personalDetails.nationality || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            nationality: e.target.value
+                          }
+                        })
+                      }
+                      placeholder="Enter nationality"
+                      className={personalDetailsErrors.nationality ? 'border-red-500' : ''}
+                    />
+                    {personalDetailsErrors.nationality && (
+                      <p className="text-xs text-red-500">{personalDetailsErrors.nationality}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Blood Group</Label>
+                    <Input
+                      value={personalDetails.bloodGroup || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            bloodGroup: e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 3)
+                          }
+                        })
+                      }
+                      placeholder="Enter blood group"
+                      className={personalDetailsErrors.bloodGroup ? 'border-red-500' : ''}
+                    />
+                    {personalDetailsErrors.bloodGroup && (
+                      <p className="text-xs text-red-500">{personalDetailsErrors.bloodGroup}</p>
+                    )}
+                  </div>
+                </div>
+              {/* </div> */}
+            </>
+          )}
+
+
+
+            {currentStep === professionalDetailsStepIndex && (
+              <div className="h-[420px] overflow-y-auto no-scrollbar ps-1 pe-1">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="employeeId" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <div className="space-y-2 pr-2">
+                      <Label htmlFor="employeeId" className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-4">
                         Employee ID <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
@@ -920,7 +1206,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 mb-4">
                       <Label htmlFor="department" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Department
                       </Label>
@@ -942,6 +1228,131 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                       </Select>
                     </div>
                   </div>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowOtherDetails(!showOtherDetails)}
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background mt-3 px-3 py-2 text-sm"
+                  >
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Other Details
+                    </Label>
+
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 ${
+                        showOtherDetails ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {showOtherDetails && (
+                    <div className="mt-2 p-1">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label>Aadhaar Number</Label>
+                          <Input
+                            value={formatAadhaarNumber(professionalOtherDetails.aadharNo || '')}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              professionalOtherDetails: {
+                                ...professionalOtherDetails,
+                                aadharNo: e.target.value.replace(/\D/g, '').slice(0, 12)
+                              }
+                            })}
+                            inputMode="numeric"
+                            placeholder="Enter Aadhaar number"
+                          />
+                          {professionalOtherDetailsErrors.aadharNo && (
+                            <p className="text-xs text-red-500">{professionalOtherDetailsErrors.aadharNo}</p>
+                          )}
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>PAN Number</Label>
+                          <Input
+                            value={professionalOtherDetails.panNo || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              professionalOtherDetails: {
+                                ...professionalOtherDetails,
+                                panNo: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10)
+                              }
+                            })}
+                            placeholder="Enter PAN number"
+                          />
+                          {professionalOtherDetailsErrors.panNo && (
+                            <p className="text-xs text-red-500">{professionalOtherDetailsErrors.panNo}</p>
+                          )}
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>ESI Number</Label>
+                          <Input
+                            value={professionalOtherDetails.esiNo || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              professionalOtherDetails: {
+                                ...professionalOtherDetails,
+                                esiNo: e.target.value.replace(/\D/g, '').slice(0, 10)
+                              }
+                            })}
+                            placeholder="Enter ESI number"
+                          />
+                          {professionalOtherDetailsErrors.esiNo && (
+                            <p className="text-xs text-red-500">{professionalOtherDetailsErrors.esiNo}</p>
+                          )}
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>PF Number</Label>
+                          <Input
+                            value={professionalOtherDetails.pfNo || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              professionalOtherDetails: {
+                                ...professionalOtherDetails,
+                                pfNo: e.target.value.replace(/\D/g, '').slice(0, 12)
+                              }
+                            })}
+                            placeholder="Enter PF number"
+                          />
+                          {professionalOtherDetailsErrors.pfNo && (
+                            <p className="text-xs text-red-500">{professionalOtherDetailsErrors.pfNo}</p>
+                          )}
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Resigning / Termination Date</Label>
+                          <Input
+                            type="date"
+                            value={professionalOtherDetails.exitDate || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              professionalOtherDetails: {
+                                ...professionalOtherDetails,
+                                exitDate: e.target.value
+                              }
+                            })}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Biometric User ID</Label>
+                          <Input
+                            value={professionalOtherDetails.biometricUserId || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              professionalOtherDetails: {
+                                ...professionalOtherDetails,
+                                biometricUserId: e.target.value.replace(/\D/g, '').slice(0, 20)
+                              }
+                            })}
+                            placeholder="Enter biometric user ID"
+                          />
+                          {professionalOtherDetailsErrors.biometricUserId && (
+                            <p className="text-xs text-red-500">{professionalOtherDetailsErrors.biometricUserId}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                   <div className="space-y-2 pt-2 border-t border-gray-100 mt-3 mb-4">
                   <Label htmlFor="cpd-toggle">CPD Involved</Label>
@@ -970,8 +1381,11 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                     </span>
                   </div>
                 </div>
-              </>
+
+              </div>
             )}
+
+            
 
             {moduleAccessStepIndex !== -1 && currentStep === moduleAccessStepIndex && (
               <>
@@ -999,35 +1413,38 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                   value={formData.clientId || clientId || ''} 
                 />
 
-                <div className="h-[420px] overflow-y-auto mb-5 no-scrollbar">
-                  <div className="flex items-center gap-2 mb-3">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <h3 className="text-base font-semibold text-blue-600">Documents & Compliance</h3>
-                  </div>
-
-                  <div className="space-y-3">
-                    {complianceDocuments.map((document) => {
+                <div className="h-[420px] overflow-y-auto mb-5 pr-1 pb-2">
+                  <div className="space-y-4">
+                    {EMPLOYEE_COMPLIANCE_DOCUMENTS.map((document) => {
                       const fileName = uploadedDocuments[document.key];
                       return (
-                        <div key={document.key} className="space-y-1.5">
-                          <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <div key={document.key} className="space-y-2">
+                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                             {document.label}
                           </Label>
-                          <div className="flex items-center justify-between rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2">
-                            <span className="text-sm text-slate-500 truncate pr-2">
-                              {fileName || `Upload ${document.label}`}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              {fileName && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveDocument(document.key)}
-                                  className="text-red-500 hover:text-red-600"
-                                  aria-label={`Remove ${document.label}`}
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              )}
+                          <div className="group flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 transition-colors hover:border-blue-400 hover:shadow-sm">
+                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                              <FileText
+                                className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600"
+                                aria-hidden
+                              />
+                              <span className="truncate text-sm text-slate-600 transition-colors group-hover:text-slate-900">
+                                {fileName || `Upload ${document.label}`}
+                              </span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <div className="pointer-events-none flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
+                                {fileName && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveDocument(document.key)}
+                                    className="text-red-500 hover:text-red-600"
+                                    aria-label={`Remove ${document.label}`}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => openDocumentPicker(document.key)}

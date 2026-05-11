@@ -90,6 +90,25 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
     fileName: string;
     uploadedAt: string;
   }>;
+  // Personal details from User Management wizard
+  personalDetails?: {
+    residenceAddress?: string;
+    middleName?: string;
+    fatherName?: string;
+    gender?: string;
+    dob?: string;
+    religion?: string;
+    nationality?: string;
+    bloodGroup?: string;
+  };
+  professionalOtherDetails?: {
+    aadharNo?: string;
+    panNo?: string;
+    esiNo?: string;
+    pfNo?: string;
+    exitDate?: string;
+    biometricUserId?: string;
+  };
   cpd_entries?: CpdEntryForUser[];
   // No need to explicitly define role here since we're extending from User
 }
@@ -220,6 +239,24 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     employeeType?: EmployeeType;
     department?: DepartmentType;
     joiningDate?: string;
+    personalDetails?: {
+      residenceAddress?: string;
+      middleName?: string;
+      fatherName?: string;
+      gender?: string;
+      dob?: string;
+      religion?: string;
+      nationality?: string;
+      bloodGroup?: string;
+    };
+    professionalOtherDetails?: {
+      aadharNo?: string;
+      panNo?: string;
+      esiNo?: string;
+      pfNo?: string;
+      exitDate?: string;
+      biometricUserId?: string;
+    };
     documents?: Array<{
       label: string;
       fileName: string;
@@ -234,6 +271,24 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     email: '',
     phone: '',
     designation: '',
+    personalDetails: {
+      residenceAddress: '',
+      middleName: '',
+      fatherName: '',
+      gender: '',
+      dob: '',
+      religion: '',
+      nationality: '',
+      bloodGroup: '',
+    },
+    professionalOtherDetails: {
+      aadharNo: '',
+      panNo: '',
+      esiNo: '',
+      pfNo: '',
+      exitDate: '',
+      biometricUserId: '',
+    },
     documents: [],
     tags: [],
     clientId: clientId,
@@ -388,6 +443,24 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             clientId: employee.clientId,
             isSuperAdmin: employee.isSuperAdmin,
             is_cpd_involved: employee.isCpdInvolved ?? false,
+            personalDetails: {
+              residenceAddress: (employee as any).personalDetails?.residenceAddress || '',
+              middleName: (employee as any).personalDetails?.middleName || '',
+              fatherName: (employee as any).personalDetails?.fatherName || '',
+              gender: (employee as any).personalDetails?.gender || '',
+              dob: (employee as any).personalDetails?.dob || '',
+              religion: (employee as any).personalDetails?.religion || '',
+              nationality: (employee as any).personalDetails?.nationality || '',
+              bloodGroup: (employee as any).personalDetails?.bloodGroup || '',
+            },
+            professionalOtherDetails: {
+              aadharNo: (employee as any).professionalOtherDetails?.aadharNo || '',
+              panNo: (employee as any).professionalOtherDetails?.panNo || '',
+              esiNo: (employee as any).professionalOtherDetails?.esiNo || '',
+              pfNo: (employee as any).professionalOtherDetails?.pfNo || '',
+              exitDate: (employee as any).professionalOtherDetails?.exitDate || '',
+              biometricUserId: (employee as any).professionalOtherDetails?.biometricUserId || '',
+            },
             moduleAccessPayload: moduleAccessItems,
             cpd_entries,
             role: 'user' as const
@@ -484,6 +557,12 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               phone: currentFormData.phone || '',
               designation: currentFormData.designation || (currentFormData.tags?.join(', ') || ''),
               documents: currentFormData.documents || [],
+              personalDetails: {
+                ...(currentFormData.personalDetails || {})
+              },
+              professionalOtherDetails: {
+                ...(currentFormData.professionalOtherDetails || {})
+              },
               employeeType: currentFormData.employeeType ?? undefined,
               department: currentFormData.department ?? undefined,
               joiningDate: currentFormData.joiningDate || new Date().toISOString().split('T')[0],
@@ -603,6 +682,24 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             designation: employee.designation,
             documents: (employee as any).profileDocuments || [],
             is_cpd_involved: employee.isCpdInvolved ?? false,
+            personalDetails: {
+              residenceAddress: (employee as any).personalDetails?.residenceAddress || '',
+              middleName: (employee as any).personalDetails?.middleName || '',
+              fatherName: (employee as any).personalDetails?.fatherName || '',
+              gender: (employee as any).personalDetails?.gender || '',
+              dob: (employee as any).personalDetails?.dob || '',
+              religion: (employee as any).personalDetails?.religion || '',
+              nationality: (employee as any).personalDetails?.nationality || '',
+              bloodGroup: (employee as any).personalDetails?.bloodGroup || '',
+            },
+            professionalOtherDetails: {
+              aadharNo: (employee as any).professionalOtherDetails?.aadharNo || '',
+              panNo: (employee as any).professionalOtherDetails?.panNo || '',
+              esiNo: (employee as any).professionalOtherDetails?.esiNo || '',
+              pfNo: (employee as any).professionalOtherDetails?.pfNo || '',
+              exitDate: (employee as any).professionalOtherDetails?.exitDate || '',
+              biometricUserId: (employee as any).professionalOtherDetails?.biometricUserId || '',
+            },
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -789,6 +886,24 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       email: '',
       phone: '',
       designation: '',
+      personalDetails: {
+        residenceAddress: '',
+        middleName: '',
+        fatherName: '',
+        gender: '',
+        dob: '',
+        religion: '',
+        nationality: '',
+        bloodGroup: '',
+      },
+      professionalOtherDetails: {
+        aadharNo: '',
+        panNo: '',
+        esiNo: '',
+        pfNo: '',
+        exitDate: '',
+        biometricUserId: '',
+      },
       documents: [],
       tags: [],
       clientId: clientId,
@@ -1058,6 +1173,24 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       clientId: latestUser.clientId || clientId,
                       moduleAccessPayload: latestUser.moduleAccessPayload || [],
                       is_cpd_involved: cpdValue,
+                      personalDetails: latestUser.personalDetails || {
+                        residenceAddress: '',
+                        middleName: '',
+                        fatherName: '',
+                        gender: '',
+                        dob: '',
+                        religion: '',
+                        nationality: '',
+                        bloodGroup: '',
+                      },
+                      professionalOtherDetails: latestUser.professionalOtherDetails || {
+                        aadharNo: '',
+                        panNo: '',
+                        esiNo: '',
+                        pfNo: '',
+                        exitDate: '',
+                        biometricUserId: '',
+                      },
                     });
                     setIsEditDialogOpen(true);
                   }}

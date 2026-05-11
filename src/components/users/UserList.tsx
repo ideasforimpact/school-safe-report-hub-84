@@ -65,7 +65,7 @@ const UserList = ({
   const [profileDocsLoading, setProfileDocsLoading] = useState(false);
   const [verificationDocsForDialog, setVerificationDocsForDialog] = useState<VerificationDocumentRow[]>([]);
   const [verificationDocsLoading, setVerificationDocsLoading] = useState(false);
-
+  const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -734,25 +734,28 @@ const UserList = ({
               <div>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-px flex-1 bg-slate-200" aria-hidden />
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
                     Basic Information
                   </h3>
                   <div className="h-px flex-1 bg-slate-200" aria-hidden />
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><p className="text-xs text-slate-500 mb-1">First Name</p>
+                  <div><p className="text-sm text-slate-400 mb-1">First Name</p>
                   <p className="font-medium">{valueOrNotSet(documentDialogUser.firstName)}</p>
                   </div>
-                  <div><p className="text-xs text-slate-500 mb-1">Last Name</p>
+                  <div><p className="text-sm text-slate-400 mb-1">Last Name</p>
                   <p className="font-medium">{valueOrNotSet(documentDialogUser.lastName)}</p>
                   </div>
-                  <div><p className="text-xs text-slate-500 mb-1">Email</p>
+                  <div><p className="text-sm text-slate-400 mb-1">Email</p>
                   <p className="font-medium">{valueOrNotSet(documentDialogUser.email)}</p>
                   </div>
-                  <div><p className="text-xs text-slate-500 mb-1">Phone</p>
+                  <div><p className="text-sm text-slate-400 mb-1">Phone</p>
                   <p className="font-medium">{valueOrNotSet((documentDialogUser as any).phone)}</p>
                   </div>
-                  <div><p className="text-xs text-slate-500 mb-1">Tags</p>
+                  <div><p className="text-sm text-slate-400 mb-1">Address</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.residenceAddress || (documentDialogUser as any).residenceAddress)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Tags</p>
                   <p className="font-medium">{valueOrNotSet((documentDialogUser as any).designation)}</p>
                   </div>
                 </div>
@@ -761,24 +764,87 @@ const UserList = ({
               <div>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-px flex-1 bg-slate-200" aria-hidden />
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Personal Details
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-sm text-slate-400 mb-1">Middle Name</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.middleName || (documentDialogUser as any).middleName)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Father's Name</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.fatherName || (documentDialogUser as any).fatherName)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Gender</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.gender || (documentDialogUser as any).gender)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Date of Birth</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.dob || (documentDialogUser as any).dob)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Religion</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.religion || (documentDialogUser as any).religion)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Nationality</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.nationality || (documentDialogUser as any).nationality)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Blood Group</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.bloodGroup || (documentDialogUser as any).bloodGroup)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
                     Professional Details
                   </h3>
                   <div className="h-px flex-1 bg-slate-200" aria-hidden />
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-sm text-slate-400 mb-1">Employee ID</p>
+                  <p className="font-medium">{valueOrNotSet(documentDialogUser.employeeId)}</p>
+                  </div>
                   
-                  <div><p className="text-xs text-slate-500 mb-1">Designation</p>
+                  <div><p className="text-sm text-slate-400 mb-1">Designation</p>
                   <p className="font-medium">{valueOrNotSet((documentDialogUser as any).designation)}</p>
                   </div>
-                  <div><p className="text-xs text-slate-500 mb-1">Department</p>
+                  <div><p className="text-sm text-slate-400 mb-1">Department</p>
                   <p className="font-medium">{valueOrNotSet(documentDialogUser.department)}</p>
                   </div>
-                  <div><p className="text-xs text-slate-500 mb-1">Employee Type</p>
+                  <div><p className="text-sm text-slate-400 mb-1">Employee Type</p>
                   <p className="font-medium">{valueOrNotSet(documentDialogUser.employeeType)}</p>
                   </div>
-                  <div><p className="text-xs text-slate-500 mb-1">Joining Date</p>
+                  <div><p className="text-sm text-slate-400 mb-1">Joining Date</p>
                   <p className="font-medium mb-4">{documentDialogUser.joiningDate ? formatDate(documentDialogUser.joiningDate) : 'Not Set'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Other Details
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-sm text-slate-400 mb-1">Aadhaar No</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.aadharNo)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">PAN No</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.panNo)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">ESI No</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.esiNo)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">PF No</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.pfNo)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Resigning / Termination Date</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.exitDate)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Biometric User ID</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.biometricUserId)}</p>
                   </div>
                 </div>
               </div>
@@ -786,7 +852,7 @@ const UserList = ({
               <div>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-px flex-1 bg-slate-200" aria-hidden />
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
                     Documents & Compliance
                   </h3>
                   <div className="h-px flex-1 bg-slate-200" aria-hidden />
@@ -807,13 +873,33 @@ const UserList = ({
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                             {row.label}
                           </p>
-                          <div className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition-colors hover:border-blue-400">
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                              <FileText className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600" />
-                              <span className="text-sm text-slate-800 truncate">{row.fileName}</span>
+                         
+                          <div
+                            key={row.id}
+                            onClick={() => setSelectedDocument(row.id)}
+                            className={`group flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2.5 transition-all ${
+                              selectedDocument === row.id
+                                ? "border-blue-300 bg-white shadow-sm"
+                                : "border-slate-200 bg-slate-100 hover:border-blue-300 hover:bg-white"
+                            }`}
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                              <FileText
+                                className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600"
+                                aria-hidden
+                              />
+                              <span className="truncate text-sm text-slate-600 transition-colors group-hover:text-slate-900">
+                                {row.fileName}
+                              </span>
                             </div>
                             {canOpen && (
-                              <div className="flex items-center gap-3 shrink-0 text-sm">
+                              <div
+                                className={`flex shrink-0 items-center gap-3 text-sm transition-opacity duration-150 ${
+                                  selectedDocument === row.id
+                                    ? "opacity-100"
+                                    : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
+                                }`}
+                              >
                                 <button
                                   type="button"
                                   className="text-blue-400 hover:underline font-medium"
@@ -854,7 +940,7 @@ const UserList = ({
               <div>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-px flex-1 bg-slate-200" aria-hidden />
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
                     Employee Verification Documents
                   </h3>
                   <div className="h-px flex-1 bg-slate-200" aria-hidden />
@@ -870,10 +956,18 @@ const UserList = ({
                     <div className="text-sm text-gray-500 py-2">No uploaded verification documents</div>
                   ) : (
                     verificationDocsForDialog.map((row) => (
-                      <div key={row.id} className="flex items-center justify-between rounded-lg mb-2 border border-slate-200 bg-white px-3 py-2.5">
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <FileText className="h-4 w-4 shrink-0 text-slate-400" />
-                          <span className="text-sm text-slate-800 truncate ">{row.typeLabel}</span>
+                      <div
+                        key={row.id}
+                        className="group mb-2 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition-colors hover:border-blue-400 hover:shadow-sm"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                          <FileText
+                            className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600"
+                            aria-hidden
+                          />
+                          <span className="truncate text-sm text-slate-600 transition-colors group-hover:text-slate-900">
+                            {row.typeLabel}
+                          </span>
                         </div>
                         <span
                           className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border ${

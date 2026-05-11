@@ -8,6 +8,24 @@ export interface Employee {
   designation?: string;
   dateOfBirth?: string;
   address?: string;
+  personalDetails?: {
+    middleName?: string;
+    fatherName?: string;
+    gender?: string;
+    dob?: string;
+    religion?: string;
+    nationality?: string;
+    bloodGroup?: string;
+    residenceAddress?: string;
+  };
+  professionalOtherDetails?: {
+    aadharNo?: string;
+    panNo?: string;
+    esiNo?: string;
+    pfNo?: string;
+    exitDate?: string;
+    biometricUserId?: string;
+  };
   joiningDate: string;
   department: string;
   position?: string;
