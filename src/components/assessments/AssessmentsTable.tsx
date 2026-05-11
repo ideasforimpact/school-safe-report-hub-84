@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   AlertDialog,
@@ -59,6 +59,7 @@ interface AssessmentsTableProps {
 
 const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { hasAssessmentAdmin, currentUserEmployeeId, clientId } = useAssessmentAccess();
   
@@ -93,7 +94,10 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
   const bulkBarAnchorRef = useRef<HTMLDivElement | null>(null);
 
   // Count active filters
+  const assessmentIdFromUrl = searchParams.get('assessmentId');
+
   const activeFilterCount = [
+    assessmentIdFromUrl,
     searchTerm,
     statusFilter !== 'all' ? statusFilter : '',
     createdByFilter !== 'all' ? createdByFilter : '',
@@ -108,8 +112,11 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
 
   useEffect(() => {
     const search = searchParams.get('search');
+    const assessmentId = searchParams.get('assessmentId');
 
-    if (search) {
+    if (assessmentId) {
+      setSearchTerm('');
+    } else if (search) {
       setSearchTerm(search);
     }
   }, [searchParams]);
@@ -304,8 +311,14 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
   useEffect(() => {
     let filtered = assessments;
 
-    // Filter by search term
-    if (searchTerm) {
+    // Deep link from assessment emails: show only the row matching primary key (Assessment_ID)
+    if (assessmentIdFromUrl) {
+      const idNorm = assessmentIdFromUrl.trim().toLowerCase();
+      filtered = filtered.filter(
+        (a) => a.id.trim().toLowerCase() === idNorm
+      );
+    } else if (searchTerm) {
+      // Filter by search term
       filtered = filtered.filter(assessment =>
         assessment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         assessment.creator_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -354,7 +367,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
     }
 
     setFilteredAssessments(filtered);
-  }, [assessments, searchTerm, statusFilter, createdByFilter, assignedToFilter, targetDateFrom, targetDateTo, urlFilter]);
+  }, [assessments, searchTerm, statusFilter, createdByFilter, assignedToFilter, targetDateFrom, targetDateTo, urlFilter, assessmentIdFromUrl]);
 
   // Parse URL parameters and set initial filters
   useEffect(() => {
@@ -431,6 +444,9 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
     setAssignedToFilter('all');
     setTargetDateFrom(undefined);
     setTargetDateTo(undefined);
+    if (searchParams.toString()) {
+      navigate({ pathname: location.pathname, search: '' }, { replace: true });
+    }
   };
 
   const getStatusBadge = (status: string) => {

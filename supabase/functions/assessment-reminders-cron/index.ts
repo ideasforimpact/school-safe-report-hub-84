@@ -510,7 +510,7 @@ function generateAssessmentDueReminderEmailBody(variables: any): string {
 <p style="margin:6px 0;"><strong>Title:</strong> ${variables.Assessment_Title}</p>
 <p style="margin:6px 0;"><strong>Due Date:</strong> ${variables.Due_Date}</p>
 </div>
-<p style="margin:20px 0;font-size:16px;color:#6b7280;">Kindly complete and submit it on time. <a href="${variables.Assessment_URL}?search=${encodeURIComponent(variables.Assessment_Title)}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
+<p style="margin:20px 0;font-size:16px;color:#6b7280;">Kindly complete and submit it on time. <a href="${variables.Assessment_URL}?assessmentId=${encodeURIComponent(String(variables.Assessment_ID))}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
 </div>
 <div style="text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;color:#6b7280;">
 <p style="margin:0;font-size:14px;">Regards,<br/><strong>Safe School Team</strong></p>
@@ -534,7 +534,7 @@ function generateAssessmentOverdueEmailBody(variables: any): string {
 <p style="margin:6px 0;"><strong>Due Date:</strong> ${variables.Due_Date}</p>
 <p style="margin:6px 0;"><strong>Days Overdue:</strong> ${variables.Overdue_Days}</p>
 </div>
-<p style="margin:20px 0;font-size:16px;color:#6b7280;">Please submit it at the earliest to avoid escalation. <a href="${variables.Assessment_URL}?search=${encodeURIComponent(variables.Assessment_Title)}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
+<p style="margin:20px 0;font-size:16px;color:#6b7280;">Please submit it at the earliest to avoid escalation. <a href="${variables.Assessment_URL}?assessmentId=${encodeURIComponent(String(variables.Assessment_ID))}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
 </div>
 <div style="text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;color:#6b7280;">
 <p style="margin:0;font-size:14px;">Regards,<br/><strong>Safe School Team</strong></p>
