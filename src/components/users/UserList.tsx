@@ -795,6 +795,26 @@ const UserList = ({
                   <div><p className="text-sm text-slate-400 mb-1">Father's Name</p>
                   <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.fatherName || (documentDialogUser as any).fatherName)}</p>
                   </div>
+                  <div>
+                    <p className="text-sm text-slate-400 mb-1">Staff ID</p>
+                    <p className="font-medium">{valueOrNotSet(
+                        (documentDialogUser as any).personalDetails?.staffId)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400 mb-1">Experience</p>
+                    <p className="font-medium">{valueOrNotSet(
+                        (documentDialogUser as any).personalDetails?.experience)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400 mb-1">Qualification</p>
+                    <p className="font-medium">{valueOrNotSet(
+                        (documentDialogUser as any).personalDetails?.qualification)}
+                    </p>
+                  </div>
                   <div><p className="text-sm text-slate-400 mb-1">Gender</p>
                   <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.gender || (documentDialogUser as any).gender)}</p>
                   </div>

@@ -31,6 +31,9 @@ interface EditUserDialogProps {
     personalDetails?: {
       middleName?: string;
       fatherName?: string;
+      staffId?: string;
+      experience?: string;
+      qualification?: string;
       gender?: string;
       dob?: string;
       religion?: string;
@@ -477,6 +480,25 @@ const EditUserDialog = ({
     return {
       middleName: validateOptionalTextField(personalDetails.middleName || '', 'Middle name'),
       fatherName: validateOptionalTextField(personalDetails.fatherName || '', "Father's name"),
+      staffId:
+        (personalDetails.staffId || '').trim() &&
+        !/^\d+$/.test((personalDetails.staffId || '').trim())
+          ? 'Staff ID must contain numbers only'
+          : '',
+
+      experience:
+        (personalDetails.experience || '').trim() &&
+        !/^\d+$/.test((personalDetails.experience || '').trim())
+          ? 'Experience must contain numbers only'
+          : '',
+
+      qualification:
+        (personalDetails.qualification || '').trim() &&
+        !/^[a-zA-Z\s]+$/.test(
+          (personalDetails.qualification || '').trim()
+        )
+          ? 'Qualification can only contain letters and spaces'
+          : '',
       religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
       nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
       bloodGroup:
@@ -1151,8 +1173,8 @@ const EditUserDialog = ({
               </div>
             )}
 
-              {currentStep === personalDetailsStepIndex && (  <div>
-
+              {currentStep === personalDetailsStepIndex && (  
+                <div className="max-h-[500px] overflow-y-auto ps-1 pe-1 no-scrollbar">
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -1197,9 +1219,76 @@ const EditUserDialog = ({
                         )}
                       </div>
                     </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2 mt-2">
+                    <Label>Staff ID</Label>
+                    <Input
+                      value={personalDetails.staffId || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            staffId: e.target.value.replace(/\D/g, '')
+                          }
+                        })
+                      }
+                      placeholder="Enter Staff ID"
+                    />
+                    {personalDetailsErrors.staffId && (
+                      <p className="text-xs text-red-500">
+                        {personalDetailsErrors.staffId}
+                      </p>
+                    )}
+                  </div>
 
+                  <div className="space-y-2 mt-2">
+                    <Label>Experience</Label>
+                    <Input
+                      value={personalDetails.experience || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            experience: e.target.value.replace(/\D/g, '')
+                          }
+                        })
+                      }
+                      placeholder="Enter Experience"
+                    />
+                    {personalDetailsErrors.experience && (
+                      <p className="text-xs text-red-500">
+                        {personalDetailsErrors.experience}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 mt-2">
+                  <Label>Qualification</Label>
+                  <Input
+                    value={personalDetails.qualification || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        personalDetails: {
+                          ...personalDetails,
+                          qualification: e.target.value.replace(/[^a-zA-Z\s]/g, '')
+                        }
+                      })
+                    }
+                    placeholder="Enter Qualification"
+                  />
+                  {personalDetailsErrors.qualification && (
+                    <p className="text-xs text-red-500">
+                      {personalDetailsErrors.qualification}
+                    </p>
+                  )}
+                </div>
                     <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
+                      <div className="space-y-2 mt-2">
                         <Label>Gender</Label>
                         <Select
                           value={personalDetails.gender || ''}
@@ -1304,7 +1393,6 @@ const EditUserDialog = ({
                         )}
                       </div>
                     </div>
-                  {/* </div> */}
                 </div>
               )}
 

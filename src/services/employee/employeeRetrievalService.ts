@@ -88,6 +88,9 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
         personalDetails: {
           middleName: personalDetails.middle_name || undefined,
           fatherName: personalDetails.father_name || undefined,
+          staffId: personalDetails.staff_id || undefined,
+          experience: personalDetails.experience || undefined,
+          qualification: personalDetails.qualification || undefined,
           gender: personalDetails.gender || undefined,
           dob: personalDetails.dob || undefined,
           religion: personalDetails.religion || undefined,
@@ -224,6 +227,9 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         personalDetails: {
           middleName: personalDetails.middle_name || undefined,
           fatherName: personalDetails.father_name || undefined,
+          staffId: personalDetails.staff_id || undefined,
+          experience: personalDetails.experience || undefined,
+          qualification: personalDetails.qualification || undefined,
           gender: personalDetails.gender || undefined,
           dob: personalDetails.dob || undefined,
           religion: personalDetails.religion || undefined,
@@ -313,6 +319,9 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
       personalDetails: {
         middleName: personalDetails.middle_name || undefined,
         fatherName: personalDetails.father_name || undefined,
+        staffId: personalDetails.staff_id || undefined,
+        experience: personalDetails.experience || undefined,
+        qualification: personalDetails.qualification || undefined,
         gender: personalDetails.gender || undefined,
         dob: personalDetails.dob || undefined,
         religion: personalDetails.religion || undefined,
@@ -394,6 +403,9 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
       personalDetails: {
         middleName: personalDetails.middle_name || undefined,
         fatherName: personalDetails.father_name || undefined,
+        staffId: personalDetails.staff_id || undefined,
+        experience: personalDetails.experience || undefined,
+        qualification: personalDetails.qualification || undefined,
         gender: personalDetails.gender || undefined,
         dob: personalDetails.dob || undefined,
         religion: personalDetails.religion || undefined,

@@ -273,6 +273,9 @@ async function insertEmployeePersonalDetails(
     nationality: normalizeOptional(nestedPersonal.nationality ?? employee.nationality),
     blood_group: normalizeOptional(nestedPersonal.bloodGroup ?? employee.bloodGroup),
     residence_address: normalizeOptional(nestedPersonal.residenceAddress ?? employee.residenceAddress),
+    staff_id: normalizeOptional(nestedPersonal.staffId ?? employee.staffId),
+    experience: normalizeOptional(nestedPersonal.experience ?? employee.experience),
+    qualification: normalizeOptional(nestedPersonal.qualification ?? employee.qualification),
     updated_at: new Date().toISOString(),
   };
 

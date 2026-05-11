@@ -11,6 +11,9 @@ export interface Employee {
   personalDetails?: {
     middleName?: string;
     fatherName?: string;
+    staffId?: string;
+    experience?: string;
+    qualification?: string;
     gender?: string;
     dob?: string;
     religion?: string;

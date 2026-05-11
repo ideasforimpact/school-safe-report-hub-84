@@ -96,6 +96,9 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
     residenceAddress?: string;
     middleName?: string;
     fatherName?: string;
+    staffId?: string;
+    experience?: string;
+    qualification?: string;
     gender?: string;
     dob?: string;
     religion?: string;
@@ -245,6 +248,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       residenceAddress?: string;
       middleName?: string;
       fatherName?: string;
+      staffId?: string;
+      experience?: string;
+      qualification?: string;
       gender?: string;
       dob?: string;
       religion?: string;
@@ -277,6 +283,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       residenceAddress: '',
       middleName: '',
       fatherName: '',
+      staffId: '',
+      experience: '',
+      qualification: '',
       gender: '',
       dob: '',
       religion: '',
@@ -449,6 +458,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               residenceAddress: (employee as any).personalDetails?.residenceAddress || '',
               middleName: (employee as any).personalDetails?.middleName || '',
               fatherName: (employee as any).personalDetails?.fatherName || '',
+              staffId:(employee as any).personalDetails?.staffId || '',
+              experience:(employee as any).personalDetails?.experience || '',
+              qualification:(employee as any).personalDetails?.qualification || '',
               gender: (employee as any).personalDetails?.gender || '',
               dob: (employee as any).personalDetails?.dob || '',
               religion: (employee as any).personalDetails?.religion || '',
@@ -688,6 +700,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               residenceAddress: (employee as any).personalDetails?.residenceAddress || '',
               middleName: (employee as any).personalDetails?.middleName || '',
               fatherName: (employee as any).personalDetails?.fatherName || '',
+              staffId:(employee as any).personalDetails?.staffId || '',
+              experience:(employee as any).personalDetails?.experience || '',
+              qualification:(employee as any).personalDetails?.qualification || '',
               gender: (employee as any).personalDetails?.gender || '',
               dob: (employee as any).personalDetails?.dob || '',
               religion: (employee as any).personalDetails?.religion || '',
@@ -1182,6 +1197,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                         residenceAddress: '',
                         middleName: '',
                         fatherName: '',
+                        staffId:'',
+                        experience: '',
+                        qualification: '',
                         gender: '',
                         dob: '',
                         religion: '',

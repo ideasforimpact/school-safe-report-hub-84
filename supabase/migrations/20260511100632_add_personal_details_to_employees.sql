@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS public.employee_personal_details (
 
   middle_name text,
   father_name text,
+  staff_id text,
+  experience text,
+  qualification text,
   gender text,
   dob text,
   religion text,
