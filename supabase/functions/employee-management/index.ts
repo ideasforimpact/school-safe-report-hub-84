@@ -664,7 +664,7 @@ async function handleCreate(supabaseClient: any, employee: any) {
   const processedDocuments = await uploadEmployeeProfileDocuments(
     supabaseClient,
     clientId,
-    employee.employeeId || 'unknown-employee',
+    employee.employeeId || employee.id,
     Array.isArray(employee.documents) ? employee.documents : []
   );
 
@@ -846,7 +846,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   const processedDocuments = await uploadEmployeeProfileDocuments(
     supabaseClient,
     clientId,
-    employee.employeeId || employee.id || 'unknown-employee',
+    employee.employeeId || employee.id,
     Array.isArray(employee.documents) ? employee.documents : []
   );
 

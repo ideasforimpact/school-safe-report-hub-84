@@ -1372,7 +1372,7 @@ const EditUserDialog = ({
                         )}
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 mb-3">
                         <Label>Blood Group</Label>
                         <Input
                           value={personalDetails.bloodGroup || ''}
