@@ -52,6 +52,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 type CpdDomain = {
   id: string;
@@ -128,6 +129,7 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
   const [capturedDate, setCapturedDate] = useState<string>('');
   const [attachmentFiles, setAttachmentFiles] = useState<FileItem[]>([]);
   const [learningCategories, setLearningCategories] = useState<CpdLearningCategory[]>([]);
+  
 
   useEffect(() => {
     if (open) {
@@ -867,6 +869,8 @@ const EmployeeCpdDetailPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<CpdEntry | null>(null);
   const [entriesPage, setEntriesPage] = useState(1);
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+
 
   const loadData = useCallback(async () => {
     if (!clientId || !currentEmployeeId || !routeEmployeeId) {
@@ -1078,6 +1082,7 @@ const EmployeeCpdDetailPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">CPD Entries</h2>
+            {!isReadOnlySwitchedContext && (
             <button
               type="button"
               className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
@@ -1086,6 +1091,7 @@ const EmployeeCpdDetailPage: React.FC = () => {
             >
               <PlusCircle className="h-4 w-4" />
             </button>
+            )}
           </div>
 
           {employeeRow.cpd_entries.length === 0 ? (
@@ -1135,6 +1141,7 @@ const EmployeeCpdDetailPage: React.FC = () => {
                               <Paperclip className="h-4 w-4" />
                             </button>
                           )}
+                          {!isReadOnlySwitchedContext && (
                           <button
                             type="button"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
@@ -1146,6 +1153,8 @@ const EmployeeCpdDetailPage: React.FC = () => {
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
+                          )}
+                          {!isReadOnlySwitchedContext && (
                           <button
                             type="button"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
@@ -1159,6 +1168,7 @@ const EmployeeCpdDetailPage: React.FC = () => {
                               <Trash2 className="h-4 w-4" />
                             )}
                           </button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

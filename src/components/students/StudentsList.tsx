@@ -22,6 +22,7 @@ interface StudentsListProps {
   students: Student[];
   onEditClick: (student: Student) => void;
   onDeleteStudent: (id: string) => void;
+  canManageStudents?: boolean;
   currentPage?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
@@ -33,6 +34,7 @@ const StudentsList = ({
   students, 
   onEditClick, 
   onDeleteStudent,
+  canManageStudents = true,
   currentPage = 1,
   totalPages = 1,
   onPageChange,
@@ -119,7 +121,7 @@ const StudentsList = ({
           <TableHead>Section</TableHead>
           <TableHead>Campus</TableHead>
           <TableHead>Added</TableHead>
-          <TableHead className="w-[100px]">Actions</TableHead>
+          {canManageStudents && <TableHead className="w-[100px]">Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -134,6 +136,7 @@ const StudentsList = ({
               {formatDate(student.createdAt)}
             </TableCell>
 
+            {canManageStudents && (
             <TableCell>
               <div className="flex space-x-2">
                 <Button 
@@ -200,6 +203,7 @@ const StudentsList = ({
                 })()}
               </div>
             </TableCell>
+            )}
           </TableRow>
         ))}
         {students.length === 0 && (

@@ -34,13 +34,11 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, user, location.pathname, navigate]);
   
-  // Use cached modules from Redux store instead of fetching every time
+  // Re-render sidebar whenever Redux's configuredModules changes.
+  // (Backoffice modules are refreshed by useRefreshBackofficeModules on every
+  // backoffice route load — the sidebar must reflect those updates without
+  // being short-circuited by a one-shot init flag.)
   useEffect(() => {
-    // Skip if already initialized to prevent re-fetching
-    if (hasInitialized) {
-      return;
-    }
-    
     console.log('SidebarContent Debug:', {
       isSaasOwner,
       isBackofficeRoute,
@@ -122,7 +120,7 @@ const SidebarContent = () => {
       setHasInitialized(true);
     }
     
-  }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules, hasInitialized]);
+  }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules]);
 
   // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {

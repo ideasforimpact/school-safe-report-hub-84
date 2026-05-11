@@ -60,9 +60,12 @@ const RouteGuard = ({
       return;
     }
 
-    // Only check if we have employee data with clientId
-    const clientId = employeeData?.clientId || state.clientId;
-    const employeeId = employeeData?.id || currentUser?.id || null;
+    // Always validate against the employee's home client, not the active switched client context.
+    const clientId =
+      employeeData?.homeClientId ||
+      employeeData?.clientId ||
+      null;
+    const employeeId = employeeData?.id || state.employeeData?.id || null;
     
     if (!clientId) {
       // No client ID means backoffice user or no client assigned - skip check
@@ -105,6 +108,7 @@ const RouteGuard = ({
     isBackoffice,
     isOnLoginRoute,
     isExceptionRoute,
+    state.employeeData?.id,
     ipCheckCompleted,
     dispatch
   ]);
@@ -120,18 +124,33 @@ const RouteGuard = ({
   if (isBackoffice && requireAuth && !isOnLoginRoute) {
     // First check if user exists at all
     if (!currentUser) {
+      console.warn('[AUTH-DIAG] RouteGuard → redirect /backoffice/login', {
+        reason: 'currentUser is null in Redux',
+        path: location.pathname,
+        isBackofficeUserRedux: isBackofficeUser,
+      });
       return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
     }
-    
+
     // Then validate the session for backoffice users
     const isValidSession = validateBackofficeSession();
-    
+
     if (!isValidSession) {
+      console.warn('[AUTH-DIAG] RouteGuard → redirect /backoffice/login', {
+        reason: 'validateBackofficeSession returned false',
+        path: location.pathname,
+        currentUserEmail: currentUser?.email,
+      });
       // Clear any stale auth state and redirect to backoffice login
       dispatch(clearAuth());
       toast.error("Your session has expired. Please login again.");
       return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
     }
+
+    console.log('[AUTH-DIAG] RouteGuard → backoffice OK', {
+      path: location.pathname,
+      currentUserEmail: currentUser?.email,
+    });
   }
 
   // Only show loading during auth processing, not logout
@@ -157,6 +176,10 @@ const RouteGuard = ({
 
   // If authentication is required and user is not logged in, redirect to login
   if (requireAuth && !currentUser) {
+    console.warn('[AUTH-DIAG] RouteGuard → redirect /login', {
+      reason: 'requireAuth=true but currentUser is null in Redux',
+      path: location.pathname,
+    });
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

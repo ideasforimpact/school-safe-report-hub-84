@@ -13,12 +13,14 @@ import { ResourceCategory, EduSafeResource } from '@/types/eduSafeTypes';
 import CategoryFilter from '@/components/edusafe/CategoryFilter';
 import ResourceList from '@/components/edusafe/ResourceList';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 const EduSafeResourcesContent = () => {
   const { resources, getMyResources, getSaasResources } = useEduSafe();
   const { user, employeeData } = useAuth();
   const { state: employeeState } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   const [selectedTab, setSelectedTab] = useState<'all' | 'saas' | 'organisational'>('all');
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory | 'all'>('all');
@@ -140,7 +142,7 @@ const EduSafeResourcesContent = () => {
               </p>
             </div>
           </div>
-          {hasEduResourcesAdmin && (
+          {hasEduResourcesAdmin && !isReadOnlySwitchedContext && (
             <Button asChild className="self-start md:self-center">
               <Link to="/edusafe/upload">
                 <FilePlus className="mr-2 h-4 w-4" />

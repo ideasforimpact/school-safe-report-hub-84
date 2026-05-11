@@ -9,13 +9,15 @@ import EditDocumentForm from './EditDocumentForm';
 interface DocumentsListProps {
   documents: VehicleDocument[]                                                                                                                                                                                                                                                                                                                                                                                                                                        ;
   vehicleId: string;
+  isReadOnly?: boolean;
 }
 
-const DocumentsList: React.FC<DocumentsListProps> = ({ documents, vehicleId }) => {
+const DocumentsList: React.FC<DocumentsListProps> = ({ documents, vehicleId, isReadOnly = false }) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [documentToEdit, setDocumentToEdit] = useState<VehicleDocument | null>(null);
 
   const handleEditDocument = (document: VehicleDocument) => {
+    if (isReadOnly) return;
     setDocumentToEdit(document);
     setEditDialogOpen(true);
   };
@@ -36,12 +38,12 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ documents, vehicleId }) =
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {documents.map(document => (
-          <DocumentCard key={document.id} document={document} onEdit={handleEditDocument} />
+          <DocumentCard key={document.id} document={document} onEdit={handleEditDocument} isReadOnly={isReadOnly} />
         ))}
       </div>
 
       <Dialog 
-        open={editDialogOpen} 
+        open={editDialogOpen && !isReadOnly} 
         onOpenChange={(isOpen) => { 
           if (!isOpen) {
             setEditDialogOpen(false);

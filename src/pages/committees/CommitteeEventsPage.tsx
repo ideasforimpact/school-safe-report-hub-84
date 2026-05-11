@@ -28,6 +28,7 @@ import {
 } from '@/services/committees/committeeService';
 import { toast } from 'sonner';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 type EmployeeOption = { id: string; name: string };
 
@@ -65,6 +66,7 @@ const CommitteeEventsPage = () => {
   const clientId = employeeData?.clientId || '';
   const employeeId = employeeData?.id || null;
   const isSuperAdmin = !!employeeData?.isSuperAdmin;
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   const [committee, setCommittee] = useState<Committee | null>(null);
   const [events, setEvents] = useState<CommitteeEvent[]>([]);
@@ -107,8 +109,8 @@ const CommitteeEventsPage = () => {
     [participantIds, employees]
   );
 
-  const canCreateEvent = isSuperAdmin || isCommitteeMember;
-  const canManageEvent = isSuperAdmin;
+  const canCreateEvent = !isReadOnlySwitchedContext && (isSuperAdmin || isCommitteeMember);
+  const canManageEvent = !isReadOnlySwitchedContext && isSuperAdmin;
   const eventTitleError = useMemo(() => (!eventTitle.trim() ? 'Title is required' : ''), [eventTitle]);
   const eventDateError = useMemo(() => (!eventDate ? 'Date is required' : ''), [eventDate]);
   const eventDescriptionError = useMemo(
@@ -186,6 +188,10 @@ const CommitteeEventsPage = () => {
   };
 
   const openCreate = () => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: add is not allowed');
+      return;
+    }
     if (!canCreateEvent) {
       toast.error('Only admin or committee members can add MOM/Event');
       return;
@@ -195,6 +201,10 @@ const CommitteeEventsPage = () => {
   };
 
   const openEdit = (event: CommitteeEvent) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: edit is not allowed');
+      return;
+    }
     if (!canManageEvent) {
       toast.error('Only admin users can edit MOM/Event');
       return;
@@ -443,10 +453,12 @@ const CommitteeEventsPage = () => {
             </Button>
             <h1 className="text-2xl font-bold">{committee?.name || 'Committee'} MOM / Events</h1>
           </div>
-          <Button onClick={openCreate} disabled={!canCreateEvent} title={canCreateEvent ? 'Add MOM / Event' : 'Committee member or admin only'}>
-            <CalendarPlus className="h-4 w-4 mr-2" />
-            Add MOM / Event
-          </Button>
+          {!isReadOnlySwitchedContext && (
+            <Button onClick={openCreate} disabled={!canCreateEvent} title={canCreateEvent ? 'Add MOM / Event' : 'Committee member or admin only'}>
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Add MOM / Event
+            </Button>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
@@ -516,7 +528,7 @@ const CommitteeEventsPage = () => {
                     <TableHead>Participants</TableHead>
                     <TableHead>Attachment Indicator</TableHead>
                     <TableHead>Created By</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {!isReadOnlySwitchedContext && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -528,6 +540,7 @@ const CommitteeEventsPage = () => {
                       <TableCell>{renderParticipantsIndicator(event)}</TableCell>
                       <TableCell>{renderAttachmentIndicator(event)}</TableCell>
                       <TableCell>{event.created_by_name || '-'}</TableCell>
+                      {!isReadOnlySwitchedContext && (
                       <TableCell className="text-right">
                         <div className="inline-flex items-center gap-1">
                           <Button
@@ -552,6 +565,7 @@ const CommitteeEventsPage = () => {
                           </Button>
                         </div>
                       </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -561,7 +575,7 @@ const CommitteeEventsPage = () => {
         </div>
       </div>
 
-      <AlertDialog open={openForm} onOpenChange={(open) => { setOpenForm(open); if (!open) resetForm(); }}>
+      <AlertDialog open={openForm && !isReadOnlySwitchedContext} onOpenChange={(open) => { setOpenForm(open); if (!open) resetForm(); }}>
         <AlertDialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <AlertDialogHeader>
             <AlertDialogTitle>{editingEvent ? 'Edit MOM / Event' : 'Add MOM / Event'}</AlertDialogTitle>

@@ -6,6 +6,8 @@ import {
   SetLoadingAction,
   SetErrorAction,
   SetClientIdAction,
+  SetSwitchContextAction,
+  ResetSwitchContextAction,
   ResetEmployeeAction,
   SetLogoutStateAction
 } from './types';
@@ -43,6 +45,25 @@ export const setClientId = (clientId: string | null): SetClientIdAction => {
   return {
     type: EmployeeActionTypes.SET_CLIENT_ID,
     payload: clientId
+  };
+};
+
+export const setSwitchContext = (payload: {
+  homeClientId: string | null;
+  activeClientId: string | null;
+  isSwitchedContext: boolean;
+  clientManagementReadOnly: boolean;
+  switchedAccessLevel?: 'R' | 'W/R';
+}): SetSwitchContextAction => {
+  return {
+    type: EmployeeActionTypes.SET_SWITCH_CONTEXT,
+    payload
+  };
+};
+
+export const resetSwitchContext = (): ResetSwitchContextAction => {
+  return {
+    type: EmployeeActionTypes.RESET_SWITCH_CONTEXT
   };
 };
 

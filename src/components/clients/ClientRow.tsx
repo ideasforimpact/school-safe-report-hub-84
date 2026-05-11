@@ -11,9 +11,16 @@ interface ClientRowProps {
   onViewApiCalls: (client: Client) => void;
   onEditClick: (client: Client) => void;
   onDeleteClient: (id: string) => void;
+  canEdit?: boolean;
 }
 
-const ClientRow = ({ client, onViewApiCalls, onEditClick, onDeleteClient }: ClientRowProps) => {
+const ClientRow = ({
+  client,
+  onViewApiCalls,
+  onEditClick,
+  onDeleteClient,
+  canEdit = true,
+}: ClientRowProps) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -37,7 +44,8 @@ const ClientRow = ({ client, onViewApiCalls, onEditClick, onDeleteClient }: Clie
           client={client} 
           onViewApiCalls={onViewApiCalls}
           onEditClick={onEditClick} 
-          onDeleteClient={onDeleteClient} 
+          onDeleteClient={onDeleteClient}
+          canEdit={canEdit}
         />
       </TableCell>
     </TableRow>

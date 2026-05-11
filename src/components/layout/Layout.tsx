@@ -6,6 +6,7 @@ import MobileNav from './MobileNav';
 import { useAuth } from '@/contexts/auth';
 import { useClient } from '@/contexts/ClientContext';
 import { useEmployeeValidation } from '@/hooks/useEmployeeValidation';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,6 +19,7 @@ const Layout = ({
     user,
     isSaasOwner
   } = useAuth();
+  const { state } = useEmployeeStore();
   
   // Use the employee validation hook
   useEmployeeValidation();
@@ -50,6 +52,14 @@ const Layout = ({
           </div>
         </div>
       </div>
+      {state.isLoading && (
+        <div className="fixed inset-0 z-[100] bg-white/70 backdrop-blur-[1px] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <p className="text-sm text-gray-600">Switching client...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

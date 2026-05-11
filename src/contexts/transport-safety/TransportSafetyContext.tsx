@@ -31,6 +31,19 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
   const [error, setError] = useState<string | null>(null);
   const { user, employeeData } = useAuth();
 
+  const getWriteGuardMessage = (err: unknown, fallback: string) => {
+    const message = err instanceof Error ? err.message : '';
+    if (message.includes('Switched client permission denied: delete')) {
+      return 'Delete is not enabled for this switched client. Ask Head Office to enable delete permission.';
+    }
+    if (message.includes('Switched client permission denied: edit/create')) {
+      return 'Edit/Create is not enabled for this switched client. Ask Head Office to enable edit permission.';
+    }
+    return fallback;
+  };
+  const isWriteGuardError = (err: unknown) =>
+    err instanceof Error && err.message.includes('Switched client permission denied:');
+
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
@@ -92,8 +105,10 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
         toast.success(`${vehicleData.make} ${vehicleData.model} (${vehicleData.registrationNumber}) has been added`);
       }
     } catch (err) {
-      console.error('Failed to add vehicle:', err);
-      toast.error('Failed to add vehicle. Please try again.');
+      if (!isWriteGuardError(err)) {
+        console.error('Failed to add vehicle:', err);
+      }
+      toast.error(getWriteGuardMessage(err, 'Failed to add vehicle. Please try again.'));
     }
   };
 
@@ -108,8 +123,10 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
         toast.success(`Vehicle updated successfully`);
       }
     } catch (err) {
-      console.error('Failed to update vehicle:', err);
-      toast.error('Failed to update vehicle. Please try again.');
+      if (!isWriteGuardError(err)) {
+        console.error('Failed to update vehicle:', err);
+      }
+      toast.error(getWriteGuardMessage(err, 'Failed to update vehicle. Please try again.'));
     }
   };
 
@@ -126,8 +143,10 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
         }
       }
     } catch (err) {
-      console.error('Failed to delete vehicle:', err);
-      toast.error('Failed to delete vehicle. Please try again.');
+      if (!isWriteGuardError(err)) {
+        console.error('Failed to delete vehicle:', err);
+      }
+      toast.error(getWriteGuardMessage(err, 'Failed to delete vehicle. Please try again.'));
     }
   };
 

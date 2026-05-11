@@ -7,6 +7,7 @@ import TemplatesList from '@/components/assessments/templates/TemplatesList';
 import TemplateDetailView from '@/components/assessments/templates/TemplateDetailView';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import Loader from '../common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface AssessmentConfigurationContentProps {
   embedded?: boolean;
@@ -14,6 +15,7 @@ interface AssessmentConfigurationContentProps {
 
 const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigurationContentProps) => {
   const { getTemplateById, loading, refreshTemplates } = useAssessment();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [viewingTemplateId, setViewingTemplateId] = useState<string | null>(null);
@@ -74,6 +76,7 @@ const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigur
           template={template}
           onBack={handleBackToList}
           onEdit={handleEditFromDetail}
+          canEdit={!isReadOnlySwitchedContext}
         />
       );
     }
@@ -102,9 +105,10 @@ const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigur
       )}
       
       <TemplatesList 
-        onCreateTemplate={handleCreateTemplate}
-        onEditTemplate={handleEditTemplate}
+        onCreateTemplate={isReadOnlySwitchedContext ? undefined : handleCreateTemplate}
+        onEditTemplate={isReadOnlySwitchedContext ? undefined : handleEditTemplate}
         onViewTemplate={handleViewTemplate}
+        canEditTemplate={!isReadOnlySwitchedContext}
       />
     </div>
   );
