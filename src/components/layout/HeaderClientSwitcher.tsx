@@ -139,6 +139,12 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
   const loadSwitchableClients = async () => {
     if (!currentUser || !employeeData?.id) return;
 
+    // Do not call the edge function unless client switching can apply (same rules as shouldShow).
+    if (isBackofficeUser || employeeData.isSuperAdmin !== true) {
+      setSwitchableClients([]);
+      return;
+    }
+
     const cachedClients = cachedSwitchableClientsByUserId[currentUser.id];
     if (cachedClients && cachedClients.length > 0) {
       setSwitchableClients(cachedClients);
@@ -214,7 +220,7 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
 
   useEffect(() => {
     loadSwitchableClients();
-  }, [currentUser?.id, employeeData?.id]);
+  }, [currentUser?.id, employeeData?.id, employeeData?.isSuperAdmin, isBackofficeUser]);
 
   const handleSwitchClient = async (targetClientId: string) => {
     if (!currentUser || !employeeData?.id || !targetClientId || targetClientId === currentClientId) {
