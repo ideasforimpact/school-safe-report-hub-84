@@ -1,6 +1,18 @@
-
 // Authentication state persistence utilities
-const AUTH_STORAGE_KEY = 'auth_state';
+//
+// Two namespaced localStorage buckets — one per parallel auth flow — so the
+// SSO and backoffice sessions can coexist on the same origin without
+// overwriting each other. This mirrors the storageKey scheme used by the
+// two Supabase clients in src/integrations/supabase/client.ts.
+//
+//   /backoffice/*  routes  →  bucket: 'auth_state_backoffice'
+//   everything else        →  bucket: 'auth_state_sso'
+
+const SSO_AUTH_STORAGE_KEY = 'auth_state_sso';
+const BACKOFFICE_AUTH_STORAGE_KEY = 'auth_state_backoffice';
+
+// Pre-fix single-bucket key — read on first load, then migrated and removed.
+const LEGACY_AUTH_STORAGE_KEY = 'auth_state';
 
 export interface PersistedAuthState {
   currentUser: any | null;
@@ -10,94 +22,157 @@ export interface PersistedAuthState {
   configuredModules: any[] | null;
   employeeData: any | null;
   activeClientId?: string | null;
+  homeClientId?: string | null;
   isSwitchedContext?: boolean;
   clientManagementReadOnly?: boolean;
   switchedAccessLevel?: 'R' | 'W/R';
-  jwtToken?: string; // JWT token for backoffice authentication
-  expiresAt?: number; // Token expiration timestamp
-  sessionType?: 'backoffice' | 'sso'; // Track session type for proper validation
+  /**
+   * @deprecated Custom 24h backoffice JWT — replaced by Supabase's standard
+   * access_token + refresh_token (issued by signInWithPassword and stored in
+   * the BACKOFFICE_STORAGE_KEY localStorage bucket by the SDK). Kept on the
+   * type only so that auth_state rows persisted by older builds still load
+   * cleanly during the legacy fallback in validateBackofficeSession.
+   */
+  jwtToken?: string;
+  /**
+   * @deprecated Companion to `jwtToken`. See deprecation note above.
+   */
+  expiresAt?: number;
+  sessionType?: 'backoffice' | 'sso';
 }
 
-// Enhanced save with proper SSO/backoffice separation
+const isBackofficePath = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return window.location.pathname.startsWith('/backoffice');
+};
+
+// Bucket selection for reads is path-driven, since the URL is the most
+// reliable signal of which session the current tab is using.
+const getKeyForActivePath = (): string =>
+  isBackofficePath() ? BACKOFFICE_AUTH_STORAGE_KEY : SSO_AUTH_STORAGE_KEY;
+
+// Bucket selection for writes is session-type-driven so a save initiated
+// from a non-backoffice path (e.g. AuthProvider listener at /callback) still
+// lands in the correct bucket.
+const getKeyForState = (state: PersistedAuthState): string => {
+  if (state.sessionType === 'backoffice' || state.isBackofficeUser) {
+    return BACKOFFICE_AUTH_STORAGE_KEY;
+  }
+  if (state.sessionType === 'sso') {
+    return SSO_AUTH_STORAGE_KEY;
+  }
+  // No marker — fall back to active path.
+  return getKeyForActivePath();
+};
+
 export const saveAuthState = (state: PersistedAuthState): void => {
   try {
+    const key = getKeyForState(state);
     const serializedState = JSON.stringify(state);
-    
-    // CRITICAL: Only use localStorage for SSO, sessionStorage for backoffice
-    // This prevents storage conflicts that cause re-authentication loops
-    if (state.sessionType === 'backoffice' || state.isBackofficeUser) {
-      // Clear localStorage to prevent conflicts
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-      sessionStorage.setItem(AUTH_STORAGE_KEY, serializedState);
-      console.log('💾 saveAuthState: Saved backoffice auth state to sessionStorage (cleared localStorage)');
-    } else {
-      // Clear sessionStorage to prevent conflicts  
-      sessionStorage.removeItem(AUTH_STORAGE_KEY);
-      localStorage.setItem(AUTH_STORAGE_KEY, serializedState);
-      console.log('💾 saveAuthState: Saved SSO auth state to localStorage (cleared sessionStorage)');
-    }
+    localStorage.setItem(key, serializedState);
+    console.log('[AUTH-DIAG] saveAuthState: written to localStorage', {
+      bucket: key,
+      hasCurrentUser: !!state.currentUser,
+      currentUserEmail: state.currentUser?.email ?? null,
+      isAuthenticated: state.isAuthenticated,
+      isBackofficeUser: state.isBackofficeUser,
+      sessionType: state.sessionType ?? (state.isBackofficeUser ? '(implied) backoffice' : '(unset)'),
+      hasJwtToken: !!state.jwtToken,
+      expiresAt: state.expiresAt ? new Date(state.expiresAt).toISOString() : null,
+      configuredModulesCount: state.configuredModules?.length ?? 0,
+      caller: new Error().stack?.split('\n').slice(2, 4).join(' <- '),
+    });
   } catch (error) {
     console.error("❌ saveAuthState: Error saving auth state:", error);
   }
 };
 
-// Load authentication state from appropriate storage
 export const loadAuthState = (): PersistedAuthState | null => {
-  console.log('💾 loadAuthState: Loading auth state');
   try {
-    // Try sessionStorage first (for backoffice users)
-    let serializedState = sessionStorage.getItem(AUTH_STORAGE_KEY);
-    let storageType = 'sessionStorage';
-    
-    // If not found in sessionStorage, try localStorage (for SSO users)
+    const key = getKeyForActivePath();
+    let serializedState = localStorage.getItem(key);
+    let storageType: 'localStorage[active]' | 'legacy(localStorage)' | 'legacy(sessionStorage)' =
+      'localStorage[active]';
+
+    // One-shot migration of any pre-fix entry stored under the old single
+    // 'auth_state' key. Decide which namespaced bucket it belongs to based on
+    // its sessionType / isBackofficeUser, write it there, and remove the
+    // legacy entry so this branch is taken at most once per browser.
     if (serializedState === null) {
-      serializedState = localStorage.getItem(AUTH_STORAGE_KEY);
-      storageType = 'localStorage';
+      const legacyFromSession = sessionStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
+      const legacyFromLocal = localStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
+      const legacyRaw = legacyFromSession ?? legacyFromLocal;
+      if (legacyRaw !== null) {
+        try {
+          const legacyParsed = JSON.parse(legacyRaw) as PersistedAuthState;
+          const targetKey =
+            legacyParsed.sessionType === 'backoffice' || legacyParsed.isBackofficeUser
+              ? BACKOFFICE_AUTH_STORAGE_KEY
+              : SSO_AUTH_STORAGE_KEY;
+          localStorage.setItem(targetKey, legacyRaw);
+          if (legacyFromSession !== null) sessionStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+          if (legacyFromLocal !== null) localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+          if (targetKey === key) {
+            serializedState = legacyRaw;
+            storageType = legacyFromSession !== null
+              ? 'legacy(sessionStorage)'
+              : 'legacy(localStorage)';
+          }
+        } catch {
+          // Corrupt legacy entry — drop it so it stops poisoning loads.
+          sessionStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+          localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+        }
+      }
     }
-    
+
     if (serializedState === null) {
-      console.log('💾 loadAuthState: No auth state found in either storage');
+      console.log('[AUTH-DIAG] loadAuthState: No auth state found', { activeBucket: key });
       return null;
     }
-    const parsedState = JSON.parse(serializedState);
-    console.log('💾 loadAuthState: Auth state found', { 
+
+    const parsedState = JSON.parse(serializedState) as PersistedAuthState;
+    console.log('[AUTH-DIAG] loadAuthState: Auth state found', {
+      bucket: key,
       isBackofficeUser: parsedState.isBackofficeUser,
       hasJwtToken: !!parsedState.jwtToken,
       expiresAt: parsedState.expiresAt ? new Date(parsedState.expiresAt).toISOString() : null,
       sessionType: parsedState.sessionType || (parsedState.isBackofficeUser ? 'backoffice' : 'sso'),
-      storageType
+      storageType,
     });
-    
-    // Only check JWT token expiration for backoffice users
-    const sessionType = parsedState.sessionType || (parsedState.isBackofficeUser ? 'backoffice' : 'sso');
+
+    // Backoffice JWT expiration check.
+    const sessionType =
+      parsedState.sessionType || (parsedState.isBackofficeUser ? 'backoffice' : 'sso');
     if (sessionType === 'backoffice' && parsedState.jwtToken && parsedState.expiresAt) {
-      const currentTime = Date.now();
-      if (currentTime > parsedState.expiresAt) {
-        console.log('💾 loadAuthState: JWT token has expired for backoffice user, clearing auth state', {
-          currentTime: new Date(currentTime).toISOString(),
-          expiresAt: new Date(parsedState.expiresAt).toISOString()
+      if (Date.now() > parsedState.expiresAt) {
+        console.log('[AUTH-DIAG] loadAuthState: JWT expired for backoffice user, clearing bucket', {
+          bucket: key,
+          expiresAt: new Date(parsedState.expiresAt).toISOString(),
         });
         clearPersistedAuthState();
         return null;
       }
     }
-    
-    console.log('💾 loadAuthState: Returning valid auth state');
+
     return parsedState;
   } catch (error) {
-    console.error("💾 loadAuthState: Error loading auth state from sessionStorage:", error);
+    console.error('[AUTH-DIAG] loadAuthState: Error loading auth state', error);
     return null;
   }
 };
 
-// Clear persisted authentication state from both storages
+// Clears the bucket for the CURRENT session (active path). Leaves the other
+// bucket alone so logging out of one flow doesn't sign you out of the other.
+// Also wipes any lingering legacy entry.
 export const clearPersistedAuthState = (): void => {
-  console.log('💾 clearPersistedAuthState: Clearing auth state from both storages');
   try {
-    sessionStorage.removeItem(AUTH_STORAGE_KEY);
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    console.log('💾 clearPersistedAuthState: Auth state cleared successfully from both storages');
+    const key = getKeyForActivePath();
+    localStorage.removeItem(key);
+    localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+    sessionStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+    console.log('[AUTH-DIAG] clearPersistedAuthState: cleared bucket', { bucket: key });
   } catch (error) {
-    console.error("💾 clearPersistedAuthState: Error clearing persisted auth state:", error);
+    console.error('clearPersistedAuthState: Error', error);
   }
 };

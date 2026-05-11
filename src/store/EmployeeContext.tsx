@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useRef } from 'react';
 import { employeeReducer, initialEmployeeState } from './employeeReducer';
 import { EmployeeState, EmployeeAction } from './types';
-import { saveAuthState, clearPersistedAuthState } from './authPersistence';
+import { saveAuthState, clearPersistedAuthState, loadAuthState } from './authPersistence';
 
 interface EmployeeContextType {
   state: EmployeeState;
@@ -45,8 +45,20 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
       return;
     }
 
+    // Read the existing persisted state so we preserve fields that the
+    // Redux store does NOT track — `sessionType`, `jwtToken`, `expiresAt`.
+    // Without this merge, every Redux change here would strip those fields
+    // and break (a) backoffice JWT validation in RouteGuard, and (b) the
+    // SSO short-circuit in validateSession / useSessionExpiry detection.
+    const existingPersisted = loadAuthState();
+
     // Create current auth state
     const authState = {
+      // Carry forward auth-flow-only fields the reducer does not own.
+      sessionType: existingPersisted?.sessionType,
+      jwtToken: existingPersisted?.jwtToken,
+      expiresAt: existingPersisted?.expiresAt,
+      // Redux-owned fields override anything stale in the persisted copy.
       currentUser: state.currentUser,
       isAuthenticated: state.isAuthenticated,
       isBackofficeUser: state.isBackofficeUser,
@@ -75,6 +87,21 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
                              (state.configuredModules && state.configuredModules.length > 0);
 
     if (hasValidAuthState) {
+      console.log('[AUTH-DIAG] EmployeeContext.persistEffect → save', {
+        carriedForward: {
+          sessionType: existingPersisted?.sessionType ?? null,
+          hasJwtToken: !!existingPersisted?.jwtToken,
+          expiresAt: existingPersisted?.expiresAt
+            ? new Date(existingPersisted.expiresAt).toISOString()
+            : null,
+        },
+        reduxNow: {
+          hasCurrentUser: !!state.currentUser,
+          isAuthenticated: state.isAuthenticated,
+          isBackofficeUser: state.isBackofficeUser,
+          configuredModulesCount: state.configuredModules?.length ?? 0,
+        },
+      });
       // Save the state and update our tracking
       saveAuthState(authState);
       lastPersistedStateRef.current = currentStateHash;
@@ -82,8 +109,9 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
     } else {
       // Only clear if we haven't already cleared and we previously had valid state
       const hadValidState = lastPersistedStateRef.current !== '' && lastPersistedStateRef.current !== '{}';
-      
+
       if (!hasClearedRef.current && hadValidState) {
+        console.warn('[AUTH-DIAG] EmployeeContext.persistEffect → clear (no valid auth state in Redux)');
         clearPersistedAuthState();
         hasClearedRef.current = true;
         lastPersistedStateRef.current = currentStateHash;

@@ -124,18 +124,33 @@ const RouteGuard = ({
   if (isBackoffice && requireAuth && !isOnLoginRoute) {
     // First check if user exists at all
     if (!currentUser) {
+      console.warn('[AUTH-DIAG] RouteGuard → redirect /backoffice/login', {
+        reason: 'currentUser is null in Redux',
+        path: location.pathname,
+        isBackofficeUserRedux: isBackofficeUser,
+      });
       return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
     }
-    
+
     // Then validate the session for backoffice users
     const isValidSession = validateBackofficeSession();
-    
+
     if (!isValidSession) {
+      console.warn('[AUTH-DIAG] RouteGuard → redirect /backoffice/login', {
+        reason: 'validateBackofficeSession returned false',
+        path: location.pathname,
+        currentUserEmail: currentUser?.email,
+      });
       // Clear any stale auth state and redirect to backoffice login
       dispatch(clearAuth());
       toast.error("Your session has expired. Please login again.");
       return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
     }
+
+    console.log('[AUTH-DIAG] RouteGuard → backoffice OK', {
+      path: location.pathname,
+      currentUserEmail: currentUser?.email,
+    });
   }
 
   // Only show loading during auth processing, not logout
@@ -161,6 +176,10 @@ const RouteGuard = ({
 
   // If authentication is required and user is not logged in, redirect to login
   if (requireAuth && !currentUser) {
+    console.warn('[AUTH-DIAG] RouteGuard → redirect /login', {
+      reason: 'requireAuth=true but currentUser is null in Redux',
+      path: location.pathname,
+    });
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

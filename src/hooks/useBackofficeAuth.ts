@@ -7,7 +7,11 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setCurrentUser, setBackofficeUser, setAuthStatus } from '@/store/authActions';
 import { setEmployeeData, setConfiguredModules, setSwitchContext } from '@/store/employeeActions';
 import { User, EmployeeData } from '@/contexts/auth/types';
-import { generateBackofficeToken } from '@/utils/jwtUtils';
+// `generateBackofficeToken` no longer used — backoffice now relies on Supabase's
+// own access_token + refresh_token issued by signInWithPassword. The Supabase
+// SDK handles auto-refresh (autoRefreshToken: true), so the user stays signed
+// in until they explicitly log out or the refresh_token is invalidated by the
+// server (logout, expiry, or admin revoke).
 import { saveAuthState } from '@/store/authPersistence';
 import { getBackofficeDefaultPath } from '@/components/layout/sidebar/sidebarConfig';
 import type { Module } from '@/components/layout/sidebar/sidebarConfig';
@@ -54,7 +58,11 @@ export const useBackofficeAuth = () => {
     try {
       // Clean email (remove whitespace only, preserve case)
       const cleanedEmail = email.trim();
-      
+
+      console.log('[AUTH-DIAG] useBackofficeAuth.loginBackoffice → start (post-fix build, no signOut)', {
+        email: cleanedEmail,
+        path: typeof window !== 'undefined' ? window.location.pathname : '(no-window)',
+      });
       console.log('Attempting backoffice login for email:', cleanedEmail);
 
       // Step 1: Check if user exists first
@@ -82,7 +90,10 @@ export const useBackofficeAuth = () => {
       let authUser = null;
       let isValidCredentials = false;
 
-      await supabase.auth.signOut();
+      // Do NOT call supabase.auth.signOut() here.
+      // Each tab now has its own session (sessionStorage), so there is no
+      // session to clear — and signOut would still emit an in-tab SIGNED_OUT
+      // event that the AuthProvider listener would react to.
       // First, try Supabase's built-in email authentication
       try {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -249,9 +260,12 @@ export const useBackofficeAuth = () => {
         }));
       }
 
-      // Step 8: Generate browser-compatible token with 24-hour expiration
-      const jwtToken = generateBackofficeToken(backofficeUser.id, backofficeUser.email);
-      const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
+      // Step 8: (removed) — no longer generate a custom 24-hour JWT.
+      // The Supabase session installed by signInWithPassword above provides
+      // the access_token (configurable, default 1h) and a refresh_token
+      // (rotated automatically by autoRefreshToken: true). The user stays
+      // signed in indefinitely until manual logout or refresh-token
+      // invalidation, governed entirely by Supabase project settings.
 
       // Step 9: Update Redux state with all necessary data
       dispatch(setCurrentUser(saasUser));
@@ -267,7 +281,10 @@ export const useBackofficeAuth = () => {
         switchedAccessLevel: 'W/R',
       }));
 
-      // Step 10: Save auth state with JWT token to sessionStorage
+      // Step 10: Save auth state. We mark sessionType='backoffice' so the
+      // namespaced persistence layer routes this to the backoffice bucket.
+      // No custom JWT is stored — Supabase's tokens live in their own
+      // localStorage bucket (BACKOFFICE_STORAGE_KEY) managed by the SDK.
       saveAuthState({
         currentUser: saasUser,
         isAuthenticated: true,
@@ -280,9 +297,12 @@ export const useBackofficeAuth = () => {
         isSwitchedContext: false,
         clientManagementReadOnly: false,
         switchedAccessLevel: 'W/R',
-        jwtToken,
-        expiresAt,
-        sessionType: 'backoffice' // Mark as backoffice session
+        sessionType: 'backoffice',
+      });
+
+      console.log('[AUTH-DIAG] useBackofficeAuth → saveAuthState completed (no custom JWT)', {
+        sessionType: 'backoffice',
+        supabaseSessionWillBeManagedBy: 'autoRefreshToken (1h access + 7d refresh)',
       });
 
       // Step 11: Log RLS debug context so we can see auth.uid, client_id, admin flag
