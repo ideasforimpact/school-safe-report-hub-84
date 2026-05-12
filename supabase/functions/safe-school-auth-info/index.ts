@@ -6,7 +6,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { getSupabaseAdminClient } from '../_shared/safe-school/supabaseClient.ts';
 import { verifySupabaseToken } from '../_shared/safe-school/supabaseClient.ts';
-import { validateAuthInfoRequest } from '../_shared/safe-school/validators.ts';
+import { validateAuthInfoRequest, getAuthModuleName } from '../_shared/safe-school/validators.ts';
 import { signAccessToken } from '../_shared/safe-school/jwt.ts';
 import { generateRefreshToken, hashRefreshToken, getRefreshTokenExpiry } from '../_shared/safe-school/tokenUtils.ts';
 import { checkRateLimit, getClientIdentifier } from '../_shared/safe-school/rateLimiter.ts';
@@ -52,7 +52,8 @@ serve(async (req) => {
       logger.debug('Validation failed', { requestId, errors: validation.errors });
       return errorResponse('VALIDATION_ERROR', 'Validation failed', 422, validation.errors);
     }
-
+    
+    const moduleName = getAuthModuleName(body);
     const { supabase_token, email } = body;
 
     let userEmail: string;
@@ -62,12 +63,12 @@ serve(async (req) => {
       // Verify Supabase token
       logger.info('Verifying Supabase token', { requestId });
       const { user: supabaseUser, error: verifyError } = await verifySupabaseToken(supabase_token);
-      
+
       if (verifyError || !supabaseUser.email) {
         logger.warn('Supabase token verification failed', { requestId, error: verifyError?.message });
         return errorResponse('INVALID_TOKEN', 'Invalid or expired Supabase token', 401);
       }
-      
+
       userEmail = supabaseUser.email;
     } else if (email) {
       // Use email directly (for cases where Supabase token is not available)
@@ -103,11 +104,11 @@ serve(async (req) => {
         employee.client_id,
         url.pathname
       );
-      
+
       if (!ipValidation.allowed) {
         logger.warn('IP not whitelisted', { 
-          requestId, 
-          clientId: employee.client_id, 
+          requestId,
+          clientId: employee.client_id,
           reason: ipValidation.reason 
         });
         return errorResponse(
@@ -120,14 +121,16 @@ serve(async (req) => {
 
     // Generate tokens
     logger.info('Generating tokens', { requestId, userId: employee.id });
-    
+
     // Generate access token
     const accessToken = await signAccessToken({
-      sub: employee.id,
-      email: employee.email,
-      role: employee.is_super_admin ? 'admin' : 'employee',
-      permissions: {}, // Can be extended with actual permissions
-    });
+        sub: employee.id,
+        email: employee.email,
+        role: employee.is_super_admin ? 'admin' : 'employee',
+        permissions: {}, // Can be extended with actual permissions
+      },
+      moduleName,
+    );
 
     // Generate refresh token
     const refreshToken = await generateRefreshToken();
@@ -139,14 +142,15 @@ serve(async (req) => {
     const { error: tokenError } = await supabase
       .from('refresh_tokens')
       .insert({
-        user_id: employee.id,
-        token_hash: tokenHash,
-        expires_at: expiresAt.toISOString(),
-        revoked: false,
+      user_id: employee.id,
+      token_hash: tokenHash,
+      expires_at: expiresAt.toISOString(),
+      revoked: false,
         // device_info: device_info || {},
-        device_info: {},
-        issued_by: 'auth-info',
-      });
+      device_info: {},
+      issued_by: 'auth-info',
+      module: moduleName,
+    });
 
     if (tokenError) {
       logger.error('Failed to store refresh token', tokenError, { requestId, userId: employee.id });
@@ -154,11 +158,12 @@ serve(async (req) => {
     }
 
     // Get access token expiry
-    const expiresIn = parseInt(Deno.env.get('ACCESS_TOKEN_EXP_SECONDS') || '3600', 10);
+    const expiresIn = parseInt(Deno.env.get('ACCESS_TOKEN_EXP_SECONDS') || '300', 10);
 
     logger.info('Tokens issued successfully', {
       requestId,
       userId: employee.id,
+      moduleName,
       duration: Date.now() - startTime,
     });
 
