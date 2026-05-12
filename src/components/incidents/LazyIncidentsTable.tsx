@@ -21,6 +21,9 @@ import { supabase } from '@/integrations/supabase/client';
 import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
 import { formatDate } from "@/lib/Dateformat";
 import Loader from "@/components/common/Loader";
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getCurrentUser } from '@/store/authSelectors';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
@@ -54,6 +57,10 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   const [policyTitles, setPolicyTitles] = React.useState<string[]>([]);
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiPayload, setAiPayload] = React.useState<any | null>(null);
+  const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+    
+  const currentUser = getCurrentUser(state);
   
   React.useEffect(() => {
     const loadPolicyDocs = async () => {
@@ -89,6 +96,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
 
   // Check if user can edit a specific incident
   const canEditIncident = (incident: IncidentRecord) => {
+    if (isReadOnlySwitchedContext) return false;
     // Don't show edit button for voided incidents (if the property exists and is true)
     if (incident.is_voided) return false;
     
@@ -389,6 +397,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                         <span className="sr-only">Edit</span>
                       </Button>
                     )}
+                    {currentUser?.client?.incidentRecommendedActionsEnabled !== false && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -399,6 +408,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                       <Sparkles className="h-4 w-4 text-black" />
                       <span className="sr-only">Recommended Actions</span>
                     </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

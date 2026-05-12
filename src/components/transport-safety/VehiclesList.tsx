@@ -18,6 +18,7 @@ import { Vehicle } from '@/types/transportSafety';
 import ImportVehiclesDialog from './ImportVehiclesDialog';
 import { getPendingChallansFromVehicleChallans } from '@/services/transport-safety/vehicleService';
 import Loader from '../common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
@@ -32,6 +33,7 @@ interface VehiclesListProps {
 
 const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle,onVehiclesChanged }) => {
   const { vehicles, loading, error, hasFetched , fetchVehicles, } = useTransportSafety();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   // State for edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
@@ -67,6 +69,7 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
   
   // Handle edit vehicle
   const handleEditVehicle = (vehicle: Vehicle) => {
+    if (isReadOnlySwitchedContext) return;
     setSelectedVehicle(vehicle);
     setShowEditDialog(true);
   };
@@ -207,15 +210,17 @@ return (
     <div className="flex justify-between items-center mb-4">
       <h3 className="text-lg font-medium">Vehicle List</h3>
       <div className="flex gap-2">
-        <Button 
-            onClick={() => setIsImportDialogOpen(true)}
-            className="flex items-center gap-2"
-            variant="secondary"
-            disabled={loading}
-          >
-            <FileUp className="h-4 w-4" />
-            <span>Import Vehicles</span>
-          </Button>
+        {!isReadOnlySwitchedContext && (
+          <Button 
+              onClick={() => setIsImportDialogOpen(true)}
+              className="flex items-center gap-2"
+              variant="secondary"
+              disabled={loading}
+            >
+              <FileUp className="h-4 w-4" />
+              <span>Import Vehicles</span>
+            </Button>
+        )}
         <Button 
           variant="outline" 
           size="sm" 
@@ -270,17 +275,18 @@ return (
       <VehiclesListView
         vehicles={filteredVehicles}
         onRefresh={handleRefresh}
-        onEditVehicle={handleEditVehicle}
+        onEditVehicle={isReadOnlySwitchedContext ? undefined : handleEditVehicle}
+        isReadOnly={isReadOnlySwitchedContext}
       />
     )}
     {/* Edit Vehicle Dialog */}
     <AddVehicleDialog
-      open={showEditDialog}
+      open={showEditDialog && !isReadOnlySwitchedContext}
       onClose={handleCloseEditDialog}
       vehicle={selectedVehicle}
     />
    <ImportVehiclesDialog
-      isOpen={isImportDialogOpen}
+      isOpen={isImportDialogOpen && !isReadOnlySwitchedContext}
       onClose={() => setIsImportDialogOpen(false)}
       onSuccess={() => {
         fetchVehicles();

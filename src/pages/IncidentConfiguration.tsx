@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/auth/useAuth';
 import { reportTypeService } from '@/services/incident/reportTypeService';
 import { priorityService } from '@/services/incident/priorityService';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
@@ -17,6 +18,7 @@ const IncidentConfiguration = () => {
   const [priorities, setPriorities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   // Use the custom hook for categories and subcategories
   const {
@@ -233,6 +235,7 @@ const IncidentConfiguration = () => {
           updatePriority={handleUpdatePriority}
           deletePriority={handleDeletePriority}
           togglePriorityStatus={handleTogglePriorityStatus}
+          canCreate={!isReadOnlySwitchedContext}
         />
       </div>
     </Layout>

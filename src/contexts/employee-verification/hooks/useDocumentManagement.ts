@@ -3,14 +3,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { VerificationDocument } from '../types';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string, status: boolean) => Promise<void>) => {
   const [documents, setDocuments] = useState<VerificationDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { user, employeeData } = useAuth();
+  const { state } = useEmployeeStore();
 
-  // Get client_id from either employeeData or user context
-  const clientId = employeeData?.clientId || user?.clientId;
+  // Use switch-context aware Redux client IDs first, then auth fallbacks.
+  const clientId =
+    state.activeClientId ||
+    state.clientId ||
+    employeeData?.homeClientId ||
+    employeeData?.clientId ||
+    user?.clientId;
 
   // Helper function to upload base64 file to Supabase storage
   const uploadDocumentToStorage = async (base64Data: string, employeeId: string, documentType: string): Promise<string> => {

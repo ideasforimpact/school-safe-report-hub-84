@@ -56,6 +56,7 @@ import { ViewRecordDialog } from '@/components/student-wellbeing/ViewRecordDialo
 import { StudentWellbeingAuditDialog } from '@/components/student-wellbeing/StudentWellbeingAuditDialog';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All status' },
@@ -137,6 +138,7 @@ function getStatusBadgeClass(status: string): string {
 }
 
 const StudentWellBeingPage = () => {
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const { employeeData } = useAuth();
   const clientId = employeeData?.clientId;
 
@@ -399,13 +401,15 @@ const StudentWellBeingPage = () => {
                 <Download className="h-4 w-4" />
                 <span>Export</span>
               </Button>
-              <Button
-                className="flex items-center gap-2"
-                onClick={() => setNewRecordDialogOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-                <span>New Record</span>
-              </Button>
+              {!isReadOnlySwitchedContext && (
+                <Button
+                  className="flex items-center gap-2"
+                  onClick={() => setNewRecordDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>New Record</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -442,7 +446,7 @@ const StudentWellBeingPage = () => {
                 className="w-full"
               />
             </div>
-            {/* <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
+            <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
               <SelectTrigger className="w-[140px] h-10 border border-input rounded-md bg-background">
                 <SelectValue placeholder="Academic Year" />
               </SelectTrigger>
@@ -453,7 +457,7 @@ const StudentWellBeingPage = () => {
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select> */}
+            </Select>
              {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to || academicYearFilter !== getCurrentAcademicYear()) && (
                 <Button
                   variant="outline"
@@ -574,6 +578,7 @@ const StudentWellBeingPage = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                            {!isReadOnlySwitchedContext && (
                             <DropdownMenuItem
                               onSelect={(e) => {
                                 e.preventDefault();
@@ -584,6 +589,7 @@ const StudentWellBeingPage = () => {
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               onSelect={(e) => {
                                 e.preventDefault();
@@ -594,6 +600,7 @@ const StudentWellBeingPage = () => {
                               <Eye className="mr-2 h-4 w-4" />
                               View
                             </DropdownMenuItem>
+                            {!isReadOnlySwitchedContext && (
                             <DropdownMenuItem
                               className="text-red-600 focus:text-red-600"
                               onSelect={(e) => {
@@ -605,6 +612,8 @@ const StudentWellBeingPage = () => {
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
+                            )}
+                            {!isReadOnlySwitchedContext && (
                             <DropdownMenuItem
                               disabled={row.status === "closed"}
                               onSelect={(e) => {
@@ -616,6 +625,8 @@ const StudentWellBeingPage = () => {
                               <MessageSquare className="mr-2 h-4 w-4" />
                               New Consultation
                             </DropdownMenuItem>
+                            )}
+                            {!isReadOnlySwitchedContext && (
                             <DropdownMenuItem
                               disabled={row.status === "closed"}
                               onSelect={(e) => {
@@ -627,17 +638,20 @@ const StudentWellBeingPage = () => {
                               <Zap className="mr-2 h-4 w-4" />
                               Action
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={row.status === "closed"}
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                setRecordForFollowUp(row);
-                                setNewFollowUpDialogOpen(true);
-                              }}
-                            >
-                              <Calendar className="mr-2 h-4 w-4" />
-                              Next Follow-up Date
-                            </DropdownMenuItem>
+                            )}
+                            {!isReadOnlySwitchedContext && (
+                              <DropdownMenuItem
+                                disabled={row.status === "closed"}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setRecordForFollowUp(row);
+                                  setNewFollowUpDialogOpen(true);
+                                }}
+                              >
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Next Follow-up Date
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                         </div>

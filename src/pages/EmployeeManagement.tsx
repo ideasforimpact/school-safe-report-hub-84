@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 // List of demo emails that can bypass authentication
 const DEMO_EMAILS = [
@@ -32,6 +33,7 @@ const EmployeeManagement = () => {
   const { isAdmin, user } = useAuth();
   const { employees, addEmployee, updateEmployee, deleteEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
   const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -262,13 +264,15 @@ const EmployeeManagement = () => {
               <FileUp className="h-4 w-4" />
               <span>Import Employees</span>
             </Button>
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              disabled={isLoading}
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Employee
-            </Button>
+            {!isReadOnlySwitchedContext && (
+              <Button 
+                onClick={() => setIsAddDialogOpen(true)}
+                disabled={isLoading}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add Employee
+              </Button>
+            )}
           </div>
         </div>
 

@@ -37,6 +37,7 @@ interface CampusTabProps {
   deleteCampus: (id: string) => void;
   classes: Array<{ id: string, name: string, campusId: string }>;
   loading?: boolean;
+  canCreate?: boolean;
 }
 
 export const CampusTab = ({ 
@@ -45,7 +46,8 @@ export const CampusTab = ({
   updateCampus, 
   deleteCampus,
   classes,
-  loading = false
+  loading = false,
+  canCreate = true,
 }: CampusTabProps) => {
   const { employeeData } = useAuth();
   const [newCampus, setNewCampus] = useState('');
@@ -137,6 +139,7 @@ export const CampusTab = ({
   };
 
   const handleDeleteClick = (campus: CampusItem) => {
+    if (!canCreate) return;
     setCampusToDelete({
       id: campus.id,
       name: campus.name
@@ -159,6 +162,7 @@ export const CampusTab = ({
   };
 
   const handleEditOpen = (campus: CampusItem) => {
+    if (!canCreate) return;
     console.log("Opening edit dialog for campus:", campus);
     setEditingCampus(campus);
     setIsEditDialogOpen(true);
@@ -227,6 +231,7 @@ export const CampusTab = ({
         <CardDescription>Add, edit, or remove campuses</CardDescription>
       </CardHeader>
       <CardContent>
+        {canCreate && (
         <form onSubmit={handleCampusAdd} className="mb-6">
           <div className="flex gap-4 flex-col sm:flex-row">
             <div className="flex-1">
@@ -261,6 +266,7 @@ export const CampusTab = ({
             </Button>
           </div>
         </form>
+        )}
 
         {/* Filter Section */}
         <div className="flex gap-4 mb-4">
@@ -295,19 +301,19 @@ export const CampusTab = ({
           <TableHeader>
             <TableRow>
               <TableHead>Campus Name</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={2} className="text-center py-4">
+                <TableCell colSpan={canCreate ? 2 : 1} className="text-center py-4">
                   <Loader text="Loading campuses..." />
                 </TableCell>
               </TableRow>
             ) : filteredCampuses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={canCreate ? 2 : 1} className="text-center py-4 text-muted-foreground">
                   {campuses.length === 0 
                     ? "No campuses available. Add your first campus above."
                     : "No campuses match your search criteria."
@@ -318,6 +324,7 @@ export const CampusTab = ({
               paginatedCampuses.map((campus) => (
                 <TableRow key={campus.id}>
                   <TableCell>{campus.name}</TableCell>
+                  {canCreate && (
                   <TableCell>
                     <div className="flex gap-2">
                       <Button 
@@ -384,6 +391,7 @@ export const CampusTab = ({
                       })()}
                     </div>
                   </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
@@ -444,7 +452,7 @@ export const CampusTab = ({
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog open={deleteDialogOpen && canCreate} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Campus</AlertDialogTitle>
@@ -472,13 +480,13 @@ export const CampusTab = ({
         </AlertDialog>
 
         {/* Edit Dialog */}
-        {editingCampus && (
+        {editingCampus && canCreate && (
           <EditDialog
             title="Edit Campus"
             description="Update the campus name below"
             fieldLabel="Campus name"
             value={editingCampus.name}
-            open={isEditDialogOpen}
+            open={isEditDialogOpen && canCreate}
             onOpenChange={setIsEditDialogOpen}
             onChange={() => {}} // Not needed for this pattern
             onSave={handleEditSave}

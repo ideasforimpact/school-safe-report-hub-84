@@ -10,6 +10,7 @@ import { priorityService } from '@/services/incident/priorityService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useAuth } from '@/contexts';
 import Loader from '../common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface ReportType {
   id: string;
@@ -34,6 +35,7 @@ const IncidentConfigurationContent = () => {
   const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   // Use the existing hook for categories and subcategories
   const {
@@ -436,6 +438,7 @@ const IncidentConfigurationContent = () => {
       updatePriority={handleUpdatePriority}
       deletePriority={handleDeletePriority}
       togglePriorityStatus={handleTogglePriorityStatus}
+      canCreate={!isReadOnlySwitchedContext}
     />
   );
 };

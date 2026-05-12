@@ -26,6 +26,7 @@ import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 import { employeeTypeName } from '@/services/employeeNameHelpers';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -34,6 +35,7 @@ const EmployeeDetailPage = () => {
   const { fetchDocumentStatuses, fetchEmployees } = useEmployeeVerification();
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const { employeeTypes } = useEmployeeTypes();
   
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -385,10 +387,12 @@ const EmployeeDetailPage = () => {
               <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
               <span className="sr-only">Refresh</span>
             </Button>
-            <Button onClick={handleAddDocument} className="shadow-md">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Document
-            </Button>
+            {!isReadOnlySwitchedContext && (
+              <Button onClick={handleAddDocument} className="shadow-md">
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Document
+              </Button>
+            )}
           </div>
         </div>
 
@@ -424,11 +428,12 @@ const EmployeeDetailPage = () => {
               employeeId={employee.id}
               employeeName={employee.name}
               documents={documents}
-              onAddDocument={handleAddDocument}
+              onAddDocument={isReadOnlySwitchedContext ? undefined : handleAddDocument}
               initialLoadComplete={initialLoadComplete}
               onDocumentAction={refetchDocuments}
               isVerificationLoading={isVerificationLoading}
               setIsVerificationLoading={setIsVerificationLoading}
+              isReadOnly={isReadOnlySwitchedContext}
             />
           </div>
         </div>
@@ -456,6 +461,7 @@ const EmployeeDetailPage = () => {
         aadharDetails={aadharVerificationData}
         documentId={aadharVerificationData?.documentId}
         onVerificationUpdate={refetchDocuments}
+        readOnly={isReadOnlySwitchedContext}
       />
     </Layout>
   );

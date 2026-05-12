@@ -29,6 +29,7 @@ import { processStudentExcel } from '@/services/student/importStudentService';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface StudentManagementProps {
   embedded?: boolean;
@@ -37,6 +38,7 @@ interface StudentManagementProps {
 const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const { students, deleteStudent, refreshStudents, isLoading } = useStudents();
   const { employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
@@ -58,11 +60,17 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   }, [employeeData?.clientId]);
   
   const handleEditClick = (student: Student) => {
+    if (isReadOnlySwitchedContext) {
+      return;
+    }
     setSelectedStudent(student);
     setIsEditDialogOpen(true);
   };
 
   const handleDeleteClick = async (id: string) => {
+    if (isReadOnlySwitchedContext) {
+      return;
+    }
     if (!employeeData?.clientId) {
       toast.error('Client information not available');
       return;
@@ -398,37 +406,41 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
               Manage students in your institution
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsImportDialogOpen(true)}
-              className="flex items-center gap-2"
-              variant="secondary"
-            >
-              <FileUp className="h-4 w-4" />
-              <span>Import Students</span>
-            </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Student
-            </Button>
-          </div>
+          {!isReadOnlySwitchedContext && (
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setIsImportDialogOpen(true)}
+                className="flex items-center gap-2"
+                variant="secondary"
+              >
+                <FileUp className="h-4 w-4" />
+                <span>Import Students</span>
+              </Button>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
       {embedded && (
         <div className="flex justify-end items-center">
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsImportDialogOpen(true)}
-              className="flex items-center gap-2"
-              variant="secondary"
-            >
-              <FileUp className="h-4 w-4" />
-              <span>Import Students</span>
-            </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Student
-            </Button>
-          </div>
+          {!isReadOnlySwitchedContext && (
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setIsImportDialogOpen(true)}
+                className="flex items-center gap-2"
+                variant="secondary"
+              >
+                <FileUp className="h-4 w-4" />
+                <span>Import Students</span>
+              </Button>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -538,6 +550,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                   students={paginatedStudents}
                   onEditClick={handleEditClick}
                   onDeleteStudent={handleDeleteClick}
+                  canManageStudents={!isReadOnlySwitchedContext}
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={setCurrentPage}
@@ -561,7 +574,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       />
 
       {/* Edit Student Dialog */}
-      {selectedStudent && (
+      {selectedStudent && !isReadOnlySwitchedContext && (
         <EditStudentDialog
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
@@ -577,7 +590,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+      <AlertDialog open={isDeleteAlertOpen && !isReadOnlySwitchedContext} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>

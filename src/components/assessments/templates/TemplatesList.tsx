@@ -8,20 +8,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Edit, ClipboardList, Copy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import DuplicateTemplateDialog from './DuplicateTemplateDialog';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface TemplatesListProps {
   onCreateTemplate?: () => void;
   onEditTemplate?: (templateId: string) => void;
   onViewTemplate?: (templateId: string) => void;
+  canEditTemplate?: boolean;
 }
 
 const TemplatesList: React.FC<TemplatesListProps> = ({
   onCreateTemplate,
   onEditTemplate,
-  onViewTemplate
+  onViewTemplate,
+  canEditTemplate = true,
 }) => {
   const navigate = useNavigate();
   const { templates } = useAssessment();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -117,26 +121,30 @@ const TemplatesList: React.FC<TemplatesListProps> = ({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
-                        <DuplicateTemplateDialog 
-                          template={template} 
-                          trigger={
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={e => e.stopPropagation()}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          } 
-                        />
+                        {!isReadOnlySwitchedContext && (
+                          <DuplicateTemplateDialog 
+                            template={template} 
+                            trigger={
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            } 
+                          />
+                        )}
                         
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => handleEditClick(template.id, e)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        {canEditTemplate && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={(e) => handleEditClick(template.id, e)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

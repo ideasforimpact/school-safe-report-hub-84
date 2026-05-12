@@ -18,6 +18,7 @@ interface BackofficeDocumentCardProps {
   employee: Employee;
   onRefresh: () => void;
   onOpenFiles?: (document: VerificationDocument) => void;
+  isReadOnly?: boolean;
 }
 
 const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
@@ -25,7 +26,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   documentTypeName,
   employee,
   onRefresh,
-  onOpenFiles
+  onOpenFiles,
+  isReadOnly = false
 }) => {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
@@ -151,6 +153,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   };
 
   const handleVerify = () => {
+    if (isReadOnly) return;
     console.log('BackofficeDocumentCard - Verify button clicked for document:', document.id);
     if (isBackofficeEligibleType) {
       setBackofficeVerificationDialogOpen(true);
@@ -160,6 +163,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   };
 
   const handleReUpload = () => {
+    if (isReadOnly) return;
     console.log('BackofficeDocumentCard - Re-upload button clicked for document:', document.id);
     setReUploadDialogOpen(true);
   };
@@ -363,7 +367,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
               )}
               
               {/* Verify button - for Manual/Passport documents with in-progress status */}
-              {canVerifyDocument && clientId && (
+              {!isReadOnly && canVerifyDocument && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -376,7 +380,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
               )}
               
               {/* Re-upload button - only for "Manual" document types with documentImage and clientId */}
-              {isManualDocument && document.documentImage && clientId && (
+              {!isReadOnly && isManualDocument && document.documentImage && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -449,7 +453,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
       {/* Re-upload Dialog */}
       <DocumentReUploadDialog
-        open={reUploadDialogOpen}
+        open={reUploadDialogOpen && !isReadOnly}
         onOpenChange={setReUploadDialogOpen}
         document={document}
         employee={employee}
@@ -458,7 +462,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
       {/* Verification Dialog */}
       <DocumentVerificationDialog
-        open={verificationDialogOpen}
+        open={verificationDialogOpen && !isReadOnly}
         onOpenChange={setVerificationDialogOpen}
         document={document}
         employee={employee}
@@ -474,11 +478,12 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         employee={employee}
         mode="backoffice"
         onCommentsUpdated={onRefresh}
+        isReadOnly={isReadOnly}
       />
 
       {/* Backoffice verify dialog for audit-rule documents */}
       <BackofficeVerificationDialog
-        open={backofficeVerificationDialogOpen}
+        open={backofficeVerificationDialogOpen && !isReadOnly}
         onOpenChange={setBackofficeVerificationDialogOpen}
         title={`${formatDocumentTypeName(documentTypeName)} Verification`}
         description="Review the details and proceed with your backoffice verification action."

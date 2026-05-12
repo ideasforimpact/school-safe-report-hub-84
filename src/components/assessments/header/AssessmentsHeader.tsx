@@ -9,6 +9,7 @@ interface AssessmentsHeaderProps {
   submittedCount: number;
   closedCount: number;
   draftCount: number;
+  canCreateAssessment?: boolean;
 }
 
 const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({
@@ -18,6 +19,7 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({
   submittedCount,
   closedCount,
   draftCount,
+  canCreateAssessment = true,
 }) => {
   return (
     <div className="flex flex-col gap-6">
@@ -38,13 +40,15 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({
           </div>
         </div>
 
-        <Button
-          onClick={onCreateAssessment}
-          className="flex items-center gap-2"
-        >
-          <PlusCircle className="h-4 w-4" />
-          Create Assessment
-        </Button>
+        {canCreateAssessment && (
+          <Button
+            onClick={onCreateAssessment}
+            className="flex items-center gap-2"
+          >
+            <PlusCircle className="h-4 w-4" />
+            Create Assessment
+          </Button>
+        )}
       </div>
 
       {/* Stats row (same spacing as Employee page) */}

@@ -3,18 +3,22 @@ import React from 'react';
 import { AlertTriangle, List, ChartPie } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ActionButton from './actions/ActionButton';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const QuickActions: React.FC = () => {
   const navigate = useNavigate();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   const actions = [
-    {
-      title: "Report New Incident",
-      icon: AlertTriangle,
-      color: "text-red-600",
-      bgColor: "bg-red-100",
-      path: "/report"
-    },
+    ...(!isReadOnlySwitchedContext
+      ? [{
+          title: "Report New Incident",
+          icon: AlertTriangle,
+          color: "text-red-600",
+          bgColor: "bg-red-100",
+          path: "/report"
+        }]
+      : []),
     {
       title: "View All Incidents",
       icon: List,

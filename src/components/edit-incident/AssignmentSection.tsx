@@ -48,7 +48,9 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
           .from('employees')
           .select('id, first_name, last_name, email')
           .eq('client_id', employeeData.clientId)
-          .eq('status', true); // Only active employees
+          .eq('status', true) // Only active employees
+          .not('email', 'is', null)
+          .neq('email', '');
 
         if (error) {
           console.error('Error fetching employees:', error);

@@ -72,7 +72,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
     // First, fetch employees with employee_type and department joins
     const { data: employeesData, error: employeesError } = await supabase
       .from('employees')
-      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
       .eq('client_id', clientId); // MANDATORY client_id filter
 
     if (employeesError) {
@@ -127,7 +127,7 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
     // First, fetch only active employees with employee_type and department joins
     const { data: employeesData, error: employeesError } = await supabase
       .from('employees')
-      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
       .eq('client_id', clientId) // MANDATORY client_id filter
       .eq('status', true); // Only fetch active employees
 
@@ -190,6 +190,8 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         updatedAt: doc.updated_at || new Date().toISOString()
       }));
 
+      const personalDetails = (record as any).personal_details || {};
+      const otherDetails = (record as any).other_details || {};
       const employee: Employee = {
         id: record.id,
         employeeId: record.employee_id || '',
@@ -199,6 +201,28 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         email: record.email || '',
         phone: (record as any).phone || '',
         designation: (record as any).designation || '',
+        personalDetails: {
+          middleName: personalDetails.middle_name || undefined,
+          fatherName: personalDetails.father_name || undefined,
+          staffId: personalDetails.staff_id || undefined,
+          experience: personalDetails.experience || undefined,
+          qualification: personalDetails.qualification || undefined,
+          gender: personalDetails.gender || undefined,
+          dob: personalDetails.dob || undefined,
+          religion: personalDetails.religion || undefined,
+          nationality: personalDetails.nationality || undefined,
+          bloodGroup: personalDetails.blood_group || undefined,
+          residenceAddress: personalDetails.residence_address || undefined,
+        },
+        professionalOtherDetails: {
+          aadharNo: otherDetails.aadhaar_number || undefined,
+          panNo: otherDetails.pan_number || undefined,
+          esiNo: otherDetails.esi_number || undefined,
+          pfNo: otherDetails.pf_number || undefined,
+          exitDate: otherDetails.exit_date || undefined,
+          biometricUserId: otherDetails.biometric_user_id || undefined,
+        },
+        profileDocuments: Array.isArray((record as any).documents) ? (record as any).documents : [],
         dateOfBirth: '',
         address: '',
         joiningDate: record.joining_date || new Date().toISOString(),
@@ -237,7 +261,7 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
     // Build query with mandatory client_id filter if provided
     let query = supabase
       .from('employees')
-      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
       .eq('id', id);
     
     // SECURITY: Add client_id filter if provided
@@ -258,6 +282,8 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
     }
 
     // Convert the response to our Employee type
+    const personalDetails = (data as any).personal_details || {};
+    const otherDetails = (data as any).other_details || {};
     const employee: Employee = {
       id: data.id,
       employeeId: data.employee_id || '',
@@ -266,6 +292,28 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
       lastName: data.last_name,
       email: data.email || '',
       phone: (data as any).phone || '',
+      profileDocuments: Array.isArray((data as any).documents) ? (data as any).documents : [],
+      personalDetails: {
+        middleName: personalDetails.middle_name || undefined,
+        fatherName: personalDetails.father_name || undefined,
+        staffId: personalDetails.staff_id || undefined,
+        experience: personalDetails.experience || undefined,
+        qualification: personalDetails.qualification || undefined,
+        gender: personalDetails.gender || undefined,
+        dob: personalDetails.dob || undefined,
+        religion: personalDetails.religion || undefined,
+        nationality: personalDetails.nationality || undefined,
+        bloodGroup: personalDetails.blood_group || undefined,
+        residenceAddress: personalDetails.residence_address || undefined,
+      },
+      professionalOtherDetails: {
+        aadharNo: otherDetails.aadhaar_number || undefined,
+        panNo: otherDetails.pan_number || undefined,
+        esiNo: otherDetails.esi_number || undefined,
+        pfNo: otherDetails.pf_number || undefined,
+        exitDate: otherDetails.exit_date || undefined,
+        biometricUserId: otherDetails.biometric_user_id || undefined,
+      },
       dateOfBirth: '',
       address: '',
       joiningDate: data.joining_date || new Date().toISOString(),
@@ -300,7 +348,7 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
     // SECURITY: Query will be automatically filtered by RLS policies
     const { data, error } = await supabase
       .from('employees')
-      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -317,6 +365,8 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
     console.log('Found employee data:', data);
 
     // Convert the response to our Employee type
+    const personalDetails = (data as any).personal_details || {};
+    const otherDetails = (data as any).other_details || {};
     return {
       id: data.id,
       employeeId: data.employee_id || '',
@@ -325,6 +375,29 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
       lastName: data.last_name,
       email: data.email || '',
       phone: '',
+      designation: (data as any).designation || '',
+      profileDocuments: Array.isArray((data as any).documents) ? (data as any).documents : [],
+      personalDetails: {
+        middleName: personalDetails.middle_name || undefined,
+        fatherName: personalDetails.father_name || undefined,
+        staffId: personalDetails.staff_id || undefined,
+        experience: personalDetails.experience || undefined,
+        qualification: personalDetails.qualification || undefined,
+        gender: personalDetails.gender || undefined,
+        dob: personalDetails.dob || undefined,
+        religion: personalDetails.religion || undefined,
+        nationality: personalDetails.nationality || undefined,
+        bloodGroup: personalDetails.blood_group || undefined,
+        residenceAddress: personalDetails.residence_address || undefined,
+      },
+      professionalOtherDetails: {
+        aadharNo: otherDetails.aadhaar_number || undefined,
+        panNo: otherDetails.pan_number || undefined,
+        esiNo: otherDetails.esi_number || undefined,
+        pfNo: otherDetails.pf_number || undefined,
+        exitDate: otherDetails.exit_date || undefined,
+        biometricUserId: otherDetails.biometric_user_id || undefined,
+      },
       dateOfBirth: '',
       address: '',
       joiningDate: data.joining_date || new Date().toISOString(),

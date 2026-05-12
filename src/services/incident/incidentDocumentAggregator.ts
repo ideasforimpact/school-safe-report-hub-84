@@ -12,12 +12,16 @@ export const incidentDocumentAggregator = {
     try {
       // Get regular incident documents
       const incidentDocuments = await incidentDocumentService.getIncidentDocuments(incidentId);
+
+      // Get incident closure documents
+      const closureDocuments =
+        await incidentDocumentService.fetchClosureDocuments(incidentId);
       
       // Get comment documents
       const commentDocuments = await this.getCommentDocuments(incidentId);
       
       // Combine and sort by upload date
-      const allDocuments = [...incidentDocuments, ...commentDocuments]
+      const allDocuments = [...incidentDocuments, ...closureDocuments, ...commentDocuments]
         .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
       
       return {

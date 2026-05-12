@@ -19,7 +19,7 @@ const ActionsTakenForm: React.FC<ActionsTakenFormProps> = ({
   return (
     <div className="space-y-2">
       <h3 className="font-medium">Actions Taken <span className="text-red-500">*</span></h3>
-      <p className="text-sm text-gray-600">
+      <p className="text-md text-gray-600">
         List all actions taken to resolve this incident
       </p>
       <div className="space-y-2">
@@ -27,7 +27,7 @@ const ActionsTakenForm: React.FC<ActionsTakenFormProps> = ({
           placeholder="Describe what was done to address the incident"
           value={currentAction.description}
           onChange={(e) => setCurrentAction(prev => ({ ...prev, description: e.target.value }))}
-          className="min-h-[100px]"
+          className="min-h-[100px] text-md"
           maxLength={200}
         />
         <div className="text-right text-sm text-gray-500">

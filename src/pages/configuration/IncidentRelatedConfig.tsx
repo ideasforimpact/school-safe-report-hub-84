@@ -51,6 +51,7 @@ interface IncidentRelatedConfigProps {
   updatePriority: (id: string, name: string, description: string, color: string, weight: number) => void;
   deletePriority: (id: string) => void;
   togglePriorityStatus: (id: string, isActive: boolean) => void;
+  canCreate?: boolean;
 }
 
 export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
@@ -77,7 +78,8 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
   addPriority,
   updatePriority,
   deletePriority,
-  togglePriorityStatus
+  togglePriorityStatus,
+  canCreate = true,
 }) => {
   return (
     <Card className="w-[99%]">
@@ -97,6 +99,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               addCategory={addCategory}
               updateCategory={updateCategory}
               deleteCategory={deleteCategory}
+              canCreate={canCreate}
             />
           </TabsContent>
           
@@ -107,6 +110,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               addSubcategory={addSubcategory}
               updateSubcategory={updateSubcategory}
               deleteSubcategory={deleteSubcategory}
+              canCreate={canCreate}
             />
           </TabsContent>
 
@@ -116,6 +120,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               addFactor={addContributingFactor}
               updateFactor={updateContributingFactor}
               deleteFactor={deleteContributingFactor}
+              canCreate={canCreate}
             />
           </TabsContent>
 
@@ -126,6 +131,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               updateReportType={updateReportType}
               deleteReportType={deleteReportType}
               toggleReportTypeStatus={toggleReportTypeStatus}
+              canCreate={canCreate}
             />
           </TabsContent>
 
@@ -136,6 +142,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               updatePriority={updatePriority}
               deletePriority={deletePriority}
               togglePriorityStatus={togglePriorityStatus}
+              canCreate={canCreate}
             />
           </TabsContent>
         </Tabs>

@@ -16,11 +16,13 @@ import FormConfigurationContent from '@/components/configuration/FormConfigurati
 import GroupConfigurationContent from '@/components/configuration/GroupConfigurationContent';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useClientIntegration } from '@/hooks/useClientIntegration';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const SettingsPage = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [clientType, setClientType] = useState<string | null>(null);
   
   const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
@@ -228,6 +230,7 @@ const SettingsPage = () => {
                         addFacility={handleAddFacility}
                         updateFacility={handleUpdateFacility}
                         deleteFacility={handleDeleteFacility}
+                        canCreate={!isReadOnlySwitchedContext}
                       />
                     </CardContent>
                   </Card>

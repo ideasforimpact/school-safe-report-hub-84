@@ -26,8 +26,12 @@ export const useStepValidation = (formData: ClientFormData) => {
       isValidEmail(formData.superAdminEmail) &&
       formData.superAdminEmailExists === false;
 
+  const hasValidHeadOfficeMapping =
+    formData.isHeadOffice !== true ||
+    ((formData.mappedClientIds?.length || 0) > 0);
+
   return hasRequired && hasValidSuperAdminEmail && hasValidClientName
-  && hasValidContactPerson && hasValidPhone;
+  && hasValidContactPerson && hasValidPhone && hasValidHeadOfficeMapping;
 }, [
     formData.name,
     formData.email,
@@ -36,7 +40,9 @@ export const useStepValidation = (formData: ClientFormData) => {
     formData.superAdminEmail,
     formData.clientTypeId,
     formData.superAdminEmailExists,
-    formData.institutionType
+    formData.institutionType,
+    formData.isHeadOffice,
+    formData.mappedClientIds
   ]);
 
   const validateStep2 = useMemo(() => {

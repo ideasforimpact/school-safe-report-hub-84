@@ -51,7 +51,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     isUploading,
     handleFilesChange,
     uploadAndSaveDocuments,
-    loadDocuments
+    loadDocuments,
   } = useIncidentDocuments(id);
 
   // Add validation hook

@@ -98,6 +98,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
         `)
         .eq('client_id', clientId)
         .eq('status', true)
+        .not('email', 'is', null) 
         .order('first_name');
 
       if (error) {

@@ -4,6 +4,8 @@ import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
 import { formatUserFullName } from '@/utils/userUtils';
+// Backoffice modules realtime sync is mounted globally via ModuleSyncProvider —
+// no need to invoke it here.
 import { 
   DropdownMenu,
   DropdownMenuContent, 
@@ -19,7 +21,7 @@ interface BackofficeLayoutProps {
 const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  
+
   const handleLogout = () => {
     logout();
     navigate('/login');
