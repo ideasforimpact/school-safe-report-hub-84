@@ -8,6 +8,27 @@ export interface Employee {
   designation?: string;
   dateOfBirth?: string;
   address?: string;
+  personalDetails?: {
+    middleName?: string;
+    fatherName?: string;
+    staffId?: string;
+    experience?: string;
+    qualification?: string;
+    gender?: string;
+    dob?: string;
+    religion?: string;
+    nationality?: string;
+    bloodGroup?: string;
+    residenceAddress?: string;
+  };
+  professionalOtherDetails?: {
+    aadharNo?: string;
+    panNo?: string;
+    esiNo?: string;
+    pfNo?: string;
+    exitDate?: string;
+    biometricUserId?: string;
+  };
   joiningDate: string;
   department: string;
   position?: string;
@@ -17,6 +38,11 @@ export interface Employee {
   updatedAt: string;
   clientId?: string;
   documents?: VerificationDocument[]; // Added documents property
+  profileDocuments?: Array<{
+    label: string;
+    fileName: string;
+    uploadedAt: string;
+  }>;
   
   // Add these fields to make it compatible with the other Employee type
   firstName?: string;
