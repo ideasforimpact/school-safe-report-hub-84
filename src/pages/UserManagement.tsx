@@ -442,6 +442,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             is_cpd_involved: employee.is_cpd_involved ?? false,
             moduleAccessPayload: [],
             cpd_entries: [],
+            documentSummaries: Array.isArray(employee.documentSummaries)
+              ? employee.documentSummaries
+              : [],
             documents: [],
             role: 'user' as const
           };

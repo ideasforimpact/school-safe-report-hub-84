@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { Dispatch, SetStateAction, useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,10 +23,7 @@ import { fileToBase64 } from '@/utils/fileToBase64';
 
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS } from '@/constant/employeeConstant';
 
-interface AddUserDialogProps {
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-  formData: {
+type AddUserFormData = {
     firstName: string;
     lastName: string;
     personalDetails?: {
@@ -72,8 +69,13 @@ interface AddUserDialogProps {
     clientId?: string;
     is_cpd_involved?: boolean;
   };
-  setFormData: (data: any) => void;
-  onSubmit: (formData?: any) => void;
+
+interface AddUserDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  formData: AddUserFormData;
+  setFormData: Dispatch<SetStateAction<AddUserFormData>>;
+  onSubmit: (formData?: AddUserFormData) => void;
   resetForm: () => void;
   isLoading: boolean;
   clientId?: string;
@@ -97,6 +99,11 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const professionalDetailsStepIndex = 2;
   const moduleAccessStepIndex = hasEmail ? 3 : -1;
   const documentsStepIndex = hasEmail ? 4 : 3;
+  const [currentStep, setCurrentStep] = useState(0);
+  const completedSteps = useMemo(
+    () => Array.from({ length: currentStep }, (_, index) => index),
+    [currentStep]
+  );
   const { state } = useEmployeeStore();
   const { employeeTypes, loading: employeeTypesLoading } = useEmployeeTypes(isOpen);
   const { employeeDepartments, loading: employeeDepartmentsLoading } = useEmployeeDepartments(isOpen);

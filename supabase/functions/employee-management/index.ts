@@ -635,9 +635,62 @@ async function handleList(supabaseClient: any, requestData: any) {
     );
   }
 
+  const employees = data || [];
+  const employeeIds = employees.map((employee: any) => employee.id).filter(Boolean);
+  const documentsByEmployee = new Map<string, any[]>();
+
+  if (employeeIds.length > 0) {
+    const { data: documentsData, error: documentsError } = await supabaseClient
+      .from('employee_documents')
+      .select('id, employee_id, verification_status, params, document_type:document_type_id(name)')
+      .in('employee_id', employeeIds)
+      .eq('is_delete', 0);
+
+    if (documentsError) {
+      console.error("Error listing employee document summaries:", documentsError);
+    } else {
+      const toLabel = (value: string) =>
+        value
+          .split('_')
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+
+      const normalizeStatus = (status: string | null | undefined) => {
+        if (!status) return 'pending';
+        const normalized = status.toLowerCase();
+        if (normalized === 'verified' || normalized === 'completed') return 'verified';
+        if (normalized === 'failed' || normalized === 'rejected') return 'failed';
+        return 'pending';
+      };
+
+      (documentsData || []).forEach((doc: any) => {
+        const employeeId = doc.employee_id;
+        if (!employeeId) return;
+
+        const selected = doc?.params?.selected;
+        const typeName = doc?.document_type?.name;
+        const displayName = toLabel(typeName || selected || 'document');
+        const docs = documentsByEmployee.get(employeeId) || [];
+
+        docs.push({
+          id: doc.id,
+          name: displayName,
+          status: normalizeStatus(doc.verification_status),
+        });
+        documentsByEmployee.set(employeeId, docs);
+      });
+    }
+  }
+
+  const employeesWithDocumentSummaries = employees.map((employee: any) => ({
+    ...employee,
+    documentSummaries: documentsByEmployee.get(employee.id) || [],
+  }));
+
   return new Response(
     JSON.stringify({
-      employees: data || [],
+      employees: employeesWithDocumentSummaries,
       total: count || 0,
     }),
     {
