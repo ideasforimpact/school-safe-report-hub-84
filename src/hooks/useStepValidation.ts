@@ -1,16 +1,18 @@
 
 import { useMemo } from 'react';
 import { ClientFormData } from './useClientManagement';
-import { isValidEmail } from '@/services/employee/utils/employeeValidationUtils';
-import { isValidClientName, isValidContactPerson, isValidPhone } from '@/components/backoffice/tabs/BasicInfoTab';
+import {
+  isValidEmail,
+  isValidClientName,
+  isValidContactPerson,
+  isValidClientFormPhone,
+} from '@/services/employee/utils/employeeValidationUtils';
 
 export const useStepValidation = (formData: ClientFormData) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  const hasValidClientName =isValidClientName(formData.name);
+  const hasValidClientName = isValidClientName(formData.name);
   const hasValidContactPerson =isValidContactPerson(formData.contactPerson);
 
-  const hasValidPhone =isValidPhone(formData.phone);
+  const hasValidPhone = isValidClientFormPhone(formData.phone);
   const validateStep1 = useMemo(() => {
   const hasRequired =
     !!formData.email &&
@@ -21,12 +23,15 @@ export const useStepValidation = (formData: ClientFormData) => {
     !!formData.institutionType;
 
     const hasValidSuperAdminEmail =
-    isValidEmail(formData.superAdminEmail) &&
-    formData.superAdminEmailExists === false && 
-    isValidClientName; 
+      isValidEmail(formData.superAdminEmail) &&
+      formData.superAdminEmailExists === false;
+
+  const hasValidHeadOfficeMapping =
+    formData.isHeadOffice !== true ||
+    ((formData.mappedClientIds?.length || 0) > 0);
 
   return hasRequired && hasValidSuperAdminEmail && hasValidClientName
-  && hasValidContactPerson && hasValidPhone;
+  && hasValidContactPerson && hasValidPhone && hasValidHeadOfficeMapping;
 }, [
     formData.name,
     formData.email,
@@ -35,7 +40,9 @@ export const useStepValidation = (formData: ClientFormData) => {
     formData.superAdminEmail,
     formData.clientTypeId,
     formData.superAdminEmailExists,
-    formData.institutionType
+    formData.institutionType,
+    formData.isHeadOffice,
+    formData.mappedClientIds
   ]);
 
   const validateStep2 = useMemo(() => {

@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '../common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface FormField {
   id: string;
@@ -59,6 +60,7 @@ const FormConfigurationContent = () => {
   const isBackoffice = location.pathname.startsWith('/backoffice');
   const { forms, loading, saveForm, updateForm, deleteForm, toggleFormActive, refetch } = useCustomForms();
   const { getClientId, getEmployeeId } = useEmployeeAccess();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
@@ -352,7 +354,7 @@ const FormConfigurationContent = () => {
                   ? 'Create your first custom form to start collecting data'
                   : 'There are no forms configured for your organisation yet.'}
               </p>
-              {isBackoffice && (
+              {isBackoffice && !isReadOnlySwitchedContext && (
                 <Button onClick={handleCreateForm} disabled={isPageLoading}>Create Form</Button>
               )}
             </div>
@@ -465,19 +467,21 @@ const FormConfigurationContent = () => {
                               </>
                             )}
                             {/* Activate/Deactivate */}
-                        <Button
-                          variant="outline"
-                              size="icon"
-                              onClick={() => requestToggle(form)}
-                              title={form.is_active ? 'Deactivate' : 'Activate'}
-                              disabled={isPageLoading}
-                        >
-                          {form.is_active ? (
-                                <ToggleLeft className="h-4 w-4 text-red-600" />
-                          ) : (
-                                <ToggleRight className="h-4 w-4 text-green-600" />
-                          )}
-                        </Button>
+                            {!isReadOnlySwitchedContext && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => requestToggle(form)}
+                                title={form.is_active ? 'Deactivate' : 'Activate'}
+                                disabled={isPageLoading}
+                              >
+                                {form.is_active ? (
+                                  <ToggleLeft className="h-4 w-4 text-red-600" />
+                                ) : (
+                                  <ToggleRight className="h-4 w-4 text-green-600" />
+                                )}
+                              </Button>
+                            )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -508,7 +512,7 @@ const FormConfigurationContent = () => {
       </AlertDialog>
 
       {/* Confirm Activate/Deactivate */}
-      <AlertDialog open={confirmToggleOpen} onOpenChange={setConfirmToggleOpen}>
+      <AlertDialog open={confirmToggleOpen && !isReadOnlySwitchedContext} onOpenChange={setConfirmToggleOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{toggleTarget?.is_active ? 'Deactivate form?' : 'Activate form?'}</AlertDialogTitle>

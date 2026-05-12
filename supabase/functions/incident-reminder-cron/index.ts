@@ -43,6 +43,7 @@ serve(async (req) => {
       .select('*')
       .eq('active', true)
       .eq('is_remainder_cron_started', false)
+      .eq('is_processing', false)
       .eq('module_name', 'incident') // Only process incident-related emails
       .order('created_at', { ascending: true });
 
@@ -73,13 +74,18 @@ serve(async (req) => {
     // Process each email
     for (const email of pendingEmails) {
       try {
+        const claimed = await claimEmailForProcessing(supabase, email.id, 'incident-reminder-cron');
+        if (!claimed) {
+          continue;
+        }
+
         console.log(`Processing email ID: ${email.id} for incident notification`);
 
         // Validate incident notification - same logic as process-email-queue
         const validationResult = await validateIncidentNotification(supabase, email);
         if (!validationResult.isValid) {
           console.log(`Validation failed for email ${email.id}: ${validationResult.reason}`);
-          await updateRemainderStatus(supabase, email.id, false, validationResult.reason);
+          await updateRemainderStatus(supabase, email.id, false, validationResult.reason || 'Validation failed');
           failedCount++;
           continue;
         }
@@ -97,7 +103,7 @@ serve(async (req) => {
         const dayCheckResult = await checkIncidentDayThreshold(supabase, incidentId, days);
         if (!dayCheckResult.meetsThreshold) {
           console.log(`Incident ${incidentId} does not meet ${days} day threshold: ${dayCheckResult.reason}`);
-          await updateRemainderStatus(supabase, email.id, false, dayCheckResult.reason);
+          await updateRemainderStatus(supabase, email.id, false, dayCheckResult.reason || 'Does not meet threshold');
           skippedCount++;
           continue;
         }
@@ -335,31 +341,6 @@ async function sendReminderEmail(supabase: any, originalEmail: any, incidentId: 
       return false;
     }
 
-    const messagePreview = (reminderBody || '')
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 240);
-
-    const { error: centralizedError } = await supabase.rpc('create_centralized_notification', {
-      p_client_id: originalEmail.client_id,
-      p_module_id: null,
-      p_module_name: originalEmail.module_name || 'incident',
-      p_email_id: originalEmail.id,
-      p_is_reminder_notification: true,
-      p_notification_type: 'incident_reminder_10_days',
-      p_channel: 'email',
-      p_title: reminderSubject,
-      p_message: messagePreview || null,
-      p_payload: reminderVariables,
-      p_recipient_employee_id: null,
-      p_recipient_email: originalEmail.recipient_email,
-    });
-
-    if (centralizedError) {
-      console.error('Failed to create centralized notification for incident reminder:', centralizedError);
-    }
-
     console.log(`Successfully sent reminder email for incident ${incidentId}`);
     return true;
 
@@ -377,12 +358,40 @@ async function updateRemainderStatus(supabase: any, emailId: string, success: bo
     const currentTime = new Date().toISOString();
 
     // Update email_queue - set is_remainder_cron_started to true
+    let updateData: Record<string, any> = {
+      is_remainder_cron_started: true,
+      updated_at: currentTime,
+      is_processing: false,
+      processing_started_at: null,
+      processing_by: null
+    };
+
+    if (!success) {
+      const { data: emailData } = await supabase
+        .from('email_queue')
+        .select('retry_count, max_retries')
+        .eq('id', emailId)
+        .single();
+      const currentRetryCount = emailData?.retry_count || 0;
+      const maxRetries = emailData?.max_retries || 3;
+      const nextRetryCount = Math.min(currentRetryCount + 1, maxRetries);
+      const isExhausted = nextRetryCount >= maxRetries;
+      updateData = {
+        ...updateData,
+        retry_count: nextRetryCount,
+        active: isExhausted ? false : true,
+        error_message: logMessage,
+      };
+    } else {
+      updateData = {
+        ...updateData,
+        error_message: null,
+      };
+    }
+
     const { error: emailError } = await supabase
       .from('email_queue')
-      .update({
-        is_remainder_cron_started: true,
-        updated_at: currentTime
-      })
+      .update(updateData)
       .eq('id', emailId);
 
     if (emailError) {
@@ -436,5 +445,34 @@ async function updateRemainderStatus(supabase: any, emailId: string, success: bo
 
   } catch (error) {
     console.error('Error updating remainder status:', error);
+  }
+}
+
+async function claimEmailForProcessing(supabase: any, emailId: string, processorName: string): Promise<boolean> {
+  try {
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('email_queue')
+      .update({
+        is_processing: true,
+        processing_started_at: nowIso,
+        processing_by: processorName,
+      })
+      .eq('id', emailId)
+      .eq('active', true)
+      .eq('is_remainder_cron_started', false)
+      .eq('is_processing', false)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      console.error(`Failed to claim reminder email ${emailId}:`, error);
+      return false;
+    }
+
+    return Boolean(data?.id);
+  } catch (error) {
+    console.error(`Error claiming reminder email ${emailId}:`, error);
+    return false;
   }
 }

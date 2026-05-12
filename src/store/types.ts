@@ -4,6 +4,7 @@ import { User } from '@/contexts/auth/types';
 export interface EmployeeData {
   id: string;
   clientId: string;
+  homeClientId?: string | null;
   email: string;
   firstName: string;
   lastName: string;
@@ -39,6 +40,10 @@ export interface EmployeeState {
   isLoading: boolean;
   error: string | null;
   clientId: string | null;
+  activeClientId: string | null;
+  isSwitchedContext: boolean;
+  clientManagementReadOnly: boolean;
+  switchedAccessLevel: 'R' | 'W/R';
   
   // Add logout state
   isLoggingOut: boolean;
@@ -55,6 +60,8 @@ export enum EmployeeActionTypes {
   SET_LOADING = 'SET_LOADING',
   SET_ERROR = 'SET_ERROR',
   SET_CLIENT_ID = 'SET_CLIENT_ID',
+  SET_SWITCH_CONTEXT = 'SET_SWITCH_CONTEXT',
+  RESET_SWITCH_CONTEXT = 'RESET_SWITCH_CONTEXT',
   RESET_EMPLOYEE = 'RESET_EMPLOYEE',
   SET_LOGOUT_STATE = 'SET_LOGOUT_STATE'
 }
@@ -109,6 +116,21 @@ export interface SetClientIdAction {
   payload: string | null;
 }
 
+export interface SetSwitchContextAction {
+  type: EmployeeActionTypes.SET_SWITCH_CONTEXT;
+  payload: {
+    homeClientId: string | null;
+    activeClientId: string | null;
+    isSwitchedContext: boolean;
+    clientManagementReadOnly: boolean;
+    switchedAccessLevel?: 'R' | 'W/R';
+  };
+}
+
+export interface ResetSwitchContextAction {
+  type: EmployeeActionTypes.RESET_SWITCH_CONTEXT;
+}
+
 export interface ResetEmployeeAction {
   type: EmployeeActionTypes.RESET_EMPLOYEE;
 }
@@ -129,5 +151,7 @@ export type EmployeeAction =
   | SetLoadingAction
   | SetErrorAction
   | SetClientIdAction
+  | SetSwitchContextAction
+  | ResetSwitchContextAction
   | ResetEmployeeAction
   | SetLogoutStateAction;

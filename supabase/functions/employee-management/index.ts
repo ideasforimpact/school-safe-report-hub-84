@@ -33,7 +33,7 @@ serve(async (req) => {
     console.log("Handling operation:", operation);
  
     // Validate client exists for operations that need it
-    if (operation === 'create' || operation === 'update' || operation === 'bulk_import') {
+    if (operation === 'create' || operation === 'update' || operation === 'bulk_import' || operation === 'list') {
       // Extract clientId from different possible locations
       let validationClientId = null;
       
@@ -106,6 +106,10 @@ serve(async (req) => {
     }
  
     switch (operation) {
+      case 'list_departments':
+        return await handleListDepartments(supabaseClient);
+      case 'list':
+        return await handleList(supabaseClient, requestData);
       case 'create':
         return await handleCreate(supabaseClient, employee);
       case 'update':
@@ -236,6 +240,188 @@ async function getDepartmentId(supabaseClient: any, department: string): Promise
  
   return departmentData.id;
 }
+
+async function insertEmployeePersonalDetails(
+  supabaseClient: any,
+  employeeId: string,
+  clientId: string | null | undefined,
+  employee: any
+) {
+  let resolvedClientId = clientId;
+  if (!resolvedClientId) {
+    const { data: employeeRow } = await supabaseClient
+      .from('employees')
+      .select('client_id')
+      .eq('id', employeeId)
+      .maybeSingle();
+    resolvedClientId = employeeRow?.client_id ?? null;
+  }
+  if (!resolvedClientId) {
+    throw new Error(`Missing client_id for employee personal details upsert: ${employeeId}`);
+  }
+
+  const nestedPersonal = employee.personalDetails || {};
+  const normalizeOptional = (value: any) => {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    return value;
+  };
+  const personalDetails = {
+    employee_id: employeeId,
+    client_id: resolvedClientId,
+    middle_name: normalizeOptional(nestedPersonal.middleName ?? employee.middleName),
+    father_name: normalizeOptional(nestedPersonal.fatherName ?? employee.fatherName),
+    gender: normalizeOptional(nestedPersonal.gender ?? employee.gender),
+    dob: normalizeOptional(nestedPersonal.dob ?? employee.dob),
+    religion: normalizeOptional(nestedPersonal.religion ?? employee.religion),
+    nationality: normalizeOptional(nestedPersonal.nationality ?? employee.nationality),
+    blood_group: normalizeOptional(nestedPersonal.bloodGroup ?? employee.bloodGroup),
+    residence_address: normalizeOptional(nestedPersonal.residenceAddress ?? employee.residenceAddress),
+    staff_id: normalizeOptional(nestedPersonal.staffId ?? employee.staffId),
+    experience: normalizeOptional(nestedPersonal.experience ?? employee.experience),
+    qualification: normalizeOptional(nestedPersonal.qualification ?? employee.qualification),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseClient
+    .from('employee_personal_details')
+    .upsert(personalDetails, { onConflict: 'employee_id' });
+
+  if (error) {
+    console.error('Error inserting employee personal details:', error);
+    throw error;
+  }
+}
+
+async function insertEmployeeOtherDetails(
+  supabaseClient: any,
+  employeeId: string,
+  clientId: string | null | undefined,
+  employee: any
+) {
+  let resolvedClientId = clientId;
+  if (!resolvedClientId) {
+    const { data: employeeRow } = await supabaseClient
+      .from('employees')
+      .select('client_id')
+      .eq('id', employeeId)
+      .maybeSingle();
+    resolvedClientId = employeeRow?.client_id ?? null;
+  }
+  if (!resolvedClientId) {
+    throw new Error(`Missing client_id for employee other details upsert: ${employeeId}`);
+  }
+
+  const nestedProfessional = employee.professionalOtherDetails || {};
+  const normalizeOptional = (value: any) => {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    return value;
+  };
+  const otherDetails = {
+    employee_id: employeeId,
+    client_id: resolvedClientId,
+    aadhaar_number: normalizeOptional(nestedProfessional.aadharNo ?? employee.aadharNo),
+    pan_number: normalizeOptional(nestedProfessional.panNo ?? employee.panNo),
+    esi_number: normalizeOptional(nestedProfessional.esiNo ?? employee.esiNo),
+    pf_number: normalizeOptional(nestedProfessional.pfNo ?? employee.pfNo),
+    exit_date: normalizeOptional(nestedProfessional.exitDate ?? employee.exitDate),
+    biometric_user_id: normalizeOptional(nestedProfessional.biometricUserId ?? employee.biometricUserId),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseClient
+    .from('employee_other_details')
+    .upsert(otherDetails, { onConflict: 'employee_id' });
+
+  if (error) {
+    console.error('Error inserting employee other details:', error);
+    throw error;
+  }
+}
+
+async function uploadEmployeeProfileDocuments(
+  supabaseClient: any,
+  clientId: string,
+  employeeKey: string,
+  documents: any[]
+) {
+  if (!Array.isArray(documents) || documents.length === 0) return [];
+
+  const bucketName = 'employee_profile_documents';
+  const now = new Date().toISOString();
+  const processedDocuments: any[] = [];
+
+  for (const doc of documents) {
+    if (!doc || !doc.key) continue;
+
+    const normalizedDoc = {
+      key: doc.key,
+      fileName: doc.fileName || 'document',
+      uploadedAt: doc.uploadedAt || now,
+    } as any;
+
+    const fileData = typeof doc.fileData === 'string' ? doc.fileData : '';
+    if (!fileData) {
+      const existingPath =
+        doc.filePath || doc.file_path || doc.storagePath || doc.storage_path || undefined;
+      processedDocuments.push({
+        ...normalizedDoc,
+        ...(existingPath ? { filePath: existingPath } : {}),
+      });
+      continue;
+    }
+
+    let bytes: Uint8Array;
+    try {
+      const binary = atob(fileData);
+      bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    } catch (error) {
+      console.error('Invalid base64 document payload:', error);
+      throw new Error(`Invalid file data for ${doc.key}`);
+    }
+
+    const safeFileName = String(doc.fileName || 'document').replace(/\s+/g, '_');
+    const storagePath = `${clientId}/${employeeKey}/${doc.key}/${Date.now()}_${safeFileName}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from(bucketName)
+      .upload(storagePath, bytes, {
+        upsert: false,
+        contentType: doc.contentType || 'application/octet-stream',
+      });
+
+    if (uploadError) {
+      console.error(`Failed to upload ${doc.key}:`, uploadError);
+      throw new Error(`Failed to upload ${doc.key}`);
+    }
+
+    processedDocuments.push({
+      ...normalizedDoc,
+      filePath: storagePath,
+    });
+  }
+
+  // Store only the compact shape in employees.documents and keep one row per doc key.
+  const byKey = new Map<string, { key: string; fileName: string; filePath?: string; uploadedAt: string }>();
+  for (const doc of processedDocuments) {
+    const key = String(doc?.key || '').trim();
+    if (!key) continue;
+    const fileName = String(doc?.fileName || 'document').trim() || 'document';
+    const filePath = (doc?.filePath || doc?.file_path || '').trim() || undefined;
+    const uploadedAt = String(doc?.uploadedAt || now);
+
+    byKey.set(key, {
+      key,
+      fileName,
+      ...(filePath ? { filePath } : {}),
+      uploadedAt,
+    });
+  }
+
+  return Array.from(byKey.values());
+}
  
 async function handleBulkImport(supabaseClient: any, employees: any[], clientId: string) {
   console.log("Processing bulk import for", employees?.length, "employees with clientId:", clientId);
@@ -336,6 +522,7 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
       user_id: emp.user_id || null,
       is_super_admin: emp.is_super_admin || false,
       is_cpd_involved: emp.is_cpd_involved === true,
+      documents: Array.isArray(emp.documents) ? emp.documents : [],
     });
   }
   
@@ -368,12 +555,13 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
     const emp = employees[i];
     const employeeId = insertedEmployees[i]?.id;
  
-    if (employeeId && Array.isArray(emp.moduleAccessPayload)) {
-      await handleEmployeeModuleAccess(
-        supabaseClient,
-        employeeId,
-        emp.moduleAccessPayload
-      );
+    if (!employeeId) continue;
+
+    await insertEmployeePersonalDetails(supabaseClient, employeeId, clientId, emp);
+    await insertEmployeeOtherDetails(supabaseClient, employeeId, clientId, emp);
+
+    if (Array.isArray(emp.moduleAccessPayload)) {
+      await handleEmployeeModuleAccess(supabaseClient, employeeId, emp.moduleAccessPayload);
     }
   }
  
@@ -386,6 +574,151 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
       skipped: errors.length,
       errors,
     }),
+    {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+async function handleList(supabaseClient: any, requestData: any) {
+  const clientId = requestData.clientId;
+  const page = Math.max(1, Number(requestData.page || 1));
+  const pageSize = Math.max(1, Number(requestData.pageSize || 10));
+  const filters = requestData.filters || {};
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabaseClient
+    .from('employees')
+    .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)', { count: 'exact' })
+    .eq('client_id', clientId);
+
+  if (filters.status === 'active') {
+    query = query.eq('status', true);
+  } else if (filters.status === 'inactive') {
+    query = query.eq('status', false);
+  }
+
+  if (filters.departmentId && filters.departmentId !== 'all') {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(filters.departmentId)) {
+      query = query.eq('department', filters.departmentId);
+    }
+  }
+
+  if (filters.joiningDateFrom) {
+    query = query.gte('joining_date', filters.joiningDateFrom);
+  }
+
+  if (filters.joiningDateTo) {
+    query = query.lte('joining_date', filters.joiningDateTo);
+  }
+
+  if (filters.search && String(filters.search).trim()) {
+    const term = String(filters.search).trim().replace(/[%_]/g, '');
+    query = query.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,employee_id.ilike.%${term}%`);
+  }
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    console.error("Error listing employees:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to fetch employees" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  const employees = data || [];
+  const employeeIds = employees.map((employee: any) => employee.id).filter(Boolean);
+  const documentsByEmployee = new Map<string, any[]>();
+
+  if (employeeIds.length > 0) {
+    const { data: documentsData, error: documentsError } = await supabaseClient
+      .from('employee_documents')
+      .select('id, employee_id, verification_status, params, document_type:document_type_id(name)')
+      .in('employee_id', employeeIds)
+      .eq('is_delete', 0);
+
+    if (documentsError) {
+      console.error("Error listing employee document summaries:", documentsError);
+    } else {
+      const toLabel = (value: string) =>
+        value
+          .split('_')
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+
+      const normalizeStatus = (status: string | null | undefined) => {
+        if (!status) return 'pending';
+        const normalized = status.toLowerCase();
+        if (normalized === 'verified' || normalized === 'completed') return 'verified';
+        if (normalized === 'failed' || normalized === 'rejected') return 'failed';
+        return 'pending';
+      };
+
+      (documentsData || []).forEach((doc: any) => {
+        const employeeId = doc.employee_id;
+        if (!employeeId) return;
+
+        const selected = doc?.params?.selected;
+        const typeName = doc?.document_type?.name;
+        const displayName = toLabel(typeName || selected || 'document');
+        const docs = documentsByEmployee.get(employeeId) || [];
+
+        docs.push({
+          id: doc.id,
+          name: displayName,
+          status: normalizeStatus(doc.verification_status),
+        });
+        documentsByEmployee.set(employeeId, docs);
+      });
+    }
+  }
+
+  const employeesWithDocumentSummaries = employees.map((employee: any) => ({
+    ...employee,
+    documentSummaries: documentsByEmployee.get(employee.id) || [],
+  }));
+
+  return new Response(
+    JSON.stringify({
+      employees: employeesWithDocumentSummaries,
+      total: count || 0,
+    }),
+    {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+async function handleListDepartments(supabaseClient: any) {
+  const { data, error } = await supabaseClient
+    .from('employee_departments')
+    .select('*')
+    .order('department_name', { ascending: true });
+
+  if (error) {
+    console.error("Error listing employee_departments:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to fetch departments" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ departments: data || [] }),
     {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -477,6 +810,12 @@ async function handleCreate(supabaseClient: any, employee: any) {
   const hasDepartment = employee.department !== undefined && employee.department !== null && String(employee.department).trim() !== '';
   const employeeTypeId = hasEmployeeType ? await getEmployeeTypeId(supabaseClient, employee.employeeType) : null;
   const departmentId = hasDepartment ? await getDepartmentId(supabaseClient, employee.department) : null;
+  const processedDocuments = await uploadEmployeeProfileDocuments(
+    supabaseClient,
+    clientId,
+    employee.employeeId || employee.id,
+    Array.isArray(employee.documents) ? employee.documents : []
+  );
 
   // Create employee record
   const employeeData = {
@@ -493,7 +832,8 @@ async function handleCreate(supabaseClient: any, employee: any) {
     client_id: clientId,
     user_id: employee.user_id || null,
     is_super_admin: employee.is_super_admin || false,
-    is_cpd_involved: employee.is_cpd_involved === true
+    is_cpd_involved: employee.is_cpd_involved === true,
+    documents: processedDocuments
   };
  
   console.log("Creating employee with data:", employeeData);
@@ -546,6 +886,9 @@ async function handleCreate(supabaseClient: any, employee: any) {
   }
  
   console.log("Employee created successfully:", newEmployee);
+
+  await insertEmployeePersonalDetails(supabaseClient, newEmployee.id, clientId, employee);
+  await insertEmployeeOtherDetails(supabaseClient, newEmployee.id, clientId, employee);
  
   // Handle module access if provided
   if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
@@ -649,6 +992,12 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   const hasDepartment = employee.department !== undefined && employee.department !== null && String(employee.department).trim() !== '';
   const employeeTypeId = hasEmployeeType ? await getEmployeeTypeId(supabaseClient, employee.employeeType) : null;
   const departmentId = hasDepartment ? await getDepartmentId(supabaseClient, employee.department) : null;
+  const processedDocuments = await uploadEmployeeProfileDocuments(
+    supabaseClient,
+    clientId,
+    employee.employeeId || employee.id,
+    Array.isArray(employee.documents) ? employee.documents : []
+  );
 
   // Update employee record (nullable employee_type and department)
   const updateData: any = {
@@ -668,6 +1017,9 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   }
   if (employee.is_cpd_involved !== undefined) {
     updateData.is_cpd_involved = employee.is_cpd_involved === true;
+  }
+  if (employee.documents !== undefined) {
+    updateData.documents = processedDocuments;
   }
  
   console.log("Update data:", updateData);
@@ -721,6 +1073,9 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   }
  
   console.log("Employee updated successfully:", updatedEmployee);
+
+  await insertEmployeePersonalDetails(supabaseClient, employee.id, clientId, employee);
+  await insertEmployeeOtherDetails(supabaseClient, employee.id, clientId, employee);
  
   // Handle module access update if provided
   if (employee.moduleAccessPayload !== undefined) {

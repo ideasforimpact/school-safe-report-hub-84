@@ -4,6 +4,56 @@ import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { getBatchEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 
+const mapEmployeeRecords = (
+  employeesData: any[],
+  documentsData: any[] = []
+): Employee[] => {
+  return employeesData.map(record => {
+    const employeeDocuments = (documentsData || []).filter(doc => doc.employee_id === record.id);
+
+    const documents: VerificationDocument[] = employeeDocuments.map(doc => ({
+      id: doc.id,
+      employeeId: record.id,
+      documentTypeId: doc.document_type_id || '',
+      documentTypeName: (doc.document_type as any)?.name || 'Unknown',
+      documentNumber: doc.document_number || '',
+      documentImage: doc.document_url || '',
+      verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
+      verificationMethod: 'manual' as const,
+      personalInfo: doc.personal_info || undefined,
+      employee_docs_log: [],
+      params: {},
+      cronActivate: false,
+      createdAt: doc.created_at || new Date().toISOString(),
+      updatedAt: doc.updated_at || new Date().toISOString()
+    }));
+
+    return {
+      id: record.id,
+      employeeId: record.employee_id || '',
+      name: `${record.first_name} ${record.last_name}`,
+      firstName: record.first_name,
+      lastName: record.last_name,
+      email: record.email || '',
+      phone: (record as any).phone || '',
+      designation: (record as any).designation || '',
+      dateOfBirth: '',
+      address: '',
+      joiningDate: record.joining_date || new Date().toISOString(),
+      department: (record.department as any)?.department_name || record.department || '',
+      position: (record.employee_type as any)?.type_name || '',
+      employeeType: (record.employee_type as any)?.type_name ?? '',
+      status: record.status === true,
+      createdAt: record.created_at || new Date().toISOString(),
+      updatedAt: record.updated_at || new Date().toISOString(),
+      isSuperAdmin: record?.is_super_admin,
+      isCpdInvolved: (record as any).is_cpd_involved === true,
+      documents,
+      clientId: record.client_id
+    } as Employee;
+  });
+};
+
 export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoClient: boolean = true): Promise<Employee[]> => {
   try {
     console.log("Calling getAllEmployeesFromApi with clientId:", clientId);
@@ -22,7 +72,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
     // First, fetch employees with employee_type and department joins
     const { data: employeesData, error: employeesError } = await supabase
       .from('employees')
-      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
       .eq('client_id', clientId); // MANDATORY client_id filter
 
     if (employeesError) {
@@ -51,56 +101,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
 
     console.log(`Successfully fetched ${employeesData.length} employees from API for client: ${clientId}`);
     
-    // Map the database records to our Employee model
-    const employees = employeesData.map(record => {
-      // Find documents for this employee
-      const employeeDocuments = (documentsData || []).filter(doc => doc.employee_id === record.id);
-      
-      // Map employee documents to our VerificationDocument interface
-      const documents: VerificationDocument[] = employeeDocuments.map(doc => ({
-        id: doc.id,
-        employeeId: record.id,
-        documentTypeId: doc.document_type_id || '',
-        documentTypeName: (doc.document_type as any)?.name || 'Unknown',
-        documentNumber: doc.document_number || '',
-        documentImage: doc.document_url || '',
-        verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
-        verificationMethod: 'manual' as const,
-        personalInfo: doc.personal_info || undefined,
-        employee_docs_log: [],
-        params: {},
-        cronActivate: false,
-        createdAt: doc.created_at || new Date().toISOString(),
-        updatedAt: doc.updated_at || new Date().toISOString()
-      }));
-
-      const employee: Employee = {
-        id: record.id,
-        employeeId: record.employee_id || '',
-        name: `${record.first_name} ${record.last_name}`,
-        firstName: record.first_name,
-        lastName: record.last_name,
-        email: record.email || '',
-        phone: (record as any).phone || '',
-        designation: (record as any).designation || '',
-        dateOfBirth: '',
-        address: '',
-        joiningDate: record.joining_date || new Date().toISOString(),
-        department: (record.department as any)?.department_name || record.department || '',
-        position: (record.employee_type as any)?.type_name || '',
-        employeeType: (record.employee_type as any)?.type_name ?? '',
-        status: record.status === true,
-        createdAt: record.created_at || new Date().toISOString(),
-        updatedAt: record.updated_at || new Date().toISOString(),
-        isSuperAdmin: record?.is_super_admin,
-        isCpdInvolved: (record as any).is_cpd_involved === true,
-        documents: documents,
-        clientId: record.client_id
-      };
-      return employee;
-    });
-    
-    return employees;
+    return mapEmployeeRecords(employeesData, documentsData || []);
   } catch (error) {
     console.error("Error in getAllEmployeesFromApi:", error);
     // Don't show toast error, just return empty array
@@ -126,7 +127,7 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
     // First, fetch only active employees with employee_type and department joins
     const { data: employeesData, error: employeesError } = await supabase
       .from('employees')
-      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
       .eq('client_id', clientId) // MANDATORY client_id filter
       .eq('status', true); // Only fetch active employees
 
@@ -189,6 +190,8 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         updatedAt: doc.updated_at || new Date().toISOString()
       }));
 
+      const personalDetails = (record as any).personal_details || {};
+      const otherDetails = (record as any).other_details || {};
       const employee: Employee = {
         id: record.id,
         employeeId: record.employee_id || '',
@@ -198,6 +201,28 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         email: record.email || '',
         phone: (record as any).phone || '',
         designation: (record as any).designation || '',
+        personalDetails: {
+          middleName: personalDetails.middle_name || undefined,
+          fatherName: personalDetails.father_name || undefined,
+          staffId: personalDetails.staff_id || undefined,
+          experience: personalDetails.experience || undefined,
+          qualification: personalDetails.qualification || undefined,
+          gender: personalDetails.gender || undefined,
+          dob: personalDetails.dob || undefined,
+          religion: personalDetails.religion || undefined,
+          nationality: personalDetails.nationality || undefined,
+          bloodGroup: personalDetails.blood_group || undefined,
+          residenceAddress: personalDetails.residence_address || undefined,
+        },
+        professionalOtherDetails: {
+          aadharNo: otherDetails.aadhaar_number || undefined,
+          panNo: otherDetails.pan_number || undefined,
+          esiNo: otherDetails.esi_number || undefined,
+          pfNo: otherDetails.pf_number || undefined,
+          exitDate: otherDetails.exit_date || undefined,
+          biometricUserId: otherDetails.biometric_user_id || undefined,
+        },
+        profileDocuments: Array.isArray((record as any).documents) ? (record as any).documents : [],
         dateOfBirth: '',
         address: '',
         joiningDate: record.joining_date || new Date().toISOString(),
@@ -236,7 +261,7 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
     // Build query with mandatory client_id filter if provided
     let query = supabase
       .from('employees')
-      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
       .eq('id', id);
     
     // SECURITY: Add client_id filter if provided
@@ -257,6 +282,8 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
     }
 
     // Convert the response to our Employee type
+    const personalDetails = (data as any).personal_details || {};
+    const otherDetails = (data as any).other_details || {};
     const employee: Employee = {
       id: data.id,
       employeeId: data.employee_id || '',
@@ -265,6 +292,28 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
       lastName: data.last_name,
       email: data.email || '',
       phone: (data as any).phone || '',
+      profileDocuments: Array.isArray((data as any).documents) ? (data as any).documents : [],
+      personalDetails: {
+        middleName: personalDetails.middle_name || undefined,
+        fatherName: personalDetails.father_name || undefined,
+        staffId: personalDetails.staff_id || undefined,
+        experience: personalDetails.experience || undefined,
+        qualification: personalDetails.qualification || undefined,
+        gender: personalDetails.gender || undefined,
+        dob: personalDetails.dob || undefined,
+        religion: personalDetails.religion || undefined,
+        nationality: personalDetails.nationality || undefined,
+        bloodGroup: personalDetails.blood_group || undefined,
+        residenceAddress: personalDetails.residence_address || undefined,
+      },
+      professionalOtherDetails: {
+        aadharNo: otherDetails.aadhaar_number || undefined,
+        panNo: otherDetails.pan_number || undefined,
+        esiNo: otherDetails.esi_number || undefined,
+        pfNo: otherDetails.pf_number || undefined,
+        exitDate: otherDetails.exit_date || undefined,
+        biometricUserId: otherDetails.biometric_user_id || undefined,
+      },
       dateOfBirth: '',
       address: '',
       joiningDate: data.joining_date || new Date().toISOString(),
@@ -299,7 +348,7 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
     // SECURITY: Query will be automatically filtered by RLS policies
     const { data, error } = await supabase
       .from('employees')
-      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -316,6 +365,8 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
     console.log('Found employee data:', data);
 
     // Convert the response to our Employee type
+    const personalDetails = (data as any).personal_details || {};
+    const otherDetails = (data as any).other_details || {};
     return {
       id: data.id,
       employeeId: data.employee_id || '',
@@ -324,6 +375,29 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
       lastName: data.last_name,
       email: data.email || '',
       phone: '',
+      designation: (data as any).designation || '',
+      profileDocuments: Array.isArray((data as any).documents) ? (data as any).documents : [],
+      personalDetails: {
+        middleName: personalDetails.middle_name || undefined,
+        fatherName: personalDetails.father_name || undefined,
+        staffId: personalDetails.staff_id || undefined,
+        experience: personalDetails.experience || undefined,
+        qualification: personalDetails.qualification || undefined,
+        gender: personalDetails.gender || undefined,
+        dob: personalDetails.dob || undefined,
+        religion: personalDetails.religion || undefined,
+        nationality: personalDetails.nationality || undefined,
+        bloodGroup: personalDetails.blood_group || undefined,
+        residenceAddress: personalDetails.residence_address || undefined,
+      },
+      professionalOtherDetails: {
+        aadharNo: otherDetails.aadhaar_number || undefined,
+        panNo: otherDetails.pan_number || undefined,
+        esiNo: otherDetails.esi_number || undefined,
+        pfNo: otherDetails.pf_number || undefined,
+        exitDate: otherDetails.exit_date || undefined,
+        biometricUserId: otherDetails.biometric_user_id || undefined,
+      },
       dateOfBirth: '',
       address: '',
       joiningDate: data.joining_date || new Date().toISOString(),

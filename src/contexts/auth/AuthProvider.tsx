@@ -14,10 +14,10 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState } from '@/store/employeeActions';
+import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState, setSwitchContext } from '@/store/employeeActions';
 import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
-import { clearPersistedAuthState } from '@/store/authPersistence';
+import { clearPersistedAuthState, loadAuthState } from '@/store/authPersistence';
 import { validateSession } from '@/utils/sessionValidation';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -172,6 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clientIntegration = null;
       }
 
+
       // Build logo URL from path if needed
       const { buildClientLogoUrl } = await import('@/lib/utils');
       const logoUrl = buildClientLogoUrl(clientData.logo || clientData.client_logo);
@@ -190,8 +191,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         client_type_id: clientData.client_type_id,
         institution_type: clientData.institution_type,
         logo: logoUrl,
+        is_head_office: clientData.is_head_office === true,
         client_type: clientData.client_type,
-        client_integration: clientIntegration
+        client_integration: clientIntegration,
+
       };
 
       const clientType: ClientType | null = clientData.client_type ? {
@@ -218,21 +221,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     setShowAuthLoading(true);
 
-    // If user already has client info, use it directly
-    if (user.client !== undefined && user.clientType !== undefined) {
+    const clientMissingAiFlag =
+      user.client &&
+      typeof user.client === 'object' &&
+      user.client.incidentRecommendedActionsEnabled === undefined;
+
+    // If user already has client info including AI feature flag, use it directly
+    if (
+      user.client !== undefined &&
+      user.clientType !== undefined &&
+      !clientMissingAiFlag
+    ) {
       dispatch(setCurrentUser(user));
       setShowAuthLoading(false);
       return;
     }
 
-    // If user has clientId but no client info, fetch it
-    if (user.clientId && !user.client) {
+    // Fetch full client when missing, or when client exists but predates incidentRecommendedActionsEnabled
+    if (user.clientId && (!user.client || clientMissingAiFlag)) {
       try {
-        const { client, clientType, clientIntegration } = await fetchClientInfo(user.clientId);
+        const { client, clientType } = await fetchClientInfo(user.clientId);
         const userWithClientInfo = {
           ...user,
-          client,
-          clientType
+          client: client ?? user.client,
+          clientType: clientType ?? user.clientType,
         };
         dispatch(setCurrentUser(userWithClientInfo));
         setShowAuthLoading(false);
@@ -507,6 +519,40 @@ const handleLogoutBroadcast = useCallback(() => {
         return;
       }
 
+      // Backoffice users are not in the `employees` table, so the SSO
+      // SIGNED_IN handler (which calls handleUserAuthentication → looks up
+      // the email in employees) would wipe Redux state and bounce the user.
+      // We skip ONLY the SIGNED_IN branch in backoffice context — useBackofficeAuth
+      // sets the Redux state directly. SIGNED_OUT is allowed through so that
+      // refresh-token failures (Supabase SDK auto-signs-out on refresh fail)
+      // properly clear state and redirect to /backoffice/login.
+      const persistedSessionType =
+        (typeof window !== 'undefined' && loadAuthState()?.sessionType) || null;
+      const pathStartsWithBackoffice =
+        typeof window !== 'undefined' &&
+        window.location.pathname.startsWith('/backoffice');
+      const isBackofficeContext =
+        pathStartsWithBackoffice || persistedSessionType === 'backoffice';
+
+      console.log('[AUTH-DIAG] onAuthStateChange fired', {
+        event,
+        path: typeof window !== 'undefined' ? window.location.pathname : '(no-window)',
+        sessionUserEmail: session?.user?.email ?? null,
+        persistedSessionType,
+        isBackofficeContext,
+        willSkipSsoSignedInBranch: isBackofficeContext && event === 'SIGNED_IN',
+      });
+
+      if (isBackofficeContext && event === 'SIGNED_IN') {
+        console.log(
+          '[AUTH-DIAG] onAuthStateChange SIGNED_IN skipped — backoffice flow manages its own state'
+        );
+        // Make sure these flags don't leak into SSO sessions later.
+        sessionStorage.removeItem('is_login_in_progress');
+        localStorage.removeItem('is_login_in_progress');
+        return;
+      }
+
       if (event === 'SIGNED_IN' && session?.user) {
         // Set login in progress flag to prevent session validation interference
         sessionStorage.setItem('is_login_in_progress', 'true');
@@ -576,20 +622,31 @@ const handleLogoutBroadcast = useCallback(() => {
               });
             }
             
-            // Store SSO session data in localStorage for persistence
-            const authStateToSave = {
-              currentUser: currentUser,
-              isAuthenticated: true,
-              isBackofficeUser: false,
-              authError: null,
-              configuredModules: state.configuredModules,
-              employeeData: state.employeeData,
-              sessionType: 'sso' as const
-            };
-            
-            // Import and use saveAuthState with localStorage for SSO
-            const { saveAuthState } = await import('@/store/authPersistence');
-            saveAuthState(authStateToSave);
+            // Mark this persisted session as SSO. We MUST merge with the
+            // existing persisted state — by the time we reach this line,
+            // handleUserAuthentication has dispatched the new Redux state and
+            // EmployeeContext's persistence effect has already written it
+            // to sessionStorage with the live currentUser / employeeData /
+            // configuredModules. The closure-captured `currentUser` and
+            // `state.*` values up here are stale (from when this useEffect
+            // last registered the listener — typically null at mount), so
+            // building a fresh object would clobber the good Redux-derived
+            // save with stale fields and currentUser=null. Merging only
+            // adds the `sessionType` marker without disturbing the rest.
+            const { saveAuthState, loadAuthState: loadAuthStateForMerge } =
+              await import('@/store/authPersistence');
+            const existingPersisted = loadAuthStateForMerge();
+            saveAuthState({
+              ...(existingPersisted || {
+                currentUser: null,
+                isAuthenticated: true,
+                isBackofficeUser: false,
+                authError: null,
+                configuredModules: null,
+                employeeData: null,
+              }),
+              sessionType: 'sso' as const,
+            });
             
             setShowAuthLoading(false);
           } catch (error) {
@@ -743,6 +800,7 @@ const handleLogoutBroadcast = useCallback(() => {
             const employee: EmployeeData = {
               id: employeeData.id,
               clientId: employeeData.client_id,
+              homeClientId: employeeData.client_id,
               email: employeeData.email,
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
@@ -761,6 +819,13 @@ const handleLogoutBroadcast = useCallback(() => {
             
             if (employee.clientId) {
               dispatch(setClientId(employee.clientId));
+              dispatch(setSwitchContext({
+                homeClientId: employee.clientId,
+                activeClientId: employee.clientId,
+                isSwitchedContext: false,
+                clientManagementReadOnly: false,
+                switchedAccessLevel: 'W/R',
+              }));
             }
           }
           

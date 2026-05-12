@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, File, AlertCircle, FileText, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -24,6 +24,7 @@ interface ReusableFileUploaderProps {
   showFileList?: boolean; // Show file list, default true
   className?: string;
   disabled?: boolean;
+  removeIconVariant?: 'trash' | 'close';
 }
 
 const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
@@ -37,11 +38,45 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
   showFileList = true,
   className = '',
   disabled = false,
+  removeIconVariant = 'trash',
 }) => {
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+
+  const prevInitialFilesSignatureRef = useRef<string>('');
+  
+  const serializeFiles = (list: FileItem[]) =>
+    JSON.stringify(
+      (list || []).map((file) => ({
+        id: file.id || '',
+        name: file.name || '',
+        type: file.type || '',
+        size: file.size || 0,
+        base64: file.base64 || '',
+        url: file.url || '',
+        path: file.path || '',
+      }))
+    );
+
+  const initialFilesSignature = useMemo(
+    () => serializeFiles(initialFiles),
+    [initialFiles]
+  );
+
+  // Sync internal files only when initialFiles content truly changes.
+  // This avoids loop-like updates when parents pass a new array instance every render.
+  React.useEffect(() => {
+    if (prevInitialFilesSignatureRef.current === initialFilesSignature) return;
+    prevInitialFilesSignatureRef.current = initialFilesSignature;
+
+    setFiles((currentFiles) => {
+      const currentSignature = serializeFiles(currentFiles);
+      if (currentSignature === initialFilesSignature) return currentFiles;
+      return initialFiles;
+    });
+  }, [initialFiles, initialFilesSignature]);
 
   const handlePreview = (file: FileItem) => {
     setPreviewFile(file);
@@ -351,8 +386,9 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
                     <FileListItem
                       key={file.id}
                       file={file}
-                      onPreview={handlePreview}        
-                      onRemove={removeFile}       
+                      onPreview={handlePreview}
+                      onRemove={removeFile}
+                      removeIconVariant={removeIconVariant}
                     />
                   ) : (
                     <div className="flex items-start justify-between p-2 bg-gray-50 rounded border min-h-[48px] w-full gap-2">

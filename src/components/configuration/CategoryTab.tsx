@@ -34,6 +34,7 @@ interface CategoryTabProps {
   addCategory: (name: string) => void;
   updateCategory: (id: string, name: string) => void;
   deleteCategory: (id: string) => Promise<void>;
+  canCreate?: boolean;
 }
 
 // Validation: allow any characters, up to 50 characters
@@ -46,7 +47,8 @@ export const CategoryTab = ({
   categories, 
   addCategory, 
   updateCategory, 
-  deleteCategory 
+  deleteCategory,
+  canCreate = true,
 }: CategoryTabProps) => {
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null);
@@ -210,6 +212,7 @@ export const CategoryTab = ({
         <CardDescription>Manage available incident categories</CardDescription>
       </CardHeader>
       <CardContent>
+        {canCreate && (
         <form onSubmit={handleCategoryAdd} className="flex gap-4 mb-6">
           <Input
             placeholder="New category name"
@@ -235,6 +238,7 @@ export const CategoryTab = ({
             )}
           </Button>
         </form>
+        )}
         
         <Table>
           <TableHeader>
@@ -264,6 +268,7 @@ export const CategoryTab = ({
                 <TableRow key={category.id}>
                   <TableCell>{category.name}</TableCell>
                   <TableCell>
+                    {canCreate && (
                     <div className="flex gap-2">
                       <Button 
                         variant="ghost" 
@@ -330,6 +335,7 @@ export const CategoryTab = ({
                         );
                       })()}
                     </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -338,7 +344,7 @@ export const CategoryTab = ({
         </Table>
 
         {/* Edit Dialog */}
-        {editingCategory && (
+        {editingCategory && canCreate && (
           <EditDialog
             title="Edit Category"
             description="Update the category name below"
@@ -366,7 +372,7 @@ export const CategoryTab = ({
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialog open={isDeleteDialogOpen && canCreate} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Category</AlertDialogTitle>

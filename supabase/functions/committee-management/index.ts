@@ -258,10 +258,21 @@ async function createCommittee(supabase: any, payload: any) {
     .single();
   if (error) throw getCommitteeNameConflictError(error);
 
-  await syncCommitteeMembers(supabase, client_id, data.id, members || [], employee_id);
-  if (attachments && attachments.length > 0) {
-    await uploadCommitteeAttachments(supabase, client_id, data.id, attachments);
+  try {
+    await syncCommitteeMembers(supabase, client_id, data.id, members || [], employee_id);
+    if (attachments && attachments.length > 0) {
+      await uploadCommitteeAttachments(supabase, client_id, data.id, attachments);
+    }
+  } catch (err) {
+    const { error: delErr } = await supabase
+      .from('committees')
+      .delete()
+      .eq('id', data.id)
+      .eq('client_id', client_id);
+    if (delErr) console.error('Rollback failed after committee create error:', delErr);
+    throw err;
   }
+
   await writeCommitteeAuditLog(supabase, {
     clientId: client_id,
     committeeId: data.id,
@@ -442,10 +453,21 @@ async function createEvent(supabase: any, payload: any) {
     .single();
   if (error) throw new Error(error.message);
 
-  await syncEventParticipants(supabase, client_id, data.id, participant_ids || []);
-  if (attachments && attachments.length > 0) {
-    await uploadEventAttachments(supabase, client_id, data.id, attachments);
+  try {
+    await syncEventParticipants(supabase, client_id, data.id, participant_ids || []);
+    if (attachments && attachments.length > 0) {
+      await uploadEventAttachments(supabase, client_id, data.id, attachments);
+    }
+  } catch (err) {
+    const { error: delErr } = await supabase
+      .from('committee_events')
+      .delete()
+      .eq('id', data.id)
+      .eq('client_id', client_id);
+    if (delErr) console.error('Rollback failed after event create error:', delErr);
+    throw err;
   }
+
   await writeCommitteeAuditLog(supabase, {
     clientId: client_id,
     committeeId: committee_id,
@@ -740,7 +762,7 @@ async function uploadEventAttachments(
   for (const file of files) {
     if (!file.base64) continue;
     const blob = base64ToBlob(file.base64, file.type || 'application/octet-stream');
-    const safeName = String(file.name || 'file').replace(/\s+/g, '-');
+    const safeName = sanitizeStorageFileName(file.name || 'file');
     const path = `${clientId}/${eventId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
 
     const { error } = await supabase.storage
@@ -780,7 +802,7 @@ async function uploadCommitteeAttachments(
   for (const file of files) {
     if (!file.base64) continue;
     const blob = base64ToBlob(file.base64, file.type || 'application/octet-stream');
-    const safeName = String(file.name || 'file').replace(/\s+/g, '-');
+    const safeName = sanitizeStorageFileName(file.name || 'file');
     const path = `${clientId}/${committeeId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
 
     const { error } = await supabase.storage
@@ -865,6 +887,23 @@ async function hydrateEvents(supabase: any, clientId: string, events: any[]) {
       attachments: attachmentsMap.get(event.id) || [],
     };
   });
+}
+
+/** Storage object keys must not contain characters Supabase rejects (e.g. []()). Original file.name is still stored on the row. */
+function sanitizeStorageFileName(originalName: string): string {
+  const trimmed = String(originalName || '').trim() || 'file';
+  const lastDot = trimmed.lastIndexOf('.');
+  const hasExt = lastDot > 0 && lastDot < trimmed.length - 1;
+  const extRaw = hasExt ? trimmed.slice(lastDot + 1) : '';
+  const ext = extRaw.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10).toLowerCase();
+  const base = hasExt ? trimmed.slice(0, lastDot) : trimmed;
+  let safeBase = base
+    .replace(/\s+/g, '-')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  if (!safeBase) safeBase = 'file';
+  return ext ? `${safeBase}.${ext}` : safeBase;
 }
 
 function base64ToBlob(base64: string, type: string): Blob {

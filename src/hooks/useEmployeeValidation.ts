@@ -6,6 +6,31 @@ import { useAuth } from '@/contexts/auth';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ensureFreshAuthenticatedSession } from '@/utils/sessionValidation';
 
+/** Coalesce duplicate validation runs (e.g. React 18 Strict Mode double effect + fast remount). */
+const validationInflight = new Map<string, Promise<void>>();
+let lastValidationSuccessKey: string | null = null;
+let lastValidationSuccessAt = 0;
+const VALIDATION_SUCCESS_DEDUPE_MS = 750;
+
+function runEmployeeValidationDeduped(key: string, fn: () => Promise<void>): Promise<void> {
+  const inflight = validationInflight.get(key);
+  if (inflight) {
+    return inflight;
+  }
+
+  const now = Date.now();
+  if (lastValidationSuccessKey === key && now - lastValidationSuccessAt < VALIDATION_SUCCESS_DEDUPE_MS) {
+    return Promise.resolve();
+  }
+
+  const p = fn().finally(() => {
+    validationInflight.delete(key);
+  });
+
+  validationInflight.set(key, p);
+  return p;
+}
+
 /**
  * Custom hook to validate employee access on page loads and visibility changes.
  * Will redirect to login page if validation fails.
@@ -22,6 +47,11 @@ export const useEmployeeValidation = () => {
   // Function to check if the current path is a backoffice path
   const isBackofficePath = () => {
     return location.pathname.startsWith('/backoffice');
+  };
+
+  // Keep /users route quiet: user requested only user-page data call on hard refresh.
+  const isQuietUsersRoute = () => {
+    return location.pathname === '/users';
   };
 
   // Common helper to log RLS context from the current browser session
@@ -65,20 +95,33 @@ export const useEmployeeValidation = () => {
     if (isBackofficePath()) {
       return;
     }
+
+    // Skip validation for users route to avoid extra network requests on hard refresh.
+    if (isQuietUsersRoute()) {
+      return;
+    }
     
-    // Skip if no employee data
-    if (!employeeData?.id || !employeeData?.clientId) {
+    const employeeId = employeeData?.id || state.employeeData?.id || null;
+    const validationClientId =
+      employeeData?.homeClientId ||
+      employeeData?.clientId ||
+      null;
+
+    // Skip if no employee identity or no home client context yet
+    if (!employeeId || !validationClientId) {
       return;
     }
 
-    // Prevent multiple simultaneous validations
-    if (isValidatingRef.current) {
-      return;
-    }
+    const dedupeKey = `${employeeData.id}:${employeeData.clientId}:${location.pathname}`;
 
-    isValidatingRef.current = true;
-    
-    try {
+    await runEmployeeValidationDeduped(dedupeKey, async () => {
+      if (isValidatingRef.current) {
+        return;
+      }
+
+      isValidatingRef.current = true;
+
+      try {
       
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       if (!supabaseUrl) {
@@ -108,8 +151,8 @@ export const useEmployeeValidation = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          employeeId: employeeData.id,
-          clientId: employeeData.clientId
+          employeeId,
+          clientId: validationClientId
         }),
       });
       
@@ -183,7 +226,10 @@ export const useEmployeeValidation = () => {
       // If validation succeeded, log RLS context for the current authenticated user.
       // This runs in the browser with the user's JWT, so RLS policies see the real context.
       await logRlsContext();
-      
+
+      lastValidationSuccessKey = dedupeKey;
+      lastValidationSuccessAt = Date.now();
+
       // Update last validation timestamp
       lastValidationRef.current = Date.now();
       
@@ -192,6 +238,7 @@ export const useEmployeeValidation = () => {
     } finally {
       isValidatingRef.current = false;
     }
+    });
   };
 
   // Clean up function
@@ -200,13 +247,12 @@ export const useEmployeeValidation = () => {
       clearInterval(validationTimeoutRef.current);
       validationTimeoutRef.current = null;
     }
-    isValidatingRef.current = false;
   };
 
   // Effect to set up validation on page loads and visibility changes (non-backoffice)
   useEffect(() => {
     // Skip for backoffice paths or if logging out
-    if (isBackofficePath() || state.isLoggingOut) {
+    if (isBackofficePath() || isQuietUsersRoute() || state.isLoggingOut) {
       cleanup();
       return;
     }
@@ -248,7 +294,14 @@ export const useEmployeeValidation = () => {
       cleanup();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [employeeData?.id, employeeData?.clientId, location.pathname, state.isLoggingOut]);
+  }, [
+    employeeData?.id,
+    employeeData?.homeClientId,
+    employeeData?.clientId,
+    state.employeeData?.id,
+    location.pathname,
+    state.isLoggingOut,
+  ]);
 
   // Effect to log RLS context on backoffice routes whenever the path changes
   useEffect(() => {

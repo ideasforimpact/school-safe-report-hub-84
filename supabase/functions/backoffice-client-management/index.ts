@@ -125,9 +125,31 @@ async function fetchAllClients() {
     throw error
   }
 
-  console.log('✅ Successfully fetched active clients:', data?.length || 0)
+  const { data: aiRows, error: aiError } = await supabase
+    .from('client_ai_features')
+    .select('client_id, enabled')
+    .eq('feature_key', 'incident_recommended_actions')
+
+  if (aiError) {
+    console.error('Error fetching client_ai_features:', aiError)
+    throw aiError
+  }
+
+  const enabledByClient = new Map<string, boolean>(
+    (aiRows || []).map((r: { client_id: string; enabled: boolean }) => [r.client_id, r.enabled]),
+  )
+
+  const dataWithAi = (data || []).map((row: Record<string, unknown>) => {
+    const id = row.id as string
+    const incidentRecommendedActionsEnabled = enabledByClient.has(id)
+      ? (enabledByClient.get(id) as boolean)
+      : true
+    return { ...row, incident_recommended_actions_enabled: incidentRecommendedActionsEnabled }
+  })
+
+  console.log('✅ Successfully fetched active clients:', dataWithAi?.length || 0)
   return new Response(
-    JSON.stringify({ success: true, data }),
+    JSON.stringify({ success: true, data: dataWithAi }),
     { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     }

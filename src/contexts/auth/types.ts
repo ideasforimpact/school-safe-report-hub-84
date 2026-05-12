@@ -118,13 +118,17 @@ export interface Client {
   client_type_id?: string;
   institution_type?: string;
   logo?: string;
+  is_head_office?: boolean;
   client_type?: ClientType;
   client_integration?: ClientIntegration[] | null;
+  /** false = hide incident AI Recommended Actions */
+  incidentRecommendedActionsEnabled?: boolean;
 }
 
 export interface EmployeeData {
   id: string;
   clientId: string | null;
+  homeClientId?: string | null;
   firstName: string;
   lastName: string;
   email: string;

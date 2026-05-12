@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { DESCRIPTION_MAX_LENGTH } from '@/components/constants';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 
 interface ContributingFactorFormProps {
   currentFactor: {
@@ -158,7 +160,7 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
         <label className="text-sm font-medium">
           Description <span className="text-red-500">*</span>
         </label>
-        <Input
+        <TextareaWithVoice
           value={currentFactor.description} 
            onChange={(e) => {
             const value = e.target.value;
@@ -169,10 +171,10 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
             });
           }}
           placeholder="Describe this contributing factor"
-          maxLength={150}
+          maxLength={DESCRIPTION_MAX_LENGTH}
         />
         <div className="text-right text-sm text-gray-500">
-          {currentFactor.description.length}/150 characters
+          {currentFactor.description.length}/{DESCRIPTION_MAX_LENGTH} characters
         </div>
       </div>
       

@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Eye,
   Search,
   Loader2,
 } from 'lucide-react';
@@ -20,17 +21,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   fetchChildAuditStudents,
   type ChildAuditStudentRow,
 } from '@/services/child-audit/childAuditStudentsService';
-import {
-  createChildAuditRecord,
-  fetchChildAuditRecordsByStudent,
-  type ChildAuditLookupItem,
-  type ChildAuditLookups,
-  type ChildAuditRecord,
-} from '@/services/child-audit/childAuditRecordsService';
 import {
   fetchChildAuditStudentDetails,
   type ChildAuditCheckTypeDetail,
@@ -41,8 +36,72 @@ import ChildAuditReportPDF from '@/pages/child-audit/ChildAuditReportpdf';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { type FileItem } from '@/types/fileTypes';
 import { DESCRIPTION_MAX_LENGTH } from '@/components/constants';
+import { formatDate } from '@/lib/Dateformat';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 type TabKey = 'check' | 'calendar' | 'audit' | 'report';
+type ChildAuditLookupItem = {
+  id: string;
+  name: string;
+  active: boolean;
+  definition?: string | null;
+};
+
+type ChildAuditLookups = {
+  checkTypes: ChildAuditLookupItem[];
+  physicalConditions: ChildAuditLookupItem[];
+  behaviours: ChildAuditLookupItem[];
+  meltdowns: ChildAuditLookupItem[];
+  aggressions: ChildAuditLookupItem[];
+};
+
+type ChildAuditRecord = {
+  id: string;
+  client_id: string;
+  student_id: string;
+  employee_id: string | null;
+  check_type_id: string | null;
+  physical_condition_ids: string[];
+  physical_where?: Record<string, string[]>;
+  behaviour_ids: string[];
+  meltdown_occurred: boolean;
+  meltdown_definition: string[];
+  aggression_ids: string[];
+  notes: string | null;
+  attachments?: Array<{
+    id: string;
+    bucket: string;
+    file_path: string;
+    file_name: string;
+    mime_type: string | null;
+    file_size: number | null;
+    signed_url: string | null;
+  }>;
+  created_at: string;
+  updated_at: string;
+};
+
+type CreateChildAuditRecordPayload = Omit<
+  ChildAuditRecord,
+  'id' | 'created_at' | 'updated_at' | 'attachments'
+> & {
+  attachments?: Array<{
+    file_name: string;
+    mime_type?: string | null;
+    file_size?: number | null;
+    base64: string;
+  }>;
+};
+
+type ChildAuditEdgeResponse = {
+  ok: boolean;
+  version?: number;
+  data?: ChildAuditRecord[];
+  record?: ChildAuditRecord;
+  error?: string;
+  message?: string;
+};
+
 type CheckSelectionState = {
   physical_condition_ids: string[];
   behaviour_ids: string[];
@@ -240,18 +299,68 @@ const getFactorStyle = (name: string) => {
   return { title: 'Behaviour / Mood', icon: '👁', textClass: 'text-slate-700' };
 };
 
-const toAuditDateHeader = (value: string) =>
-  new Date(value).toLocaleDateString('en-US', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).toUpperCase();
+const toAuditDateHeader = (value: string) => {
+  const date = new Date(value);
+
+  const dayName = date.toLocaleDateString("en-US", {
+    weekday: "long",
+  });
+
+  return `${dayName}, ${formatDate(value)}`.toUpperCase();
+};
+
+const fetchChildAuditRecordsByStudent = async (
+  clientId: string,
+  studentId: string
+): Promise<ChildAuditRecord[]> => {
+  const { data, error } = await supabase.functions.invoke<ChildAuditEdgeResponse>('child-audit-save-check', {
+    body: {
+      action: 'fetch_records',
+      client_id: clientId,
+      student_id: studentId,
+    },
+  });
+
+  if (error) throw new Error(error.message ?? 'Failed to fetch child audit records');
+  if (!data?.ok || !Array.isArray(data.data)) {
+    throw new Error(data?.message ?? data?.error ?? 'Invalid response from child-audit-save-check');
+  }
+
+  return data.data;
+};
+
+const createChildAuditRecord = async (payload: CreateChildAuditRecordPayload): Promise<ChildAuditRecord> => {
+  const { data, error } = await supabase.functions.invoke<ChildAuditEdgeResponse>('child-audit-save-check', {
+    body: {
+      action: 'save_check',
+      client_id: payload.client_id,
+      student_id: payload.student_id,
+      employee_id: payload.employee_id,
+      check_type_id: payload.check_type_id,
+      physical_condition_ids: payload.physical_condition_ids,
+      behaviour_ids: payload.behaviour_ids,
+      aggression_ids: payload.aggression_ids,
+      meltdown_occurred: payload.meltdown_occurred,
+      meltdown_definition: payload.meltdown_definition ?? [],
+      notes: payload.notes,
+      physical_where: payload.physical_where ?? {},
+      attachments: payload.attachments ?? [],
+    },
+  });
+
+  if (error) throw new Error(error.message ?? 'Failed to save child audit check');
+  if (!data?.ok || !data.record) {
+    throw new Error(data?.message ?? data?.error ?? 'Invalid response from child-audit-save-check');
+  }
+
+  return data.record;
+};
 
 const ChildAuditPage = () => {
   const { employeeData } = useAuth();
   const clientId = employeeData?.clientId;
   const employeeId = employeeData?.id ?? null;
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<ChildAuditStudentRow[]>([]);
@@ -281,6 +390,8 @@ const ChildAuditPage = () => {
   const [auditDateSort, setAuditDateSort] = useState<'asc' | 'desc'>('desc');
   const [auditTypeSort, setAuditTypeSort] = useState<'asc' | 'desc'>('asc');
   const [downloading, setDownloading] = useState(false);
+  
+  const EMPTY_INITIAL_FILES = useMemo<FileItem[]>(() => [], []);
 
   const parseWhereOptions = useCallback((definition?: string | null): string[] => {
     if (!definition) return BODY_PART_OPTIONS;
@@ -395,6 +506,7 @@ const ChildAuditPage = () => {
     }
     return map;
   }, [checkTypeDetails]);
+  
 
   const selectedCheckTypeGroups = useMemo(() => {
     const target =
@@ -461,6 +573,7 @@ const ChildAuditPage = () => {
 
       const applyLatestSelection = (latest: ChildAuditLatestSelection | null) => {
         if (!latest) {
+          applySelectionState(null);
           if (detail.checkTypes.length > 0) {
             const firstCheckTypeId = detail.checkTypes[0].id;
             setSelectedCheckType((prev) => prev ?? firstCheckTypeId);
@@ -562,6 +675,11 @@ const ChildAuditPage = () => {
   }, [students, search]);
 
   const recentRecord = records[0];
+  const selectedCheckTypeRecord = useMemo(
+    () => records.find((record) => record.check_type_id === selectedCheckType) ?? null,
+    [records, selectedCheckType]
+  );
+  const savedAttachments = selectedCheckTypeRecord?.attachments ?? [];
 
   const calendarIndicators = useMemo(() => {
     const month = calendarMonth;
@@ -625,6 +743,11 @@ const ChildAuditPage = () => {
   const handleDownload = async () => {
     if (!selectedStudent) return;
 
+    if (monthReport.checks === 0) {
+      toast.error("No data available for this month");
+      return;
+    }
+
     try {
       setDownloading(true);
 
@@ -641,9 +764,9 @@ const ChildAuditPage = () => {
       link.href = url;
       link.download = `${selectedStudent.name}_Report.pdf`;
 
-      document.body.appendChild(link); 
+      document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);      
+      document.body.removeChild(link);
     } catch (error) {
       console.error("Download failed:", error);
     } finally {
@@ -827,6 +950,10 @@ const diagnostics = {
     items.includes(id) ? items.filter((value) => value !== id) : [...items, id];
 
   const submitCheck = async () => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: submit is not allowed');
+      return;
+    }
     if (!clientId || !selectedStudent) return;
     if (!selectedCheckType) {
       toast.error('Please select Check Type');
@@ -1061,7 +1188,7 @@ const diagnostics = {
                         </div>
                         
                         <p className="text-sm text-muted-foreground whitespace-nowrap">
-                          {new Date().toLocaleString("en-IN")}
+                          {formatDate(new Date())}
                         </p>
                       </div>
                     </CardContent>
@@ -1098,9 +1225,9 @@ const diagnostics = {
                 <p className="text-sm text-muted-foreground">Last recorded</p>
                 {recentRecord ? (
                   <p className="text-base mt-1">
-                    {lookupMap.get(recentRecord.check_type_id ?? '') ?? 'Check'} · {toDateLabel(recentRecord.created_at)}
+                    {lookupMap.get(recentRecord.check_type_id ?? '') ?? 'Check'}
                     {' · '}
-                    {toTimeLabel(recentRecord.created_at)}
+                    {formatDate(recentRecord.created_at)}
                   </p>
                 ) : (
                   <p className="text-base mt-1">No record yet.</p>
@@ -1258,17 +1385,46 @@ const diagnostics = {
                     <CardTitle className="text-xl">Attachments</CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {savedAttachments.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        <div className="space-y-2">
+                          {savedAttachments.map((attachment) => {
+                            const publicUrl = supabase.storage
+                              .from(attachment.bucket)
+                              .getPublicUrl(attachment.file_path).data.publicUrl;
+                            return (
+                              <div
+                                key={attachment.id}
+                                className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+                              >
+                                <span className="truncate text-sm text-slate-700">{attachment.file_name}</span>
+                                <a
+                                  href={publicUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-600 hover:text-blue-700"
+                                  aria-label={`View ${attachment.file_name}`}
+                                  title="View document"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <ReusableFileUploader
                       key={`${selectedStudent.id}-${attachmentUploaderKey}`}
                       onFilesChange={setAttachments}
-                      initialFiles={[]}
+                      initialFiles={EMPTY_INITIAL_FILES}
                       maxFiles={5}
                       maxSize={10}
                       maxTotalSize={50}
                       allowedTypes={['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']}
                       accept="image/*,.pdf"
                       showFileList={true}
-                      disabled={saving}
+                      disabled={saving || isReadOnlySwitchedContext}
                     />
                   </CardContent>
                 </Card>
@@ -1282,7 +1438,7 @@ const diagnostics = {
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Optional notes..."
-                      className="min-h-[110px] text-base"
+                      className="min-h-[110px] text-base break-words whitespace-pre-wrap"
                       maxLength={DESCRIPTION_MAX_LENGTH}
                     />
                     <div className="text-right text-sm text-gray-500 mt-2">
@@ -1298,7 +1454,11 @@ const diagnostics = {
                   }}
                 >
                   <div className="mx-6 py-3 border-slate-200 shadow-sm">
-                    <Button className="w-full h-12 text-base font-semibold" onClick={submitCheck} disabled={saving}>
+                    <Button
+                      className="w-full h-12 text-base font-semibold"
+                      onClick={submitCheck}
+                      disabled={saving || isReadOnlySwitchedContext}
+                    >
                     
                       {saving ? 'Saving...' : 'Submit Check'}
                     </Button>
@@ -1394,7 +1554,7 @@ const diagnostics = {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">{selectedDate ? toDateLabel(selectedDate.toISOString()) : 'Day records'}</CardTitle>
+                    <CardTitle className="text-lg"> {selectedDate ? formatDate(selectedDate.toISOString()) : 'Day records'} </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {selectedDayRecords.length === 0 ? (
@@ -1424,7 +1584,7 @@ const diagnostics = {
                             ))}
                             {record.meltdown_occurred && <Badge variant="softInfo">Meltdown</Badge>}
                           </div>
-                          {record.notes && <p className="text-sm text-muted-foreground mt-2">"{record.notes}"</p>}
+                          {record.notes && <p className="text-sm text-muted-foreground mt-2 break-words whitespace-pre-wrap">"{record.notes}"</p>}
                         </div>
                       ))
                     )}
@@ -1545,7 +1705,7 @@ const diagnostics = {
 
                                     <div className="pt-1 border-t border-slate-100">
                                       <p className="text-xs font-semibold text-slate-500 mb-1">Notes</p>
-                                      <p className="text-sm text-slate-600 italic">
+                                      <p className="text-sm text-slate-600 italic break-words whitespace-pre-wrap">
                                         "{record.notes?.trim() ? record.notes : 'No notes provided.'}"
                                       </p>
                                     </div>
@@ -1657,7 +1817,7 @@ const diagnostics = {
                     <Button
                       className="w-full h-12 text-base font-semibold"
                       onClick={handleDownload}
-                      disabled={downloading}
+                      disabled={downloading || monthReport.checks === 0}
                     >
                       {downloading ? (
                         <>

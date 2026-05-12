@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
   Table,
   TableBody,
@@ -12,202 +11,104 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { ModuleAccessItem } from '@/types/moduleAccess';
-import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmployeeUser } from '@/pages/UserManagement';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useAuth } from '@/contexts/auth/useAuth';
 import { formatDate } from "@/lib/Dateformat";
-import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 
 interface UserListProps {
   users: EmployeeUser[];
   onEditClick: (user: EmployeeUser) => void;
-  onDeleteUser: (id: string) => void;
-  onDeactivateUser: (id: string) => void;
-  onReactivateUser: (id: string) => void;
+  onDeleteUser: (id: string) => void | Promise<void>;
+  onDeactivateUser: (id: string) => void | Promise<void>;
+  onReactivateUser: (id: string) => void | Promise<void>;
   hasAdminAccess?: boolean;
-  onRefresh?: () => void;
+  onRefresh?: () => void | Promise<void>;
+  currentPage?: number;
+  totalItems?: number;
+  itemsPerPage?: number;
+  onPageChange?: (page: number) => void;
+  canEditUsers?: boolean;
 }
 
-const UserList = ({ 
-  users, 
-  onEditClick, 
-  onDeleteUser, 
-  onDeactivateUser, 
-  onReactivateUser, 
+type EmployeeDocumentInfo = {
+  id: string;
+  name: string;
+  status: 'pending' | 'verified' | 'failed';
+};
+
+type UserListEmployee = EmployeeUser & {
+  tags?: string[];
+  designation?: string;
+  documentSummaries?: EmployeeDocumentInfo[];
+};
+
+const UserList = ({
+  users,
+  onEditClick,
+  onDeleteUser,
+  onDeactivateUser,
+  onReactivateUser,
   hasAdminAccess = false,
   onRefresh,
+  currentPage: controlledCurrentPage,
+  totalItems: controlledTotalItems,
+  itemsPerPage: controlledItemsPerPage,
+  onPageChange,
+  canEditUsers = true,
 }: UserListProps) => {
-  type EmployeeDocumentInfo = {
-    id: string;
-    name: string;
-    status: 'pending' | 'verified' | 'failed';
-  };
-
-  const { employeeData } = useAuth();
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
-  const [employeeReferences, setEmployeeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
-  const [cpdDialogUser, setCpdDialogUser] = useState<EmployeeUser | null>(null);
-  const [documentsByEmployee, setDocumentsByEmployee] = useState<Record<string, EmployeeDocumentInfo[]>>({});
-  const [isDocumentsLoading, setIsDocumentsLoading] = useState(false);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Pre-load reference info so we can disable delete button for linked employees
-  useEffect(() => {
-    const clientId = employeeData?.clientId;
-    if (!clientId || users.length === 0) {
-      setEmployeeReferences({});
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchReferences = async () => {
-      try {
-        const results = await Promise.all(
-          users.map(async (user) => {
-            const refInfo = await incidentReferenceService.checkEmployeeReferences(user.id, clientId);
-            return { id: user.id, refInfo };
-          })
-        );
-
-        if (isCancelled) return;
-
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
-        setEmployeeReferences(map);
-      } catch (error) {
-        console.error('Error preloading employee reference info:', error);
-      }
-    };
-
-    fetchReferences();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [users, employeeData]);
-
-  // Fetch employee uploaded documents for the info popover near Department.
-  useEffect(() => {
-    let isCancelled = false;
-
-    const loadEmployeeDocuments = async () => {
-      if (!users.length) {
-        setDocumentsByEmployee({});
-        return;
-      }
-
-      try {
-        setIsDocumentsLoading(true);
-        const employeeIds = users.map((u) => u.id).filter(Boolean);
-
-        const { data, error } = await supabase
-          .from('employee_documents')
-          .select('id, employee_id, verification_status, params, document_type:document_type_id(name)')
-          .in('employee_id', employeeIds as any)
-          .eq('is_delete', 0);
-
-        if (error) throw error;
-        if (isCancelled) return;
-
-        const toLabel = (value: string) =>
-          value
-            .split('_')
-            .filter(Boolean)
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join(' ');
-
-        const normalizeStatus = (status: string | null | undefined): EmployeeDocumentInfo['status'] => {
-          if (!status) return 'pending';
-          const normalized = status.toLowerCase();
-          if (normalized === 'verified' || normalized === 'completed') return 'verified';
-          if (normalized === 'failed' || normalized === 'rejected') return 'failed';
-          return 'pending';
-        };
-
-        const grouped: Record<string, EmployeeDocumentInfo[]> = {};
-        users.forEach((u) => {
-          grouped[u.id] = [];
-        });
-
-        (data || []).forEach((doc: any) => {
-          const employeeId = doc.employee_id as string;
-          const selected = doc?.params?.selected;
-          const typeName = doc?.document_type?.name;
-          const displayName = toLabel(typeName || selected || 'document');
-
-          if (!grouped[employeeId]) grouped[employeeId] = [];
-          grouped[employeeId].push({
-            id: doc.id,
-            name: displayName,
-            status: normalizeStatus(doc.verification_status),
-          });
-        });
-
-        setDocumentsByEmployee(grouped);
-      } catch (error) {
-        console.error('Error loading employee documents in user list:', error);
-      } finally {
-        if (!isCancelled) setIsDocumentsLoading(false);
-      }
-    };
-
-    loadEmployeeDocuments();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [users]);
+  const [localCurrentPage, setLocalCurrentPage] = useState(1);
+  const isControlledPagination =
+    controlledCurrentPage !== undefined &&
+    controlledTotalItems !== undefined &&
+    controlledItemsPerPage !== undefined;
+  const currentPage = controlledCurrentPage ?? localCurrentPage;
+  const itemsPerPage = controlledItemsPerPage ?? 10;
+  const totalItems = controlledTotalItems ?? users.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const shouldHideWriteActions = !canEditUsers;
 
   console.log("UserList component - Users:", users);
   console.log("UserList component - hasAdminAccess:", hasAdminAccess);
 
-  // Pagination logic
-  const totalItems = users.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const sortedUsers = useMemo(() => {
+  const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA; // newest first
     });
   }, [users]);
-  const paginatedUsers = useMemo(() => {
+
+  const displayedUsers = useMemo(() => {
+    if (isControlledPagination) {
+      return users;
+    }
+
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return sortedUsers.slice(startIndex, endIndex);
-  }, [sortedUsers, currentPage, itemsPerPage]);
-  // Reset to first page when items per page changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [itemsPerPage]);
+  }, [currentPage, isControlledPagination, itemsPerPage, sortedUsers, users]);
 
-  // Reset to first page when users array changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [users.length]);
+  useEffect(() => {
+    if (!isControlledPagination) {
+      setLocalCurrentPage(1);
+    }
+  }, [isControlledPagination, users.length]);
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+    const nextPage = Math.min(Math.max(page, 1), totalPages);
 
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(Number(value));
+    if (onPageChange) {
+      onPageChange(nextPage);
+      return;
+    }
+
+    setLocalCurrentPage(nextPage);
   };
 
   const getStatusBadge = (status: 'pending' | 'verified' | 'failed') => {
@@ -223,32 +124,10 @@ const UserList = ({
 
 
   // Handle deactivate user with database update
-  const handleDeactivateUser = async (userId: string, employeeId: string, clientId: string) => {
+  const handleDeactivateUser = async (userId: string) => {
     try {
       setIsTableLoading(true);
-      
-      // Update the employee status in the database
-      const { data, error } = await supabase
-        .from('employees')
-        .update({ 
-          status: false, // Set active = 0 (false)
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .eq('client_id', clientId);
-
-      if (error) {
-        console.error('Error deactivating employee:', error);
-        toast.error('Failed to deactivate employee');
-        return;
-      }
-
-      console.log('Employee deactivated successfully:', data);
-      
-      // Call the parent's deactivate function
       await onDeactivateUser(userId);
-      
-      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
@@ -263,32 +142,10 @@ const UserList = ({
   };
 
   // Handle activate user with database update
-  const handleActivateUser = async (userId: string, employeeId: string, clientId: string) => {
+  const handleActivateUser = async (userId: string) => {
     try {
       setIsTableLoading(true);
-      
-      // Update the employee status in the database
-      const { data, error } = await supabase
-        .from('employees')
-        .update({ 
-          status: true, // Set active = 1 (true)
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .eq('client_id', clientId);
-
-      if (error) {
-        console.error('Error activating employee:', error);
-        toast.error('Failed to activate employee');
-        return;
-      }
-
-      console.log('Employee activated successfully:', data);
-      
-      // Call the parent's reactivate function
       await onReactivateUser(userId);
-      
-      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
@@ -328,7 +185,7 @@ const UserList = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {paginatedUsers.map((user) => (
+        {displayedUsers.map((user) => (
           <TableRow key={user.id} className={!user.isActive ? "bg-muted/20" : ""}>
             <TableCell>
               <div className="flex items-center gap-2">
@@ -356,10 +213,11 @@ const UserList = ({
               <div className="flex flex-col">
                 <span className="font-medium text-gray-900">{user.firstName} {user.lastName}</span>
                 {(() => {
+                  const userDetails = user as UserListEmployee;
                   const tags =
-                    Array.isArray((user as any).tags) && (user as any).tags.length > 0
-                      ? (user as any).tags
-                      : ((user as any).designation || '')
+                    Array.isArray(userDetails.tags) && userDetails.tags.length > 0
+                      ? userDetails.tags
+                      : (userDetails.designation || '')
                           .split(',')
                           .map((tag: string) => tag.trim())
                           .filter(Boolean)
@@ -384,7 +242,6 @@ const UserList = ({
                     type="button"
                     className="text-blue-600 hover:text-blue-700 disabled:text-gray-300"
                     aria-label={`View documents for ${user.firstName} ${user.lastName}`}
-                    disabled={isDocumentsLoading}
                   >
                     <AlertCircle className="h-4 w-4" />
                   </button>
@@ -394,12 +251,10 @@ const UserList = ({
                     DOCUMENTS
                   </div>
                   <div className="pt-2 space-y-2 max-h-56 overflow-auto">
-                    {isDocumentsLoading ? (
-                      <div className="text-sm text-gray-500">Loading...</div>
-                    ) : (documentsByEmployee[user.id] || []).length === 0 ? (
+                    {((user as UserListEmployee).documentSummaries || []).length === 0 ? (
                       <div className="text-sm text-gray-500">No uploaded documents</div>
                     ) : (
-                      (documentsByEmployee[user.id] || []).map((doc) => (
+                      ((user as UserListEmployee).documentSummaries || []).map((doc) => (
                         <div key={doc.id} className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <FileText className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -416,7 +271,7 @@ const UserList = ({
             {/* <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell> */}
             <TableCell>
               {user.joiningDate ? formatDate(user.joiningDate) : '-'}
-            </TableCell>            
+            </TableCell>
             <TableCell>
               {user.isActive ? (
                 <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
@@ -431,21 +286,23 @@ const UserList = ({
             <TableCell>
               {!user.isSuperAdmin && hasAdminAccess ? (
                 <div className="flex space-x-1">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => onEditClick(user)}
+                  {!shouldHideWriteActions && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onEditClick(user)}
                       disabled={isTableLoading}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  
-                  {user.isActive ? (
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+
+                  {!shouldHideWriteActions && (user.isActive ? (
                       // Deactivate Button
                       <AlertDialog open={showDeactivateDialog === user.id} onOpenChange={(open) => setShowDeactivateDialog(open ? user.id : null)}>
                       <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="icon"
                             disabled={isTableLoading}
                           >
@@ -461,9 +318,9 @@ const UserList = ({
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
+                          <AlertDialogAction
                             className="bg-amber-600 hover:bg-amber-700"
-                              onClick={() => handleDeactivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              onClick={() => handleDeactivateUser(user.id)}
                               disabled={isTableLoading}
                           >
                             Deactivate
@@ -475,8 +332,8 @@ const UserList = ({
                       // Activate Button
                       <AlertDialog open={showActivateDialog === user.id} onOpenChange={(open) => setShowActivateDialog(open ? user.id : null)}>
                         <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="icon"
                             disabled={isTableLoading}
                     >
@@ -492,9 +349,9 @@ const UserList = ({
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
+                            <AlertDialogAction
                               className="bg-green-600 hover:bg-green-700"
-                              onClick={() => handleActivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              onClick={() => handleActivateUser(user.id)}
                               disabled={isTableLoading}
                             >
                               Activate
@@ -502,54 +359,12 @@ const UserList = ({
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                  )}
-                  
-                  {(() => {
-                    const refInfo = employeeReferences[user.id];
-                    const isLinked = refInfo?.hasReferences || false;
-                    const message = refInfo?.message || '';
-
-                    if (isLinked) {
-                      return (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  disabled={true}
-                                  aria-disabled="true"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                  }}
-                                  className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent 
-                              side="left" 
-                              align="center" 
-                              sideOffset={8} 
-                              className="max-w-xs whitespace-normal text-left"
-                            >
-                              <p className="text-xs leading-snug text-left">
-                                {message}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      );
-                    }
-
-                    return (
+                  ))}
+                  {!shouldHideWriteActions && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
                           disabled={isTableLoading}
                         >
@@ -565,7 +380,7 @@ const UserList = ({
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                           <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                           className="bg-destructive hover:bg-destructive/90"
                           onClick={() => onDeleteUser(user.id)}
                             disabled={isTableLoading}
@@ -575,20 +390,21 @@ const UserList = ({
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                    );
-                  })()}
+                  )}
                 </div>
               ) : (
                 <div className="flex space-x-1">
                   {/* Show only view button if user doesn't have admin access */}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  {canEditUsers && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => onEditClick(user)}
                       disabled={!user.isActive || !hasAdminAccess || isTableLoading}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
+                  )}
                 </div>
               )}
             </TableCell>

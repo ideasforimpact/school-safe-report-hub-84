@@ -9,12 +9,14 @@ interface TemplateDetailViewProps {
   template: AssessmentTemplate;
   onBack: () => void;
   onEdit: () => void;
+  canEdit?: boolean;
 }
 
 const TemplateDetailView: React.FC<TemplateDetailViewProps> = ({
   template,
   onBack,
-  onEdit
+  onEdit,
+  canEdit = true,
 }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -29,10 +31,12 @@ const TemplateDetailView: React.FC<TemplateDetailViewProps> = ({
           </Button>
           <h2 className="text-xl font-semibold">{template.title}</h2>
         </div>
-        <Button onClick={onEdit}>
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Template
-        </Button>
+        {canEdit && (
+          <Button onClick={onEdit}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Template
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

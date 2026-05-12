@@ -164,7 +164,6 @@ async function sendMonthlyExportEmail(
 
     if (data?.success === true) {
       await updateMonthlyExportEmailStatus(supabase, row.id, true);
-      await recordCentralizedNotificationForMonthlyExport(supabase, row);
       return true;
     }
 
@@ -175,43 +174,6 @@ async function sendMonthlyExportEmail(
     const message = err instanceof Error ? err.message : String(err);
     await updateMonthlyExportEmailStatus(supabase, row.id, false, row.retry_count, message);
     return false;
-  }
-}
-
-async function recordCentralizedNotificationForMonthlyExport(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  row: MonthlyExportEmailRow
-): Promise<void> {
-  try {
-    const messagePreview = (row.body || '')
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 240);
-
-    const { error } = await supabase.rpc('create_centralized_notification', {
-      p_client_id: row.client_id,
-      p_module_id: null,
-      p_module_name: 'monthly-report',
-      p_email_id: null,
-      p_notification_type: 'monthly_report_ready',
-      p_channel: 'email',
-      p_title: row.subject || 'Monthly compliance report',
-      p_message: messagePreview || null,
-      p_payload: {
-        monthly_export_email_id: row.id,
-        queue_id: row.queue_id,
-        document_url: row.document_url,
-      },
-      p_recipient_employee_id: row.target_employee_id,
-      p_recipient_email: row.recipient_email,
-    });
-
-    if (error) {
-      console.error('Failed to create centralized monthly report notification:', error);
-    }
-  } catch (error) {
-    console.error('Error creating centralized monthly report notification:', error);
   }
 }
 

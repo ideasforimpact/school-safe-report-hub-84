@@ -693,7 +693,7 @@ export const getAllSOPStatistics = async (
     console.log('[getAllSOPStatistics] Starting calculation for clientId:', clientId, 'employeeId:', employeeId);
     
     const [totalSOPs, totalEmployeesInvolved, totalSOPsSignedOff, totalSOPsToBeDone] = await Promise.all([
-      getTotalSOPsCount(clientId, employeeId),
+      getTotalSOPsCount(clientId),
       getTotalEmployeesInvolved(clientId),
       getTotalSOPsSignedOff(clientId),
       getTotalSOPsToBeDone(clientId), // Fixed: Call the function instead of calculating incorrectly

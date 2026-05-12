@@ -13,7 +13,6 @@ import ReopenIncidentDialog from '@/features/incident/ReopenIncidentDialog';
 import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDate } from '@/lib/Dateformat';
-import IncidentDescription from './details/IncidentDescription';
 
 interface IncidentHeaderProps {
   incident: Incident;
@@ -23,13 +22,15 @@ interface IncidentHeaderProps {
   getStatusColor: (status: IncidentStatus) => string;
   onCloseButtonClick?: () => void;
   onIncidentUpdate?: () => void;
+  isReadOnly?: boolean;
 }
 
 const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   incident,
   getStatusColor,
   onCloseButtonClick,
-  onIncidentUpdate
+  onIncidentUpdate,
+  isReadOnly = false
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -82,26 +83,29 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
 
   // Get permissions for this specific incident
   const permissions = React.useMemo(() => {
-    if (!incident.reportedBy?.id) return { canEdit: false, canClose: false, canReopen: false };
+    if (isReadOnly || !incident.reportedBy?.id) return { canEdit: false, canClose: false, canReopen: false };
     
     return checkPermissions(
       incident.reportedBy.id,
       incident.owner?.id
     );
-  }, [incident.reportedBy?.id, incident.owner?.id, checkPermissions]);
+  }, [isReadOnly, incident.reportedBy?.id, incident.owner?.id, checkPermissions]);
 
   const handleEditClick = () => {
+    if (isReadOnly) return;
     console.log("Navigating to edit incident:", incident.id);
     navigate(`/incident/${incident.id}/edit`);
   };
 
   const handleCloseIncident = () => {
+    if (isReadOnly) return;
     if (onCloseButtonClick) {
       onCloseButtonClick();
     }
   };
 
   const handleReopenClick = () => {
+    if (isReadOnly) return;
     setReopenReason('');
     setShowReopenDialog(true);
   };
@@ -231,6 +235,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
                 Edit
               </Button>
             )}
+            {user?.client?.incidentRecommendedActionsEnabled !== false && (
             <Button
               variant="outline"
               size="sm"
@@ -240,17 +245,12 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
             >
               <Sparkles className="h-4 w-4 text-black" />
             </Button>
+            )}
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="pt-6 space-y-6">
-
-        <IncidentDescription
-            description={incident.description}
-            image={incident.image}
-        />
-
+      <CardContent className="pt-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-gray-400" />

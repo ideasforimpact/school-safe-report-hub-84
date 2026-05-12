@@ -10,4 +10,314 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error('Missing required environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
 }
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// ── Two-client, namespaced-localStorage architecture ──────────────────────
+//
+// We host two parallel auth flows on the same origin:
+//   • SSO  (/login, Google OAuth)      → its own Supabase auth bucket
+//   • Backoffice (/backoffice/login)   → its own Supabase auth bucket
+//
+// Each flow runs against the same Supabase project, but writes its session
+// JWT to a separate localStorage key via `auth.storageKey`. This is the
+// standard Supabase pattern for multi-app-on-one-origin scenarios. Sessions
+// can coexist across tabs without overwriting each other, and a new tab
+// inherits the matching bucket's session (which sessionStorage could not).
+//
+// At runtime we route every `supabase.*` call to whichever client matches
+// the current URL path — so the existing call sites (hundreds of
+// `supabase.from(...)` etc. across the repo) keep working unchanged.
+
+export const SSO_STORAGE_KEY = 'sb-safeschool-sso-auth';
+export const BACKOFFICE_STORAGE_KEY = 'sb-safeschool-backoffice-auth';
+
+// IMPORTANT: autoRefreshToken is set to FALSE on both clients.
+//
+// Why: each Supabase client owns its own refresh-timer AND its own hidden
+// document.visibilitychange listener that (silently) re-starts the timer
+// every time the tab is focused, as long as `autoRefreshToken: true`. With
+// two clients alive in memory, the browser would fire TWO
+// `?grant_type=refresh_token` requests every refresh interval whenever the
+// user has logged into both flows — even on a page that only consumes one.
+//
+// We instead manage refresh ourselves in `syncSupabaseAutoRefreshToActivePath()`
+// below: we manually call `startAutoRefresh()` on the active client and
+// `stopAutoRefresh()` on the inactive one, and we also wire up a single
+// visibility listener that respects which bucket is active.
+const ssoRawClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    storageKey: SSO_STORAGE_KEY,
+    persistSession: true,
+    autoRefreshToken: false,
+    // Required for OAuth callback (/callback) to detect & exchange the code.
+    detectSessionInUrl: true,
+  },
+});
+
+const backofficeRawClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    storageKey: BACKOFFICE_STORAGE_KEY,
+    persistSession: true,
+    autoRefreshToken: false,
+    // Backoffice uses email/password (no OAuth callback flow). Disabling
+    // detectSessionInUrl avoids it racing with the SSO client on /callback.
+    detectSessionInUrl: false,
+  },
+});
+
+const isBackofficePath = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return window.location.pathname.startsWith('/backoffice');
+};
+
+const getActiveRawClient = () => (isBackofficePath() ? backofficeRawClient : ssoRawClient);
+
+// ── Auto-refresh sync ──────────────────────────────────────────────────────
+// With autoRefreshToken: false on both clients, NEITHER client refreshes on
+// its own timer or on visibilitychange. We drive refresh manually here so
+// only the active bucket has a running ticker.
+//
+// Public surface:
+//   • syncSupabaseAutoRefreshToActivePath() — call on every route change.
+//   • The module also installs a single visibilitychange listener that pauses
+//     all refresh while the tab is hidden and resumes the active one on focus.
+//
+// Calling stop/start is idempotent and safe even when the client has no
+// session in its bucket — the SDK ticks but does no network work.
+
+let activeAutoRefresh: 'backoffice' | 'sso' | null = null;
+
+const stopAllAutoRefresh = (): void => {
+  try { ssoRawClient.auth.stopAutoRefresh(); } catch {}
+  try { backofficeRawClient.auth.stopAutoRefresh(); } catch {}
+};
+
+export function syncSupabaseAutoRefreshToActivePath(): void {
+  if (typeof document !== 'undefined' && document.hidden) {
+    // Tab hidden — keep both stopped; the visibility listener will resume
+    // the right client when the tab regains focus.
+    if (activeAutoRefresh !== null) {
+      stopAllAutoRefresh();
+      activeAutoRefresh = null;
+      console.log('[AUTH-DIAG] syncSupabaseAutoRefresh: tab hidden, both paused');
+    }
+    return;
+  }
+
+  const next: 'backoffice' | 'sso' = isBackofficePath() ? 'backoffice' : 'sso';
+  if (activeAutoRefresh === next) return;
+
+  if (next === 'backoffice') {
+    try { ssoRawClient.auth.stopAutoRefresh(); } catch (e) { console.warn('[AUTH-DIAG] stop SSO autoRefresh failed', e); }
+    try { backofficeRawClient.auth.startAutoRefresh(); } catch (e) { console.warn('[AUTH-DIAG] start backoffice autoRefresh failed', e); }
+  } else {
+    try { backofficeRawClient.auth.stopAutoRefresh(); } catch (e) { console.warn('[AUTH-DIAG] stop backoffice autoRefresh failed', e); }
+    try { ssoRawClient.auth.startAutoRefresh(); } catch (e) { console.warn('[AUTH-DIAG] start SSO autoRefresh failed', e); }
+  }
+
+  activeAutoRefresh = next;
+  console.log('[AUTH-DIAG] syncSupabaseAutoRefresh', {
+    active: next,
+    inactivePaused: next === 'backoffice' ? 'sso' : 'backoffice',
+    tabHidden: typeof document !== 'undefined' ? document.hidden : null,
+  });
+}
+
+if (typeof window !== 'undefined') {
+  // 1. Run once on module load so the initial state is correct before the
+  //    React tree mounts. Defer to a microtask so the SDK constructors have
+  //    a chance to settle their internal state first.
+  queueMicrotask(() => syncSupabaseAutoRefreshToActivePath());
+
+  // 2. Single visibility listener — replaces the per-client visibility hooks
+  //    that the SDK would otherwise wire up (those are bypassed because we
+  //    set autoRefreshToken: false). Behavior:
+  //       • hidden  → stop both (clean, no background refreshes)
+  //       • visible → re-enter sync (start the active one, leave the other off)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopAllAutoRefresh();
+      activeAutoRefresh = null;
+      console.log('[AUTH-DIAG] visibilitychange: tab hidden, both paused');
+    } else {
+      // Force re-evaluation by clearing the memoized state.
+      activeAutoRefresh = null;
+      syncSupabaseAutoRefreshToActivePath();
+    }
+  });
+}
+
+type PersistedAuthSnapshot = {
+  isSwitchedContext?: boolean;
+  switchedAccessLevel?: 'R' | 'W/R';
+};
+
+// Read switched-context state from the active session's persisted bucket.
+// Mirrors the bucket scheme in src/store/authPersistence.ts.
+function readPersistedAuthSnapshot(): PersistedAuthSnapshot | null {
+  try {
+    const key = isBackofficePath() ? 'auth_state_backoffice' : 'auth_state_sso';
+    let serialized = localStorage.getItem(key);
+    // Legacy fallback for any pre-fix data still in the old single-key store.
+    if (!serialized) {
+      serialized =
+        sessionStorage.getItem('auth_state') ?? localStorage.getItem('auth_state');
+    }
+    if (!serialized) return null;
+    return JSON.parse(serialized) as PersistedAuthSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function assertSwitchedWriteAllowed(operation: 'edit' | 'delete') {
+  const authSnapshot = readPersistedAuthSnapshot();
+  if (!authSnapshot?.isSwitchedContext) return;
+
+  const rawAccessLevel = authSnapshot.switchedAccessLevel as unknown as string | undefined;
+  const effectiveAccessLevel = rawAccessLevel || 'R';
+  const normalizedAccessLevel =
+    effectiveAccessLevel === 'full_access'
+      ? 'W/R'
+      : effectiveAccessLevel === 'read_only'
+        ? 'R'
+        : effectiveAccessLevel;
+
+  if (normalizedAccessLevel === 'W/R') return;
+
+  if (operation === 'delete') {
+    throw new Error('Switched client permission denied: delete is not enabled for this client');
+  }
+  throw new Error('Switched client permission denied: edit/create is not enabled for this client');
+}
+
+function inferMutationTypeFromPayload(payload: unknown): 'edit' | 'delete' | null {
+  let parsedPayload = payload;
+
+  if (typeof parsedPayload === 'string') {
+    try {
+      parsedPayload = JSON.parse(parsedPayload);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!parsedPayload || typeof parsedPayload !== 'object') return null;
+  const obj = parsedPayload as Record<string, unknown>;
+
+  const candidateValues: string[] = [];
+  const pushValue = (value: unknown) => {
+    if (typeof value === 'string') {
+      candidateValues.push(value.toLowerCase());
+    }
+  };
+
+  pushValue(obj.action);
+  pushValue(obj.operation);
+  pushValue(obj.method);
+  pushValue(obj.type);
+  pushValue(obj.event);
+
+  const deleteKeywords = ['delete', 'remove', 'destroy'];
+  const editKeywords = ['create', 'insert', 'add', 'update', 'edit', 'upsert', 'save', 'assign'];
+
+  if (candidateValues.some((value) => deleteKeywords.some((keyword) => value.includes(keyword)))) {
+    return 'delete';
+  }
+  if (candidateValues.some((value) => editKeywords.some((keyword) => value.includes(keyword)))) {
+    return 'edit';
+  }
+
+  return null;
+}
+
+function inferMutationTypeFromInvoke(
+  functionName: string,
+  payload: unknown
+): 'edit' | 'delete' | null {
+  const fromPayload = inferMutationTypeFromPayload(payload);
+  if (fromPayload) return fromPayload;
+
+  const normalizedFunctionName = functionName.toLowerCase();
+  if (
+    normalizedFunctionName.includes('delete') ||
+    normalizedFunctionName.includes('remove') ||
+    normalizedFunctionName.includes('destroy')
+  ) {
+    return 'delete';
+  }
+  if (
+    normalizedFunctionName.includes('create') ||
+    normalizedFunctionName.includes('insert') ||
+    normalizedFunctionName.includes('add') ||
+    normalizedFunctionName.includes('update') ||
+    normalizedFunctionName.includes('edit') ||
+    normalizedFunctionName.includes('upsert')
+  ) {
+    return 'edit';
+  }
+
+  return null;
+}
+
+function wrapFrom(client: typeof ssoRawClient, table: string) {
+  const builder = client.from(table as never) as Record<string, unknown>;
+
+  return new Proxy(builder, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value !== 'function') return value;
+
+      if (prop === 'insert' || prop === 'update' || prop === 'upsert') {
+        return (...args: unknown[]) => {
+          assertSwitchedWriteAllowed('edit');
+          return (value as (...innerArgs: unknown[]) => unknown).apply(target, args);
+        };
+      }
+
+      if (prop === 'delete') {
+        return (...args: unknown[]) => {
+          assertSwitchedWriteAllowed('delete');
+          return (value as (...innerArgs: unknown[]) => unknown).apply(target, args);
+        };
+      }
+
+      return (...args: unknown[]) => (value as (...innerArgs: unknown[]) => unknown).apply(target, args);
+    },
+  });
+}
+
+// Public proxy: every property access resolves the active client based on
+// the current URL path, so the existing `import { supabase }` works from
+// every call site without modification.
+export const supabase = new Proxy({} as typeof ssoRawClient, {
+  get(_target, prop, receiver) {
+    const active = getActiveRawClient();
+
+    if (prop === 'from') {
+      return (table: string) => wrapFrom(active, table);
+    }
+
+    if (prop === 'functions') {
+      const functionsObj = Reflect.get(active, prop, receiver) as Record<string, unknown>;
+      return new Proxy(functionsObj, {
+        get(fnTarget, fnProp, fnReceiver) {
+          const fnValue = Reflect.get(fnTarget, fnProp, fnReceiver);
+          if (fnProp !== 'invoke' || typeof fnValue !== 'function') return fnValue;
+
+          return (name: string, options?: { body?: unknown } & Record<string, unknown>) => {
+            const mutationType = inferMutationTypeFromInvoke(name, options?.body);
+            if (mutationType) {
+              assertSwitchedWriteAllowed(mutationType);
+            }
+            return (fnValue as (n: string, o?: unknown) => unknown).call(fnTarget, name, options);
+          };
+        },
+      });
+    }
+
+    const value = Reflect.get(active, prop, receiver);
+    if (typeof value === 'function') {
+      return (...args: unknown[]) => (value as (...innerArgs: unknown[]) => unknown).apply(active, args);
+    }
+    return value;
+  },
+}) as typeof ssoRawClient;

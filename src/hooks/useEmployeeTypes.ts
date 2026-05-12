@@ -1,44 +1,50 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  fetchEmployeeTypesShared,
+  type EmployeeTypeOption,
+} from '@/services/employee/employeeReferenceDataShared';
 
-export interface EmployeeTypeOption {
-  id: string;
-  type_name: string;
-  created_at?: string;
-  updated_at?: string;
-}
+export type { EmployeeTypeOption };
 
-export function useEmployeeTypes() {
+export function useEmployeeTypes(enabled: boolean = true) {
   const [employeeTypes, setEmployeeTypes] = useState<EmployeeTypeOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchEmployeeTypes() {
+    if (!enabled) {
+      setEmployeeTypes([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
       try {
         setLoading(true);
         setError(null);
-
-        const { data, error: fetchError } = await supabase
-          .from('employee_type')
-          .select('*')
-          .order('type_name', { ascending: true });
-
-        if (fetchError) {
-          throw fetchError;
+        const data = await fetchEmployeeTypesShared();
+        if (!cancelled) {
+          setEmployeeTypes(data);
         }
-
-        setEmployeeTypes(data || []);
       } catch (err) {
-        console.error('Error fetching employee types:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch employee types');
+        if (!cancelled) {
+          console.error('Error fetching employee types:', err);
+          setError(err instanceof Error ? err.message : 'Failed to fetch employee types');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    }
+    })();
 
-    fetchEmployeeTypes();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
 
   return { employeeTypes, loading, error };
 }

@@ -92,19 +92,24 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
     viewDocument(url, doc.name || 'document');
   };
 
-  const handleDownload = (doc: IncidentDocument) => {
+  const handleDownload = async (doc: IncidentDocument) => {
     try {
-      // Generate URL from path if URL is not available
       const url = doc.url || incidentDocumentService.getPublicUrl(doc.path);
-      
+
+      const response = await fetch(url);
+      const blob = await response.blob();
+
+      const blobUrl = window.URL.createObjectURL(blob);
+
       const link = window.document.createElement('a');
-      link.href = url;
+      link.href = blobUrl;
       link.download = doc.name || 'document';
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
+      
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
+
+      window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error('Error downloading document:', error);
     }
@@ -116,6 +121,12 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
     // Don't allow deletion of comment documents from here
     if (doc.source === 'comment') {
       alert('Comment documents can only be deleted from the Comments tab.');
+      return;
+    }
+
+    // Closure attachments are managed by incident closure flow.
+    if (doc.source === 'closure') {
+      alert('Closure documents are managed from the incident closure flow.');
       return;
     }
     
@@ -196,6 +207,23 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                           <p className="font-medium text-sm truncate">
                             {document.name || `Document ${index + 1}`}
                           </p>
+                          {document.source === 'incident' && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-gray-200 text-gray-600 border-gray-300"
+                            >
+                              Reference
+                            </Badge>
+                          )}
+
+                          {document.source === 'closure' && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-green-500 text-white"
+                            >
+                              Closure
+                            </Badge>
+                          )}
                           {document.source === 'comment' && (
                             <Badge variant="secondary" className="text-xs">
                               Comment
@@ -239,7 +267,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                             <Download className="h-3 w-3" />
                             Download
                           </Button>
-                          {canDelete && document.source !== 'comment' && (
+                          {canDelete && document.source !== 'comment' && document.source !== 'closure' && (
                             <Button
                               variant="outline"
                               size="sm"

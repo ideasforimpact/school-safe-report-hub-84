@@ -46,6 +46,7 @@ interface DocumentsTableProps {
   onDocumentAction?: () => void;
   onQuickVerify?: (documentId: string, method: 'api' | 'manual') => void;
   onViewGovernment?: (doc: VerificationDocument) => void;
+  isReadOnly?: boolean;
 }
 
 const DocumentsTable: React.FC<DocumentsTableProps> = ({
@@ -56,6 +57,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onDocumentAction,
   onQuickVerify,
   onViewGovernment,
+  isReadOnly = false,
 }) => {
   const { documentStatuses, deleteDocument, employees, fetchEmployeeDocuments } = useEmployeeVerification();
   const { toast } = useToast();
@@ -347,6 +349,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   };
   // Handle delete document
   const handleDeleteDocument = async (documentId: string) => {
+    if (isReadOnly) return;
     try {
       setIsDeleting(true);
       await deleteDocument(documentId);
@@ -375,6 +378,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
 
   // Open delete confirmation dialog
   const openDeleteDialog = (documentId: string) => {
+    if (isReadOnly) return;
     setDocumentToDelete(documentId);
     setDeleteDialogOpen(true);
   };
@@ -616,7 +620,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     <div className="flex items-center justify-end gap-2 w-full whitespace-nowrap">
 
                       {/* API Verify */}
-                      {hasVerifyApi  && (
+                      {!isReadOnly && hasVerifyApi  && (
                         <Button
                           variant="verifyApi"
                           size="sm"
@@ -629,7 +633,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       )}
 
                       {/* Manual Verify */}
-                      {hasVerifyManual && (
+                      {!isReadOnly && hasVerifyManual && (
                         <Button
                           variant="verifyManual"
                           size="sm"
@@ -703,13 +707,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                             </>
                           )}
 
-                          <DropdownMenuItem
-                            onClick={() => openDeleteDialog(doc.id)}
-                            className="text-red-600"
-                          >
-                            <Trash className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
+                          {!isReadOnly && (
+                            <DropdownMenuItem
+                              onClick={() => openDeleteDialog(doc.id)}
+                              className="text-red-600"
+                            >
+                              <Trash className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -751,7 +757,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen && !isReadOnly} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document</AlertDialogTitle>
@@ -796,6 +802,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
           verificationType={selectedVerificationType}
           onRefresh={handleFilesDialogRefresh}
           onCloseWithFilesCount={(count) => handleFilesDialogClosed(selectedDocumentId, count)}
+          isReadOnly={isReadOnly}
         />
       )}
     </>

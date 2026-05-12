@@ -3,7 +3,7 @@ import { User, UserRole, EmployeeData, Client, ClientType, ClientIntegration, De
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId } from '@/store/employeeActions';
+import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId, setSwitchContext } from '@/store/employeeActions';
 import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
@@ -161,6 +161,17 @@ export const useAuthHandlers = ({
         clientIntegration = null;
       }
 
+      let incidentRecommendedActionsEnabled = true;
+      const { data: aiFeatureResponse, error: aiFeatureError } = await supabase.functions.invoke(
+        'client-management',
+        { body: { operation: 'get-ai-feature', client: { id: clientId } } },
+      );
+      if (aiFeatureError) {
+        console.warn('client-management get-ai-feature failed (useAuthHandlers):', aiFeatureError);
+      } else if (aiFeatureResponse && typeof aiFeatureResponse.enabled === 'boolean') {
+        incidentRecommendedActionsEnabled = aiFeatureResponse.enabled !== false;
+      }
+
       // Build logo URL from path if needed
       const { buildClientLogoUrl } = await import('@/lib/utils');
       const logoUrl = buildClientLogoUrl(clientData.logo || clientData.client_logo);
@@ -179,8 +190,10 @@ export const useAuthHandlers = ({
         client_type_id: clientData.client_type_id,
         institution_type: clientData.institution_type,
         logo: logoUrl,
+        is_head_office: clientData.is_head_office === true,
         client_type: clientData.client_type,
-        client_integration: clientIntegration
+        client_integration: clientIntegration,
+        incidentRecommendedActionsEnabled,
       };
 
       const clientType: ClientType | null = clientData.client_type ? {
@@ -688,6 +701,7 @@ export const useAuthHandlers = ({
       const employeeData: EmployeeData = {
         id: employeeRecord.id,
         clientId: employeeRecord.client_id,
+        homeClientId: employeeRecord.client_id,
         firstName: employeeRecord.first_name,
         lastName: employeeRecord.last_name,
         email: employeeRecord.email,
@@ -731,6 +745,13 @@ export const useAuthHandlers = ({
         // Also set clientId in Redux
         if (employeeData.clientId) {
           dispatch(setClientId(employeeData.clientId));
+          dispatch(setSwitchContext({
+            homeClientId: employeeData.clientId,
+            activeClientId: employeeData.clientId,
+            isSwitchedContext: false,
+            clientManagementReadOnly: false,
+            switchedAccessLevel: 'W/R',
+          }));
         }
       }
       
