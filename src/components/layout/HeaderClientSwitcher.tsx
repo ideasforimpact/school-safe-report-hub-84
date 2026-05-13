@@ -59,6 +59,7 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
   const [switchableClients, setSwitchableClients] = useState<SwitchableClient[]>(cachedClientsForCurrentUser);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  console.log(switchableClients,'switchableClients');
 
   const currentClientId =
     state.activeClientId ||
@@ -66,7 +67,8 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
     employeeData?.clientId ||
     currentUser?.clientId ||
     '';
-
+  console.log(currentClientId,'currentClientId');
+  
   const shouldShow = useMemo(() => {
     if (isBackofficeUser) return false;
     if (employeeData?.isSuperAdmin !== true) return false;
@@ -76,6 +78,7 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
         : cachedClientsForCurrentUser.length;
     return effectiveCount > 1;
   }, [isBackofficeUser, employeeData?.isSuperAdmin, switchableClients.length, cachedClientsForCurrentUser.length]);
+console.log(shouldShow,'shouldShow');
 
   const loadConfiguredModules = async (employeeId: string, targetClientId: string, isSuperAdmin: boolean) => {
     try {
