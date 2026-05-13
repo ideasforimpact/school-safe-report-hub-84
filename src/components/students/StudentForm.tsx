@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -102,6 +102,8 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   const [studentIdValidationMessage, setStudentIdValidationMessage] = useState<string>('');
   
   const debouncedStudentId = useDebounce(studentIdInput, 500);
+  const lastValidatedId = useRef<string | null>(null);
+  const fetchStructureInProgress = useRef(false);
   const { employeeData } = useAuth();
   
   // Prepare default values with peopleInvolved data if available
@@ -151,6 +153,12 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         return;
       }
 
+      // Avoid duplicate validation for the same ID
+      if (debouncedStudentId === lastValidatedId.current) {
+        return;
+      }
+
+      lastValidatedId.current = debouncedStudentId;
       setIsCheckingStudentId(true);
       try {
         const exists = await checkStudentIdExists(debouncedStudentId, employeeData.clientId);
@@ -195,39 +203,26 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   // after submit/save when defaultValues may change, which was causing a
   // brief "Loading educational structure data..." flash.
     const fetchEducationalStructure = useCallback(async () => {
-      if (!employeeData?.clientId) {
-        console.log('No client ID available, skipping data fetch');
-        setDataLoading(false);
+      if (!employeeData?.clientId || fetchStructureInProgress.current) {
+        console.log('Skipping educational structure fetch: No clientId or fetch already in progress');
+        if (!employeeData?.clientId) setDataLoading(false);
         return;
       }
 
+      fetchStructureInProgress.current = true;
       setDataLoading(true);
       try {
         console.log('Fetching educational structure for client:', employeeData.clientId);
         
-        // Fetch campuses filtered by client_id
-        const { data: campusData, error: campusError } = await supabase
-          .from('campuses')
-          .select('id, name')
-          .eq('client_id', employeeData.clientId);
+        // Use consolidated edge function instead of multiple direct queries
+        const { data, error } = await supabase.functions.invoke('student-management', {
+          body: { client_id: employeeData.clientId },
+          headers: { path: 'get-form-data' }
+        });
         
-        if (campusError) throw campusError;
+        if (error) throw error;
         
-        // Fetch grades filtered by client_id
-        const { data: gradeData, error: gradeError } = await supabase
-          .from('grades')
-          .select('id, name, campus_id')
-          .eq('client_id', employeeData.clientId);
-        
-        if (gradeError) throw gradeError;
-        
-        // Fetch sections filtered by client_id
-        const { data: sectionData, error: sectionError } = await supabase
-          .from('sections')
-          .select('id, name, grade_id')
-          .eq('client_id', employeeData.clientId);
-        
-        if (sectionError) throw sectionError;
+        const { campuses: campusData, grades: gradeData, sections: sectionData } = data;
         
         console.log('Fetched data:', { campusData, gradeData, sectionData });
         
@@ -288,6 +283,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         toast.error('Failed to load educational structure data');
       } finally {
         setDataLoading(false);
+        fetchStructureInProgress.current = false;
       }
     }, [employeeData?.clientId, defaultValues, form]);
 
@@ -614,8 +610,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
               Cancel
             </Button>
             <Button 
-              type="button" 
-              onClick={() => form.handleSubmit(handleFormSubmit)()}
+              type="submit" 
               disabled={
                 isSubmitting || 
                 studentIdExists || 
@@ -643,7 +638,6 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
             </Button>
             <Button 
               type="submit" 
-              onClick={() => form.handleSubmit(handleFormSubmit)()}
               disabled={
                 isSubmitting || 
                 studentIdExists || 

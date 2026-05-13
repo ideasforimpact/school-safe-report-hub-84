@@ -56,21 +56,23 @@ export function StudentSearchSelect({
     }
     try {
       setIsLoadingStudents(true);
-      const { data, error } = await supabase
-        .from('students')
-        .select('id, student_id, name, grade, section, grade_id, section_id')
-        .eq('client_id', clientId);
+      const { data, error } = await supabase.functions.invoke('student-management', {
+        body: { client_id: clientId },
+        headers: { path: 'list' }
+      });
+      
       if (error) throw error;
+      
       setFetchedStudents(
-        (data || []).map((s) => ({
+        (data || []).map((s: any) => ({
           id: s.id,
-          studentId: s.student_id,
+          studentId: s.studentId || s.student_id,
           name: s.name,
-          grade: s.grade ?? '',
-          section: s.section ?? '',
-          campus: '',
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          grade: s.grade_name || s.grade || '',
+          section: s.section_name || s.section || '',
+          campus: s.campus_name || s.campus || '',
+          createdAt: new Date(s.createdAt || s.created_at),
+          updatedAt: new Date(s.updatedAt || s.updated_at),
           grade_id: s.grade_id ?? null,
           section_id: s.section_id ?? null,
         }))

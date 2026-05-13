@@ -32,7 +32,7 @@ serve(async (req) => {
     const clientIdFromHeader = headers.get("client-id") || "";
 
     // Parse request body if not GET or OPTIONS method
-    let body = {};
+    let body: any = {};
     if (req.method !== "GET" && req.method !== "OPTIONS") {
       body = await req.json();
     }
@@ -107,6 +107,12 @@ serve(async (req) => {
         return await handleBulkCreate(body, corsHeaders);
       case "bulk-update":
         return await handleBulkUpdate(body, corsHeaders);
+      case "validate-id":
+        return await handleValidateId(body, corsHeaders);
+      case "bulk-check-ids":
+        return await handleBulkCheckIds(body, corsHeaders);
+      case "get-form-data":
+        return await handleGetFormData(body, corsHeaders);
 
       default:
         return new Response(
@@ -144,44 +150,125 @@ function createNormalizedMap<T>(items: T[], keySelector: (item: T) => string, va
 
 async function handleListStudents(req: Request, corsHeaders: Record<string, string>, body: any) {
   const url = new URL(req.url);
-  const searchTerm = url.searchParams.get("search") || "";
+  const searchTerm = url.searchParams.get("search") || body.search || "";
+  const gradeFilter = url.searchParams.get("grade") || body.grade || "all";
+  const sectionFilter = url.searchParams.get("section") || body.section || "all";
+  const campusFilter = url.searchParams.get("campus") || body.campus || "all";
+  
+  const page = parseInt(url.searchParams.get("page") || body.page || "1");
+  const pageSize = parseInt(url.searchParams.get("pageSize") || body.pageSize || "10");
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
   const clientId = body.client_id;
   
-  let query = supabaseClient.from("students").select("*");
+  let query = supabaseClient.from("students").select(`
+    *,
+    grade_info:grades!students_grade_id_fkey(id, name),
+    section_info:sections!students_section_id_fkey(id, name),
+    campus_info:campuses!students_campus_id_fkey(id, name)
+  `, { count: 'exact' });
   
   // Filter by client_id if provided
   if (clientId) {
     query = query.eq("client_id", clientId);
   }
   
+  // Apply grade filter
+  if (gradeFilter !== "all") {
+    // If it's a UUID, use grade_id, otherwise use the text field (backward compatibility)
+    if (gradeFilter.length > 20) {
+      query = query.eq("grade_id", gradeFilter);
+    } else {
+      query = query.eq("grade", gradeFilter);
+    }
+  }
+
+  // Apply section filter
+  if (sectionFilter !== "all") {
+    if (sectionFilter.length > 20) {
+      query = query.eq("section_id", sectionFilter);
+    } else {
+      query = query.eq("section", sectionFilter);
+    }
+  }
+
+  // Apply campus filter
+  if (campusFilter !== "all") {
+    if (campusFilter.length > 20) {
+      query = query.eq("campus_id", campusFilter);
+    } else {
+      query = query.eq("campus", campusFilter);
+    }
+  }
+
   // Apply search filter if provided
   if (searchTerm) {
     query = query.or(`name.ilike.%${searchTerm}%,student_id.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,campus.ilike.%${searchTerm}%`);
   }
   
-  // Order by creation date descending
-  query = query.order("created_at", { ascending: false });
+  // Order by creation date descending and apply pagination range
+  query = query
+    .order("created_at", { ascending: false })
+    .range(from, to);
   
-  const { data, error } = await query;
+  const { data, count, error } = await query;
   
   if (error) {
+    console.error('Error fetching students in edge function:', error);
+    // Try fallback without joins if explicit join fails
+    const fallbackQuery = supabaseClient.from("students").select("*");
+    if (clientId) fallbackQuery.eq("client_id", clientId);
+    if (searchTerm) fallbackQuery.or(`name.ilike.%${searchTerm}%,student_id.ilike.%${searchTerm}%`);
+    const fallbackResult = await fallbackQuery
+      .order("created_at", { ascending: false })
+      .range(from, to);
+    
+    if (fallbackResult.error) {
+      return new Response(
+        JSON.stringify({ error: fallbackResult.error.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const transformedFallback = (fallbackResult.data || []).map(item => ({
+      ...item,
+      studentId: item.student_id,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+      grade_name: item.grade || '',
+      section_name: item.section || '',
+      campus_name: item.campus || ''
+    }));
+
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify(transformedFallback),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
   
   // Transform data to match frontend Student type
-  const transformedData = data.map(item => ({
-    ...item,
-    id: item.id,
-    studentId: item.student_id,
-    createdAt: item.created_at,
-    updatedAt: item.updated_at
-  }));
+  const transformedData = data.map(item => {
+    const gradeInfo = (item as any).grade_info;
+    const sectionInfo = (item as any).section_info;
+    const campusInfo = (item as any).campus_info;
+
+    return {
+      ...item,
+      studentId: item.student_id,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+      grade_name: gradeInfo?.name || item.grade || '',
+      section_name: sectionInfo?.name || item.section || '',
+      campus_name: campusInfo?.name || item.campus || ''
+    };
+  });
   
   return new Response(
-    JSON.stringify(transformedData),
+    JSON.stringify({ 
+      students: transformedData, 
+      totalCount: count || 0 
+    }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 }
@@ -438,7 +525,7 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   });
   
   if (!matchingCampus) {
-    const availableCampuses = Array.from(validCampuses.keys()).join(", ") || "none";
+    const availableCampuses = allCampuses?.map(c => c.name).join(", ") || "none";
     return { 
       valid: false, 
       error: `Campus "${campus}" does not exist in the system. Available: ${availableCampuses}` 
@@ -473,10 +560,7 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   });
   
   if (!matchingGrade) {
-    const availableGrades = Array.from(validGrades.keys())
-      .filter(key => key.startsWith(`${campusId}:`))
-      .map(key => key.split(':')[1])
-      .join(", ") || "none";
+    const availableGrades = allGrades?.map(g => g.name).join(", ") || "none";
     return { 
       valid: false, 
       error: `Grade "${grade}" does not exist for campus "${campus}". Available: ${availableGrades}` 
@@ -511,10 +595,7 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   });
   
   if (!matchingSection) {
-    const availableSections = Array.from(validSections.keys())
-      .filter(key => key.startsWith(`${gradeId}:`))
-      .map(key => key.split(':')[1])
-      .join(", ") || "none";
+    const availableSections = allSections?.map(s => s.name).join(", ") || "none";
     return { 
       valid: false, 
       error: `Section "${section}" does not exist for grade "${grade}". Available: ${availableSections}` 
@@ -893,28 +974,70 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
 }
 
 async function handleDeleteStudent(id: string, corsHeaders: Record<string, string>, body: any) {
-  let query = supabaseClient
-    .from("students")
-    .delete()
-    .eq("id", id);
-
-  if (body.client_id) {
-    query = query.eq("client_id", body.client_id);
+  const clientId = body.client_id;
+  if (!clientId) {
+    return new Response(
+      JSON.stringify({ error: "Client ID is required for deletion validation" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
-  const { error } = await query;
-  
-  if (error) {
+  try {
+    // 1. Check for incident references before deleting
+    const { data: matchingIncidents, error: refError } = await supabaseClient
+      .from('incidents')
+      .select('id, people_involved')
+      .eq('client_id', clientId)
+      .not('people_involved', 'is', null);
+
+    if (refError) throw refError;
+
+    const filteredIncidents = (matchingIncidents || []).filter(incident => {
+      if (!incident.people_involved) return false;
+      const people = Array.isArray(incident.people_involved) ? incident.people_involved : [];
+      return people.some((person: any) => {
+        const personIdStr = String(person?.id || '').trim();
+        const searchIdStr = String(id || '').trim();
+        return personIdStr === searchIdStr && person?.role === 'Student';
+      });
+    });
+
+    if (filteredIncidents.length > 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: `This student is linked to ${filteredIncidents.length} incident(s) and cannot be deleted.` 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 2. Proceed with deletion
+    let query = supabaseClient
+      .from("students")
+      .delete()
+      .eq("id", id)
+      .eq("client_id", clientId);
+
+    const { error } = await query;
+    
+    if (error) {
+      return new Response(
+        JSON.stringify({ error: error.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    return new Response(
+      JSON.stringify({ success: true }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in handleDeleteStudent:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-  
-  return new Response(
-    JSON.stringify({ success: true }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
 }
 
 /**
@@ -1010,69 +1133,198 @@ async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) 
   if (!students.length) {
     return new Response(
       JSON.stringify({ error: "No students provided" }),
-      { status: 400, headers: corsHeaders }
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  // 🔹 Fetch academic structure ONCE
-  const [campuses, grades, sections] = await Promise.all([
-    supabaseClient.from("campuses").select("id, name").eq("client_id", clientId),
-    supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId),
-    supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId)
-  ]);
+  try {
+    // 🔹 Fetch academic structure ONCE
+    const [campuses, grades, sections] = await Promise.all([
+      supabaseClient.from("campuses").select("id, name").eq("client_id", clientId),
+      supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId),
+      supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId)
+    ]);
 
-  const campusMap = new Map(
-    campuses.data.map(c => [c.name.toLowerCase(), c.id])
-  );
+    if (campuses.error) throw campuses.error;
+    if (grades.error) throw grades.error;
+    if (sections.error) throw sections.error;
 
-  const gradeMap = new Map(
-    grades.data.map(g => [`${g.campus_id}:${g.name.toLowerCase()}`, g.id])
-  );
+    const campusMap = new Map(
+      (campuses.data || []).map(c => [String(c.name || '').toLowerCase(), c.id])
+    );
 
-  const sectionMap = new Map(
-    sections.data.map(s => [`${s.grade_id}:${s.name.toLowerCase()}`, s.id])
-  );
+    const gradeMap = new Map(
+      (grades.data || []).map(g => [`${g.campus_id}:${String(g.name || '').toLowerCase()}`, g.id])
+    );
 
-  const insertRows = [];
-  const errors = [];
+    const sectionMap = new Map(
+      (sections.data || []).map(s => [`${s.grade_id}:${String(s.name || '').toLowerCase()}`, s.id])
+    );
 
-  students.forEach((s, index) => {
-    const row = index + 2;
+    const insertRows = [];
+    const errors = [];
 
-    const campusId = campusMap.get(s.campus.toLowerCase());
-    if (!campusId) return errors.push(`Row ${row}: Invalid campus`);
+    students.forEach((s: any, index: number) => {
+      const row = index + 2;
+      const campusName = String(s.campus || '').toLowerCase();
+      const gradeName = String(s.grade || '').toLowerCase();
+      const sectionName = String(s.section || '').toLowerCase();
 
-    const gradeId = gradeMap.get(`${campusId}:${s.grade.toLowerCase()}`);
-    if (!gradeId) return errors.push(`Row ${row}: Invalid grade`);
+      const campusId = campusMap.get(campusName);
+      if (!campusId) return errors.push(`Row ${row}: Invalid campus "${s.campus}"`);
 
-    const sectionId = sectionMap.get(`${gradeId}:${s.section.toLowerCase()}`);
-    if (!sectionId) return errors.push(`Row ${row}: Invalid section`);
+      const gradeId = gradeMap.get(`${campusId}:${gradeName}`);
+      if (!gradeId) return errors.push(`Row ${row}: Invalid grade "${s.grade}" for campus "${s.campus}"`);
 
-    insertRows.push({
-      student_id: s.student_id,
-      name: s.name,
-      campus: s.campus,
-      grade: s.grade,
-      section: s.section,
-      campus_id: campusId,
-      grade_id: gradeId,
-      section_id: sectionId,
-      client_id: clientId
+      const sectionId = sectionMap.get(`${gradeId}:${sectionName}`);
+      if (!sectionId) return errors.push(`Row ${row}: Invalid section "${s.section}" for grade "${s.grade}"`);
+
+      insertRows.push({
+        student_id: s.student_id,
+        name: s.name,
+        campus: s.campus,
+        grade: s.grade,
+        section: s.section,
+        campus_id: campusId,
+        grade_id: gradeId,
+        section_id: sectionId,
+        client_id: clientId
+      });
     });
-  });
 
-  if (errors.length) {
+    if (errors.length) {
+      return new Response(
+        JSON.stringify({ valid: false, errors }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { error: insertError } = await supabaseClient.from("students").insert(insertRows);
+
+    if (insertError) {
+      console.error("Bulk insert error:", insertError);
+      return new Response(
+        JSON.stringify({ error: `Failed to insert students: ${insertError.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ valid: false, errors }),
-      { headers: corsHeaders }
+      JSON.stringify({ success: true, inserted: insertRows.length }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in handleBulkCreate:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+async function handleValidateId(body: any, corsHeaders: Record<string, string>) {
+  const { studentId, client_id } = body;
+  
+  if (!studentId || !client_id) {
+    return new Response(
+      JSON.stringify({ error: "Student ID and Client ID are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  await supabaseClient.from("students").insert(insertRows);
+  try {
+    const { data, error } = await supabaseClient
+      .from('students')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('client_id', client_id)
+      .maybeSingle();
 
-  return new Response(
-    JSON.stringify({ success: true, inserted: insertRows.length }),
-    { headers: corsHeaders }
-  );
+    if (error) throw error;
+
+    return new Response(
+      JSON.stringify({ exists: !!data }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error validating student ID:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+
+async function handleGetFormData(body: any, corsHeaders: Record<string, string>) {
+  const clientId = body.client_id;
+  if (!clientId) {
+    return new Response(
+      JSON.stringify({ error: "Client ID is required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    // Fetch all in parallel
+    const [campuses, grades, sections] = await Promise.all([
+      supabaseClient.from("campuses").select("id, name").eq("client_id", clientId),
+      supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId),
+      supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId)
+    ]);
+
+    if (campuses.error) throw campuses.error;
+    if (grades.error) throw grades.error;
+    if (sections.error) throw sections.error;
+
+    return new Response(
+      JSON.stringify({
+        campuses: campuses.data || [],
+        grades: grades.data || [],
+        sections: sections.data || []
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in handleGetFormData:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+async function handleBulkCheckIds(body: any, corsHeaders: Record<string, string>) {
+  const { studentIds, client_id } = body;
+  
+  if (!studentIds || !Array.isArray(studentIds) || !client_id) {
+    return new Response(
+      JSON.stringify({ error: "Student IDs (array) and Client ID are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('students')
+      .select('student_id')
+      .eq('client_id', client_id)
+      .in('student_id', studentIds);
+
+    if (error) throw error;
+
+    const existingStudentIds = data?.map(student => student.student_id) || [];
+
+    return new Response(
+      JSON.stringify({ duplicates: existingStudentIds }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in handleBulkCheckIds:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 }
 

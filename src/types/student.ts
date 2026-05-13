@@ -17,3 +17,8 @@ export interface Student {
   section_name?: string;
   campus_name?: string;
 }
+
+export interface StudentListResponse {
+  students: Student[];
+  totalCount: number;
+}
