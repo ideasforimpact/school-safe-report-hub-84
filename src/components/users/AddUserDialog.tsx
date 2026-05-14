@@ -21,7 +21,7 @@ import WizardProgress from '@/components/ui/wizard-progress';
 import { EMPLOYEE_COMPLIANCE_DOCUMENTS } from '@/constants/employeeComplianceDocuments';
 import { fileToBase64 } from '@/utils/fileToBase64';
 
-import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS } from '@/constant/employeeConstant';
+import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_PERSONAL_INFO_CONSTANTS, STAFF_ID_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS } from '@/constant/employeeConstant';
 
 interface AddUserDialogProps {
   isOpen: boolean;
@@ -266,10 +266,10 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   // Module change handler that directly updates moduleAccessPayload
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
     console.log("Module access items changed:", moduleAccessItems);
-    
+
     // Update local state for UI rendering
     setSelectedModules(moduleAccessItems);
-    
+
     // Update formData with ONLY the moduleAccessPayload
     setFormData({
       ...formData,
@@ -435,7 +435,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
 
   // Email validation function
   const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email);
   };
 
@@ -479,8 +479,12 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
           ? 'PF number must be exactly 12 digits'
           : '',
       biometricUserId:
-        biometricUserId && !/^\d{1,20}$/.test(biometricUserId)
-          ? 'Biometric User ID must contain digits only'
+        biometricUserId && (biometricUserId.length < BIOMETRIC_USER_ID_CONSTANTS.MIN_LENGTH || biometricUserId.length > BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH)
+          ? `Biometric User ID must be between ${BIOMETRIC_USER_ID_CONSTANTS.MIN_LENGTH} and ${BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH} characters`
+          : '',
+      exitDate:
+        professionalOtherDetails.exitDate && new Date(professionalOtherDetails.exitDate) > new Date()
+          ? 'Resigning date cannot be in the future'
           : '',
     };
   };
@@ -503,7 +507,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     const validateOptionalTextField = (value: string, label: string) => {
       const trimmed = (value || '').trim();
       if (!trimmed) return '';
-      if (trimmed.length < minLength) return `${label} must be at least ${minLength} characters`;
+      if (trimmed.length < EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH) return `${label} must be at least ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH} characters`;
+      if (trimmed.length > EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH) return `${label} cannot exceed ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH} characters`;
       if (!isValidLettersAndSpaces(trimmed)) return `${label} can only contain letters and spaces`;
       return '';
     };
@@ -513,29 +518,39 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       fatherName: validateOptionalTextField(personalDetails.fatherName || '', "Father's name"),
       staffId:
         (personalDetails.staffId || '').trim() &&
-        !/^\d+$/.test((personalDetails.staffId || '').trim())
-          ? 'Staff ID must contain numbers only'
+        ((personalDetails.staffId || '').trim().length < STAFF_ID_CONSTANTS.MIN_LENGTH || (personalDetails.staffId || '').trim().length > STAFF_ID_CONSTANTS.MAX_LENGTH)
+          ? `Staff ID must be between ${STAFF_ID_CONSTANTS.MIN_LENGTH} and ${STAFF_ID_CONSTANTS.MAX_LENGTH} characters`
           : '',
 
       experience:
         (personalDetails.experience || '').trim() &&
-        !/^\d+$/.test((personalDetails.experience || '').trim())
+        ((personalDetails.experience || '').trim().length < EXPERIENCE_CONSTANTS.MIN_LENGTH || (personalDetails.experience || '').trim().length > EXPERIENCE_CONSTANTS.MAX_LENGTH)
+          ? `Experience must be between ${EXPERIENCE_CONSTANTS.MIN_LENGTH} and ${EXPERIENCE_CONSTANTS.MAX_LENGTH} characters`
+          : (personalDetails.experience || '').trim() &&
+            !/^\d+$/.test((personalDetails.experience || '').trim())
           ? 'Experience must contain numbers only'
           : '',
 
       qualification:
         (personalDetails.qualification || '').trim() &&
-        !/^[a-zA-Z\s]+$/.test(
-          (personalDetails.qualification || '').trim()
-        )
-          ? 'Qualification can only contain letters and spaces'
-          : '',
+        ((personalDetails.qualification || '').trim().length < EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH ||
+        (personalDetails.qualification || '').trim().length > EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH)
+        ? `Qualification must be between ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH} characters`
+        : (personalDetails.qualification || '').trim() &&
+          !/^[a-zA-Z\s.-]+$/.test((personalDetails.qualification || '').trim())
+        ? 'Qualification can only contain letters, spaces, dots, and hyphens'
+        : '',
       religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
       nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
       bloodGroup:
         (personalDetails.bloodGroup || '').trim() &&
-        !/^(A|B|AB|O)[+-]$/i.test((personalDetails.bloodGroup || '').trim())
+        !/^(A|A1|A2|B|AB|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim()
+          )
           ? 'Blood group must be in format A+, O-, AB+, B-'
+          : '',
+      dob:
+        personalDetails.dob && new Date(personalDetails.dob) > new Date()
+          ? 'Date of birth cannot be in the future'
           : '',
     };
   };
@@ -631,14 +646,38 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   };
 
   const handleDocumentChange = (documentKey: string, file: File | null) => {
+    if (!file) {
+      setUploadedDocuments((prev) => ({
+        ...prev,
+        [documentKey]: ''
+      }));
+
+      setUploadedDocumentFiles((prev) => {
+        const next = { ...prev };
+        delete next[documentKey];
+        return next;
+      });
+
+      return;
+    }
+
+    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'];
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+    if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+      toast.error('Only PDF, PNG, JPG, JPEG, DOC, and DOCX files are allowed');
+      return;
+    }
+
     setUploadedDocuments((prev) => ({
       ...prev,
-      [documentKey]: file ? file.name : ''
+      [documentKey]: file.name
     }));
+
     setUploadedDocumentFiles((prev) => {
       const next = { ...prev };
-      if (file) next[documentKey] = file;
-      else delete next[documentKey];
+      next[documentKey] = file;
       return next;
     });
   };
@@ -665,7 +704,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     !formData.email ||
     emailValidation === 'available' ||
     emailValidation === 'idle';
-
+    
   return (
     formData.firstName &&
     formData.firstName.length <= 25 &&
@@ -742,7 +781,12 @@ const canProceedToNextStep = () => {
       employeeIdValidation !== 'checking'
     );
   }
+  if (currentStep === moduleAccessStepIndex) {
+    const hasSelectedModules =
+      selectedModules.filter((module) => module.enabled).length > 0;
 
+    return hasSelectedModules;
+  }
   return true;
 };
 
@@ -995,6 +1039,7 @@ const canProceedToNextStep = () => {
                         })
                       }
                       placeholder="Enter middle name"
+                      maxLength={EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH}
                       className={personalDetailsErrors.middleName ? 'border-red-500' : ''}
                     />
                     {personalDetailsErrors.middleName && (
@@ -1018,6 +1063,7 @@ const canProceedToNextStep = () => {
                         })
                       }
                       placeholder="Enter father's name"
+                      maxLength={EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH}
                       className={personalDetailsErrors.fatherName ? 'border-red-500' : ''}
                     />
                     {personalDetailsErrors.fatherName && (
@@ -1036,10 +1082,11 @@ const canProceedToNextStep = () => {
                           ...formData,
                           personalDetails: {
                             ...personalDetails,
-                            staffId: e.target.value.replace(/\D/g, '')
+                            staffId: e.target.value
                           }
                         })
                       }
+                      maxLength={STAFF_ID_CONSTANTS.MAX_LENGTH}
                       placeholder="Enter Staff ID"
                     />
                     {personalDetailsErrors.staffId && (
@@ -1058,10 +1105,11 @@ const canProceedToNextStep = () => {
                           ...formData,
                           personalDetails: {
                             ...personalDetails,
-                            experience: e.target.value.replace(/\D/g, '')
+                            experience: e.target.value.replace(/\D/g, '').slice(0, EXPERIENCE_CONSTANTS.MAX_LENGTH)
                           }
                         })
                       }
+                      maxLength={EXPERIENCE_CONSTANTS.MAX_LENGTH}
                       placeholder="Enter Experience"
                     />
                     {personalDetailsErrors.experience && (
@@ -1081,11 +1129,12 @@ const canProceedToNextStep = () => {
                         ...formData,
                         personalDetails: {
                           ...personalDetails,
-                          qualification: e.target.value.replace(/[^a-zA-Z\s]/g, '')
+                          qualification: e.target.value.replace(/[^a-zA-Z\s.-]/g, '')
                         }
                       })
                     }
                     placeholder="Enter Qualification"
+                    maxLength={EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH}
                   />
                   {personalDetailsErrors.qualification && (
                     <p className="text-xs text-red-500">
@@ -1138,7 +1187,11 @@ const canProceedToNextStep = () => {
                           }
                         })
                       }
+                      max={new Date().toISOString().split('T')[0]}
                     />
+                    {personalDetailsErrors.dob && (
+                      <p className="text-xs text-red-500">{personalDetailsErrors.dob}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -1155,6 +1208,7 @@ const canProceedToNextStep = () => {
                         })
                       }
                       placeholder="Enter religion"
+                      maxLength={EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH}
                       className={personalDetailsErrors.religion ? 'border-red-500' : ''}
                     />
                     {personalDetailsErrors.religion && (
@@ -1176,6 +1230,7 @@ const canProceedToNextStep = () => {
                         })
                       }
                       placeholder="Enter nationality"
+                      maxLength={EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH}
                       className={personalDetailsErrors.nationality ? 'border-red-500' : ''}
                     />
                     {personalDetailsErrors.nationality && (
@@ -1192,7 +1247,7 @@ const canProceedToNextStep = () => {
                           ...formData,
                           personalDetails: {
                             ...personalDetails,
-                            bloodGroup: e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 3)
+                            bloodGroup: e.target.value.replace(/[^a-zA-Z0-9+\-\s]/g, '').toUpperCase().slice(0, 12)
                           }
                         })
                       }
@@ -1419,7 +1474,11 @@ const canProceedToNextStep = () => {
                                 exitDate: e.target.value
                               }
                             })}
+                            max={new Date().toISOString().split('T')[0]}
                           />
+                          {professionalOtherDetailsErrors.exitDate && (
+                            <p className="text-xs text-red-500">{professionalOtherDetailsErrors.exitDate}</p>
+                          )}
                         </div>
                         <div className="space-y-1.5">
                           <Label>Biometric User ID</Label>
@@ -1429,9 +1488,10 @@ const canProceedToNextStep = () => {
                               ...formData,
                               professionalOtherDetails: {
                                 ...professionalOtherDetails,
-                                biometricUserId: e.target.value.replace(/\D/g, '').slice(0, 20)
+                                biometricUserId: e.target.value
                               }
                             })}
+                            maxLength={BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH}
                             placeholder="Enter biometric user ID"
                           />
                           {professionalOtherDetailsErrors.biometricUserId && (
@@ -1522,7 +1582,7 @@ const canProceedToNextStep = () => {
                               </span>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
-                              <div className="pointer-events-none flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
+                              <div className="flex items-center gap-2 opacity-100">
                                 {fileName && (
                                   <button
                                     type="button"
@@ -1549,6 +1609,7 @@ const canProceedToNextStep = () => {
                               }}
                               type="file"
                               className="hidden"
+                              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
                               onChange={(e) => handleDocumentChange(document.key, e.target.files?.[0] ?? null)}
                             />
                           </div>

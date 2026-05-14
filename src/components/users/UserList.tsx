@@ -711,16 +711,17 @@ const UserList = ({
       )}
 
       <Dialog open={!!documentDialogUser} onOpenChange={(open) => !open && setDocumentDialogUser(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
           {documentDialogUser && (
-            <div className="space-y-5 px-6 pb-6">
-              <div className="sticky top-0 z-50 bg-white pb-4 border-b -mx-6 px-6 pt-4">
-                <div className="h-14 flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
+            <>
+              {/* Fixed Header */}
+              <div className="bg-white pb-5 border-b px-6 pt-4 shrink-0 z-10">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold shrink-0">
                       {(documentDialogUser.firstName?.[0] || 'U').toUpperCase()}
                     </div>
-                    <div className="">
+                    <div className="min-w-0 flex-1">
                       <h1 className="text-xl font-semibold leading-tight truncate">
                         {valueOrNotSet(`${documentDialogUser.firstName || ''} ${documentDialogUser.lastName || ''}`.trim())}
                       </h1>
@@ -750,7 +751,9 @@ const UserList = ({
                 </div>
               </div>
 
-              <div>
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-px flex-1 bg-slate-200" aria-hidden />
                   <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
@@ -760,22 +763,22 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">First Name</p>
-                  <p className="font-medium">{valueOrNotSet(documentDialogUser.firstName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.firstName)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Last Name</p>
-                  <p className="font-medium">{valueOrNotSet(documentDialogUser.lastName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.lastName)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Email</p>
-                  <p className="font-medium">{valueOrNotSet(documentDialogUser.email)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.email)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Phone</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).phone)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).phone)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Address</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.residenceAddress || (documentDialogUser as any).residenceAddress)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.residenceAddress || (documentDialogUser as any).residenceAddress)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Tags</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).designation)}</p>
                   </div>
                 </div>
               </div>
@@ -790,45 +793,45 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">Middle Name</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.middleName || (documentDialogUser as any).middleName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.middleName || (documentDialogUser as any).middleName)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Father's Name</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.fatherName || (documentDialogUser as any).fatherName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.fatherName || (documentDialogUser as any).fatherName)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Staff ID</p>
-                    <p className="font-medium">{valueOrNotSet(
+                    <p className="font-medium break-words">{valueOrNotSet(
                         (documentDialogUser as any).personalDetails?.staffId)}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Experience</p>
-                    <p className="font-medium">{valueOrNotSet(
+                    <p className="font-medium break-words">{valueOrNotSet(
                         (documentDialogUser as any).personalDetails?.experience)}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Qualification</p>
-                    <p className="font-medium">{valueOrNotSet(
+                    <p className="font-medium break-words">{valueOrNotSet(
                         (documentDialogUser as any).personalDetails?.qualification)}
                     </p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Gender</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.gender || (documentDialogUser as any).gender)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.gender || (documentDialogUser as any).gender)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Date of Birth</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.dob || (documentDialogUser as any).dob)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.dob || (documentDialogUser as any).dob)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Religion</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.religion || (documentDialogUser as any).religion)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.religion || (documentDialogUser as any).religion)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Nationality</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.nationality || (documentDialogUser as any).nationality)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.nationality || (documentDialogUser as any).nationality)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Blood Group</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).personalDetails?.bloodGroup || (documentDialogUser as any).bloodGroup)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.bloodGroup || (documentDialogUser as any).bloodGroup)}</p>
                   </div>
                 </div>
               </div>
@@ -843,20 +846,20 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">Employee ID</p>
-                  <p className="font-medium">{valueOrNotSet(documentDialogUser.employeeId)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.employeeId)}</p>
                   </div>
                   
                   <div><p className="text-sm text-slate-400 mb-1">Designation</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).designation)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Department</p>
-                  <p className="font-medium">{valueOrNotSet(documentDialogUser.department)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.department)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Employee Type</p>
-                  <p className="font-medium">{valueOrNotSet(documentDialogUser.employeeType)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.employeeType)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Joining Date</p>
-                  <p className="font-medium mb-4">{documentDialogUser.joiningDate ? formatDate(documentDialogUser.joiningDate) : 'Not Set'}</p>
+                  <p className="font-medium mb-4 break-words">{documentDialogUser.joiningDate ? formatDate(documentDialogUser.joiningDate) : 'Not Set'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 mb-4">
@@ -868,22 +871,22 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">Aadhaar No</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.aadharNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.aadharNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">PAN No</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.panNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.panNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">ESI No</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.esiNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.esiNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">PF No</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.pfNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.pfNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Resigning / Termination Date</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.exitDate)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.exitDate)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Biometric User ID</p>
-                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.biometricUserId)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.biometricUserId)}</p>
                   </div>
                 </div>
               </div>
@@ -1021,8 +1024,9 @@ const UserList = ({
                     ))
                   )}
                 </div>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

@@ -74,8 +74,10 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
         updatedAt: doc.updated_at || new Date().toISOString()
       }));
 
-      const personalDetails = (record as any).personal_details || {};
-      const otherDetails = (record as any).other_details || {};
+      const personalDetailsRaw = (record as any).personal_details;
+      const personalDetails = Array.isArray(personalDetailsRaw) ? personalDetailsRaw[0] || {} : personalDetailsRaw || {};
+      const otherDetailsRaw = (record as any).other_details;
+      const otherDetails = Array.isArray(otherDetailsRaw) ? otherDetailsRaw[0] || {} : otherDetailsRaw || {};
       const employee: Employee = {
         id: record.id,
         employeeId: record.employee_id || '',
@@ -213,8 +215,10 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         updatedAt: doc.updated_at || new Date().toISOString()
       }));
 
-      const personalDetails = (record as any).personal_details || {};
-      const otherDetails = (record as any).other_details || {};
+      const personalDetailsRaw = (record as any).personal_details;
+      const personalDetails = Array.isArray(personalDetailsRaw) ? personalDetailsRaw[0] || {} : personalDetailsRaw || {};
+      const otherDetailsRaw = (record as any).other_details;
+      const otherDetails = Array.isArray(otherDetailsRaw) ? otherDetailsRaw[0] || {} : otherDetailsRaw || {};
       const employee: Employee = {
         id: record.id,
         employeeId: record.employee_id || '',
@@ -305,8 +309,10 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
     }
 
     // Convert the response to our Employee type
-    const personalDetails = (data as any).personal_details || {};
-    const otherDetails = (data as any).other_details || {};
+    const personalDetailsRaw = (data as any).personal_details;
+    const personalDetails = Array.isArray(personalDetailsRaw) ? personalDetailsRaw[0] || {} : personalDetailsRaw || {};
+    const otherDetailsRaw = (data as any).other_details;
+    const otherDetails = Array.isArray(otherDetailsRaw) ? otherDetailsRaw[0] || {} : otherDetailsRaw || {};
     const employee: Employee = {
       id: data.id,
       employeeId: data.employee_id || '',
@@ -388,8 +394,10 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
     console.log('Found employee data:', data);
 
     // Convert the response to our Employee type
-    const personalDetails = (data as any).personal_details || {};
-    const otherDetails = (data as any).other_details || {};
+    const personalDetailsRaw = (data as any).personal_details;
+    const personalDetails = Array.isArray(personalDetailsRaw) ? personalDetailsRaw[0] || {} : personalDetailsRaw || {};
+    const otherDetailsRaw = (data as any).other_details;
+    const otherDetails = Array.isArray(otherDetailsRaw) ? otherDetailsRaw[0] || {} : otherDetailsRaw || {};
     return {
       id: data.id,
       employeeId: data.employee_id || '',
