@@ -328,6 +328,7 @@ Deno.serve(async (req) => {
       }
 
       const url = new URL(req.url);
+      console.log(url,'url');
       const ipValidation = await validateIPWhitelist(
         serviceSupabase,
         req,
@@ -342,7 +343,6 @@ Deno.serve(async (req) => {
           error: "Access denied. Your IP address is not whitelisted for this client.",
         });
       }
-
       const updatedContext = await updateTargetClientContext(user.id, targetClientId, readOnlyRoleId);
       const switched = updatedContext.target_client_id !== updatedContext.home_client_id;
       const contextRole = await resolveRoleAccessLevelById(updatedContext.role_id);
