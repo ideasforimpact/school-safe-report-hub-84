@@ -481,12 +481,6 @@ const EditUserDialog = ({
     return {
       middleName: validateOptionalTextField(personalDetails.middleName || '', 'Middle name'),
       fatherName: validateOptionalTextField(personalDetails.fatherName || '', "Father's name"),
-      staffId:
-        (personalDetails.staffId || '').trim() &&
-        ((personalDetails.staffId || '').trim().length < STAFF_ID_CONSTANTS.MIN_LENGTH || (personalDetails.staffId || '').trim().length > STAFF_ID_CONSTANTS.MAX_LENGTH)
-          ? `Staff ID must be between ${STAFF_ID_CONSTANTS.MIN_LENGTH} and ${STAFF_ID_CONSTANTS.MAX_LENGTH} characters`
-          : '',
-
       experience:
         (personalDetails.experience || '').trim() &&
         ((personalDetails.experience || '').trim().length < EXPERIENCE_CONSTANTS.MIN_LENGTH || (personalDetails.experience || '').trim().length > EXPERIENCE_CONSTANTS.MAX_LENGTH)
@@ -1264,31 +1258,7 @@ const EditUserDialog = ({
                           <p className="text-xs text-red-500">{personalDetailsErrors.fatherName}</p>
                         )}
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 mt-2">
-                    <Label>Staff ID</Label>
-                    <Input
-                      value={personalDetails.staffId || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          personalDetails: {
-                            ...personalDetails,
-                            staffId: e.target.value
-                          }
-                        })
-                      }
-                      maxLength={STAFF_ID_CONSTANTS.MAX_LENGTH}
-                      placeholder="Enter Staff ID"
-                    />
-                    {personalDetailsErrors.staffId && (
-                      <p className="text-xs text-red-500">
-                        {personalDetailsErrors.staffId}
-                      </p>
-                    )}
-                  </div>
+                    </div>                                               
 
                   <div className="space-y-2 mt-2">
                     <Label>Experience</Label>
@@ -1311,8 +1281,7 @@ const EditUserDialog = ({
                         {personalDetailsErrors.experience}
                       </p>
                     )}
-                  </div>
-                </div>
+                  </div>                
 
                 <div className="space-y-2 mt-2">
                   <Label>Qualification</Label>

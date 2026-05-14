@@ -516,11 +516,6 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     return {
       middleName: validateOptionalTextField(personalDetails.middleName || '', 'Middle name'),
       fatherName: validateOptionalTextField(personalDetails.fatherName || '', "Father's name"),
-      staffId:
-        (personalDetails.staffId || '').trim() &&
-        ((personalDetails.staffId || '').trim().length < STAFF_ID_CONSTANTS.MIN_LENGTH || (personalDetails.staffId || '').trim().length > STAFF_ID_CONSTANTS.MAX_LENGTH)
-          ? `Staff ID must be between ${STAFF_ID_CONSTANTS.MIN_LENGTH} and ${STAFF_ID_CONSTANTS.MAX_LENGTH} characters`
-          : '',
 
       experience:
         (personalDetails.experience || '').trim() &&
@@ -1072,30 +1067,6 @@ const canProceedToNextStep = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 mt-2">
-                    <Label>Staff ID</Label>
-                    <Input
-                      value={personalDetails.staffId || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          personalDetails: {
-                            ...personalDetails,
-                            staffId: e.target.value
-                          }
-                        })
-                      }
-                      maxLength={STAFF_ID_CONSTANTS.MAX_LENGTH}
-                      placeholder="Enter Staff ID"
-                    />
-                    {personalDetailsErrors.staffId && (
-                      <p className="text-xs text-red-500">
-                        {personalDetailsErrors.staffId}
-                      </p>
-                    )}
-                  </div>
-
                   <div className="space-y-2 mt-2">
                     <Label>Experience</Label>
                     <Input
@@ -1118,7 +1089,6 @@ const canProceedToNextStep = () => {
                       </p>
                     )}
                   </div>
-                </div>
 
                 <div className="space-y-2 mt-2">
                   <Label>Qualification</Label>

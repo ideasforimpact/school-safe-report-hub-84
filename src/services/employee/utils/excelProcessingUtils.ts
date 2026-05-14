@@ -236,7 +236,6 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               nationality: getFieldValue(['Nationality', 'nationality']),
               bloodGroup: getFieldValue(['Blood Group', 'bloodGroup', 'blood_group']),
               residenceAddress: getFieldValue(['Residence Address', 'residenceAddress', 'residence_address', 'Address']),
-              staffId: getFieldValue(['Staff ID', 'staffId', 'staff_id']),
               experience: getFieldValue(['Experience', 'experience']),
               qualification: getFieldValue(['Qualification', 'qualification']),
               // Professional Other Details
@@ -472,7 +471,6 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               nationality: getFieldValue(['Nationality', 'nationality']),
               bloodGroup: getFieldValue(['Blood Group', 'bloodGroup', 'blood_group']),
               residenceAddress: getFieldValue(['Residence Address', 'residenceAddress', 'residence_address', 'Address']),
-              staffId: getFieldValue(['Staff ID', 'staffId', 'staff_id']),
               experience: getFieldValue(['Experience', 'experience']),
               qualification: getFieldValue(['Qualification', 'qualification']),
               // Professional Other Details

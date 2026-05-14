@@ -22,7 +22,6 @@ export interface EmployeeTemplateData {
   'Nationality'?: string;
   'Blood Group'?: string;
   'Residence Address'?: string;
-  'Staff ID'?: string;
   'Experience'?: string;
   'Qualification'?: string;
   // Professional Other Details
@@ -60,7 +59,6 @@ const generateSampleData = (): EmployeeTemplateData[] => {
       'Nationality': 'Indian',
       'Blood Group': 'O+',
       'Residence Address': '123 Main St, City',
-      'Staff ID': 'STF001',
       'Experience': '10',
       'Qualification': 'PhD',
       'Aadhar No': '1234 5678 9012',
@@ -106,7 +104,6 @@ export const downloadExcelTemplate = (): void => {
     { wch: 15 }, // Nationality
     { wch: 12 }, // Blood Group
     { wch: 30 }, // Residence Address
-    { wch: 12 }, // Staff ID
     { wch: 15 }, // Experience
     { wch: 25 }, // Qualification
     { wch: 18 }, // Aadhar No
@@ -185,7 +182,6 @@ export const getTemplateFormatInfo = () => ({
     'Nationality',
     'Blood Group',
     'Residence Address',
-    'Staff ID',
     'Experience',
     'Qualification',
     'Aadhar No',
