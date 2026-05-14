@@ -263,21 +263,20 @@ async function insertEmployeePersonalDetails(
     return value;
   };
   const personalDetails = {
-    employee_id: employeeId,
+  employee_id: employeeId,
     client_id: resolvedClientId,
-    middle_name: normalizeOptional(nestedPersonal.middleName ?? employee.middleName),
-    father_name: normalizeOptional(nestedPersonal.fatherName ?? employee.fatherName),
-    gender: normalizeOptional(nestedPersonal.gender ?? employee.gender),
-    dob: normalizeOptional(nestedPersonal.dob ?? employee.dob),
-    religion: normalizeOptional(nestedPersonal.religion ?? employee.religion),
-    nationality: normalizeOptional(nestedPersonal.nationality ?? employee.nationality),
-    blood_group: normalizeOptional(nestedPersonal.bloodGroup ?? employee.bloodGroup),
-    residence_address: normalizeOptional(nestedPersonal.residenceAddress ?? employee.residenceAddress),
-    staff_id: normalizeOptional(nestedPersonal.staffId ?? employee.staffId),
-    experience: normalizeOptional(nestedPersonal.experience ?? employee.experience),
-    qualification: normalizeOptional(nestedPersonal.qualification ?? employee.qualification),
+  middle_name: normalizeOptional(nestedPersonal.middleName ?? employee.middleName),
+  father_name: normalizeOptional(nestedPersonal.fatherName ?? employee.fatherName),
+  gender: normalizeOptional(nestedPersonal.gender ?? employee.gender),
+  dob: normalizeOptional(nestedPersonal.dob ?? employee.dob),
+  religion: normalizeOptional(nestedPersonal.religion ?? employee.religion),
+  nationality: normalizeOptional(nestedPersonal.nationality ?? employee.nationality),
+  blood_group: normalizeOptional(nestedPersonal.bloodGroup ?? employee.bloodGroup),
+  residence_address: normalizeOptional(nestedPersonal.residenceAddress ?? employee.residenceAddress),
+  experience: normalizeOptional(nestedPersonal.experience ?? employee.experience),
+  qualification: normalizeOptional(nestedPersonal.qualification ?? employee.qualification),
     updated_at: new Date().toISOString(),
-  };
+};
 
   const { error } = await supabaseClient
     .from('employee_personal_details')
@@ -315,16 +314,16 @@ async function insertEmployeeOtherDetails(
     return value;
   };
   const otherDetails = {
-    employee_id: employeeId,
+  employee_id: employeeId,
     client_id: resolvedClientId,
-    aadhaar_number: normalizeOptional(nestedProfessional.aadharNo ?? employee.aadharNo),
-    pan_number: normalizeOptional(nestedProfessional.panNo ?? employee.panNo),
-    esi_number: normalizeOptional(nestedProfessional.esiNo ?? employee.esiNo),
-    pf_number: normalizeOptional(nestedProfessional.pfNo ?? employee.pfNo),
-    exit_date: normalizeOptional(nestedProfessional.exitDate ?? employee.exitDate),
-    biometric_user_id: normalizeOptional(nestedProfessional.biometricUserId ?? employee.biometricUserId),
+  aadhaar_number: normalizeOptional(nestedProfessional.aadharNo ?? employee.aadharNo),
+  pan_number: normalizeOptional(nestedProfessional.panNo ?? employee.panNo),
+  esi_number: normalizeOptional(nestedProfessional.esiNo ?? employee.esiNo),
+  pf_number: normalizeOptional(nestedProfessional.pfNo ?? employee.pfNo),
+  exit_date: normalizeOptional(nestedProfessional.exitDate ?? employee.exitDate),
+  biometric_user_id: normalizeOptional(nestedProfessional.biometricUserId ?? employee.biometricUserId),
     updated_at: new Date().toISOString(),
-  };
+};
 
   const { error } = await supabaseClient
     .from('employee_other_details')
