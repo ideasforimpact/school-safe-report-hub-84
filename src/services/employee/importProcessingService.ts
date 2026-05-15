@@ -46,7 +46,26 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
                 (typeof value === 'string' && value.trim() === '') ||
                 value === 0;
         });
-        
+        const rawAadhar = row.aadharNo ? String(row.aadharNo).trim() : '';
+        const rawEsi = row.esiNo ? String(row.esiNo).trim() : '';
+        const rawPf = row.pfNo ? String(row.pfNo).trim() : '';
+
+        // Validate formats before stripping formatting
+        if (rawAadhar && !/^\d{12}$/.test(rawAadhar.replace(/\s/g, ''))) {
+          validationErrors.push(`Row ${i + 2}: Aadhaar number must contain only numbers and be exactly 12 digits`);
+          continue;
+        }
+
+        if (rawEsi && !/^\d{10}$/.test(rawEsi)) {
+          validationErrors.push(`Row ${i + 2}: ESI number must contain only numbers and be exactly 10 digits`);
+          continue;
+        }
+
+        if (rawPf && !/^\d{12}$/.test(rawPf)) {
+          validationErrors.push(`Row ${i + 2}: PF number must contain only numbers and be exactly 12 digits`);
+          continue;
+        }
+
         if (missingFields.length > 0) {
           validationErrors.push(`Row ${i + 2}: Missing required fields: ${missingFields.join(', ')}`);
           continue;
@@ -107,7 +126,17 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         transportSafetyAdmin: true,
         eduSafeResourceAccess: false
       };
-      
+      const cleanAadharNo = row.aadharNo
+      ? String(row.aadharNo).replace(/\D/g, '')
+      : null;
+
+      const cleanEsiNo = row.esiNo
+        ? String(row.esiNo).replace(/\D/g, '')
+        : null;
+
+      const cleanPfNo = row.pfNo
+        ? String(row.pfNo).replace(/\D/g, '')
+        : null;
       // Create default module access payload with Dashboard module
       
       // Add default module permissions to each employee record
@@ -127,7 +156,26 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         modulePermissions: modulePermissions,
         moduleAccessPayload: Array.isArray(row.moduleAccessPayload)
           ? row.moduleAccessPayload
-          : []
+          : [],
+        // Personal Details
+        middleName: row.middleName,
+        fatherName: row.fatherName,
+        gender: row.gender,
+        dob: row.dob,
+        religion: row.religion,
+        nationality: row.nationality,
+        bloodGroup: row.bloodGroup,
+        residenceAddress: row.residenceAddress,
+        staffId: row.staffId,
+        experience: row.experience,
+        qualification: row.qualification,
+        // Professional Other Details
+        aadharNo: cleanAadharNo,
+        panNo: row.panNo,
+        esiNo: cleanEsiNo,
+        pfNo: cleanPfNo,
+        exitDate: row.resigningOrTerminationDate,
+        biometricUserId: row.biometricUserId,
       };
     });
     

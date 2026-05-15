@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from "@/lib/Dateformat";
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const FormsPage = () => {
   const location = useLocation();
@@ -36,6 +37,7 @@ const FormsPage = () => {
 
   const { client, clients, loading: clientsLoading } = useClient();
   const { user, employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [selectedClientId, setSelectedClientId] = useState<string>(''); // used only for backoffice
   const authClientId = (employeeData as any)?.clientId || (user as any)?.clientId;
   const effectiveClientId = isBackoffice ? selectedClientId : (authClientId ?? client?.id ?? '');
@@ -385,6 +387,11 @@ const FormsPage = () => {
   const hasActiveFilters = activeFilterCount > 0;
 
   const handleAcknowledgeSubmission = async () => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only users cannot acknowledge grievances');
+      return;
+    }
+
     if (!acknowledgeSubmission) {
       toast.error('No submission selected');
       return;
@@ -860,7 +867,7 @@ const Content = (
                           <Button variant="outline" size="icon" onClick={() => setViewSubmission(sub)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {sub.status === 'pending' && (
+                          {!isReadOnlySwitchedContext && sub.status === 'pending' && (
                             <Button 
                               variant="outline" 
                               size="icon" 
@@ -1178,7 +1185,7 @@ const Content = (
             </DialogContent>
           </Dialog>
             )}
-            {acknowledgeSubmission && (
+            {acknowledgeSubmission && !isReadOnlySwitchedContext && (
               <Dialog open={!!acknowledgeSubmission} onOpenChange={(open) => { if (!open) setAcknowledgeSubmission(null);setAcknowledgeComment(''); 
               setAcknowledgementFiles([]); }}>
                 <DialogContent className="max-w-lg">

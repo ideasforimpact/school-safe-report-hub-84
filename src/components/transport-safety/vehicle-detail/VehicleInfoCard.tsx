@@ -35,6 +35,7 @@ import { getLatestVerificationFieldValue } from '@/utils/transport-safety/docume
 import VerificationDetailsDialog from '../VerificationDetailsDialog';
 import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
 import { VehicleChallans } from '@/types/transportSafety';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface VehicleInfoCardProps {
   vehicle: Vehicle;
@@ -43,6 +44,7 @@ interface VehicleInfoCardProps {
 const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const { verifyDocument, deleteVehicle, updateVehicle } = useTransportSafety();
   const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState<Date | null>(
     vehicle.verificationDate ? new Date(vehicle.verificationDate) : null
@@ -116,11 +118,13 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
 
 
   const handleSafetyCheckClick = () => {
+    if (isReadOnlySwitchedContext) return;
     setVerificationError(null); // Clear any previous errors
     setShowSafetyCheckConsent(true);
   };
 
   const handleSafetyCheckConsent = async () => {
+    if (isReadOnlySwitchedContext) return;
     // Don't close popup immediately, keep it open for loading state
     setIsChecking(true);
     
@@ -214,6 +218,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   };
 
   const handleDeleteVehicle = () => {
+    if (isReadOnlySwitchedContext) return;
     deleteVehicle(vehicleId);
     navigate('/transport-safety');
   };
@@ -307,17 +312,19 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         </div>
         
         <div className="flex justify-start space-x-3">
-          <Button 
-            onClick={() => setShowDeleteConfirm(true)} 
-            variant="outline"
-            className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Vehicle
-          </Button>
+          {!isReadOnlySwitchedContext && (
+            <Button 
+              onClick={() => setShowDeleteConfirm(true)} 
+              variant="outline"
+              className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Vehicle
+            </Button>
+          )}
           
           {/* Only show Run Safety Check button if user has admin access */}
-          {hasAdminAccess && (
+          {!isReadOnlySwitchedContext && hasAdminAccess && (
             <Button 
               onClick={handleSafetyCheckClick} 
               disabled={isChecking} 
@@ -377,7 +384,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       </CardContent>
 
       {/* Safety Check Consent Dialog */}
-      <AlertDialog open={showSafetyCheckConsent} onOpenChange={(open) => {
+      <AlertDialog open={showSafetyCheckConsent && !isReadOnlySwitchedContext} onOpenChange={(open) => {
         // Only allow closing if not currently checking
         if (!isChecking) {
           setShowSafetyCheckConsent(open);
@@ -430,7 +437,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       </AlertDialog>
 
       {/* Delete confirmation dialog */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialog open={showDeleteConfirm && !isReadOnlySwitchedContext} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center text-red-600">

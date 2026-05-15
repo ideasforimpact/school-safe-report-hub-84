@@ -44,6 +44,9 @@ function buildMonthlyReportEmailBody(opts: {
 <li><strong>Assessments</strong></li>
 <li><strong>Incidents</strong></li>
 <li><strong>Grievances</strong></li>
+<li><strong>SOP</strong></li>
+<li><strong>Student Well-Being</strong></li>
+<li><strong>Committee</strong></li>
 </ul>
 <p style="margin:0 0 20px;font-size:16px;">This report provides a clear view of the overall compliance status and key safety activities for the month.</p>
 <p style="margin:0 0 20px;font-size:16px;">If you have any questions or require clarification on any section of the report, please feel free to reach out to us.</p>

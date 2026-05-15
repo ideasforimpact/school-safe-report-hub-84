@@ -9,6 +9,7 @@ import { backofficeEmployeeService } from '@/services/employee/backofficeEmploye
 import { Employee } from '@/types/employeeVerification';
 import BackofficeEmployeeDetails from '@/components/backoffice/employee-verification/BackofficeEmployeeDetails';
 import BackofficeDocumentsList from '@/components/backoffice/employee-verification/BackofficeDocumentsList';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const BackofficeEmployeeDocumentsPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -16,6 +17,7 @@ const BackofficeEmployeeDocumentsPage = () => {
   const clientId = searchParams.get('clientId');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,6 +150,7 @@ const BackofficeEmployeeDocumentsPage = () => {
         <BackofficeDocumentsList 
           employee={employee}
           onRefresh={fetchEmployeeData}
+          isReadOnly={isReadOnlySwitchedContext}
         />
       </div>
     </Layout>

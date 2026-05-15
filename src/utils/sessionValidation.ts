@@ -1,6 +1,9 @@
 import { loadAuthState, clearPersistedAuthState } from '@/store/authPersistence';
+// Legacy custom-JWT helpers kept for one-shot fallback when reading auth_state
+// rows persisted by an older build; new logins do not write these tokens.
 import { verifyBackofficeToken, isTokenExpired } from './jwtUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { BACKOFFICE_STORAGE_KEY } from '@/integrations/supabase/client';
 import { authCoordinator } from './authCoordinator';
 import type { Session } from '@supabase/supabase-js';
 
@@ -114,50 +117,145 @@ export const validateSupabaseSession = async (): Promise<boolean> => {
   }
 };
 
-// Validate backoffice session using custom JWT
+/**
+ * Read the Supabase access_token expiry directly from the backoffice
+ * localStorage bucket (BACKOFFICE_STORAGE_KEY). The Supabase SDK persists its
+ * session there as JSON; we just inspect `expires_at` synchronously.
+ *
+ * Returns:
+ *   - { hasSession: true,  expired: false } → access_token still valid
+ *   - { hasSession: true,  expired: true  } → access_token expired but a
+ *       refresh_token is present in the same blob; the SDK will auto-refresh
+ *       on the next async call (autoRefreshToken: true)
+ *   - { hasSession: false }                → no Supabase session at all
+ */
+function readBackofficeSupabaseSession(): {
+  hasSession: boolean;
+  hasRefreshToken: boolean;
+  expired: boolean;
+  expiresAt: number | null;
+} {
+  if (typeof window === 'undefined') {
+    return { hasSession: false, hasRefreshToken: false, expired: true, expiresAt: null };
+  }
+  try {
+    const raw = localStorage.getItem(BACKOFFICE_STORAGE_KEY);
+    if (!raw) {
+      return { hasSession: false, hasRefreshToken: false, expired: true, expiresAt: null };
+    }
+    const parsed = JSON.parse(raw);
+    const expiresAtSec: number | null = parsed?.expires_at ?? parsed?.currentSession?.expires_at ?? null;
+    const refreshToken: string | null =
+      parsed?.refresh_token ?? parsed?.currentSession?.refresh_token ?? null;
+    const accessToken: string | null =
+      parsed?.access_token ?? parsed?.currentSession?.access_token ?? null;
+    if (!accessToken) {
+      return {
+        hasSession: false,
+        hasRefreshToken: !!refreshToken,
+        expired: true,
+        expiresAt: null,
+      };
+    }
+    const expired = expiresAtSec !== null ? Date.now() / 1000 > expiresAtSec : true;
+    return {
+      hasSession: true,
+      hasRefreshToken: !!refreshToken,
+      expired,
+      expiresAt: expiresAtSec,
+    };
+  } catch (err) {
+    console.warn('[AUTH-DIAG] readBackofficeSupabaseSession: parse error', err);
+    return { hasSession: false, hasRefreshToken: false, expired: true, expiresAt: null };
+  }
+}
+
+/**
+ * Validate that the current tab has a usable backoffice session.
+ *
+ * The new contract (post-custom-JWT removal):
+ *   ✓ The persisted Redux state says this is a backoffice user
+ *     (sessionType: 'backoffice' / isBackofficeUser: true).
+ *   ✓ A Supabase session exists in the backoffice bucket
+ *     — either still valid, or expired-but-with-a-refresh-token (the SDK
+ *       will refresh transparently before the next API call).
+ *
+ * Returns false (and clears the bucket) only when there is genuinely no path
+ * back to a usable session: no Supabase session at all, or expired with no
+ * refresh token to use.
+ *
+ * Falls back to the legacy custom-JWT check if the persisted state was
+ * written by an older build that hasn't been re-logged-in yet.
+ */
 export const validateBackofficeSession = (): boolean => {
-  console.log('🔐 validateBackofficeSession: Starting validation');
+  console.log('[AUTH-DIAG] validateBackofficeSession: Starting validation');
   const authState = loadAuthState();
-  
+
   if (!authState || !authState.isBackofficeUser) {
-    console.log('🔐 validateBackofficeSession: No auth state or not backoffice user', { authState });
+    console.warn('[AUTH-DIAG] validateBackofficeSession: false', {
+      reason: !authState ? 'no authState in storage' : 'authState.isBackofficeUser is false',
+    });
     return false;
   }
 
-  console.log('🔐 validateBackofficeSession: Auth state found', { 
-    hasJwtToken: !!authState.jwtToken, 
-    isBackofficeUser: authState.isBackofficeUser,
-    expiresAt: authState.expiresAt 
+  // ── New path: Supabase access_token + refresh_token ─────────────────
+  const supaSession = readBackofficeSupabaseSession();
+  console.log('[AUTH-DIAG] validateBackofficeSession: Supabase bucket inspection', {
+    hasSession: supaSession.hasSession,
+    hasRefreshToken: supaSession.hasRefreshToken,
+    expired: supaSession.expired,
+    expiresAt: supaSession.expiresAt
+      ? new Date(supaSession.expiresAt * 1000).toISOString()
+      : null,
   });
 
-  // Check if JWT token exists and is valid
-  if (authState.jwtToken) {
-    console.log('🔐 validateBackofficeSession: Checking JWT token');
-    if (isTokenExpired(authState.jwtToken)) {
-      console.log('🔐 validateBackofficeSession: JWT token has expired');
-      clearPersistedAuthState();
-      return false;
+  if (supaSession.hasSession) {
+    if (!supaSession.expired) {
+      console.log('[AUTH-DIAG] validateBackofficeSession: access_token still valid');
+      return true;
     }
-
-    const decodedToken = verifyBackofficeToken(authState.jwtToken);
-    if (!decodedToken) {
-      console.log('🔐 validateBackofficeSession: JWT token verification failed');
-      clearPersistedAuthState();
-      return false;
+    if (supaSession.hasRefreshToken) {
+      console.log(
+        '[AUTH-DIAG] validateBackofficeSession: access_token expired but refresh_token present — SDK will refresh on next call'
+      );
+      return true;
     }
-
-    console.log('🔐 validateBackofficeSession: JWT token is valid', { decodedToken });
-    return true;
-  }
-
-  // If no JWT token, check expiration timestamp (fallback)
-  if (authState.expiresAt && Date.now() > authState.expiresAt) {
-    console.log('🔐 validateBackofficeSession: Session has expired (fallback check)');
+    console.warn(
+      '[AUTH-DIAG] validateBackofficeSession: access_token expired and no refresh_token — clearing'
+    );
     clearPersistedAuthState();
     return false;
   }
 
-  console.log('🔐 validateBackofficeSession: Returning authenticated status', { isAuthenticated: authState.isAuthenticated });
+  // ── Legacy path: custom JWT issued by old build ─────────────────────
+  // If we still see a custom JWT in auth_state, validate it the old way so
+  // already-logged-in users from a previous build aren't booted instantly.
+  if (authState.jwtToken) {
+    console.log('[AUTH-DIAG] validateBackofficeSession: legacy custom JWT path (no Supabase session)');
+    if (isTokenExpired(authState.jwtToken)) {
+      console.warn('[AUTH-DIAG] validateBackofficeSession: legacy JWT expired');
+      clearPersistedAuthState();
+      return false;
+    }
+    const decoded = verifyBackofficeToken(authState.jwtToken);
+    if (!decoded) {
+      console.warn('[AUTH-DIAG] validateBackofficeSession: legacy JWT verification failed');
+      clearPersistedAuthState();
+      return false;
+    }
+    return true;
+  }
+
+  if (authState.expiresAt && Date.now() > authState.expiresAt) {
+    console.warn('[AUTH-DIAG] validateBackofficeSession: legacy expiresAt elapsed');
+    clearPersistedAuthState();
+    return false;
+  }
+
+  console.warn(
+    '[AUTH-DIAG] validateBackofficeSession: no Supabase session and no legacy JWT — falling back to authState.isAuthenticated',
+    { isAuthenticated: authState.isAuthenticated }
+  );
   return authState.isAuthenticated;
 };
 

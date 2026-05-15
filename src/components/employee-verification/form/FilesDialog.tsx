@@ -26,6 +26,7 @@ interface FilesDialogProps {
   verificationType?: string; // e.g., 'police', 'court_case', etc.
   onRefresh?: () => void;
   onCloseWithFilesCount?: (count: number) => void;
+  isReadOnly?: boolean;
 }
 
 const FilesDialog: React.FC<FilesDialogProps> = ({
@@ -38,6 +39,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
   verificationType = 'police',
   onRefresh,
   onCloseWithFilesCount,
+  isReadOnly = false,
 }) => {
   const { toast } = useToast();
   const [newFiles, setNewFiles] = useState<FileItem[]>([]);
@@ -163,6 +165,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
   };
 
   const handleFileSelection = useCallback(async (fileList: FileList | null) => {
+    if (isReadOnly) return;
     if (!fileList || fileList.length === 0) return;
 
     const validFiles: File[] = [];
@@ -186,7 +189,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
         variant: 'destructive',
       });
     }
-  }, [toast]);
+  }, [isReadOnly, toast]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleFileSelection(e.target.files);
@@ -195,14 +198,16 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (isReadOnly) return;
     handleFileSelection(e.dataTransfer.files);
-  }, [handleFileSelection]);
+  }, [handleFileSelection, isReadOnly]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   }, []);
 
   const handleRemoveNewFile = (id: string) => {
+    if (isReadOnly) return;
     setNewFiles((prev) => prev.filter((file) => file.id !== id));
   };
 
@@ -249,6 +254,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
   };
 
   const handleUpload = async () => {
+    if (isReadOnly) return;
     if (newFiles.length === 0) {
       toast({
         title: 'No files selected',
@@ -365,6 +371,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
   };
 
   const handleDelete = async (file: FileInfo) => {
+    if (isReadOnly) return;
     setDeleting(true);
     setDeletingFileName(file.fileName);
     try {
@@ -456,7 +463,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
-          <DialogTitle>Manage Files</DialogTitle>
+          <DialogTitle>{isReadOnly ? 'Files' : 'Manage Files'}</DialogTitle>
         </DialogHeader>
 
         {uiError && (
@@ -467,69 +474,71 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
 
         {/* Upload new files section */}
         <div className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium mb-2">Upload New Files</h3>
-            <div
-              className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onClick={() => document.getElementById('file-input-files-dialog')?.click()}
-            >
-              <Upload className="h-8 w-8 text-gray-400 mb-2" />
-              <p className="text-sm text-gray-500 mb-2">
-                Drag and drop files here, or click to select files
-              </p>
-              <p className="text-xs text-gray-400 mb-4">
-                Supported formats: JPG, PNG, PDF • Max file size: 5MB
-              </p>
-              <input
-                id="file-input-files-dialog"
-                type="file"
-                multiple
-                accept="image/*,.pdf"
-                onChange={handleFileInput}
-                className="hidden"
-              />
-              <Button type="button" variant="outline" size="sm" disabled={uploading}>
-                Browse Files
-              </Button>
-            </div>
-
-            {newFiles.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {newFiles.map((file) => (
-                  <div key={file.id} className="flex items-start justify-between p-2 bg-gray-50 rounded gap-2">
-                    <div className="flex items-start gap-2 flex-1 min-w-0 overflow-hidden">
-                      <File className="h-4 w-4 text-gray-500 flex-shrink-0 mt-0.5" />
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <span className="text-sm break-words break-all block">{file.name}</span>
-                        <span className="text-xs text-gray-500 block mt-1">({formatFileSize(file.size)})</span>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveNewFile(file.id)}
-                      disabled={uploading}
-                      className="flex-shrink-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  onClick={handleUpload}
-                  disabled={uploading || newFiles.length === 0}
-                  className="w-full"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Files
+          {!isReadOnly && (
+            <div>
+              <h3 className="text-sm font-medium mb-2">Upload New Files</h3>
+              <div
+                className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onClick={() => document.getElementById('file-input-files-dialog')?.click()}
+              >
+                <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                <p className="text-sm text-gray-500 mb-2">
+                  Drag and drop files here, or click to select files
+                </p>
+                <p className="text-xs text-gray-400 mb-4">
+                  Supported formats: JPG, PNG, PDF • Max file size: 5MB
+                </p>
+                <input
+                  id="file-input-files-dialog"
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf"
+                  onChange={handleFileInput}
+                  className="hidden"
+                />
+                <Button type="button" variant="outline" size="sm" disabled={uploading}>
+                  Browse Files
                 </Button>
               </div>
-            )}
-          </div>
+
+              {newFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {newFiles.map((file) => (
+                    <div key={file.id} className="flex items-start justify-between p-2 bg-gray-50 rounded gap-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0 overflow-hidden">
+                        <File className="h-4 w-4 text-gray-500 flex-shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <span className="text-sm break-words break-all block">{file.name}</span>
+                          <span className="text-xs text-gray-500 block mt-1">({formatFileSize(file.size)})</span>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveNewFile(file.id)}
+                        disabled={uploading}
+                        className="flex-shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    onClick={handleUpload}
+                    disabled={uploading || newFiles.length === 0}
+                    className="w-full"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Files
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Existing files section */}
           <div>
@@ -550,19 +559,21 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => handleDelete(file)}
-                        disabled={deleting}
-                        title="Delete file"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {!isReadOnly && (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => handleDelete(file)}
+                          disabled={deleting}
+                          title="Delete file"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -605,4 +616,3 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
 };
 
 export default FilesDialog;
-

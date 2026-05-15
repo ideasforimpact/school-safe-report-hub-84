@@ -37,6 +37,7 @@ import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { type FileItem } from '@/types/fileTypes';
 import { DESCRIPTION_MAX_LENGTH } from '@/components/constants';
 import { formatDate } from '@/lib/Dateformat';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 type TabKey = 'check' | 'calendar' | 'audit' | 'report';
 type ChildAuditLookupItem = {
@@ -359,6 +360,7 @@ const ChildAuditPage = () => {
   const { employeeData } = useAuth();
   const clientId = employeeData?.clientId;
   const employeeId = employeeData?.id ?? null;
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<ChildAuditStudentRow[]>([]);
@@ -948,6 +950,10 @@ const diagnostics = {
     items.includes(id) ? items.filter((value) => value !== id) : [...items, id];
 
   const submitCheck = async () => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: submit is not allowed');
+      return;
+    }
     if (!clientId || !selectedStudent) return;
     if (!selectedCheckType) {
       toast.error('Please select Check Type');
@@ -1418,7 +1424,7 @@ const diagnostics = {
                       allowedTypes={['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']}
                       accept="image/*,.pdf"
                       showFileList={true}
-                      disabled={saving}
+                      disabled={saving || isReadOnlySwitchedContext}
                     />
                   </CardContent>
                 </Card>
@@ -1448,7 +1454,11 @@ const diagnostics = {
                   }}
                 >
                   <div className="mx-6 py-3 border-slate-200 shadow-sm">
-                    <Button className="w-full h-12 text-base font-semibold" onClick={submitCheck} disabled={saving}>
+                    <Button
+                      className="w-full h-12 text-base font-semibold"
+                      onClick={submitCheck}
+                      disabled={saving || isReadOnlySwitchedContext}
+                    >
                     
                       {saving ? 'Saving...' : 'Submit Check'}
                     </Button>

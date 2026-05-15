@@ -9,17 +9,23 @@ import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 import { useIncidents } from '@/contexts/incident';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useIncidentDetail as useIncidentDetailHook } from '@/hooks/incident/useIncidentDetail';
 import { FileItem, ContributingFactor, Action } from '@/types/incident';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { incidents, getIncident } = useIncidents();
+  const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+  const currentClientContextId = state.activeClientId || state.clientId || null;
+  const previousClientContextRef = useRef<string | null>(currentClientContextId);
   
   // Use the incident detail hook to fetch fresh data
   const { incident: fetchedIncident, isLoading: isFetchingIncident, error: fetchError, reload } = useIncidentDetailHook(id);
@@ -27,6 +33,19 @@ const IncidentDetail = () => {
   const [incident, setIncident] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
+
+  useEffect(() => {
+    const previousClientContextId = previousClientContextRef.current;
+    if (
+      previousClientContextId &&
+      currentClientContextId &&
+      previousClientContextId !== currentClientContextId
+    ) {
+      navigate('/incidents', { replace: true });
+      return;
+    }
+    previousClientContextRef.current = currentClientContextId;
+  }, [currentClientContextId, navigate]);
 
   // Priority: Use fetched incident data if available, otherwise fall back to context
   useEffect(() => {
@@ -124,6 +143,7 @@ const IncidentDetail = () => {
 
   // Handle close button click - open the closure form
   const handleCloseButtonClick = async () => {
+    if (isReadOnlySwitchedContext) return;
     setIsClosureFormOpen(true);
   };
 
@@ -187,12 +207,14 @@ const IncidentDetail = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Return to Incidents List
             </Button>
-            <Button 
-              variant="outline"
-              onClick={() => navigate('/report-incident')}
-            >
-              Report New Incident
-            </Button>
+            {!isReadOnlySwitchedContext && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/report-incident')}
+              >
+                Report New Incident
+              </Button>
+            )}
           </div>
         </div>
       </Layout>
@@ -225,7 +247,8 @@ const IncidentDetail = () => {
     isAdmin: false,
     updateIncident: () => Promise.resolve(),
     navigate,
-    onRefreshIncident: handleRefreshIncident
+    onRefreshIncident: handleRefreshIncident,
+    isReadOnly: isReadOnlySwitchedContext
   };
 
   return (
@@ -252,6 +275,7 @@ const IncidentDetail = () => {
           getStatusColor={getStatusColor}
           onCloseButtonClick={handleCloseButtonClick}
           onIncidentUpdate={handleRefreshIncident}
+          isReadOnly={isReadOnlySwitchedContext}
         />
       </div>
       
@@ -260,7 +284,7 @@ const IncidentDetail = () => {
       {/* Incident Closure Form */}
       <IncidentClosureForm
         incident={incident}
-        isOpen={isClosureFormOpen && !incident?.isVoided}
+        isOpen={isClosureFormOpen && !incident?.isVoided && !isReadOnlySwitchedContext}
         onClose={() => setIsClosureFormOpen(false)}
         onSubmit={handleClosureFormSubmit}
       />

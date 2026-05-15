@@ -23,6 +23,7 @@ import { formatDate } from "@/lib/Dateformat";
 import Loader from "@/components/common/Loader";
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getCurrentUser } from '@/store/authSelectors';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
@@ -57,6 +58,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiPayload, setAiPayload] = React.useState<any | null>(null);
   const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
     
   const currentUser = getCurrentUser(state);
   
@@ -94,6 +96,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
 
   // Check if user can edit a specific incident
   const canEditIncident = (incident: IncidentRecord) => {
+    if (isReadOnlySwitchedContext) return false;
     // Don't show edit button for voided incidents (if the property exists and is true)
     if (incident.is_voided) return false;
     

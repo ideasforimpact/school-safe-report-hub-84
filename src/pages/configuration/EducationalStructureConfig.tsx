@@ -30,6 +30,7 @@ interface EducationalStructureConfigProps {
   addFacility: (name: string, campusId: string) => void;
   updateFacility: (id: string, name: string, campusId: string) => void;
   deleteFacility: (id: string) => void;
+  canCreate?: boolean;
 }
 
 export const EducationalStructureConfig: React.FC<EducationalStructureConfigProps> = ({
@@ -51,7 +52,8 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
   facilities,
   addFacility,
   updateFacility,
-  deleteFacility
+  deleteFacility,
+  canCreate = true,
 }) => {
   // Keep track of the actual tab value to handle disabled tabs logic
   const [currentTab, setCurrentTab] = useState(activeTab || 'campuses');
@@ -115,6 +117,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
           deleteCampus={deleteCampus}
           classes={classes}
           loading={loading}
+          canCreate={canCreate}
         />
       </TabsContent>
       
@@ -127,6 +130,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
           deleteClass={deleteClass}
           sections={sections}
           loading={loading}
+          canCreate={canCreate}
         />
       </TabsContent>
       
@@ -139,6 +143,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
           updateSection={updateSection}
           deleteSection={deleteSection}
           loading={loading}
+          canCreate={canCreate}
         />
       </TabsContent>
       
@@ -150,6 +155,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
           updateFacility={updateFacility}
           deleteFacility={deleteFacility}
           loading={loading}
+          canCreate={canCreate}
         />
       </TabsContent>
     </Tabs>

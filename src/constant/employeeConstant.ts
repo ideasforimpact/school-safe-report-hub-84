@@ -66,3 +66,23 @@ export const EMPLOYEE_DESIGNATION_CONSTANTS = {
 
   PATTERN: /^[a-zA-Z\s]{3,25}$/,
 } as const;
+
+export const EMPLOYEE_PERSONAL_INFO_CONSTANTS = {
+  MIN_LENGTH: 3,
+  MAX_LENGTH: 25,
+} as const;
+
+export const STAFF_ID_CONSTANTS = {
+  MIN_LENGTH: 3,
+  MAX_LENGTH: 20,
+} as const;
+
+export const BIOMETRIC_USER_ID_CONSTANTS = {
+  MIN_LENGTH: 3,
+  MAX_LENGTH: 20,
+} as const;
+
+export const EXPERIENCE_CONSTANTS = {
+  MIN_LENGTH: 1,
+  MAX_LENGTH: 2,
+} as const;

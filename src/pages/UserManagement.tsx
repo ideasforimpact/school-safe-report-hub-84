@@ -39,6 +39,7 @@ import { getEmployeeModuleAccessItems, getModuleAccessForUser, updateEmployeeMod
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { incidentReferenceService } from '@/services/incident/incidentReferenceService';
 import Loader from '@/components/common/Loader';
@@ -85,6 +86,33 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   employeeType?: EmployeeType; 
   department?: DepartmentType;
   joiningDate?: string;
+  documents?: Array<{
+    label: string;
+    fileName: string;
+    uploadedAt: string;
+  }>;
+  // Personal details from User Management wizard
+  personalDetails?: {
+    residenceAddress?: string;
+    middleName?: string;
+    fatherName?: string;
+    staffId?: string;
+    experience?: string;
+    qualification?: string;
+    gender?: string;
+    dob?: string;
+    religion?: string;
+    nationality?: string;
+    bloodGroup?: string;
+  };
+  professionalOtherDetails?: {
+    aadharNo?: string;
+    panNo?: string;
+    esiNo?: string;
+    pfNo?: string;
+    exitDate?: string;
+    biometricUserId?: string;
+  };
   cpd_entries?: CpdEntryForUser[];
   // No need to explicitly define role here since we're extending from User
 }
@@ -114,6 +142,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const { addEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
   const { employeeData } = useAuth();
     const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   
   // Force refresh of employee data
@@ -215,6 +244,32 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     employeeType?: EmployeeType;
     department?: DepartmentType;
     joiningDate?: string;
+    personalDetails?: {
+      residenceAddress?: string;
+      middleName?: string;
+      fatherName?: string;
+      staffId?: string;
+      experience?: string;
+      qualification?: string;
+      gender?: string;
+      dob?: string;
+      religion?: string;
+      nationality?: string;
+      bloodGroup?: string;
+    };
+    professionalOtherDetails?: {
+      aadharNo?: string;
+      panNo?: string;
+      esiNo?: string;
+      pfNo?: string;
+      exitDate?: string;
+      biometricUserId?: string;
+    };
+    documents?: Array<{
+      label: string;
+      fileName: string;
+      uploadedAt: string;
+    }>;
     clientId?: string;
     moduleAccessPayload?: ModuleAccessItem[];
     is_cpd_involved?: boolean;
@@ -224,6 +279,28 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     email: '',
     phone: '',
     designation: '',
+    personalDetails: {
+      residenceAddress: '',
+      middleName: '',
+      fatherName: '',
+      staffId: '',
+      experience: '',
+      qualification: '',
+      gender: '',
+      dob: '',
+      religion: '',
+      nationality: '',
+      bloodGroup: '',
+    },
+    professionalOtherDetails: {
+      aadharNo: '',
+      panNo: '',
+      esiNo: '',
+      pfNo: '',
+      exitDate: '',
+      biometricUserId: '',
+    },
+    documents: [],
     tags: [],
     clientId: clientId,
     moduleAccessPayload: [],
@@ -367,6 +444,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             email: employee.email,
             phone: (employee as any).phone,
             designation: (employee as any).designation,
+            documents: (employee as any).profileDocuments || [],
             employeeId: employee.employeeId,
             employeeType: employee.employeeType as any,
             department: employee.department as any,
@@ -376,6 +454,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             clientId: employee.clientId,
             isSuperAdmin: employee.isSuperAdmin,
             is_cpd_involved: employee.isCpdInvolved ?? false,
+            personalDetails: employee.personalDetails || {},
+            professionalOtherDetails: employee.professionalOtherDetails || {},
             moduleAccessPayload: moduleAccessItems,
             cpd_entries,
             role: 'user' as const
@@ -471,6 +551,13 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               email: currentFormData.email || undefined,
               phone: currentFormData.phone || '',
               designation: currentFormData.designation || (currentFormData.tags?.join(', ') || ''),
+              documents: currentFormData.documents || [],
+              personalDetails: {
+                ...(currentFormData.personalDetails || {})
+              },
+              professionalOtherDetails: {
+                ...(currentFormData.professionalOtherDetails || {})
+              },
               employeeType: currentFormData.employeeType ?? undefined,
               department: currentFormData.department ?? undefined,
               joiningDate: currentFormData.joiningDate || new Date().toISOString().split('T')[0],
@@ -588,7 +675,10 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             isSuperAdmin: employee.isSuperAdmin,
             phone: employee.phone,
             designation: employee.designation,
+            documents: (employee as any).profileDocuments || [],
             is_cpd_involved: employee.isCpdInvolved ?? false,
+            personalDetails: employee.personalDetails || {},
+            professionalOtherDetails: employee.professionalOtherDetails || {},
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -775,6 +865,25 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       email: '',
       phone: '',
       designation: '',
+      personalDetails: {
+        residenceAddress: '',
+        middleName: '',
+        fatherName: '',
+        gender: '',
+        dob: '',
+        religion: '',
+        nationality: '',
+        bloodGroup: '',
+      },
+      professionalOtherDetails: {
+        aadharNo: '',
+        panNo: '',
+        esiNo: '',
+        pfNo: '',
+        exitDate: '',
+        biometricUserId: '',
+      },
+      documents: [],
       tags: [],
       clientId: clientId,
       moduleAccessPayload: []
@@ -836,7 +945,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               <Users className="h-6 w-6 text-primary" />
               <h1 className="text-2xl font-bold">User Management</h1>
             </div>
-            {hasUserManagementAdminAccess && (
+            {hasUserManagementAdminAccess && !isReadOnlySwitchedContext && (
               <div className="flex gap-2">
                 <Button 
                   onClick={() => setIsImportDialogOpen(true)}
@@ -860,7 +969,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         </div>
       )}
 
-      {embedded && hasUserManagementAdminAccess && (
+      {embedded && hasUserManagementAdminAccess && !isReadOnlySwitchedContext && (
         <div className="flex justify-end items-center">
           <div className="flex gap-2">
             <Button 
@@ -1001,6 +1110,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                 <UserList 
                   users={filteredUsers}
                   onEditClick={(user) => {
+                    if (isReadOnlySwitchedContext) {
+                      return;
+                    }
                     // Use latest user from list by id so we always show fresh data (e.g. after a save)
                     const latestUser = employeeUsers.find((u: any) => u.id === user.id) ?? user;
                     const cpdValue = (latestUser as any).is_cpd_involved ?? (latestUser as any).isCpdInvolved ?? false;
@@ -1027,6 +1139,10 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       email: latestUser.email,
                       phone: (latestUser as any).phone,
                       designation: (latestUser as any).designation,
+                      documents:
+                        (latestUser as any).documents ||
+                        (latestUser as any).profileDocuments ||
+                        [],
                       tags: ((latestUser as any).designation || '')
                         .split(',')
                         .map((tag: string) => tag.trim())
@@ -1039,6 +1155,27 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       clientId: latestUser.clientId || clientId,
                       moduleAccessPayload: latestUser.moduleAccessPayload || [],
                       is_cpd_involved: cpdValue,
+                      personalDetails: latestUser.personalDetails || {
+                        residenceAddress: '',
+                        middleName: '',
+                        fatherName: '',
+                        staffId:'',
+                        experience: '',
+                        qualification: '',
+                        gender: '',
+                        dob: '',
+                        religion: '',
+                        nationality: '',
+                        bloodGroup: '',
+                      },
+                      professionalOtherDetails: latestUser.professionalOtherDetails || {
+                        aadharNo: '',
+                        panNo: '',
+                        esiNo: '',
+                        pfNo: '',
+                        exitDate: '',
+                        biometricUserId: '',
+                      },
                     });
                     setIsEditDialogOpen(true);
                   }}
@@ -1064,6 +1201,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                     }
                   }}
                   hasAdminAccess={hasUserManagementAdminAccess}
+                  canEditUsers={!isReadOnlySwitchedContext}
                   onRefresh={refreshEmployeesList}
                 />
               ) : (

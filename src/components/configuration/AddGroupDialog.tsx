@@ -96,6 +96,7 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
         .select('id, first_name, last_name, email')
         .eq('client_id', clientId)
         .eq('status', true)
+        .not('email', 'is', null) 
         .order('first_name');
 
       if (error) throw error;

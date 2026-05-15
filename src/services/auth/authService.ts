@@ -102,6 +102,7 @@ export const changeUserPassword = (users: UserWithPassword[], userId: string, cu
 export interface EmployeeData {
   id: string;
   clientId: string;
+  homeClientId?: string | null;
   email: string;
   firstName: string;
   lastName: string;

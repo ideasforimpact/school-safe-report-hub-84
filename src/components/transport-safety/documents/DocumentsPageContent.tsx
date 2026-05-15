@@ -9,11 +9,13 @@ import DocumentsNotFound from './DocumentsNotFound';
 import DocumentsList from './DocumentsList';
 import AddDocumentForm from './AddDocumentForm';
 import { Plus } from 'lucide-react';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const DocumentsPageContent: React.FC = () => {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const { getVehicle, vehicles } = useTransportSafety();
   const [showAddDocument, setShowAddDocument] = useState(false);
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   const vehicle = vehicleId ? getVehicle(vehicleId) : null;
   
@@ -40,7 +42,7 @@ const DocumentsPageContent: React.FC = () => {
               <h2 className="text-xl font-medium mb-4">
                 {v.make} {v.model} ({v.registrationNumber})
               </h2>
-              <DocumentsList documents={v.documents} vehicleId={v.id} />
+              <DocumentsList documents={v.documents} vehicleId={v.id} isReadOnly={isReadOnlySwitchedContext} />
             </div>
           ))}
         </div>
@@ -66,21 +68,23 @@ const DocumentsPageContent: React.FC = () => {
             </Link>
           </Button>
         </div>
-        <Button 
-          onClick={() => setShowAddDocument(true)}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Document
-        </Button>
+        {!isReadOnlySwitchedContext && (
+          <Button 
+            onClick={() => setShowAddDocument(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Document
+          </Button>
+        )}
       </div>
 
       <h1 className="text-2xl font-bold mb-2">Documents for {make} {model}</h1>
       <p className="text-gray-500 mb-6">Registration Number: {registrationNumber}</p>
 
-      <DocumentsList documents={documents} vehicleId={vehicleId} />
+      <DocumentsList documents={documents} vehicleId={vehicleId} isReadOnly={isReadOnlySwitchedContext} />
 
-      <Dialog open={showAddDocument} onOpenChange={(isOpen) => { if (!isOpen) setShowAddDocument(false); }}>
+      <Dialog open={showAddDocument && !isReadOnlySwitchedContext} onOpenChange={(isOpen) => { if (!isOpen) setShowAddDocument(false); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add Document</DialogTitle>

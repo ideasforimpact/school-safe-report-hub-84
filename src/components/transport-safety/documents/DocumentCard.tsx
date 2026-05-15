@@ -9,9 +9,10 @@ import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBad
 interface DocumentCardProps {
   document: VehicleDocument;
   onEdit: (document: VehicleDocument) => void;
+  isReadOnly?: boolean;
 }
 
-const DocumentCard: React.FC<DocumentCardProps> = ({ document, onEdit }) => {
+const DocumentCard: React.FC<DocumentCardProps> = ({ document, onEdit, isReadOnly = false }) => {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
@@ -43,16 +44,18 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onEdit }) => {
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end space-x-2">
-            <Button variant="outline" size="sm" className="flex items-center" onClick={() => onEdit(document)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-            <Button variant="outline" size="sm" className="flex items-center">
-              <FileUp className="h-4 w-4 mr-2" />
-              Upload Copy
-            </Button>
-          </div>
+          {!isReadOnly && (
+            <div className="mt-4 flex justify-end space-x-2">
+              <Button variant="outline" size="sm" className="flex items-center" onClick={() => onEdit(document)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+              <Button variant="outline" size="sm" className="flex items-center">
+                <FileUp className="h-4 w-4 mr-2" />
+                Upload Copy
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -15,9 +15,16 @@ interface ClientListProps {
   onViewApiCalls: (client: Client) => void;
   onEditClick: (client: Client) => void;
   onDeleteClient: (id: string) => void;
+  canEditClient?: boolean;
 }
 
-const ClientList = ({ clients, onViewApiCalls, onEditClick, onDeleteClient }: ClientListProps) => {
+const ClientList = ({
+  clients,
+  onViewApiCalls,
+  onEditClick,
+  onDeleteClient,
+  canEditClient = true,
+}: ClientListProps) => {
   return (
     <Table>
       <ClientTableHeader />
@@ -36,6 +43,7 @@ const ClientList = ({ clients, onViewApiCalls, onEditClick, onDeleteClient }: Cl
               onViewApiCalls={onViewApiCalls}
               onEditClick={onEditClick}
               onDeleteClient={onDeleteClient}
+              canEdit={canEditClient}
             />
           ))
         )}
