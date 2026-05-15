@@ -335,6 +335,22 @@ async function insertEmployeeOtherDetails(
   }
 }
 
+function sanitizeFilename(filename: string): string {
+  const lastDotIndex = filename.lastIndexOf('.');
+  const name = lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
+  const extension = lastDotIndex > 0 ? filename.substring(lastDotIndex) : '';
+
+  const sanitizedName = name
+    .replace(/ /g, '_')
+    .replace(/[()]/g, '_')
+    .replace(/[–—]/g, '-')
+    .replace(/[[\]{}#%^&*+=|<>?/\\]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  return sanitizedName + extension;
+}
+
 async function uploadEmployeeProfileDocuments(
   supabaseClient: any,
   clientId: string,
@@ -377,7 +393,7 @@ async function uploadEmployeeProfileDocuments(
       throw new Error(`Invalid file data for ${doc.key}`);
     }
 
-    const safeFileName = String(doc.fileName || 'document').replace(/\s+/g, '_');
+    const safeFileName = sanitizeFilename(String(doc.fileName || 'document'));
     const storagePath = `${clientId}/${employeeKey}/${doc.key}/${Date.now()}_${safeFileName}`;
 
     const { error: uploadError } = await supabaseClient.storage
