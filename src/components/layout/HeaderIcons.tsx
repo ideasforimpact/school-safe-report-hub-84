@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -60,6 +60,7 @@ const HeaderIcons = () => {
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentModuleName = useMemo(() => getModuleNameFromPath(location.pathname), [location.pathname]);
 
@@ -88,6 +89,11 @@ const HeaderIcons = () => {
     }
   }, [currentModuleName, skipNotifications]);
 
+  const debouncedFetchSummary = useCallback(() => {
+    if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+    fetchDebounceRef.current = setTimeout(() => fetchSummary(), 400);
+  }, [fetchSummary]);
+
   useEffect(() => {
     if (skipNotifications) {
       setUnreadCount(0);
@@ -95,8 +101,13 @@ const HeaderIcons = () => {
       setLoading(false);
       return;
     }
-    fetchSummary();
-  }, [fetchSummary, skipNotifications]);
+    // Debounce the initial fetch too — coalesces React Strict Mode double-fire
+    // and back-to-back module-name changes into a single network call.
+    debouncedFetchSummary();
+    return () => {
+      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+    };
+  }, [fetchSummary, skipNotifications, debouncedFetchSummary]);
 
   useEffect(() => {
     if (skipNotifications) return;
@@ -113,7 +124,7 @@ const HeaderIcons = () => {
           filter: `recipient_employee_id=eq.${employeeData.id}`,
         },
         () => {
-          fetchSummary();
+          debouncedFetchSummary();
         }
       )
       .subscribe();
@@ -128,7 +139,7 @@ const HeaderIcons = () => {
           table: 'centralized_notifications',
         },
         () => {
-          fetchSummary();
+          debouncedFetchSummary();
         }
       )
       .subscribe();
@@ -136,8 +147,9 @@ const HeaderIcons = () => {
     return () => {
       supabase.removeChannel(recipientChannel);
       supabase.removeChannel(notificationChannel);
+      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
     };
-  }, [employeeData?.id, currentModuleName, fetchSummary, skipNotifications]);
+  }, [employeeData?.id, currentModuleName, debouncedFetchSummary, skipNotifications]);
 
   const markAsRead = useCallback(async (recipientNotificationId: string) => {
     if (skipNotifications) return;

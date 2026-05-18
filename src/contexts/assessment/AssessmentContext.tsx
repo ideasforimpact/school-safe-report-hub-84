@@ -23,6 +23,9 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
   const { user } = useAuth();
   const location = useLocation();
   const isUsersRoute = location.pathname === '/users';
+  const isAssessmentRoute =
+    location.pathname.startsWith('/assessments') ||
+    location.pathname.startsWith('/backoffice/assessments');
   
   // Initialize mock data when the app starts
   useEffect(() => {
@@ -39,7 +42,7 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     setTemplates,
     refreshTemplates,
     loading 
-  } = useTemplateManagement(user?.id, !isUsersRoute);
+  } = useTemplateManagement(user?.id, !isUsersRoute && isAssessmentRoute);
   
   // Set up assignment management
   const { 

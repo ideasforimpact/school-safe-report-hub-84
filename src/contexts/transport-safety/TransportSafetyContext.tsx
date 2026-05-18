@@ -33,6 +33,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
   const { user, employeeData } = useAuth();
   const location = useLocation();
   const isUsersRoute = location.pathname === '/users';
+  const isTransportSafetyRoute = location.pathname.startsWith('/transport-safety');
 
   const getWriteGuardMessage = (err: unknown, fallback: string) => {
     const message = err instanceof Error ? err.message : '';
@@ -80,7 +81,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
 
   // Fetch vehicles on component mount and when client changes
   useEffect(() => {
-    if (isUsersRoute) {
+    if (isUsersRoute || !isTransportSafetyRoute) {
       setVehicles([]);
       setLoading(false);
       return;
@@ -91,7 +92,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       setVehicles([]);
       setLoading(false);
     }
-  }, [clientId, isUsersRoute]);
+  }, [clientId, isUsersRoute, isTransportSafetyRoute]);
 
   const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>) => {
     try {
