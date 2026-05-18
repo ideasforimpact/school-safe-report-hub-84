@@ -532,14 +532,14 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
         (personalDetails.qualification || '').trim().length > EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH)
         ? `Qualification must be between ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH} characters`
         : (personalDetails.qualification || '').trim() &&
-          !/^[a-zA-Z\s.-]+$/.test((personalDetails.qualification || '').trim())
-        ? 'Qualification can only contain letters, spaces, dots, and hyphens'
+        !/^[a-zA-Z\s.,-]+$/.test((personalDetails.qualification || '').trim())
+        ? 'Qualification can only contain letters, commas, spaces, dots, and hyphens'
         : '',
       religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
       nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
       bloodGroup:
         (personalDetails.bloodGroup || '').trim() &&
-        !/^(A|A1|A2|B|AB|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim()
+        !/^(A|A1|A2|B|AB|OH|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim()
           )
           ? 'Blood group must be in format A+, O-, AB+, B-'
           : '',
@@ -1068,8 +1068,9 @@ const canProceedToNextStep = () => {
                 </div>
 
                   <div className="space-y-2 mt-2">
-                    <Label>Experience</Label>
+                  <Label>Experience</Label>
                     <Input
+                      type="number"
                       value={personalDetails.experience || ''}
                       onChange={(e) =>
                         setFormData({
@@ -1083,12 +1084,12 @@ const canProceedToNextStep = () => {
                       maxLength={EXPERIENCE_CONSTANTS.MAX_LENGTH}
                       placeholder="Enter Experience"
                     />
-                    {personalDetailsErrors.experience && (
-                      <p className="text-xs text-red-500">
-                        {personalDetailsErrors.experience}
-                      </p>
-                    )}
-                  </div>
+                  {personalDetailsErrors.experience && (
+                    <p className="text-xs text-red-500">
+                      {personalDetailsErrors.experience}
+                    </p>
+                  )}
+                </div>
 
                 <div className="space-y-2 mt-2">
                   <Label>Qualification</Label>
@@ -1099,7 +1100,7 @@ const canProceedToNextStep = () => {
                         ...formData,
                         personalDetails: {
                           ...personalDetails,
-                          qualification: e.target.value.replace(/[^a-zA-Z\s.-]/g, '')
+                          qualification: e.target.value.replace(/[^a-zA-Z\s.,-]/g, '')
                         }
                       })
                     }
