@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 import { Link } from 'react-router-dom';
 import ResourcePreviewDialog from '@/components/edusafe/ResourcePreviewDialog';
-import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { formatDate } from '@/lib/Dateformat';
@@ -58,43 +57,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
   const handleView = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // Handle YouTube resources
-    if (isYouTubeResource && resource.youtube_link) {
-      window.open(resource.youtube_link, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    
-    try {
-      let urlToOpen: string | null = null;
-
-     
-      // Check for document_url
-       if (resource.document_url) {
-        const documentUrl = resource.document_url;
-        
-        // Check if it's a relative storage path (starts with edusafe-resources/ or /edusafe-resources/)
-        if (documentUrl.startsWith('edusafe-resources/') || documentUrl.startsWith('/edusafe-resources/')) {
-          // Prepend the Supabase storage base URL
-          const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL 
-          const normalizedBase = base.replace(/\/$/, '');
-          const normalizedPath = documentUrl.startsWith('/') ? documentUrl : `/${documentUrl}`;
-          urlToOpen = `${normalizedBase}${normalizedPath}`;
-        } else {
-          // It's already a full URL, use it directly
-          urlToOpen = documentUrl;
-        }
-      }
-
-      if (urlToOpen) {
-        window.open(urlToOpen, '_blank', 'noopener,noreferrer');
-      } else {
-        toast.error('No file available to view');
-      }
-    } catch (error) {
-      console.error('[ResourceCard] Error opening document:', error);
-      toast.error('Failed to open document');
-    }
+    setShowPreview(true);
   };
   
   const handleDelete = async (e: React.MouseEvent) => {

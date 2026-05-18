@@ -233,7 +233,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
                 <>
                   <div>
                     <p className="text-gray-500">File Name</p>
-                    <p>{resource.file?.name || resource.document_url?.split('/').pop()}</p>
+                    <p className='break-words'>{resource.file?.name || resource.document_url?.split('/').pop()}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">File Size</p>
