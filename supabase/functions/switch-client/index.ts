@@ -5,6 +5,7 @@ import {
   getSupabaseServiceRoleKey,
   getSupabaseUrl,
 } from "../_shared/env.ts";
+import { validateIPWhitelist } from "../_shared/safe-school/ipValidator.ts";
 
 const supabaseUrl = getSupabaseUrl();
 const supabaseAnonKey = getSupabaseAnonKey();
@@ -326,6 +327,22 @@ Deno.serve(async (req) => {
         return jsonResponse({ success: false, error: "Target client not found" }, 404);
       }
 
+      const url = new URL(req.url);
+      console.log(url,'url');
+      const ipValidation = await validateIPWhitelist(
+        serviceSupabase,
+        req,
+        targetClientId,
+        url.pathname,
+      );
+
+      if (!ipValidation.allowed) {
+        return jsonResponse({
+          success: false,
+          code: "IP_NOT_WHITELISTED",
+          error: "Access denied. Your IP address is not whitelisted for this client.",
+        });
+      }
       const updatedContext = await updateTargetClientContext(user.id, targetClientId, readOnlyRoleId);
       const switched = updatedContext.target_client_id !== updatedContext.home_client_id;
       const contextRole = await resolveRoleAccessLevelById(updatedContext.role_id);

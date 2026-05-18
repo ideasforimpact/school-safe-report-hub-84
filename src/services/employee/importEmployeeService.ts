@@ -80,8 +80,12 @@ export const processEmployeeExcel = async (
         employeeType: (emp.employeeType != null && String(emp.employeeType).trim() !== '' && isValidEmployeeType(String(emp.employeeType)))
           ? String(emp.employeeType)
           : undefined,
-        department: (emp.department != null && String(emp.department).trim() !== '' && isValidDepartment(String(emp.department)))
-          ? String(emp.department)
+       department:(
+          emp.department != null &&
+          String(emp.department).trim() !== '' &&
+          isValidDepartment(String(emp.department).toLowerCase().trim())
+        )
+          ? String(emp.department).toLowerCase().trim()
           : undefined,
         status: isValidStatus(String(emp.status)) ? String(emp.status) : 'active',
         modulePermissions: defaultModulePermissions,

@@ -98,16 +98,29 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
           employeeId: employeeId,
           key: moduleKey,
           module_id: moduleId,
+          enabled: true,
           level: { is_admin: false }  // Default to not admin
         };
         updatedModules = [...selectedModules, newModule];
       } else {
-        updatedModules = [...selectedModules]; // No change needed
+        updatedModules = selectedModules.map((module) =>
+          module.module_id === moduleId
+            ? {
+                ...module,
+                enabled: true,
+              }
+            : module
+        );
       }
     } else {
       // Remove module from selection
-      updatedModules = selectedModules.filter(m => m.module_id !== moduleId);
-    }
+      updatedModules = selectedModules
+      .filter((m) => m.module_id !== moduleId)
+      .map((module) => ({
+          ...module,
+          enabled: true,
+        }));
+      }
     
     // Notify parent component of change
     onModuleChange(updatedModules);

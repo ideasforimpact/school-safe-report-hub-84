@@ -101,7 +101,82 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
 
     console.log(`Successfully fetched ${employeesData.length} employees from API for client: ${clientId}`);
     
-    return mapEmployeeRecords(employeesData, documentsData || []);
+    // Map the database records to our Employee model
+    const employees = employeesData.map(record => {
+      // Find documents for this employee
+      const employeeDocuments = (documentsData || []).filter(doc => doc.employee_id === record.id);
+      
+      // Map employee documents to our VerificationDocument interface
+      const documents: VerificationDocument[] = employeeDocuments.map(doc => ({
+        id: doc.id,
+        employeeId: record.id,
+        documentTypeId: doc.document_type_id || '',
+        documentTypeName: (doc.document_type as any)?.name || 'Unknown',
+        documentNumber: doc.document_number || '',
+        documentImage: doc.document_url || '',
+        verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
+        verificationMethod: 'manual' as const,
+        personalInfo: doc.personal_info || undefined,
+        employee_docs_log: [],
+        params: {},
+        cronActivate: false,
+        createdAt: doc.created_at || new Date().toISOString(),
+        updatedAt: doc.updated_at || new Date().toISOString()
+      }));
+
+      const personalDetailsRaw = (record as any).personal_details;
+      const personalDetails = Array.isArray(personalDetailsRaw) ? personalDetailsRaw[0] || {} : personalDetailsRaw || {};
+      const otherDetailsRaw = (record as any).other_details;
+      const otherDetails = Array.isArray(otherDetailsRaw) ? otherDetailsRaw[0] || {} : otherDetailsRaw || {};
+      const employee: Employee = {
+        id: record.id,
+        employeeId: record.employee_id || '',
+        name: `${record.first_name} ${record.last_name}`,
+        firstName: record.first_name,
+        lastName: record.last_name,
+        email: record.email || '',
+        phone: (record as any).phone || '',
+        designation: (record as any).designation || '',
+        personalDetails: {
+          middleName: personalDetails.middle_name || undefined,
+          fatherName: personalDetails.father_name || undefined,
+          staffId: personalDetails.staff_id || undefined,
+          experience: personalDetails.experience || undefined,
+          qualification: personalDetails.qualification || undefined,
+          gender: personalDetails.gender || undefined,
+          dob: personalDetails.dob || undefined,
+          religion: personalDetails.religion || undefined,
+          nationality: personalDetails.nationality || undefined,
+          bloodGroup: personalDetails.blood_group || undefined,
+          residenceAddress: personalDetails.residence_address || undefined,
+        },
+        professionalOtherDetails: {
+          aadharNo: otherDetails.aadhaar_number || undefined,
+          panNo: otherDetails.pan_number || undefined,
+          esiNo: otherDetails.esi_number || undefined,
+          pfNo: otherDetails.pf_number || undefined,
+          exitDate: otherDetails.exit_date || undefined,
+          biometricUserId: otherDetails.biometric_user_id || undefined,
+        },
+        dateOfBirth: '',
+        address: '',
+        joiningDate: record.joining_date || new Date().toISOString(),
+        department: (record.department as any)?.department_name || record.department || '',
+        position: (record.employee_type as any)?.type_name || '',
+        employeeType: (record.employee_type as any)?.type_name ?? '',
+        status: record.status === true,
+        createdAt: record.created_at || new Date().toISOString(),
+        updatedAt: record.updated_at || new Date().toISOString(),
+        isSuperAdmin: record?.is_super_admin,
+        isCpdInvolved: (record as any).is_cpd_involved === true,
+        profileDocuments: Array.isArray((record as any).documents) ? (record as any).documents : [],
+        documents: documents,
+        clientId: record.client_id
+      };
+      return employee;
+    });
+    
+    return employees;
   } catch (error) {
     console.error("Error in getAllEmployeesFromApi:", error);
     // Don't show toast error, just return empty array
@@ -190,8 +265,10 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         updatedAt: doc.updated_at || new Date().toISOString()
       }));
 
-      const personalDetails = (record as any).personal_details || {};
-      const otherDetails = (record as any).other_details || {};
+      const personalDetailsRaw = (record as any).personal_details;
+      const personalDetails = Array.isArray(personalDetailsRaw) ? personalDetailsRaw[0] || {} : personalDetailsRaw || {};
+      const otherDetailsRaw = (record as any).other_details;
+      const otherDetails = Array.isArray(otherDetailsRaw) ? otherDetailsRaw[0] || {} : otherDetailsRaw || {};
       const employee: Employee = {
         id: record.id,
         employeeId: record.employee_id || '',
@@ -282,8 +359,10 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
     }
 
     // Convert the response to our Employee type
-    const personalDetails = (data as any).personal_details || {};
-    const otherDetails = (data as any).other_details || {};
+    const personalDetailsRaw = (data as any).personal_details;
+    const personalDetails = Array.isArray(personalDetailsRaw) ? personalDetailsRaw[0] || {} : personalDetailsRaw || {};
+    const otherDetailsRaw = (data as any).other_details;
+    const otherDetails = Array.isArray(otherDetailsRaw) ? otherDetailsRaw[0] || {} : otherDetailsRaw || {};
     const employee: Employee = {
       id: data.id,
       employeeId: data.employee_id || '',
@@ -365,8 +444,10 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
     console.log('Found employee data:', data);
 
     // Convert the response to our Employee type
-    const personalDetails = (data as any).personal_details || {};
-    const otherDetails = (data as any).other_details || {};
+    const personalDetailsRaw = (data as any).personal_details;
+    const personalDetails = Array.isArray(personalDetailsRaw) ? personalDetailsRaw[0] || {} : personalDetailsRaw || {};
+    const otherDetailsRaw = (data as any).other_details;
+    const otherDetails = Array.isArray(otherDetailsRaw) ? otherDetailsRaw[0] || {} : otherDetailsRaw || {};
     return {
       id: data.id,
       employeeId: data.employee_id || '',

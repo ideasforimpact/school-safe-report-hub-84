@@ -5,7 +5,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { getSupabaseAdminClient } from '../_shared/safe-school/supabaseClient.ts';
-import { validateRefreshRequest } from '../_shared/safe-school/validators.ts';
+import { validateRefreshRequest, getAuthModuleName } from '../_shared/safe-school/validators.ts';
 import { signAccessToken } from '../_shared/safe-school/jwt.ts';
 import { generateRefreshToken, hashRefreshToken, getRefreshTokenExpiry } from '../_shared/safe-school/tokenUtils.ts';
 import { checkRateLimit, getClientIdentifier } from '../_shared/safe-school/rateLimiter.ts';
@@ -50,7 +50,10 @@ serve(async (req) => {
       return errorResponse('VALIDATION_ERROR', 'Validation failed', 422, validation.errors);
     }
 
-    const { refresh_token } = body;
+    const moduleName = getAuthModuleName(body);
+    const refresh_token = typeof body.refresh_token === "string" ? body.refresh_token : "";
+
+    logger.info("Refresh module resolved", { requestId, moduleName, bodyModule: body.module });
 
     // Hash the provided refresh token
     const tokenHash = await hashRefreshToken(refresh_token);
@@ -62,6 +65,7 @@ serve(async (req) => {
       .select('*')
       .eq('token_hash', tokenHash)
       .eq('revoked', false)
+      .eq('module', moduleName)
       .single();
 
     if (tokenError || !tokenRecord) {
@@ -99,12 +103,15 @@ serve(async (req) => {
     logger.info('Rotating tokens', { requestId, userId: employee.id });
 
     // Generate new access token
-    const accessToken = await signAccessToken({
-      sub: employee.id,
-      email: employee.email,
+      const accessToken = await signAccessToken(
+      {
+        sub: employee.id,
+        email: employee.email,
       role: employee.is_super_admin ? 'admin' : 'employee',
-      permissions: {},
-    });
+        permissions: {},
+      },
+      moduleName,
+    );
 
     // Generate new refresh token
     const newRefreshToken = await generateRefreshToken();
@@ -125,14 +132,15 @@ serve(async (req) => {
     const { error: insertError } = await supabase
       .from('refresh_tokens')
       .insert({
-        user_id: employee.id,
-        token_hash: newTokenHash,
-        expires_at: newExpiresAt.toISOString(),
-        revoked: false,
+      user_id: employee.id,
+      token_hash: newTokenHash,
+      expires_at: newExpiresAt.toISOString(),
+      revoked: false,
         // device_info: tokenRecord.device_info || {},
-        device_info: {},
-        issued_by: 'auth-refresh',
-      });
+      device_info: {},
+      issued_by: 'auth-refresh',
+      module: moduleName,
+    });
 
     if (insertError) {
       logger.error('Failed to store new refresh token', insertError, { requestId, userId: employee.id });
@@ -140,7 +148,7 @@ serve(async (req) => {
     }
 
     // Get access token expiry
-    const expiresIn = parseInt(Deno.env.get('ACCESS_TOKEN_EXP_SECONDS') || '3600', 10);
+    const expiresIn = parseInt(Deno.env.get('ACCESS_TOKEN_EXP_SECONDS') || '300', 10);
 
     logger.info('Tokens rotated successfully', { requestId, userId: employee.id });
 

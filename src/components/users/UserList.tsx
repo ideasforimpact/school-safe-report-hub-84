@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
   Table,
   TableBody,
@@ -9,125 +10,286 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText } from 'lucide-react';
+import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText, Download, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ModuleAccessItem } from '@/types/moduleAccess';
+import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmployeeUser } from '@/pages/UserManagement';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/contexts/auth/useAuth';
 import { formatDate } from "@/lib/Dateformat";
+import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import {
+  fetchEmployeeProfileDocuments,
+  fetchEmployeeVerificationDocuments,
+  getProfileDocumentSignedUrl,
+  ProfileDocumentRow,
+  resolveVerificationDocumentUrl,
+  VerificationDocumentRow,
+} from '@/services/employee/employeeProfileDocumentService';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface UserListProps {
   users: EmployeeUser[];
   onEditClick: (user: EmployeeUser) => void;
-  onDeleteUser: (id: string) => void | Promise<void>;
-  onDeactivateUser: (id: string) => void | Promise<void>;
-  onReactivateUser: (id: string) => void | Promise<void>;
+  onDeleteUser: (id: string) => void;
+  onDeactivateUser: (id: string) => void;
+  onReactivateUser: (id: string) => void;
   hasAdminAccess?: boolean;
-  onRefresh?: () => void | Promise<void>;
-  currentPage?: number;
-  totalItems?: number;
-  itemsPerPage?: number;
-  onPageChange?: (page: number) => void;
+  onRefresh?: () => void;
   canEditUsers?: boolean;
 }
 
-type EmployeeDocumentInfo = {
-  id: string;
-  name: string;
-  status: 'pending' | 'verified' | 'failed';
-};
-
-type UserListEmployee = EmployeeUser & {
-  tags?: string[];
-  designation?: string;
-  documentSummaries?: EmployeeDocumentInfo[];
-};
-
-const UserList = ({
-  users,
-  onEditClick,
-  onDeleteUser,
-  onDeactivateUser,
-  onReactivateUser,
+const UserList = ({ 
+  users, 
+  onEditClick, 
+  onDeleteUser, 
+  onDeactivateUser, 
+  onReactivateUser, 
   hasAdminAccess = false,
   onRefresh,
-  currentPage: controlledCurrentPage,
-  totalItems: controlledTotalItems,
-  itemsPerPage: controlledItemsPerPage,
-  onPageChange,
   canEditUsers = true,
 }: UserListProps) => {
+  const { employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
+  const [employeeReferences, setEmployeeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
+  const [cpdDialogUser, setCpdDialogUser] = useState<EmployeeUser | null>(null);
+  const [documentDialogUser, setDocumentDialogUser] = useState<EmployeeUser | null>(null);
+  const [profileDocsForDialog, setProfileDocsForDialog] = useState<ProfileDocumentRow[]>([]);
+  const [profileDocsLoading, setProfileDocsLoading] = useState(false);
+  const [verificationDocsForDialog, setVerificationDocsForDialog] = useState<VerificationDocumentRow[]>([]);
+  const [verificationDocsLoading, setVerificationDocsLoading] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const shouldHideWriteActions = isReadOnlySwitchedContext || !canEditUsers;
 
-  const [localCurrentPage, setLocalCurrentPage] = useState(1);
-  const isControlledPagination =
-    controlledCurrentPage !== undefined &&
-    controlledTotalItems !== undefined &&
-    controlledItemsPerPage !== undefined;
-  const currentPage = controlledCurrentPage ?? localCurrentPage;
-  const itemsPerPage = controlledItemsPerPage ?? 10;
-  const totalItems = controlledTotalItems ?? users.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
-  const shouldHideWriteActions = !canEditUsers;
+
+  // Pre-load reference info so we can disable delete button for linked employees
+  useEffect(() => {
+    const clientId = employeeData?.clientId;
+    if (!clientId || users.length === 0) {
+      setEmployeeReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          users.map(async (user) => {
+            const refInfo = await incidentReferenceService.checkEmployeeReferences(user.id, clientId);
+            return { id: user.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setEmployeeReferences(map);
+      } catch (error) {
+        console.error('Error preloading employee reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [users, employeeData]);
+
+  useEffect(() => {
+    if (!documentDialogUser?.id) {
+      setProfileDocsForDialog([]);
+      setVerificationDocsForDialog([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadDocuments = async () => {
+      setProfileDocsLoading(true);
+      setVerificationDocsLoading(true);
+      try {
+        const [profileRows, verificationRows] = await Promise.all([
+          fetchEmployeeProfileDocuments(
+            documentDialogUser.id,
+            documentDialogUser.clientId || employeeData?.clientId
+          ),
+          fetchEmployeeVerificationDocuments(documentDialogUser.id),
+        ]);
+        if (cancelled) return;
+        setProfileDocsForDialog(profileRows);
+        setVerificationDocsForDialog(verificationRows);
+      } catch (error) {
+        if (cancelled) return;
+        console.error('UserList: document fetch failed:', error);
+        setProfileDocsForDialog([]);
+        setVerificationDocsForDialog([]);
+      } finally {
+        if (!cancelled) {
+          setProfileDocsLoading(false);
+          setVerificationDocsLoading(false);
+        }
+      }
+    };
+
+    loadDocuments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [documentDialogUser?.id]);
 
   console.log("UserList component - Users:", users);
   console.log("UserList component - hasAdminAccess:", hasAdminAccess);
 
-  const sortedUsers = useMemo(() => {
+  // Pagination logic
+  const totalItems = users.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA; // newest first
     });
   }, [users]);
-
-  const displayedUsers = useMemo(() => {
-    if (isControlledPagination) {
-      return users;
-    }
-
+  const paginatedUsers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return sortedUsers.slice(startIndex, endIndex);
-  }, [currentPage, isControlledPagination, itemsPerPage, sortedUsers, users]);
+  }, [sortedUsers, currentPage, itemsPerPage]);
+  // Reset to first page when items per page changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
-  useEffect(() => {
-    if (!isControlledPagination) {
-      setLocalCurrentPage(1);
-    }
-  }, [isControlledPagination, users.length]);
+  // Reset to first page when users array changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [users.length]);
 
   const handlePageChange = (page: number) => {
-    const nextPage = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(page);
+  };
 
-    if (onPageChange) {
-      onPageChange(nextPage);
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+  };
+
+  const valueOrNotSet = (value?: string) => {
+    if (!value || !String(value).trim()) return 'Not Set';
+    return value;
+  };
+
+  const openProfileStoredFile = async (bucket: string, storagePath: string) => {
+    const signedUrl = await getProfileDocumentSignedUrl(bucket, storagePath);
+    if (!signedUrl) {
+      toast.error('Unable to open document');
+      return;
+    }
+    window.open(signedUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const downloadProfileStoredFile = async (bucket: string, storagePath: string, fileName: string) => {
+    const signedUrl = await getProfileDocumentSignedUrl(bucket, storagePath);
+    if (!signedUrl) {
+      toast.error('Unable to download document');
+      return;
+    }
+    try {
+      const res = await fetch(signedUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || 'download';
+      a.rel = 'noopener noreferrer';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const openVerificationStoredFile = async (documentUrl: string) => {
+    const url = await resolveVerificationDocumentUrl(documentUrl);
+    if (!url) {
+      toast.error('Unable to open document');
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const downloadVerificationFile = async (documentUrl: string, fileName: string) => {
+    const url = await resolveVerificationDocumentUrl(documentUrl);
+    if (!url) {
+      toast.error('Unable to download document');
+      return;
+    }
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = fileName || 'download';
+      a.rel = 'noopener noreferrer';
+      a.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  // Handle deactivate user with database update
+  const handleDeactivateUser = async (userId: string, employeeId: string, clientId: string) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only users cannot deactivate users');
       return;
     }
 
-    setLocalCurrentPage(nextPage);
-  };
-
-  const getStatusBadge = (status: 'pending' | 'verified' | 'failed') => {
-    if (status === 'verified') {
-      return <Badge className="bg-green-100 text-green-700 border-green-200">Verified</Badge>;
-    }
-    if (status === 'failed') {
-      return <Badge className="bg-red-100 text-red-700 border-red-200">Failed</Badge>;
-    }
-    return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Pending</Badge>;
-  };
-
-
-
-  // Handle deactivate user with database update
-  const handleDeactivateUser = async (userId: string) => {
     try {
       setIsTableLoading(true);
+      
+      // Update the employee status in the database
+      const { data, error } = await supabase
+        .from('employees')
+        .update({ 
+          status: false, // Set active = 0 (false)
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .eq('client_id', clientId);
+
+      if (error) {
+        console.error('Error deactivating employee:', error);
+        toast.error('Failed to deactivate employee');
+        return;
+      }
+
+      console.log('Employee deactivated successfully:', data);
+      
+      // Call the parent's deactivate function
       await onDeactivateUser(userId);
+      
+      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
@@ -142,10 +304,37 @@ const UserList = ({
   };
 
   // Handle activate user with database update
-  const handleActivateUser = async (userId: string) => {
+  const handleActivateUser = async (userId: string, employeeId: string, clientId: string) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only users cannot activate users');
+      return;
+    }
+
     try {
       setIsTableLoading(true);
+      
+      // Update the employee status in the database
+      const { data, error } = await supabase
+        .from('employees')
+        .update({ 
+          status: true, // Set active = 1 (true)
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .eq('client_id', clientId);
+
+      if (error) {
+        console.error('Error activating employee:', error);
+        toast.error('Failed to activate employee');
+        return;
+      }
+
+      console.log('Employee activated successfully:', data);
+      
+      // Call the parent's reactivate function
       await onReactivateUser(userId);
+      
+      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
@@ -185,7 +374,7 @@ const UserList = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {displayedUsers.map((user) => (
+        {paginatedUsers.map((user) => (
           <TableRow key={user.id} className={!user.isActive ? "bg-muted/20" : ""}>
             <TableCell>
               <div className="flex items-center gap-2">
@@ -213,11 +402,10 @@ const UserList = ({
               <div className="flex flex-col">
                 <span className="font-medium text-gray-900">{user.firstName} {user.lastName}</span>
                 {(() => {
-                  const userDetails = user as UserListEmployee;
                   const tags =
-                    Array.isArray(userDetails.tags) && userDetails.tags.length > 0
-                      ? userDetails.tags
-                      : (userDetails.designation || '')
+                    Array.isArray((user as any).tags) && (user as any).tags.length > 0
+                      ? (user as any).tags
+                      : ((user as any).designation || '')
                           .split(',')
                           .map((tag: string) => tag.trim())
                           .filter(Boolean)
@@ -236,42 +424,23 @@ const UserList = ({
             <TableCell>{user.email}</TableCell>
             <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
             <TableCell className="text-center">
-              <HoverCard openDelay={120} closeDelay={150}>
-                <HoverCardTrigger asChild>
-                  <button
-                    type="button"
-                    className="text-blue-600 hover:text-blue-700 disabled:text-gray-300"
-                    aria-label={`View documents for ${user.firstName} ${user.lastName}`}
-                  >
-                    <AlertCircle className="h-4 w-4" />
-                  </button>
-                </HoverCardTrigger>
-                <HoverCardContent className="w-[260px] p-3" align="start">
-                  <div className="text-xs font-semibold tracking-wide text-gray-500 pb-2 border-b">
-                    DOCUMENTS
-                  </div>
-                  <div className="pt-2 space-y-2 max-h-56 overflow-auto">
-                    {((user as UserListEmployee).documentSummaries || []).length === 0 ? (
-                      <div className="text-sm text-gray-500">No uploaded documents</div>
-                    ) : (
-                      ((user as UserListEmployee).documentSummaries || []).map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                            <span className="text-sm text-gray-800 truncate">{doc.name}</span>
-                          </div>
-                          {getStatusBadge(doc.status)}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </HoverCardContent>
-              </HoverCard>
+              <button
+                type="button"
+                className="text-blue-600 hover:text-blue-700 disabled:text-gray-300"
+                aria-label={`View documents for ${user.firstName} ${user.lastName}`}
+                onClick={() =>{ 
+                  console.log("Selected User:", user);
+                  setDocumentDialogUser(user);
+              }}
+                
+              >
+                <AlertCircle className="h-4 w-4" />
+              </button>
             </TableCell>
             {/* <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell> */}
             <TableCell>
               {user.joiningDate ? formatDate(user.joiningDate) : '-'}
-            </TableCell>
+            </TableCell>            
             <TableCell>
               {user.isActive ? (
                 <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
@@ -287,22 +456,22 @@ const UserList = ({
               {!user.isSuperAdmin && hasAdminAccess ? (
                 <div className="flex space-x-1">
                   {!shouldHideWriteActions && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
                       onClick={() => onEditClick(user)}
-                      disabled={isTableLoading}
+                        disabled={isTableLoading}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                   )}
-
+                  
                   {!shouldHideWriteActions && (user.isActive ? (
                       // Deactivate Button
                       <AlertDialog open={showDeactivateDialog === user.id} onOpenChange={(open) => setShowDeactivateDialog(open ? user.id : null)}>
                       <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
+                          <Button 
+                            variant="ghost" 
                             size="icon"
                             disabled={isTableLoading}
                           >
@@ -318,22 +487,22 @@ const UserList = ({
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
+                          <AlertDialogAction 
                             className="bg-amber-600 hover:bg-amber-700"
-                              onClick={() => handleDeactivateUser(user.id)}
+                              onClick={() => handleDeactivateUser(user.id, user.employeeId || '', user.clientId || '')}
                               disabled={isTableLoading}
                           >
                             Deactivate
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
-                    </AlertDialog>
+                      </AlertDialog>
                   ) : (
                       // Activate Button
                       <AlertDialog open={showActivateDialog === user.id} onOpenChange={(open) => setShowActivateDialog(open ? user.id : null)}>
                         <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
+                    <Button 
+                      variant="ghost" 
                       size="icon"
                             disabled={isTableLoading}
                     >
@@ -349,9 +518,9 @@ const UserList = ({
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
+                            <AlertDialogAction 
                               className="bg-green-600 hover:bg-green-700"
-                              onClick={() => handleActivateUser(user.id)}
+                              onClick={() => handleActivateUser(user.id, user.employeeId || '', user.clientId || '')}
                               disabled={isTableLoading}
                             >
                               Activate
@@ -360,11 +529,53 @@ const UserList = ({
                         </AlertDialogContent>
                       </AlertDialog>
                   ))}
-                  {!shouldHideWriteActions && (
+                  
+                  {!shouldHideWriteActions && (() => {
+                    const refInfo = employeeReferences[user.id];
+                    const isLinked = refInfo?.hasReferences || false;
+                    const message = refInfo?.message || '';
+
+                    if (isLinked) {
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  disabled={true}
+                                  aria-disabled="true"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                  className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent 
+                              side="left" 
+                              align="center" 
+                              sideOffset={8} 
+                              className="max-w-xs whitespace-normal text-left"
+                            >
+                              <p className="text-xs leading-snug text-left">
+                                {message}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    }
+
+                    return (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
+                        <Button 
+                          variant="ghost" 
                           size="icon"
                           disabled={isTableLoading}
                         >
@@ -380,7 +591,7 @@ const UserList = ({
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                           <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
+                        <AlertDialogAction 
                           className="bg-destructive hover:bg-destructive/90"
                           onClick={() => onDeleteUser(user.id)}
                             disabled={isTableLoading}
@@ -390,20 +601,21 @@ const UserList = ({
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                  )}
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="flex space-x-1">
                   {/* Show only view button if user doesn't have admin access */}
                   {canEditUsers && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onEditClick(user)}
-                      disabled={!user.isActive || !hasAdminAccess || isTableLoading}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => onEditClick(user)}
+                        disabled={!user.isActive || !hasAdminAccess || isTableLoading}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
               )}
@@ -497,6 +709,321 @@ const UserList = ({
           </div>
         </div>
       )}
+
+      <Dialog open={!!documentDialogUser} onOpenChange={(open) => !open && setDocumentDialogUser(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          {documentDialogUser && (
+            <>
+              {/* Fixed Header */}
+              <div className="bg-white pb-5 border-b px-6 pt-4 shrink-0 z-10">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold shrink-0">
+                      {(documentDialogUser.firstName?.[0] || 'U').toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h1 className="text-xl font-semibold leading-tight truncate">
+                        {valueOrNotSet(`${documentDialogUser.firstName || ''} ${documentDialogUser.lastName || ''}`.trim())}
+                      </h1>
+                      <p className="text-sm text-slate-500 truncate">{valueOrNotSet(documentDialogUser.employeeId)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge
+                      variant="outline"
+                      className={
+                        documentDialogUser.isActive
+                          ? "bg-green-100 text-green-800 border-green-200"
+                          : "bg-gray-100 text-gray-800 border-gray-200"
+                      }
+                    >
+                      {documentDialogUser.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-end text-slate-500 hover:text-slate-700 h-6 w-6"
+                      onClick={() => setDocumentDialogUser(null)}
+                      aria-label="Close details dialog"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Basic Information
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-sm text-slate-400 mb-1">First Name</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.firstName)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Last Name</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.lastName)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Email</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.email)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Phone</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).phone)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Address</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.residenceAddress || (documentDialogUser as any).residenceAddress)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Tags</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Personal Details
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-sm text-slate-400 mb-1">Middle Name</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.middleName || (documentDialogUser as any).middleName)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Father's Name</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.fatherName || (documentDialogUser as any).fatherName)}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400 mb-1">Experience</p>
+                    <p className="font-medium break-words">{valueOrNotSet(
+                        (documentDialogUser as any).personalDetails?.experience)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400 mb-1">Qualification</p>
+                    <p className="font-medium break-words">{valueOrNotSet(
+                        (documentDialogUser as any).personalDetails?.qualification)}
+                    </p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Gender</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.gender || (documentDialogUser as any).gender)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Date of Birth</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.dob || (documentDialogUser as any).dob)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Religion</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.religion || (documentDialogUser as any).religion)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Nationality</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.nationality || (documentDialogUser as any).nationality)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Blood Group</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.bloodGroup || (documentDialogUser as any).bloodGroup)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Professional Details
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-sm text-slate-400 mb-1">Employee ID</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.employeeId)}</p>
+                  </div>
+                  
+                  <div><p className="text-sm text-slate-400 mb-1">Designation</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Department</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.department)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Employee Type</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.employeeType)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Joining Date</p>
+                  <p className="font-medium mb-4 break-words">{documentDialogUser.joiningDate ? formatDate(documentDialogUser.joiningDate) : 'Not Set'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Other Details
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-sm text-slate-400 mb-1">Aadhaar No</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.aadharNo)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">PAN No</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.panNo)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">ESI No</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.esiNo)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">PF No</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.pfNo)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Resigning / Termination Date</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.exitDate)}</p>
+                  </div>
+                  <div><p className="text-sm text-slate-400 mb-1">Biometric User ID</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.biometricUserId)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Documents & Compliance
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="space-y-4">
+                  {profileDocsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      Loading documents…
+                    </div>
+                  ) : profileDocsForDialog.length === 0 ? (
+                    <div className="text-sm text-gray-500 py-2">No uploaded documents</div>
+                  ) : (
+                    profileDocsForDialog.map((row) => {
+                      const canOpen = Boolean(row.bucket && row.storagePath);
+                      return (
+                        <div key={row.id} className="space-y-1.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            {row.label}
+                          </p>
+                         
+                          <div
+                            key={row.id}
+                            onClick={() => setSelectedDocument(row.id)}
+                            className={`group flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2.5 transition-all ${
+                              selectedDocument === row.id
+                                ? "border-blue-300 bg-white shadow-sm"
+                                : "border-slate-200 bg-slate-100 hover:border-blue-300 hover:bg-white"
+                            }`}
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                              <FileText
+                                className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600"
+                                aria-hidden
+                              />
+                              <span className="truncate text-sm text-slate-600 transition-colors group-hover:text-slate-900">
+                                {row.fileName}
+                              </span>
+                            </div>
+                            {canOpen && (
+                              <div
+                                className={`flex shrink-0 items-center gap-3 text-sm transition-opacity duration-150 ${
+                                  selectedDocument === row.id
+                                    ? "opacity-100"
+                                    : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  className="text-blue-400 hover:underline font-medium"
+                                  onClick={() => {
+                                    if (row.bucket && row.storagePath) {
+                                      openProfileStoredFile(row.bucket, row.storagePath);
+                                    }
+                                  }}
+                                >
+                                  View
+                                </button>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 text-gray-600 hover:underline font-medium"
+                                  onClick={() => {
+                                    if (row.bucket && row.storagePath) {
+                                      downloadProfileStoredFile(
+                                        row.bucket,
+                                        row.storagePath,
+                                        row.fileName || 'document'
+                                      );
+                                    }
+                                  }}
+                                >
+                                  Download
+                                  <Download className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Employee Verification Documents
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+
+                <div className="space-y-4 max-h-[min(45vh,360px)] overflow-y-auto pr-1">
+                  {verificationDocsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      Loading verification documents…
+                    </div>
+                  ) : verificationDocsForDialog.length === 0 ? (
+                    <div className="text-sm text-gray-500 py-2">No uploaded verification documents</div>
+                  ) : (
+                    verificationDocsForDialog.map((row) => (
+                      <div
+                        key={row.id}
+                        className="group mb-2 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition-colors hover:border-blue-400 hover:shadow-sm"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                          <FileText
+                            className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600"
+                            aria-hidden
+                          />
+                          <span className="truncate text-sm text-slate-600 transition-colors group-hover:text-slate-900">
+                            {row.typeLabel}
+                          </span>
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border ${
+                            row.status === 'verified'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                        >
+                          {row.status === 'verified' ? 'Verified' : 'Pending'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
