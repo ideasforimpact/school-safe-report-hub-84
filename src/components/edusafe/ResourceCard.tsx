@@ -142,9 +142,9 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
         
         <div className="mt-4 text-left">
           <div className="text-xs text-gray-500 flex items-center space-x-2 mb-3">
-            <span>Type: {isYouTubeResource ? 'YouTube Video' : 'PDF'}</span>
+            <span>Type: {isYouTubeResource ? 'YouTube Video' : (resource.document_url?.split('?')[0].split('.').pop()?.toUpperCase() || 'File')}</span>
             <span>•</span>
-            <span>{isYouTubeResource ? 'Video' : 'Unknown size'}</span>
+            <span>{isYouTubeResource ? 'Video' : resource.file?.size ? formatFileSize(resource.file.size) : 'N/A'}</span>
           </div>
           
           <div className="flex flex-wrap gap-2">

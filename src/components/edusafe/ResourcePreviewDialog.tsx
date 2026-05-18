@@ -10,11 +10,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, Image, Play } from 'lucide-react';
+import { Download, FileText, Image, Play, Loader2 } from 'lucide-react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { formatFileSize } from '@/utils/fileUtils';
 import { extractYouTubeVideoId, getYouTubeEmbedUrl } from '@/utils/youtubeUtils';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
+import { supabase } from '@/integrations/supabase/client';
+import { renderAsync } from 'docx-preview';
 
 interface ResourcePreviewDialogProps {
   resource: EduSafeResource | null;
@@ -29,6 +31,9 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
 }) => {
   const { downloadResource } = useEduSafe();
   const [resolvedUrl, setResolvedUrl] = React.useState<string>('');
+  const [docxLoading, setDocxLoading] = React.useState(false);
+  const [docxError, setDocxError] = React.useState<string | null>(null);
+  const docxContainerRef = React.useRef<HTMLDivElement>(null);
 
   if (!resource) return null;
 
@@ -71,23 +76,23 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
 
   // Determine file type from document_url or file data
   const getFileType = () => {
-    if (resource.document_url) {
-      const fileExtension = resource.document_url.split('.').pop()?.toLowerCase();
-      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension || '')) {
-        return 'image';
-      } else if (fileExtension === 'pdf') {
-        return 'pdf';
-      } else {
-        return 'other';
-      }
-    } else if (resource.file?.type) {
-      if (resource.file.type.startsWith('image/')) {
-        return 'image';
-      } else if (resource.file.type === 'application/pdf') {
-        return 'pdf';
-      } else {
-        return 'other';
-      }
+    const ext = resource.document_url?.split('?')[0].split('.').pop()?.toLowerCase();
+    if (ext) {
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
+      if (ext === 'pdf') return 'pdf';
+      if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) return 'office';
+    }
+    if (resource.file?.type) {
+      if (resource.file.type.startsWith('image/')) return 'image';
+      if (resource.file.type === 'application/pdf') return 'pdf';
+      if ([
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      ].includes(resource.file.type)) return 'office';
     }
     return 'other';
   };
@@ -95,7 +100,60 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
   const fileType = getFileType();
   const isImage = fileType === 'image';
   const isPdf = fileType === 'pdf';
-  
+  const isOffice = fileType === 'office';
+
+  // Render DOCX via docx-preview when the dialog opens for an office file
+  React.useEffect(() => {
+    if (!open || !isOffice || !resource.document_url) return;
+
+    setDocxLoading(true);
+    setDocxError(null);
+
+    // Extract the storage file path regardless of whether document_url is a full
+    // Supabase URL or a relative path like "edusafe-resources/client/file.docx"
+    const extractFilePath = (url: string): string | null => {
+      // Full Supabase URL
+      try {
+        const urlObj = new URL(url);
+        const match = urlObj.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/edusafe-resources\/(.+)/);
+        if (match?.[1]) return decodeURIComponent(match[1].split('?')[0]);
+      } catch {
+        // Not a valid absolute URL — treat as relative path
+      }
+      // Relative path: "edusafe-resources/..." or "/edusafe-resources/..."
+      const relMatch = url.replace(/^\//, '').match(/^edusafe-resources\/(.+)/);
+      if (relMatch?.[1]) return decodeURIComponent(relMatch[1].split('?')[0]);
+      return null;
+    };
+
+    const filePath = extractFilePath(resource.document_url);
+
+    const getBlob = async (): Promise<Blob> => {
+      if (filePath) {
+        const { data, error } = await supabase.storage.from('edusafe-resources').download(filePath);
+        if (!error && data) return data;
+      }
+      const res = await fetch(resource.document_url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.blob();
+    };
+
+    getBlob()
+      .then(async blob => {
+        if (docxContainerRef.current) {
+          docxContainerRef.current.innerHTML = '';
+          await renderAsync(blob, docxContainerRef.current, null, {
+            inWrapper: false,
+            ignoreWidth: true,
+          });
+        }
+      })
+      .catch(err => {
+        console.error('docx-preview error:', err);
+        setDocxError('Could not render document. Try downloading it instead.');
+      })
+      .finally(() => setDocxLoading(false));
+  }, [open, isOffice, resource?.document_url]);
   // Check if this is a YouTube resource
   const isYouTubeResource = resource.category === 'youtube' && resource.youtube_link;
   const youtubeVideoId = isYouTubeResource ? extractYouTubeVideoId(resource.youtube_link) : null;
@@ -108,15 +166,15 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
           <DialogTitle>{resource.title}</DialogTitle>
           <DialogDescription>
             {resource.description}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-left">
               {isYouTubeResource ? 'Video Preview' : 'Document Preview'}
@@ -128,7 +186,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
                   <iframe
                     src={youtubeEmbedUrl}
                     title={resource.title}
-                    className="w-full h-[400px] border-0 rounded-lg"
+                    className="w-full h-[280px] border-0 rounded-lg"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     onError={() => {
@@ -152,7 +210,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
                 <img 
                   src={getSourceUrl()}
                   alt={resource.title}
-                  className="max-h-[400px] object-contain"
+                  className="max-h-[260px] object-contain"
                 />
               </div>
             ) : isPdf ? (
@@ -161,7 +219,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
                   <iframe
                     src={getSourceUrl()}
                     title={resource.title}
-                    className="w-full h-[400px] border-0"
+                    className="w-full h-[280px] border-0"
                     onError={() => {
                       console.error('Error loading PDF');
                     }}
@@ -177,11 +235,34 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
                   </div>
                 </div>
               </div>
+            ) : isOffice ? (
+              <div className="border rounded-md bg-gray-50 overflow-auto max-h-[280px]">
+                {docxLoading && (
+                  <div className="flex flex-col items-center justify-center p-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-3" />
+                    <p className="text-sm text-gray-500">Loading document…</p>
+                  </div>
+                )}
+                {docxError && (
+                  <div className="flex flex-col items-center justify-center p-12">
+                    <FileText className="h-12 w-12 text-gray-400 mb-3" />
+                    <p className="text-sm text-gray-600 mb-4">{docxError}</p>
+                    <Button variant="outline" size="sm" onClick={handleDownload}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download instead
+                    </Button>
+                  </div>
+                )}
+                <div
+                  ref={docxContainerRef}
+                  className={docxLoading || docxError ? 'hidden' : 'p-2'}
+                />
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center border rounded-md p-12 bg-gray-50">
                 <FileText className="h-16 w-16 text-gray-400 mb-4" />
                 <p className="text-sm text-gray-600">
-                  Preview not available for {fileType.toUpperCase()} files
+                  Preview not available for this file type
                 </p>
                 <Button 
                   variant="outline" 
@@ -241,7 +322,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
                   </div>
                   <div>
                     <p className="text-gray-500">File Type</p>
-                    <p>{resource.file?.type || fileType.toUpperCase()}</p>
+                    <p>{resource.file?.type || resource.document_url?.split('?')[0].split('.').pop()?.toUpperCase() || fileType.toUpperCase()}</p>
                   </div>
                 </>
               )}
@@ -286,7 +367,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
           {isYouTubeResource ? (
             <Button onClick={() => window.open(resource.youtube_link, '_blank', 'noopener,noreferrer')}>
               <Play className="h-4 w-4 mr-2" />

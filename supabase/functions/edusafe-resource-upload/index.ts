@@ -259,7 +259,8 @@ async function handleUpload(req: Request) {
       document_url: documentUrl,
       youtube_link: youtubeLink || null,
       uploaded_by: validatedUploadedBy,
-      client_id: clientId
+      client_id: clientId,
+      file_size: file ? file.size : null
     })
     .select()
     .single()
@@ -447,6 +448,7 @@ async function handleUpdate(req: Request, url: URL) {
   if (tags !== undefined) updateData.tags = tags
   if (documentUrl && documentUrl !== existingResource.document_url) {
     updateData.document_url = documentUrl
+    updateData.file_size = file ? file.size : null
   }
 
   // Update the resource
