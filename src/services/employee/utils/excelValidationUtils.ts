@@ -267,7 +267,6 @@ export const getPersonalDetailsFieldErrors = (
         : '',
     dob: dobError,
     gender: genderError,
-    staffId: staffIdError,
     residenceAddress: getResidenceAddressError(personalDetails.residenceAddress),
   };
 };
