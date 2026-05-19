@@ -31,7 +31,7 @@ const BackofficeEmployeeDocumentsPage = () => {
         description: "Employee ID or Client ID is missing",
         variant: "destructive",
       });
-      navigate('/backoffice/employee-verification');
+      navigate('/backoffice/verification');
     }
   }, [employeeId, clientId]);
 
@@ -48,7 +48,7 @@ const BackofficeEmployeeDocumentsPage = () => {
           description: "The requested employee could not be found",
           variant: "destructive",
         });
-        navigate('/backoffice/employee-verification');
+        navigate('/backoffice/verification');
         return;
       }
 
@@ -66,7 +66,7 @@ const BackofficeEmployeeDocumentsPage = () => {
   };
 
   const handleBack = () => {
-    navigate('/backoffice/employee-verification');
+    navigate('/backoffice/verification');
   };
 
   const handleRefresh = () => {
