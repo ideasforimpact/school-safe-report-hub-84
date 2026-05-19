@@ -642,17 +642,6 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
 
   const handleDocumentChange = (documentKey: string, file: File | null) => {
     if (!file) {
-      setUploadedDocuments((prev) => ({
-        ...prev,
-        [documentKey]: ''
-      }));
-
-      setUploadedDocumentFiles((prev) => {
-        const next = { ...prev };
-        delete next[documentKey];
-        return next;
-      });
-
       return;
     }
 

@@ -769,11 +769,6 @@ const EditUserDialog = ({
 
   const handleDocumentChange = (documentKey: string, file: File | null) => {
     if (!file) {
-      setUploadedDocuments((prev) => {
-        const next = { ...prev };
-        delete next[documentKey];
-        return next;
-      });
       return;
     }
 
