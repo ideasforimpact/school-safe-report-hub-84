@@ -47,6 +47,7 @@ const DuplicateTemplateDialog: React.FC<DuplicateTemplateDialogProps> = ({
         title,
         description: template.description,
         type: template.type,
+        category_id: template.category_id,
         questions: template.questions
       });
       
