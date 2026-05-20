@@ -20,49 +20,74 @@ interface PriorityPieChartProps {
   data: PriorityDistribution;
 }
 
-/* ---------- Label Text ---------- */
-const renderLabel = ({
-  cx,
-  cy,
-  midAngle,
-  outerRadius,
-  name,
-  percent,
-}: any) => {
-  const RADIAN = Math.PI / 180;
+/* ---------- FIXED PERCENTAGE CALCULATION ---------- */
+const distributePercentages = (values: number[]): string[] => {
+  const total = values.reduce((sum, val) => sum + val, 0);
 
-  const r = outerRadius + 18;
-  let x = cx + r * Math.cos(-midAngle * RADIAN);
-  const y = cy + r * Math.sin(-midAngle * RADIAN);
-
-  const isRightSide = x > cx;
-
-  
-  if (!isRightSide) {
-    x = x - 25; // adjust spacing if needed (30–50)
+  if (total === 0) {
+    return values.map(() => '0.0');
   }
 
-  const percentage = `${(percent * 100).toFixed(1)}%`;
+  const raw = values.map((value) => (value / total) * 100);
 
-  return (
-    <text
-      x={x}
-      y={y}
-      textAnchor="start"   // ✅ always start from first letter
-      dominantBaseline="middle"
-      fontSize={10}
-      fill="#374151"
-    >
-      <tspan x={x} dy="0">
-        {name}
-      </tspan>
+  const rounded = raw.map((p) => Number(p.toFixed(1)));
 
-      <tspan x={x} dy="12">
-        {percentage}
-      </tspan>
-    </text>
-  );
+  const roundedTotal = rounded.reduce((sum, p) => sum + p, 0);
+
+  const diff = Number((100 - roundedTotal).toFixed(1));
+
+  if (diff !== 0) {
+    const maxIndex = rounded.indexOf(Math.max(...rounded));
+    rounded[maxIndex] = Number((rounded[maxIndex] + diff).toFixed(1));
+  }
+
+  return rounded.map((p) => p.toFixed(1));
 };
+
+/* ---------- Label Text ---------- */
+const makeRenderLabel = (adjustedPercentages: string[]) =>
+  ({
+    cx,
+    cy,
+    midAngle,
+    outerRadius,
+    name,
+    index,
+  }: any) => {
+    const RADIAN = Math.PI / 180;
+
+    const r = outerRadius + 18;
+    let x = cx + r * Math.cos(-midAngle * RADIAN);
+    const y = cy + r * Math.sin(-midAngle * RADIAN);
+
+    const isRightSide = x > cx;
+
+
+    if (!isRightSide) {
+    x = x - 25; // adjust spacing if needed (30–50)
+    }
+
+    const percentage = `${adjustedPercentages[index]}%`;
+
+    return (
+      <text
+        x={x}
+        y={y}
+      textAnchor="start"   // ✅ always start from first letter
+        dominantBaseline="middle"
+        fontSize={10}
+        fill="#374151"
+      >
+        <tspan x={x} dy="0">
+          {name}
+        </tspan>
+
+        <tspan x={x} dy="12">
+          {percentage}
+        </tspan>
+      </text>
+    );
+  };
 
 
 /* ---------- Label Line (NO DOT, NO OVERLAP) ---------- */
@@ -103,6 +128,13 @@ const PriorityPieChart: React.FC<PriorityPieChartProps> = ({
       value: p.count,
       fill: p.color,
     })) || [];
+
+  /* ---------- USE FIXED PERCENTAGES ---------- */
+  const adjustedPercentages = distributePercentages(
+    chartData.map((d) => d.value)
+  );
+
+  const renderLabel = makeRenderLabel(adjustedPercentages);
 
   if (chartData.length === 0) {
     return (
