@@ -323,7 +323,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   // Filter sections based on selected grade
   useEffect(() => {
     if (selectedGrade) {
-      const gradeObj = grades.find(g => g.name === selectedGrade);
+      const gradeObj = filteredGrades.find(g => g.name === selectedGrade);
       if (gradeObj) {
         setSelectedGradeId(gradeObj.id);
         form.setValue('gradeId', gradeObj.id);
