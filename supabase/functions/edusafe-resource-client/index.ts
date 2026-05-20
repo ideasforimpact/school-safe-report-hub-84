@@ -137,11 +137,13 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
         clientId: null,
         resourceType: 'Global Resource' as const,
         document_url: resource.document_url, // Add the document_url field
-        youtube_link: resource.youtube_link, // Add the youtube_link field
+        youtube_link: resource.youtube_link,
+        file_size: resource.file_size || null,
         file: {
           name: resource.title,
           url: resource.document_url,
-          type: 'application/pdf'
+          type: 'application/pdf',
+          size: resource.file_size || 0
         }
       }))
     ]
