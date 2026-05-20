@@ -416,7 +416,7 @@ function App() {
                       <BackofficeWrapper component={BackofficeEmployeeVerificationPage} />
                     </RouteGuard>
                   } />
-                  <Route path="/backoffice/employee-verification/employee/:employeeId" element={
+                  <Route path="/backoffice/verification/employee/:employeeId" element={
                     <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
                       <BackofficeWrapper component={BackofficeEmployeeDocumentsPage} />
                     </RouteGuard>

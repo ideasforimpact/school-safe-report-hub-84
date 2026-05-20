@@ -59,7 +59,6 @@ export const useRefreshBackofficeModules = () => {
         .eq('level', 'backoffice')
         .eq('active', true)
         .order('order', { ascending: true, nullsFirst: false });
-      console.log(modulesData,'modulesData of modules');
       
       if (error) {
         console.warn('useRefreshBackofficeModules: fetch error', error);
@@ -81,7 +80,6 @@ export const useRefreshBackofficeModules = () => {
         created_at: module.created_at,
         updated_at: module.updated_at,
       }));
-      console.log(backofficeModules,'backofficeModules modules');
       
       dispatch(setConfiguredModules(backofficeModules));
 
@@ -96,7 +94,6 @@ export const useRefreshBackofficeModules = () => {
       // If the user is on a route whose backing module is no longer active,
       // redirect them to the first available module.
       const currentPath = pathnameRef.current;
-      console.log(currentPath,'currentPath');
       
       if (
         currentPath.startsWith('/backoffice/') &&
@@ -104,14 +101,11 @@ export const useRefreshBackofficeModules = () => {
       ) {
         const segments = currentPath.split('/').filter(Boolean); // ['backoffice', '<slug>', ...]
         const currentSlug = segments[1] ?? '';
-        console.log(currentSlug,'currentSlug');
-        console.log(!NON_MODULE_BACKOFFICE_SEGMENTS.has(currentSlug),'!NON_MODULE_BACKOFFICE_SEGMENTS.has(currentSlug)');
         
         if (!NON_MODULE_BACKOFFICE_SEGMENTS.has(currentSlug)) {
           const stillActive = backofficeModules.some(
             (m) => slugify(m.name) === currentSlug
           );
-          console.log(!stillActive);
           
           if (!stillActive) {
             const fallback = getBackofficeDefaultPath(backofficeModules);
