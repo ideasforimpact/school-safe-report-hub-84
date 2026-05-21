@@ -267,21 +267,20 @@ async function insertEmployeePersonalDetails(
     return value;
   };
   const personalDetails = {
-    employee_id: employeeId,
+  employee_id: employeeId,
     client_id: resolvedClientId,
-    middle_name: normalizeOptional(nestedPersonal.middleName ?? employee.middleName),
-    father_name: normalizeOptional(nestedPersonal.fatherName ?? employee.fatherName),
-    gender: normalizeOptional(nestedPersonal.gender ?? employee.gender),
-    dob: normalizeOptional(nestedPersonal.dob ?? employee.dob),
-    religion: normalizeOptional(nestedPersonal.religion ?? employee.religion),
-    nationality: normalizeOptional(nestedPersonal.nationality ?? employee.nationality),
-    blood_group: normalizeOptional(nestedPersonal.bloodGroup ?? employee.bloodGroup),
-    residence_address: normalizeOptional(nestedPersonal.residenceAddress ?? employee.residenceAddress),
-    staff_id: normalizeOptional(nestedPersonal.staffId ?? employee.staffId),
-    experience: normalizeOptional(nestedPersonal.experience ?? employee.experience),
-    qualification: normalizeOptional(nestedPersonal.qualification ?? employee.qualification),
+  middle_name: normalizeOptional(nestedPersonal.middleName ?? employee.middleName),
+  father_name: normalizeOptional(nestedPersonal.fatherName ?? employee.fatherName),
+  gender: normalizeOptional(nestedPersonal.gender ?? employee.gender),
+  dob: normalizeOptional(nestedPersonal.dob ?? employee.dob),
+  religion: normalizeOptional(nestedPersonal.religion ?? employee.religion),
+  nationality: normalizeOptional(nestedPersonal.nationality ?? employee.nationality),
+  blood_group: normalizeOptional(nestedPersonal.bloodGroup ?? employee.bloodGroup),
+  residence_address: normalizeOptional(nestedPersonal.residenceAddress ?? employee.residenceAddress),
+  experience: normalizeOptional(nestedPersonal.experience ?? employee.experience),
+  qualification: normalizeOptional(nestedPersonal.qualification ?? employee.qualification),
     updated_at: new Date().toISOString(),
-  };
+};
 
   const { error } = await supabaseClient
     .from('employee_personal_details')
@@ -319,16 +318,16 @@ async function insertEmployeeOtherDetails(
     return value;
   };
   const otherDetails = {
-    employee_id: employeeId,
+  employee_id: employeeId,
     client_id: resolvedClientId,
-    aadhaar_number: normalizeOptional(nestedProfessional.aadharNo ?? employee.aadharNo),
-    pan_number: normalizeOptional(nestedProfessional.panNo ?? employee.panNo),
-    esi_number: normalizeOptional(nestedProfessional.esiNo ?? employee.esiNo),
-    pf_number: normalizeOptional(nestedProfessional.pfNo ?? employee.pfNo),
-    exit_date: normalizeOptional(nestedProfessional.exitDate ?? employee.exitDate),
-    biometric_user_id: normalizeOptional(nestedProfessional.biometricUserId ?? employee.biometricUserId),
+  aadhaar_number: normalizeOptional(nestedProfessional.aadharNo ?? employee.aadharNo),
+  pan_number: normalizeOptional(nestedProfessional.panNo ?? employee.panNo),
+  esi_number: normalizeOptional(nestedProfessional.esiNo ?? employee.esiNo),
+  pf_number: normalizeOptional(nestedProfessional.pfNo ?? employee.pfNo),
+  exit_date: normalizeOptional(nestedProfessional.exitDate ?? employee.exitDate),
+  biometric_user_id: normalizeOptional(nestedProfessional.biometricUserId ?? employee.biometricUserId),
     updated_at: new Date().toISOString(),
-  };
+};
 
   const { error } = await supabaseClient
     .from('employee_other_details')
@@ -338,6 +337,22 @@ async function insertEmployeeOtherDetails(
     console.error('Error inserting employee other details:', error);
     throw error;
   }
+}
+
+function sanitizeFilename(filename: string): string {
+  const lastDotIndex = filename.lastIndexOf('.');
+  const name = lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
+  const extension = lastDotIndex > 0 ? filename.substring(lastDotIndex) : '';
+
+  const sanitizedName = name
+    .replace(/ /g, '_')
+    .replace(/[()]/g, '_')
+    .replace(/[–—]/g, '-')
+    .replace(/[[\]{}#%^&*+=|<>?/\\]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  return sanitizedName + extension;
 }
 
 async function uploadEmployeeProfileDocuments(
@@ -382,7 +397,7 @@ async function uploadEmployeeProfileDocuments(
       throw new Error(`Invalid file data for ${doc.key}`);
     }
 
-    const safeFileName = String(doc.fileName || 'document').replace(/\s+/g, '_');
+    const safeFileName = sanitizeFilename(String(doc.fileName || 'document'));
     const storagePath = `${clientId}/${employeeKey}/${doc.key}/${Date.now()}_${safeFileName}`;
 
     const { error: uploadError } = await supabaseClient.storage

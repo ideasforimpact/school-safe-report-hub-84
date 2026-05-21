@@ -5,6 +5,24 @@
 
 import { ValidationError } from './types.ts';
 
+/** Whitelisted SafeSchool auth modules (JWT `aud` + refresh_tokens.module). */
+const AUTH_MODULE_WHITELIST = new Set(['visitor', 'child-audit']);
+
+/**
+ * Resolve module from request body. Defaults to `child-audit` when omitted.
+ * @throws Error when `module` is present but not whitelisted
+ */
+export function getAuthModuleName(body: Record<string, unknown>): string {
+  const raw = typeof body.module === 'string' ? body.module.trim().toLowerCase() : '';
+  if (!raw) {
+    throw new Error('module is required (e.g., "visitor" or "child-audit")');
+  }
+  if (!AUTH_MODULE_WHITELIST.has(raw)) {
+    throw new Error(`Unsupported module: ${raw}`);
+  }
+  return raw;
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];

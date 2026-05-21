@@ -42,17 +42,22 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get form configuration data from the new hook
-  const { formData: configData, loading: configLoading } = useIncidentFormData();
+  const { formData: configData, employees: configEmployees, loading: configLoading } = useIncidentFormData();
+  const mappedEmployees = (configEmployees || []).map((emp: any) => ({
+    id: emp.id,
+    firstName: emp.first_name,
+    lastName: emp.last_name,
+    email: emp.email || '',
+  }));
 
-  // Use the document management hook
+  // Use the document management hook — seed with already-loaded documents (no extra DB call)
   const {
     supportingFiles,
     documents,
     isUploading,
     handleFilesChange,
     uploadAndSaveDocuments,
-    loadDocuments,
-  } = useIncidentDocuments(id);
+  } = useIncidentDocuments(id, incidentData.documents);
 
   // Add validation hook
   const { validateForm } = useIncidentFormValidation();
@@ -70,12 +75,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     console.log('Priorities:', configData.priorities);
   }, [incidentData, configData]);
 
-  // Load existing documents when component mounts
-  useEffect(() => {
-    if (id) {
-      loadDocuments(id);
-    }
-  }, [id, loadDocuments]);
 
   // Form state - initialize with incident data
   const [formData, setFormData] = useState(() => ({
@@ -534,16 +533,11 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
         console.log('Form data owner (assigned_to):', formData.owner);
         console.log('Original owner (ownerId):', incidentData.ownerId);
         
-        // Get updater details
-        console.log('Fetching updater details for user ID:', user.id);
-        const { data: updater } = await supabase
-          .from('employees')
-          .select('id, email, first_name, last_name')
-          .eq('id', incidentData.created_by)
-          .limit(1)
-          .maybeSingle();
-        
-        console.log('Updater data:', updater);
+        // Get updater from already-loaded config employees (no extra DB call)
+        const updaterRaw = configEmployees.find((e: any) => e.id === incidentData.created_by);
+        const updater = updaterRaw
+          ? { id: updaterRaw.id, email: updaterRaw.email, first_name: updaterRaw.first_name, last_name: updaterRaw.last_name }
+          : null;
 
         if (updater) {
           const incidentForNotification = {
@@ -565,14 +559,12 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
           });
           
           if (wasReassigned) {
-            // Send assignment notification to new assignee
+            // Get new assignee from already-loaded config employees (no extra DB call)
             console.log('=== INCIDENT WAS REASSIGNED ===');
-            console.log('Sending assignment notification to new assignee:', formData.owner);
-            const { data: newAssignee } = await supabase
-              .from('employees')
-              .select('id, email, first_name, last_name')
-              .eq('id', formData.owner)
-              .single();
+            const newAssigneeRaw = configEmployees.find((e: any) => e.id === formData.owner);
+            const newAssignee = newAssigneeRaw
+              ? { id: newAssigneeRaw.id, email: newAssigneeRaw.email, first_name: newAssigneeRaw.first_name, last_name: newAssigneeRaw.last_name }
+              : null;
 
             if (newAssignee) {
               await incidentNotificationService.queueIncidentAssignedNotification(
@@ -590,13 +582,10 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
         
           if (ownerOfIncident && formData.owner && formData.owner !== updater.id && !wasReassigned) {
             console.log('=== SENDING UPDATE NOTIFICATION ===');
-            const { data: assignee } = await supabase
-              .from('employees')
-              .select('id, email, first_name, last_name')
-              .eq('id', formData.owner)
-              .single();
-
-            console.log('Assignee data for update notification:', assignee);
+            const assigneeRaw = configEmployees.find((e: any) => e.id === formData.owner);
+            const assignee = assigneeRaw
+              ? { id: assigneeRaw.id, email: assigneeRaw.email, first_name: assigneeRaw.first_name, last_name: assigneeRaw.last_name }
+              : null;
 
             if (assignee) {
               console.log('Calling queueIncidentUpdatedNotification...');
@@ -643,9 +632,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     );
   }
 
-  // Create empty arrays for students and employees - they will be fetched inside the component
   const students: Student[] = [];
-  const employees: UserBasicInfo[] = [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -830,6 +817,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
             <AssignmentSection
               owner={formData.owner}
               onSelectChange={handleSelectChange}
+              employees={mappedEmployees}
             />
 
             {/* Supporting Files Section */}
@@ -884,7 +872,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               onAddPerson={handleAddPerson}
               onRemovePerson={handleRemovePerson}
               students={students}
-              employees={employees}
+              employees={mappedEmployees}
             />
           </CardContent>
 

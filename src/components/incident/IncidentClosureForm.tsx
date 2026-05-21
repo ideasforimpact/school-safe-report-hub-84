@@ -15,12 +15,16 @@ import LearningPoints from './closure/LearningPoints';
 import ActionsTakenForm from './closure/ActionsTakenForm';
 import ContributingFactorsSection from './closure/ContributingFactorsSection';
 import { supabase } from '@/integrations/supabase/client';
-import { incidentDocumentService } from '@/services/incident/incidentDocumentService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 import ReusableFileUploader from '../common/ReusableFileUploader';
+
+interface ContributingFactorOption {
+  id: string;
+  name: string;
+  weight: string;
+}
 
 interface IncidentClosureFormProps {
   incident: Incident;
@@ -33,6 +37,8 @@ interface IncidentClosureFormProps {
     actions: Action[];
     attachments?: FileItem[];
   }) => void;
+  factorOptions?: ContributingFactorOption[];
+  preloadedClosureAttachments?: FileItem[];
 }
 
 const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
@@ -40,6 +46,8 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  factorOptions = [],
+  preloadedClosureAttachments = [],
 }) => {
   // Initialize with existing data using correct field names with fallbacks
   const [rootCause, setRootCause] = useState(
@@ -51,18 +59,15 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   );
   
   const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([]);
-  const [isLoadingFactors, setIsLoadingFactors] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { state } = useEmployeeStore();
   const navigate = useNavigate();
-  const [attachments, setAttachments] = useState<FileItem[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<FileItem[]>([]);
-  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+  const [attachments, setAttachments] = useState<FileItem[]>(preloadedClosureAttachments);
+  const [existingAttachments, setExistingAttachments] = useState<FileItem[]>(preloadedClosureAttachments);
   
-  // Load and validate contributing factors on mount
+  // Map pre-existing contributing factors on incident or factorOptions change
   React.useEffect(() => {
     const loadContributingFactors = async () => {
-      setIsLoadingFactors(true);
       try {
         // Try multiple field names for backward compatibility
         const factors = incident.contributingFactor || incident.contributingFactors || [];
@@ -71,18 +76,12 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           // Check if any factors have timestamp IDs (old format) instead of UUIDs
           const hasInvalidIds = factors.some(f => f.id && /^\d+$/.test(f.id));
           
-          if (hasInvalidIds && state.employeeData?.clientId) {
-            // Fetch contributing factors from database to map category names to UUIDs
-            const { data: dbFactors } = await supabase
-              .from('contributing_factors')
-              .select('id, name')
-              .eq('client_id', state.employeeData.clientId);
-            
-            // Map old timestamp IDs to UUIDs by matching category name
+          if (hasInvalidIds) {
+            // Map old timestamp IDs to UUIDs by matching category name from pre-loaded factorOptions
             const mappedFactors = factors.map((factor) => {
               // If ID is a timestamp (numeric string), try to find matching UUID by category name
               if (factor.id && /^\d+$/.test(factor.id) && factor.category) {
-                const matchingFactor = dbFactors?.find(db => db.name === factor.category);
+                const matchingFactor = factorOptions.find(db => db.name === factor.category);
                 if (matchingFactor) {
                   console.log(`Mapped contributing factor "${factor.category}" from timestamp ID ${factor.id} to UUID ${matchingFactor.id}`);
                   return {
@@ -121,47 +120,19 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           setContributingFactors([]);
         }
       } catch (error) {
-        console.error('Error loading contributing factors:', error);
+        console.error('Error mapping contributing factors:', error);
         setContributingFactors([]);
-      } finally {
-        setIsLoadingFactors(false);
       }
     };
-    
+
     loadContributingFactors();
-  }, [incident, state.employeeData?.clientId]);
+  }, [incident, factorOptions]);
 
+  // Sync preloaded attachments when they change (e.g. after incident reload)
   useEffect(() => {
-    const loadClosureAttachments = async () => {
-      if (!isOpen || !incident?.id) return;
-
-      setIsLoadingAttachments(true);
-      try {
-        const docs = await incidentDocumentService.fetchClosureDocuments(
-          incident.id
-        );
-        const mapped: FileItem[] = docs.map((doc) => ({
-          id: doc.id,
-          name: doc.name,
-          type: doc.type,
-          size: doc.size,
-          base64: doc.url || '',
-          url: doc.url,
-          path: doc.path,
-        }));
-        setExistingAttachments(mapped);
-        setAttachments(mapped);
-      } catch (err) {
-        console.error('Error loading closure attachments:', err);
-        setExistingAttachments([]);
-        setAttachments([]);
-      } finally {
-        setIsLoadingAttachments(false);
-      }
-    };
-
-    loadClosureAttachments();
-  }, [isOpen, incident?.id]);
+    setAttachments(preloadedClosureAttachments);
+    setExistingAttachments(preloadedClosureAttachments);
+  }, [preloadedClosureAttachments]);
   
   // Initialize current action with existing actionTaken data
   const [currentAction, setCurrentAction] = useState<Action>(() => {
@@ -251,7 +222,10 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           action_taken: currentAction.description.trim(),
           contributing_factor: validatedContributingFactors,
           attachments: newAttachments,
-          deleted_attachment_ids: deletedAttachmentIds
+          deleted_attachment_ids: deletedAttachmentIds,
+          closer_first_name: state.employeeData.firstName,
+          closer_last_name: state.employeeData.lastName,
+          notification_base_url: window.location.origin
         }
       });
 
@@ -261,51 +235,6 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
 
       if (data?.error) {
         throw new Error(data.error);
-      }
-
-      // Send notification about incident closure
-      try {
-        console.log('=== STARTING CLOSURE NOTIFICATION ===');
-        console.log('Employee ID:', state.employeeData?.id);
-        console.log('Incident:', incident);
-        
-        // Get closer details
-        console.log('Fetching closer details for employee ID:', state.employeeData?.id);
-        const { data: closer } = await supabase
-          .from('employees')
-          .select('id, email, first_name, last_name')
-          .eq('id', state.employeeData?.id)
-          .single();
-        
-        console.log('Closer data:', closer);
-
-        if (closer) {
-          const incidentForNotification = {
-            id: incident.id,
-            ticket_id: incident.ticketId,
-            description: incident.description || 'Incident',
-            created_at: incident.createdAt,
-            created_by: incident.reportedBy?.id,
-            assigned_to: incident.owner?.id,
-            client_id: state.employeeData.clientId
-          };
-          
-          console.log('=== CALLING CLOSURE NOTIFICATION ===');
-          console.log('Incident for notification:', incidentForNotification);
-          console.log('Closer:', closer);
-
-          const result = await incidentNotificationService.queueIncidentClosedNotification(
-            incidentForNotification,
-            closer,
-            state.employeeData
-          );
-          console.log('Closure notification result:', result);
-        } else {
-          console.log('No closer data found, skipping notification');
-        }
-      } catch (notificationError) {
-        console.error('Error sending incident closure notification:', notificationError);
-        // Don't fail the closure if notification fails
       }
       
       toast.success('Incident closed successfully');
@@ -378,17 +307,11 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           />
 
           {/* Contributing Factors Section */}
-          {isLoadingFactors ? (
-            <div className="space-y-4">
-              <h3 className="font-medium">Contributing Factors <span className="text-red-500">*</span></h3>
-              <div className="text-sm text-gray-500">Loading contributing factors...</div>
-            </div>
-          ) : (
-          <ContributingFactorsSection 
+          <ContributingFactorsSection
             contributingFactors={contributingFactors}
             setContributingFactors={setContributingFactors}
+            factorOptions={factorOptions}
           />
-          )}
         </div>
 
         {/* Attachment Section (Optional) */}
@@ -406,7 +329,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
               allowedTypes={['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']}
               accept="image/*,.pdf"
               showFileList={true}
-              disabled={isSubmitting || isLoadingAttachments}
+              disabled={isSubmitting}
               removeIconVariant="close"
             />
           </div>

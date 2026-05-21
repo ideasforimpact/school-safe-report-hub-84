@@ -436,16 +436,14 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             department: (employee.department?.department_name || employee.department) as any,
             joiningDate: employee.joining_date,
             isActive: employee.status === true,
-            createdAt: employee.created_at || new Date().toISOString(),
-            clientId: employee.client_id,
-            isSuperAdmin: employee.is_super_admin,
-            is_cpd_involved: employee.is_cpd_involved ?? false,
-            moduleAccessPayload: [],
-            cpd_entries: [],
-            documentSummaries: Array.isArray(employee.documentSummaries)
-              ? employee.documentSummaries
-              : [],
-            documents: [],
+            createdAt: employee.createdAt || new Date().toISOString(),
+            clientId: employee.clientId,
+            isSuperAdmin: employee.isSuperAdmin,
+            is_cpd_involved: employee.isCpdInvolved ?? false,
+            personalDetails: employee.personalDetails || {},
+            professionalOtherDetails: employee.professionalOtherDetails || {},
+            moduleAccessPayload: moduleAccessItems,
+            cpd_entries,
             role: 'user' as const
           };
         });
@@ -641,7 +639,47 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
     try {
       setIsLoading(true);
-      await fetchEmployeesList(currentPage);
+      // Pass clientId to filter employees by client
+      const employeeData = await getAllEmployeesFromApi(clientId);
+      
+      if (employeeData && employeeData.length > 0) {
+        const processedUsers = await Promise.all(employeeData.map(async employee => {
+          // Get module access items (handles both super admin and regular employees)
+          const moduleAccessItems = await getModuleAccessForUser({
+            id: employee.id,
+            isSuperAdmin: employee.isSuperAdmin,
+            clientId: employee.clientId
+          });
+          
+          return {
+            id: employee.id,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            email: employee.email,
+            employeeId: employee.employeeId,
+            employeeType: employee.employeeType as any,
+            department: employee.department as any,
+            joiningDate: employee.joiningDate,
+            isActive: employee.status === true,
+            createdAt: employee.createdAt || new Date().toISOString(),
+            clientId: employee.clientId,
+            isSuperAdmin: employee.isSuperAdmin,
+            phone: employee.phone,
+            designation: employee.designation,
+            documents: (employee as any).profileDocuments || [],
+            is_cpd_involved: employee.isCpdInvolved ?? false,
+            personalDetails: employee.personalDetails || {},
+            professionalOtherDetails: employee.professionalOtherDetails || {},
+            // Store module access items directly
+            moduleAccessPayload: moduleAccessItems,
+            // Add default role property to satisfy User interface
+            role: 'user' as const
+          };
+        }));
+
+        setEmployeeUsers(processedUsers);
+        console.log("Refreshed employees list:", processedUsers);
+      }
     } catch (error) {
       console.error("Error refreshing employees:", error);
       toast.error("Failed to refresh employee data");

@@ -107,6 +107,7 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
   const [switchableClients, setSwitchableClients] = useState<SwitchableClient[]>(cachedClientsForCurrentUser);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  console.log(switchableClients,'switchableClients');
 
   const currentClientId =
     state.activeClientId ||
@@ -114,16 +115,21 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
     employeeData?.clientId ||
     currentUser?.clientId ||
     '';
-
+  console.log(currentClientId,'currentClientId');
+  
   const shouldShow = useMemo(() => {
     if (isBackofficeUser) return false;
     if (employeeData?.isSuperAdmin !== true) return false;
+    const isHeadOffice = employeeData.client?.is_head_office === true || currentUser?.client?.is_head_office === true;
+    if (!isHeadOffice) return false;
+
     const effectiveCount =
       switchableClients.length > 0
         ? switchableClients.length
         : cachedClientsForCurrentUser.length;
     return effectiveCount > 1;
-  }, [isBackofficeUser, employeeData?.isSuperAdmin, switchableClients.length, cachedClientsForCurrentUser.length]);
+  }, [isBackofficeUser, employeeData?.isSuperAdmin, employeeData?.client?.is_head_office, currentUser?.client?.is_head_office, switchableClients.length, cachedClientsForCurrentUser.length]);
+console.log(shouldShow,'shouldShow');
 
   const loadConfiguredModules = async (employeeId: string, targetClientId: string, isSuperAdmin: boolean) => {
     try {
@@ -188,7 +194,10 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
     if (!currentUser || !employeeData?.id) return;
 
     // Do not call the edge function unless client switching can apply (same rules as shouldShow).
-    if (isBackofficeUser || employeeData.isSuperAdmin !== true) {
+    // Only super admins belonging to a Head Office client can switch contexts.
+    const isHeadOffice = employeeData.client?.is_head_office === true || currentUser.client?.is_head_office === true;
+    
+    if (isBackofficeUser || employeeData.isSuperAdmin !== true || !isHeadOffice) {
       setSwitchableClients([]);
       return;
     }
@@ -300,20 +309,10 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
       const modules = await loadConfiguredModules(employeeData.id, selectedClient.id, employeeData.isSuperAdmin === true);
       setSelectedClientId(selectedClient.id);
 
-      const allowedPaths = modules
-        .map((module: NavigationModule) => module.url)
-        .filter((url: string | undefined): url is string => typeof url === 'string' && url.length > 0);
-      const firstAllowedPath = allowedPaths[0] || '/dashboard';
-      const normalizePath = (path: string) => {
-        if (!path) return '/';
-        return path.length > 1 ? path.replace(/\/+$/, '') : path;
-      };
-      const currentPath = normalizePath(location.pathname);
-      const isCurrentPathAllowed = allowedPaths.some((path) => {
-        const allowedBase = normalizePath(path);
-        return currentPath === allowedBase || currentPath.startsWith(`${allowedBase}/`);
-      });
-      if (!isCurrentPathAllowed && location.pathname !== firstAllowedPath) {
+      const firstAllowedPath = modules
+        .map((module: any) => module.url)
+        .find((url: string | undefined): url is string => typeof url === 'string' && url.length > 0) || '/dashboard';
+      if (location.pathname !== firstAllowedPath) {
         navigate(firstAllowedPath, { replace: true });
       }
 

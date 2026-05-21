@@ -12,7 +12,7 @@ import ModuleAccess from './form/ModuleAccess';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
-import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS } from '@/constant/employeeConstant';
+import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_PERSONAL_INFO_CONSTANTS, STAFF_ID_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS } from '@/constant/employeeConstant';
 import { EmailValidationStatus, EmployeeIdValidationStatus } from './AddUserDialog';
 import { useDebounce } from '@/hooks/useDebounce';
 import { checkEmployeeEmailExists, checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
@@ -283,10 +283,10 @@ const EditUserDialog = ({
   // Module change handler that updates selectedModules state and formData
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
     console.log("Module access items changed:", moduleAccessItems);
-    
+
     // Update local state for UI rendering
     setSelectedModules(moduleAccessItems);
-    
+
     // Update formData with the moduleAccessPayload
     setFormData({
       ...formData,
@@ -448,7 +448,7 @@ const EditUserDialog = ({
 
   // Email validation function
   const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email);
   };
 
@@ -472,7 +472,8 @@ const EditUserDialog = ({
     const validateOptionalTextField = (value: string, label: string) => {
       const trimmed = (value || '').trim();
       if (!trimmed) return '';
-      if (trimmed.length < minLength) return `${label} must be at least ${minLength} characters`;
+      if (trimmed.length < EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH) return `${label} must be at least ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH} characters`;
+      if (trimmed.length > EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH) return `${label} cannot exceed ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH} characters`;
       if (!isValidLettersAndSpaces(trimmed)) return `${label} can only contain letters and spaces`;
       return '';
     };
@@ -480,31 +481,34 @@ const EditUserDialog = ({
     return {
       middleName: validateOptionalTextField(personalDetails.middleName || '', 'Middle name'),
       fatherName: validateOptionalTextField(personalDetails.fatherName || '', "Father's name"),
-      staffId:
-        (personalDetails.staffId || '').trim() &&
-        !/^\d+$/.test((personalDetails.staffId || '').trim())
-          ? 'Staff ID must contain numbers only'
-          : '',
-
       experience:
         (personalDetails.experience || '').trim() &&
-        !/^\d+$/.test((personalDetails.experience || '').trim())
+        ((personalDetails.experience || '').trim().length < EXPERIENCE_CONSTANTS.MIN_LENGTH || (personalDetails.experience || '').trim().length > EXPERIENCE_CONSTANTS.MAX_LENGTH)
+          ? `Experience must be between ${EXPERIENCE_CONSTANTS.MIN_LENGTH} and ${EXPERIENCE_CONSTANTS.MAX_LENGTH} characters`
+          : (personalDetails.experience || '').trim() &&
+            !/^\d+$/.test((personalDetails.experience || '').trim())
           ? 'Experience must contain numbers only'
           : '',
 
       qualification:
         (personalDetails.qualification || '').trim() &&
-        !/^[a-zA-Z\s]+$/.test(
-          (personalDetails.qualification || '').trim()
-        )
-          ? 'Qualification can only contain letters and spaces'
-          : '',
+        ((personalDetails.qualification || '').trim().length < EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH ||
+        (personalDetails.qualification || '').trim().length > EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH)
+        ? `Qualification must be between ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH} characters`
+        : (personalDetails.qualification || '').trim() &&
+          !/^[a-zA-Z\s.-]+$/.test((personalDetails.qualification || '').trim())
+        ? 'Qualification can only contain letters, spaces, dots, and hyphens'
+        : '',
       religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
       nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
       bloodGroup:
         (personalDetails.bloodGroup || '').trim() &&
-        !/^(A|B|AB|O)[+-]$/i.test((personalDetails.bloodGroup || '').trim())
+        !/^(A|A1|A2|B|AB|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim())
           ? 'Blood group must be in format A+, O-, AB+, B-'
+          : '',
+      dob:
+        personalDetails.dob && new Date(personalDetails.dob) > new Date()
+          ? 'Date of birth cannot be in the future'
           : '',
     };
   };
@@ -546,8 +550,12 @@ const EditUserDialog = ({
           ? 'PF number must be exactly 12 digits'
           : '',
       biometricUserId:
-        biometricUserId && !/^\d{1,20}$/.test(biometricUserId)
-          ? 'Biometric User ID must contain digits only'
+        biometricUserId && (biometricUserId.length < BIOMETRIC_USER_ID_CONSTANTS.MIN_LENGTH || biometricUserId.length > BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH)
+          ? `Biometric User ID must be between ${BIOMETRIC_USER_ID_CONSTANTS.MIN_LENGTH} and ${BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH} characters`
+          : '',
+      exitDate:
+        professionalOtherDetails.exitDate && new Date(professionalOtherDetails.exitDate) > new Date()
+          ? 'Resigning date cannot be in the future'
           : '',
     };
   };
@@ -726,7 +734,21 @@ const EditUserDialog = ({
     }
 
     if (currentStep === professionalDetailsStepIndex) {
-      return isProfessionalStepValid();
+      return (
+        isProfessionalStepValid() &&
+        employeeIdValidation !== 'checking'
+      );
+    }
+
+    if (currentStep === moduleAccessStepIndex) {
+      const hasSelectedModules =
+        selectedModules.filter((module) => module.enabled).length > 0;
+
+      if (!hasSelectedModules) {
+        return false;
+      }
+
+      return true;
     }
 
     return true;
@@ -746,22 +768,39 @@ const EditUserDialog = ({
   };
 
   const handleDocumentChange = (documentKey: string, file: File | null) => {
+    if (!file) {
+      setUploadedDocuments((prev) => {
+        const next = { ...prev };
+        delete next[documentKey];
+        return next;
+      });
+      return;
+    }
+
+    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'];
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+    if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+      toast.error('Only PDF, PNG, JPG, JPEG, DOC, and DOCX files are allowed');
+      return;
+    }
+
     setUploadedDocuments((prev) => ({
       ...prev,
-      [documentKey]: file ? file.name : ''
+      [documentKey]: file.name
     }));
+
     setUploadedDocumentFiles((prev) => {
       const next = { ...prev };
-      if (file) next[documentKey] = file;
-      else delete next[documentKey];
+      next[documentKey] = file;
       return next;
     });
-    if (file) {
-      setDocumentMetaByKey((prev) => ({
-        ...prev,
-        [documentKey]: { source: 'new' }
-      }));
-    }
+
+    setDocumentMetaByKey((prev) => ({
+      ...prev,
+      [documentKey]: { source: 'new' }
+    }));
   };
 
   const handleViewDocument = async (documentKey: string) => {
@@ -806,11 +845,11 @@ const EditUserDialog = ({
     if (formData.email && selectedModules.length === 0) {
       toast.error("Please select at least one module for this user");
       return;
-    }
+    }    
     if (!isFormValid()) {
-      toast.error("Please fill in all required fields correctly");
-      return;
-    }
+    toast.error("Please fill in all required fields correctly");
+    return;
+  }
     
     setIsUpdating(true);
       const moduleAccessPayload = selectedModules.map(module => ({
@@ -1212,36 +1251,14 @@ const EditUserDialog = ({
                             })
                           }
                           placeholder="Enter father's name"
+                          maxLength={EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH}
                           className={personalDetailsErrors.fatherName ? 'border-red-500' : ''}
                         />
                         {personalDetailsErrors.fatherName && (
                           <p className="text-xs text-red-500">{personalDetailsErrors.fatherName}</p>
                         )}
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 mt-2">
-                    <Label>Staff ID</Label>
-                    <Input
-                      value={personalDetails.staffId || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          personalDetails: {
-                            ...personalDetails,
-                            staffId: e.target.value.replace(/\D/g, '')
-                          }
-                        })
-                      }
-                      placeholder="Enter Staff ID"
-                    />
-                    {personalDetailsErrors.staffId && (
-                      <p className="text-xs text-red-500">
-                        {personalDetailsErrors.staffId}
-                      </p>
-                    )}
-                  </div>
+                    </div>                                               
 
                   <div className="space-y-2 mt-2">
                     <Label>Experience</Label>
@@ -1252,10 +1269,11 @@ const EditUserDialog = ({
                           ...formData,
                           personalDetails: {
                             ...personalDetails,
-                            experience: e.target.value.replace(/\D/g, '')
+                            experience: e.target.value.replace(/\D/g, '').slice(0, EXPERIENCE_CONSTANTS.MAX_LENGTH)
                           }
                         })
                       }
+                      maxLength={EXPERIENCE_CONSTANTS.MAX_LENGTH}
                       placeholder="Enter Experience"
                     />
                     {personalDetailsErrors.experience && (
@@ -1263,8 +1281,7 @@ const EditUserDialog = ({
                         {personalDetailsErrors.experience}
                       </p>
                     )}
-                  </div>
-                </div>
+                  </div>                
 
                 <div className="space-y-2 mt-2">
                   <Label>Qualification</Label>
@@ -1275,11 +1292,12 @@ const EditUserDialog = ({
                         ...formData,
                         personalDetails: {
                           ...personalDetails,
-                          qualification: e.target.value.replace(/[^a-zA-Z\s]/g, '')
+                          qualification: e.target.value.replace(/[^a-zA-Z\s.-]/g, '')
                         }
                       })
                     }
                     placeholder="Enter Qualification"
+                    maxLength={EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH}
                   />
                   {personalDetailsErrors.qualification && (
                     <p className="text-xs text-red-500">
@@ -1315,20 +1333,23 @@ const EditUserDialog = ({
 
                       <div className="space-y-2">
                         <Label>DOB</Label>
-                        <Input
-                          type="date"
-                          value={personalDetails.dob || ''}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              personalDetails: {
-                                ...personalDetails,
-                                dob: e.target.value
-                              }
-                            })
+                        <Input                      type="date"
+                      value={personalDetails.dob || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          personalDetails: {
+                            ...personalDetails,
+                            dob: e.target.value
                           }
-                        />
-                      </div>
+                        })
+                      }
+                      max={new Date().toISOString().split('T')[0]}
+                    />
+                    {personalDetailsErrors.dob && (
+                      <p className="text-xs text-red-500">{personalDetailsErrors.dob}</p>
+                    )}
+                  </div>
 
                       <div className="space-y-2">
                         <Label>Religion</Label>
@@ -1344,6 +1365,7 @@ const EditUserDialog = ({
                             })
                           }
                           placeholder="Enter religion"
+                          maxLength={EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH}
                           className={personalDetailsErrors.religion ? 'border-red-500' : ''}
                         />
                         {personalDetailsErrors.religion && (
@@ -1365,6 +1387,7 @@ const EditUserDialog = ({
                             })
                           }
                           placeholder="Enter nationality"
+                          maxLength={EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH}
                           className={personalDetailsErrors.nationality ? 'border-red-500' : ''}
                         />
                         {personalDetailsErrors.nationality && (
@@ -1381,7 +1404,7 @@ const EditUserDialog = ({
                               ...formData,
                               personalDetails: {
                                 ...personalDetails,
-                                bloodGroup: e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 3)
+                                bloodGroup: e.target.value.replace(/[^a-zA-Z0-9+\-\s]/g, '').toUpperCase().slice(0, 12)
                               }
                             })
                           }
@@ -1597,11 +1620,15 @@ const EditUserDialog = ({
                                 ...formData,
                                 professionalOtherDetails: {
                                   ...professionalOtherDetails,
-                                  exitDate: e.target.value
-                                }
-                              })}
-                            />
-                          </div>
+                                exitDate: e.target.value
+                              }
+                            })}
+                            max={new Date().toISOString().split('T')[0]}
+                          />
+                          {professionalOtherDetailsErrors.exitDate && (
+                            <p className="text-xs text-red-500">{professionalOtherDetailsErrors.exitDate}</p>
+                          )}
+                        </div>
                           <div className="space-y-1.5">
                             <Label>Biometric User ID</Label>
                             <Input
@@ -1610,9 +1637,10 @@ const EditUserDialog = ({
                                 ...formData,
                                 professionalOtherDetails: {
                                   ...professionalOtherDetails,
-                                  biometricUserId: e.target.value.replace(/\D/g, '').slice(0, 20)
-                                }
-                              })}
+                                biometricUserId: e.target.value
+                              }
+                            })}
+                            maxLength={BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH}
                               placeholder="Enter biometric user ID"
                             />
                             {professionalOtherDetailsErrors.biometricUserId && (
@@ -1667,7 +1695,7 @@ const EditUserDialog = ({
                       employeeId={formData.employeeId}
                       isSuperAdmin={targetIsSuperAdmin}
                     />
-                    {selectedModules.length === 0 && (
+                    {!(selectedModules?.some((module) => module.enabled) ?? false) && (
                       <p className="text-xs text-red-500">
                         Please select at least one module.
                       </p>
@@ -1735,6 +1763,7 @@ const EditUserDialog = ({
                               }}
                               type="file"
                               className="hidden"
+                              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
                               onChange={(e) => handleDocumentChange(document.key, e.target.files?.[0] ?? null)}
                             />
                           </div>

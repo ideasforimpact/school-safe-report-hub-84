@@ -22,7 +22,20 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    const { clientId, employeeId, isSuperAdmin, action, studentId } = body;
+    const { 
+      operation, 
+      clientId, 
+      employeeId, 
+      isSuperAdmin, 
+      page = 1, 
+      pageSize = 10, 
+      search = '',
+      category = '',
+      subcategory = '',
+      status = '',
+      priority = '',
+      location = ''
+    } = body;
 
     if (!clientId) {
       throw new Error('Client ID is required');
@@ -47,42 +60,88 @@ serve(async (req) => {
       );
     }
 
-    // Handle 'check-references' action
-    if (action === 'check-references') {
-      if (!studentId) {
-        throw new Error('Student ID is required for check-references action');
-      }
+    if (operation === 'get_config') {
+      console.log(`Fetching incident form configuration for client: ${clientId}`);
 
-      console.log(`Checking incident references for student ${studentId} (Client: ${clientId})`);
-      
-      const { data: matchingIncidents, error: refError } = await supabaseClient
-        .from('incidents')
-        .select('id, people_involved')
-        .eq('client_id', clientId)
-        .not('people_involved', 'is', null);
+      // Fetch everything in parallel
+      const [
+        reportTypesRes,
+        categoriesRes,
+        subcategoriesRes,
+        locationsRes,
+        facilitiesRes,
+        prioritiesRes,
+        statusRes,
+        employeesRes,
+        studentsRes
+      ] = await Promise.all([
+        supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true),
+        supabaseClient.from('incident_categories').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
+        supabaseClient.from('incident_subcategories').select('id, name, category_id').eq('is_active', true).eq('client_id', clientId),
+        supabaseClient.from('campuses').select('id, name').eq('client_id', clientId),
+        supabaseClient.from('facilities').select('id, name, campus_id').eq('client_id', clientId),
+        supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).order('weight', { ascending: true }),
+        supabaseClient.from('incident_status').select('id, name'),
+        supabaseClient.from('employees').select('id, first_name, last_name, email').eq('client_id', clientId).eq('status', true).not('email', 'is', null).neq('email', ''),
+        supabaseClient.from('students').select('*, grade_info:grades!students_grade_id_fkey(id,name), section_info:sections!students_section_id_fkey(id,name), campus_info:campuses!students_campus_id_fkey(id,name)').eq('client_id', clientId).order('created_at', { ascending: false })
+      ]);
 
-      if (refError) throw refError;
-
-      const filteredIncidents = (matchingIncidents || []).filter(incident => {
-        if (!incident.people_involved) return false;
-        const people = Array.isArray(incident.people_involved) ? incident.people_involved : [];
-        return people.some((person: any) => {
-          const personIdStr = String(person?.id || '').trim();
-          const searchIdStr = String(studentId || '').trim();
-          return personIdStr === searchIdStr && person?.role === 'Student';
-        });
-      });
-
-      const count = filteredIncidents.length;
-      
       return new Response(
         JSON.stringify({
           success: true,
-          hasReferences: count > 0,
-          count: count,
-          message: count > 0 
-            ? `This student is linked to ${count} incident(s) and cannot be deleted.`
-            : ''
+          data: {
+            reportTypes: reportTypesRes.data || [],
+            categories: categoriesRes.data || [],
+            subcategories: subcategoriesRes.data || [],
+            locations: locationsRes.data || [],
+            facilities: facilitiesRes.data || [],
+            priorities: prioritiesRes.data || [],
+            statuses: statusRes.data || [],
+            employees: employeesRes.data || [],
+            students: studentsRes.data || []
+          }
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (operation === 'get_incident_detail') {
+      const { incidentId } = body;
+      if (!incidentId) throw new Error('Incident ID is required');
+
+      console.log('Fetching incident detail for ID:', incidentId);
+
+      const [incidentRes, contributingFactorsRes] = await Promise.all([
+        supabaseClient
+          .from('incidents')
+          .select(`
+            *,
+            type:incident_report_types(id, name),
+            category:incident_categories(id, name),
+            subcategory:incident_subcategories(id, name),
+            location:campuses(id, name),
+            status:incident_status(id, name),
+            priority:incident_priorities(id, name),
+            facility:facilities(id, name),
+            created_by:employees!created_by(id, first_name, last_name, email),
+            assigned_to:employees!assigned_to(id, first_name, last_name, email)
+          `)
+          .eq('id', incidentId)
+          .single(),
+        supabaseClient
+          .from('contributing_factors')
+          .select('id, name, weight')
+          .eq('client_id', clientId)
+          .order('name')
+      ]);
+
+      if (incidentRes.error) throw incidentRes.error;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          incident: incidentRes.data,
+          contributingFactors: contributingFactorsRes.data || []
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
@@ -92,69 +151,102 @@ serve(async (req) => {
     console.log('Employee ID:', employeeId);
     console.log('Is Super Admin:', isSuperAdmin);
 
-    // Build base query
-    let query = supabaseClient
-      .from('incidents')
-      .select(`
-        id,
-        ticket_id,
-        description,
-        date,
-        people_involved,
-        documents,
-        comments,
-        created_at,
-        updated_at,
-        created_by,
-        assigned_to,
-        recommended_action,
-        incident_report_types:type_id(id, name),
-        incident_categories:category_id(id, name),
-        incident_subcategories:subcategory_id(id, name),
-        campuses:location_id(id, name),
-        facilities:facility_id(id, name),
-        incident_priorities:priority_id(id, name),
-        incident_status:status_id(id, name),
-        created_by_employee:employees!created_by(id, first_name, last_name),
-        assigned_employee:employees!assigned_to(id, first_name, last_name)
-      `)
-      .eq('client_id', clientId);
+    // Fetch incidents and config data in parallel
+    const [incidentsRes, reportTypesRes, categoriesRes, subcategoriesRes, locationsRes, facilitiesRes, prioritiesRes, statusRes, employeesRes, studentsRes] = await Promise.all([
+      // Fetch incidents with pagination and search
+      (() => {
+        let query = supabaseClient
+          .from('incidents')
+          .select(`
+            id,
+            ticket_id,
+            description,
+            date,
+            people_involved,
+            documents,
+            comments,
+            created_at,
+            updated_at,
+            created_by,
+            assigned_to,
+            recommended_action,
+            incident_report_types:type_id(id, name),
+            incident_categories:category_id(id, name),
+            incident_subcategories:subcategory_id(id, name),
+            campuses:location_id(id, name),
+            facilities:facility_id(id, name),
+            incident_priorities:priority_id(id, name),
+            incident_status:status_id(id, name),
+            created_by_employee:employees!created_by(id, first_name, last_name),
+            assigned_employee:employees!assigned_to(id, first_name, last_name)
+          `, { count: 'exact' })
+          .eq('client_id', clientId);
 
-    // Apply role-based filtering
-    if (employeeId) {
-      if (isSuperAdmin === true) {
-        // Super admin can see all incidents for the client
-        console.log('Super admin access: fetching all incidents for client');
-      } else {
-        // Non-super admin can only see incidents they created or are assigned to
-        query = query.or(`created_by.eq.${employeeId},assigned_to.eq.${employeeId}`);
-        console.log(`Regular user access: filtering for employee ${employeeId} (created_by OR assigned_to)`);
-      }
-    } else {
-      // No employee ID provided - apply restrictive filter as safety measure
-      console.log('No employee ID provided - applying restrictive filter');
-      query = query.eq('created_by', 'non-existent-id');
+        if (employeeId) {
+          if (isSuperAdmin === true) {
+            // Super admin can see all
+          } else {
+            query = query.or(`created_by.eq.${employeeId},assigned_to.eq.${employeeId}`);
+          }
+        } else {
+          query = query.eq('created_by', 'non-existent-id');
+        }
+
+        // Apply search filter if provided
+        if (search) {
+          query = query.or(`ticket_id.ilike.%${search}%,description.ilike.%${search}%`);
+        }
+
+        // Apply other filters if provided
+        if (category) query = query.eq('incident_categories.name', category);
+        if (subcategory) query = query.eq('incident_subcategories.name', subcategory);
+        if (status) query = query.eq('incident_status.name', status);
+        if (priority) query = query.eq('incident_priorities.name', priority);
+        if (location) query = query.eq('campuses.name', location);
+
+        // Apply pagination
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        return query
+          .order('created_at', { ascending: false })
+          .range(from, to);
+      })(),
+      // Fetch config data
+      supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true),
+      supabaseClient.from('incident_categories').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
+      supabaseClient.from('incident_subcategories').select('id, name, category_id').eq('is_active', true).eq('client_id', clientId),
+      supabaseClient.from('campuses').select('id, name').eq('client_id', clientId),
+      supabaseClient.from('facilities').select('id, name, campus_id').eq('client_id', clientId),
+      supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).order('weight', { ascending: true }),
+      supabaseClient.from('incident_status').select('id, name'),
+      supabaseClient.from('employees').select('id, first_name, last_name, email').eq('client_id', clientId).eq('status', true).not('email', 'is', null).neq('email', ''),
+      supabaseClient.from('students').select('*, grade_info:grades!students_grade_id_fkey(id,name), section_info:sections!students_section_id_fkey(id,name), campus_info:campuses!students_campus_id_fkey(id,name)').eq('client_id', clientId).order('created_at', { ascending: false })
+    ]);
+
+    if (incidentsRes.error) {
+      console.error('Error fetching incidents:', incidentsRes.error);
+      throw new Error(`Failed to fetch incidents: ${incidentsRes.error.message}`);
     }
 
-    // Execute query with ordering and limit
-    query = query
-      .order('created_at', { ascending: false })
-      .limit(200);
-
-    const { data: incidents, error: fetchError } = await query;
-
-    if (fetchError) {
-      console.error('Error fetching incidents:', fetchError);
-      throw new Error(`Failed to fetch incidents: ${fetchError.message}`);
-    }
-
-    console.log(`Successfully fetched ${incidents?.length || 0} incidents for client ${clientId}`);
-    console.log(`Access level: ${isSuperAdmin ? 'Super Admin (all incidents)' : 'Regular User (filtered incidents)'}`);
+    console.log(`Successfully fetched ${incidentsRes.data?.length || 0} incidents and config for client ${clientId}`);
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        incidents: incidents || []
+        incidents: incidentsRes.data || [],
+        totalCount: incidentsRes.count || 0,
+        config: {
+          reportTypes: reportTypesRes.data || [],
+          categories: categoriesRes.data || [],
+          subcategories: subcategoriesRes.data || [],
+          locations: locationsRes.data || [],
+          facilities: facilitiesRes.data || [],
+          priorities: prioritiesRes.data || [],
+          statuses: statusRes.data || [],
+          employees: employeesRes.data || [],
+          students: studentsRes.data || []
+        }
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

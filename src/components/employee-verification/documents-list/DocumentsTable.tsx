@@ -665,6 +665,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       )}
 
                       {/* Actions menu */}
+                      {(!isReadOnly || doc.documentImage || (doc.params as any)?.document_url) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -718,6 +719,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                  )}
                     </div>
                   </TableCell>
                 </TableRow>

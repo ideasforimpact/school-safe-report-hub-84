@@ -6,13 +6,9 @@
 import { create, verify, decode, Payload } from 'https://deno.land/x/djwt@v3.0.2/mod.ts';
 import { JwtPayload } from './types.ts';
 
-const ALGORITHM = 'HS256';
-
-function getJwtSecret(): string {
+export function getJwtSecret(): string {
   const secret = Deno.env.get('SAFE_JWT_SECRET');
-  if (!secret) {
-    throw new Error('SAFE_JWT_SECRET environment variable is required');
-  }
+  if (!secret) throw new Error('SAFE_JWT_SECRET is required');
   return secret;
 }
 
@@ -21,61 +17,68 @@ function getJwtIssuer(): string {
 }
 
 function getAccessTokenExpSeconds(): number {
-  return parseInt(Deno.env.get('ACCESS_TOKEN_EXP_SECONDS') || '3600', 10);
+  return parseInt(Deno.env.get("ACCESS_TOKEN_EXP_SECONDS") || "300", 10);
 }
-
+/** Shared HMAC key import for signing, verification, and refresh-token hashing. */
+export async function importHmacKey(secret: string, usages: KeyUsage[]): Promise<CryptoKey> {
+  return await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    usages,
+  );
+}
 /**
  * Sign a JWT access token
+ *
+ * @param payload - token payload without iss/iat/exp/aud
+ * @param moduleName - module identifier ("visitor", "child-audit", etc.)
  */
-export async function signAccessToken(payload: Omit<JwtPayload, 'iss' | 'iat' | 'exp'>): Promise<string> {
+export async function signAccessToken(
+  payload: Omit<JwtPayload, 'iss' | 'iat' | 'exp' | 'aud'>,
+  moduleName: string
+): Promise<string> {
   const secret = getJwtSecret();
-  const issuer = getJwtIssuer();
-  const expSeconds = getAccessTokenExpSeconds();
 
   const now = Math.floor(Date.now() / 1000);
+
   const fullPayload: Payload = {
     ...payload,
-    iss: issuer,
+    iss: getJwtIssuer(),
     iat: now,
-    exp: now + expSeconds,
+    exp: now + getAccessTokenExpSeconds(),
+    aud: moduleName,
   };
 
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  return await create({ alg: ALGORITHM, typ: 'JWT' }, fullPayload, key);
+  const key = await importHmacKey(secret, ['sign']);
+  return await create({ alg: 'HS256', typ: 'JWT' }, fullPayload, key);
 }
 
 /**
- * Verify and decode a JWT access token
+ * Verify and decode a JWT access token (shared HMAC secret; module isolation via `aud`).
+ *
+ * @param moduleName - when provided, enforces `aud`; omit only for module-agnostic checks (e.g. auth/verify)
  */
-export async function verifyAccessToken(token: string): Promise<JwtPayload> {
+export async function verifyAccessToken(
+  token: string,
+  moduleName?: string
+): Promise<JwtPayload> {
   const secret = getJwtSecret();
 
-  try {
-    const key = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
+  const key = await importHmacKey(secret, ['verify']);
+  const payload = (await verify(token, key)) as JwtPayload;
 
-    const payload = await verify(token, key);
-    
-    // Type assertion - verify returns Payload which should match our JwtPayload
-    return payload as JwtPayload;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Token verification failed: ${error.message}`);
+  if (moduleName !== undefined) {
+    const aud = payload.aud;
+    if (Array.isArray(aud)) {
+      if (!aud.includes(moduleName)) throw new Error('Invalid audience');
+    } else {
+      if (aud !== moduleName) throw new Error('Invalid audience');
     }
-    throw new Error('Token verification failed: Unknown error');
   }
+
+  return payload;
 }
 
 /**

@@ -1,22 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
-import { toast } from 'sonner';
 import { Search, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FormErrors } from '@/hooks/incident-form/useIncidentFormValidation';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 import { NOTES_MAX_LENGTH } from '../constants';
-import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface UserBasicInfo {
   id: string;
   firstName: string;
   lastName: string;
   name: string;
+  email?: string;
 }
 
 interface Employee {
@@ -49,10 +48,19 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 }) => {
   const { employeeData } = useAuth();
   const { isIntegrationEnabled } = useClientIntegrationEnabled();
-  const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
+  const staffMembers = useMemo<Employee[]>(
+    () =>
+      employees.map((employee) => ({
+        id: employee.id,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        email: employee.email || '',
+      })),
+    [employees]
+  );
   const [fetchedStudents, setFetchedStudents] = useState<Student[]>([]);
-  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const isLoadingStaff = false;
+  const isLoadingStudents = false;
   
   // Get client type from auth context
   const clientType = employeeData?.client?.client_type?.key || employeeData?.clientType?.key || '';
@@ -77,117 +85,13 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const [currentPersonData, setCurrentPersonData] = useState<Person | null>(null);
   const [hadSearchQuery, setHadSearchQuery] = useState(false);
 
-  // Fetch client type information
   useEffect(() => {
-    const fetchClientType = async () => {
-      if (!employeeData?.clientId) return;
-
-      try {
-        const { data: clientData, error } = await supabase
-          .from('clients')
-          .select('institution_type')
-          .eq('id', employeeData.clientId)
-          .single();
-
-        if (error) {
-          console.error('Error fetching client type:', error);
-          return;
-        }
-
-        console.log('Fetched client data:', clientData);
-      } catch (error) {
-        console.error('Error fetching client type:', error);
-      }
-    };
-
-    fetchClientType();
-  }, [employeeData?.clientId]);
-
-  // Fetch staff members when component mounts
-    const fetchStaffMembers = useCallback(async () => {
-      if (!employeeData?.clientId) return;
-
-      try {
-        setIsLoadingStaff(true);
-        const { data: staffData, error } = await supabase
-          .from('employees')
-          .select('id, first_name, last_name, email')
-          .eq('client_id', employeeData.clientId)
-          .eq('status', true);
-
-        if (error) throw error;
-
-        setStaffMembers(
-        staffData.map(emp => ({
-          id: emp.id,
-          firstName: emp.first_name,
-          lastName: emp.last_name,
-          email: emp.email
-        }))
-        );
-      } catch (error) {
-        console.error('Error fetching staff members:', error);
-        toast.error('Failed to load staff members');
-      } finally {
-        setIsLoadingStaff(false);
-      }
-    }, [employeeData?.clientId]);
-
-    useEffect(() => {
-      fetchStaffMembers();
-    }, [fetchStaffMembers]);
-
-  // Fetch students filtered by client_id - only if integration is NOT enabled
-  const fetchStudents = useCallback(async () => {
-    // Don't fetch client-side students if integration is enabled
     if (isIntegrationEnabled) {
-      console.log('[PeopleInvolvedSection] Integration enabled - skipping client-side student fetch');
       setFetchedStudents([]);
       return;
     }
-
-    if (!employeeData?.clientId) return;
-
-    try {
-      setIsLoadingStudents(true);
-      const { data: studentData, error } = await supabase
-        .from('students')
-        .select('id, student_id, name, grade, section, campus')
-        .eq('client_id', employeeData.clientId);
-
-      if (error) {
-        console.error('Error fetching students:', error);
-        toast.error('Failed to load students');
-        return;
-      }
-
-      const mappedStudents = studentData.map(student => ({
-        id: student.id,
-        studentId: student.student_id,
-        name: student.name,
-        grade: student.grade,
-        section: student.section,
-        campus: student.campus,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
-
-      console.log('[PeopleInvolvedSection] Updated student list:', {
-        totalStudents: mappedStudents.length,
-        students: mappedStudents.map(s => ({ id: s.id, name: s.name, studentId: s.studentId }))
-      });
-      setFetchedStudents(mappedStudents);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-      toast.error('Failed to load students');
-    } finally {
-      setIsLoadingStudents(false);
-    }
-  }, [employeeData?.clientId, isIntegrationEnabled]);
-
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
+    setFetchedStudents(students || []);
+  }, [students, isIntegrationEnabled]);
 
   // Log when people are added
   useEffect(() => {
@@ -413,8 +317,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     setCurrentPersonData(null);
     setHadSearchQuery(false);
     
-    // Refresh the student list to show the newly added student
-    await fetchStudents();
+    // Add student locally for immediate UX feedback
+    if (!isIntegrationEnabled) {
+      setFetchedStudents((prev) => [...prev, newStudent]);
+    }
     
     // Also call the parent callback if provided
     if (onStudentAdded) {
@@ -944,21 +850,6 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     
     return options;
   };
-  useRealTimeSubHook({
-    channelName: 'employees-realtime',
-    table: 'employees',
-    events: '*',
-    enabled: !!employeeData?.clientId,
-    onPayload: fetchStaffMembers,
-  });
-  useRealTimeSubHook({
-    channelName: 'students-realtime',
-    table: 'students',
-    events: '*',
-    enabled: !!employeeData?.clientId && !isIntegrationEnabled,
-    onPayload: fetchStudents,
-  });
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">

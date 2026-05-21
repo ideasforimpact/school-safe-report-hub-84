@@ -218,7 +218,7 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),
               phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
-              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || undefined,
+              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']).toLowerCase() || undefined,
               department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || undefined,
               designation: getFieldValue(['Designation', 'designation', 'DESIGNATION', 'Title', 'Job Title', 'JobTitle', 'Role Name']),
               joiningDate: normalizeDate(getFieldValue([
@@ -226,7 +226,25 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
                               'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date'
                             ])) || new Date().toISOString().split("T")[0],
               status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active',
-              moduleAccessPayload: findModuleField()
+              moduleAccessPayload: findModuleField(),
+              // Personal Details
+              middleName: getFieldValue(['Middle Name', 'middleName', 'middle_name']),
+              fatherName: getFieldValue(['Father Name', 'fatherName', 'father_name']),
+              gender: getFieldValue(['Gender', 'gender']).toLowerCase(),
+              dob: normalizeDate(getFieldValue(['DOB', 'Date of Birth', 'dob', 'date_of_birth'])),
+              religion: getFieldValue(['Religion', 'religion']),
+              nationality: getFieldValue(['Nationality', 'nationality']),
+              bloodGroup: getFieldValue(['Blood Group', 'bloodGroup', 'blood_group']),
+              residenceAddress: getFieldValue(['Residence Address', 'residenceAddress', 'residence_address', 'Address']),
+              experience: getFieldValue(['Experience', 'experience']),
+              qualification: getFieldValue(['Qualification', 'qualification']),
+              // Professional Other Details
+              aadharNo: getFieldValue(['Aadhar No', 'Aadhaar No', 'Aadhar Number', 'aadharNo', 'aadhar_no', 'aadhaar_number']),
+              panNo: getFieldValue(['PAN No', 'PAN Number', 'panNo', 'pan_no', 'pan_number']),
+              esiNo: getFieldValue(['ESI No', 'ESI Number', 'esiNo', 'esi_no', 'esi_number']),
+              pfNo: getFieldValue(['PF No', 'PF Number', 'pfNo', 'pf_no', 'pf_number']),
+              resigningOrTerminationDate: normalizeDate(getFieldValue(['Resigning Date', 'Termination Date', 'Resigning / Termination Date', 'Exit Date', 'exitDate', 'exit_date'])),
+              biometricUserId: getFieldValue(['Biometric User ID', 'Biometric ID', 'biometricUserId', 'biometric_user_id']),
             };
             
             console.log(`Mapped CSV row ${index + 1}:`, mappedData);
@@ -433,7 +451,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),
               phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
-              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || undefined,
+              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']).toLowerCase() || undefined,
               department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || undefined,
               designation: getFieldValue(['Designation', 'designation', 'DESIGNATION', 'Title', 'Job Title', 'JobTitle', 'Role Name']),
               // Handle date formats
@@ -443,8 +461,25 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
                       ])
                     ) || new Date().toISOString().split("T")[0],
               status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active',
-              moduleAccessPayload: findModuleField()
-
+              moduleAccessPayload: findModuleField(),
+              // Personal Details
+              middleName: getFieldValue(['Middle Name', 'middleName', 'middle_name']),
+              fatherName: getFieldValue(['Father Name', 'fatherName', 'father_name']),
+              gender: getFieldValue(['Gender', 'gender']).toLowerCase(),
+              dob: normalizeDate(getFieldValue(['DOB', 'Date of Birth', 'dob', 'date_of_birth'])),
+              religion: getFieldValue(['Religion', 'religion']),
+              nationality: getFieldValue(['Nationality', 'nationality']),
+              bloodGroup: getFieldValue(['Blood Group', 'bloodGroup', 'blood_group']),
+              residenceAddress: getFieldValue(['Residence Address', 'residenceAddress', 'residence_address', 'Address']),
+              experience: getFieldValue(['Experience', 'experience']),
+              qualification: getFieldValue(['Qualification', 'qualification']),
+              // Professional Other Details
+              aadharNo: getFieldValue(['Aadhar No', 'Aadhaar No', 'Aadhar Number', 'aadharNo', 'aadhar_no', 'aadhaar_number']),
+              panNo: getFieldValue(['PAN No', 'PAN Number', 'panNo', 'pan_no', 'pan_number']),
+              esiNo: getFieldValue(['ESI No', 'ESI Number', 'esiNo', 'esi_no', 'esi_number']),
+              pfNo: getFieldValue(['PF No', 'PF Number', 'pfNo', 'pf_no', 'pf_number']),
+              resigningOrTerminationDate: normalizeDate(getFieldValue(['Resigning Date', 'Termination Date', 'Resigning / Termination Date', 'Exit Date', 'exitDate', 'exit_date'])),
+              biometricUserId: getFieldValue(['Biometric User ID', 'Biometric ID', 'biometricUserId', 'biometric_user_id']),
             };
             
             // Log each mapped row to debug

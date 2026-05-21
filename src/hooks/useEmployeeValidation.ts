@@ -223,9 +223,6 @@ export const useEmployeeValidation = () => {
       }
 
       console.log('[validate-employee] OK: Employee validation succeeded');
-      // If validation succeeded, log RLS context for the current authenticated user.
-      // This runs in the browser with the user's JWT, so RLS policies see the real context.
-      await logRlsContext();
 
       lastValidationSuccessKey = dedupeKey;
       lastValidationSuccessAt = Date.now();
@@ -303,15 +300,6 @@ export const useEmployeeValidation = () => {
     state.isLoggingOut,
   ]);
 
-  // Effect to log RLS context on backoffice routes whenever the path changes
-  useEffect(() => {
-    if (!isBackofficePath() || state.isLoggingOut) {
-      return;
-    }
-
-    // For backoffice: log RLS context when entering any page
-    logRlsContext();
-  }, [location.pathname, state.isLoggingOut]);
 
   // Clean up when logging out
   useEffect(() => {
