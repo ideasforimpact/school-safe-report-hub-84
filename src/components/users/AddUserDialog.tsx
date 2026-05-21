@@ -645,12 +645,12 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       return;
     }
 
-    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'];
+    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg'];
 
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
     if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
-      toast.error('Only PDF, PNG, JPG, JPEG, DOC, and DOCX files are allowed');
+      toast.error('Only PDF, PNG, JPG, JPEG files are allowed');
       return;
     }
 
