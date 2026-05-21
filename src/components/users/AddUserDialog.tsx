@@ -547,6 +547,11 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
         personalDetails.dob && new Date(personalDetails.dob) > new Date()
           ? 'Date of birth cannot be in the future'
           : '',
+
+      residenceAddress:
+        (personalDetails.residenceAddress || '').trim().length > 500
+          ? 'Address cannot exceed 500 characters'
+          : '',
     };
   };
 
@@ -947,8 +952,11 @@ const canProceedToNextStep = () => {
                       })
                     }
                     placeholder="Enter residence address"
-                    className="min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className={`min-h-[90px] w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${personalDetailsErrors.residenceAddress ? 'border-red-500' : 'border-input'}`}
                   />
+                  {personalDetailsErrors.residenceAddress && (
+                    <p className="text-xs text-red-500">{personalDetailsErrors.residenceAddress}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
