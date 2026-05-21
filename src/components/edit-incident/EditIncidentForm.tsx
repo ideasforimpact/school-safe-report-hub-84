@@ -16,7 +16,7 @@ import { EditIncidentData } from '@/services/incident/editIncidentService';
 import { useIncidentDocuments } from '@/hooks/useIncidentDocuments';
 import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
 import AssignmentSection from './AssignmentSection';
-import DragDropFileUpload from '@/components/file/DragDropFileUpload';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { Student } from '@/types/student';
 import { formatFileSize } from '@/utils/fileUtils';
@@ -835,10 +835,14 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
             {/* Supporting Files Section */}
             <div className="space-y-4">
               <Label className="text-sm font-medium text-gray-700">Supporting Files</Label>
-              <DragDropFileUpload
+              <ReusableFileUploader
                 onFilesChange={handleFilesChange}
                 initialFiles={supportingFiles}
                 maxFiles={5}
+                maxSize={10}
+                maxTotalSize={50}
+                allowedTypes={['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']}
+                accept=".pdf,.jpg,.jpeg,.png"
                 className="w-full"
               />
               

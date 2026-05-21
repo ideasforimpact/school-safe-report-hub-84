@@ -35,10 +35,8 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
   const [docxError, setDocxError] = React.useState<string | null>(null);
   const docxContainerRef = React.useRef<HTMLDivElement>(null);
 
-  if (!resource) return null;
-
   const handleDownload = () => {
-    downloadResource(resource);
+    if (resource) downloadResource(resource);
   };
 
   // Resolve storage URL when resource or dialog opens
@@ -76,6 +74,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
 
   // Determine file type from document_url or file data
   const getFileType = () => {
+    if (!resource) return 'other';
     const ext = resource.document_url?.split('?')[0].split('.').pop()?.toLowerCase();
     if (ext) {
       if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
@@ -154,6 +153,10 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
       })
       .finally(() => setDocxLoading(false));
   }, [open, isOffice, resource?.document_url]);
+
+  // All hooks are above this line — safe to bail out for null resource
+  if (!resource) return null;
+
   // Check if this is a YouTube resource
   const isYouTubeResource = resource.category === 'youtube' && resource.youtube_link;
   const youtubeVideoId = isYouTubeResource ? extractYouTubeVideoId(resource.youtube_link) : null;
