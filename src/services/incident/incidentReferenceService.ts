@@ -248,48 +248,27 @@ export const incidentReferenceService = {
     }
   },
 
-  // Check if a student is referenced by incidents in people_involved column
   checkStudentReferences: async (studentId: string, clientId: string): Promise<IncidentReferenceCheck> => {
     try {
-      // Query all incidents with people_involved column for this client
-      const { data: allIncidents, error: fetchError } = await supabase
-        .from('incidents')
-        .select('id, people_involved')
-        .eq('client_id', clientId)
-        .not('people_involved', 'is', null);
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Count incidents where people_involved array contains an object with matching id and role 'Student'
-      const matchingIncidents = (allIncidents || []).filter(incident => {
-        if (!incident.people_involved) return false;
-        
-        // people_involved is a JSONB array of objects
-        const people = Array.isArray(incident.people_involved) 
-          ? incident.people_involved 
-          : [];
-        
-        // Check if any person in the array has the matching id and role 'Student'
-        return people.some((person: any) => {
-          const personIdStr = String(person?.id || '').trim();
-          const searchIdStr = String(studentId || '').trim();
-          return personIdStr === searchIdStr && person?.role === 'Student';
-        });
+      const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+        body: { 
+          clientId: clientId, 
+          action: 'check-references',
+          studentId: studentId
+        }
       });
 
-      const finalCount = matchingIncidents.length;
-      
+      if (error) {
+        throw error;
+      }
+
       return {
-        hasReferences: finalCount > 0,
-        count: finalCount,
-        message: finalCount > 0 
-          ? `Cannot delete this student because they are currently linked to ${finalCount} incident${finalCount > 1 ? 's' : ''}`
-          : ''
+        hasReferences: data.hasReferences || false,
+        count: data.count || 0,
+        message: data.message || ''
       };
     } catch (error: any) {
-      console.error('Error checking student references:', error);
+      console.error('Error checking student references via edge function:', error);
       return {
         hasReferences: false,
         count: 0,

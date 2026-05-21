@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Student } from '@/types/student';
 import {
   Table,
@@ -11,15 +11,11 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2, School, IdCard, User, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '@/contexts/auth/useAuth';
-import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/Dateformat';
 
 interface StudentsListProps {
   students: Student[];
+  totalStudents: number;
   onEditClick: (student: Student) => void;
   onDeleteStudent: (id: string) => void;
   canManageStudents?: boolean;
@@ -32,6 +28,7 @@ interface StudentsListProps {
 
 const StudentsList = ({ 
   students, 
+  totalStudents,
   onEditClick, 
   onDeleteStudent,
   canManageStudents = true,
@@ -41,57 +38,11 @@ const StudentsList = ({
   itemsPerPage = 10,
   onItemsPerPageChange
 }: StudentsListProps) => {
-  const totalItems = students.length;
-  const { employeeData } = useAuth();
-  const [studentReferences, setStudentReferences] = useState<Record<string, IncidentReferenceCheck>>({});
-
-  // Pre-load reference info so we can disable delete button for linked students
-  useEffect(() => {
-    const clientId = employeeData?.clientId || employeeData?.client_id;
-    if (!clientId || students.length === 0) {
-      setStudentReferences({});
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchReferences = async () => {
-      try {
-        const results = await Promise.all(
-          students.map(async (student) => {
-            const refInfo = await incidentReferenceService.checkStudentReferences(student.id, clientId);
-            return { id: student.id, refInfo };
-          })
-        );
-
-        if (isCancelled) return;
-
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
-        setStudentReferences(map);
-      } catch (error) {
-        console.error('Error preloading student reference info:', error);
-      }
-    };
-
-    fetchReferences();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [students, employeeData]);
+  const totalItems = totalStudents;
 
   const handlePageChange = (page: number) => {
     if (onPageChange) {
       onPageChange(page);
-    }
-  };
-
-  const handleItemsPerPageChange = (value: string) => {
-    if (onItemsPerPageChange) {
-      onItemsPerPageChange(Number(value));
     }
   };
 
@@ -146,61 +97,14 @@ const StudentsList = ({
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
-                {(() => {
-                  const refInfo = studentReferences[student.id];
-                  const isLinked = refInfo?.hasReferences;
-
-                  if (isLinked) {
-                    const message =
-                      refInfo?.message ||
-                      `This student is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
-
-                    return (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-flex">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                disabled={true}
-                                aria-disabled="true"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                                className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent 
-                            side="left" 
-                            align="center" 
-                            sideOffset={8} 
-                            className="max-w-xs whitespace-normal text-left"
-                          >
-                            <p className="text-xs leading-snug text-left">
-                              {message}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    );
-                  }
-
-                  return (
                 <Button 
                   variant="ghost" 
                   size="icon"
                   onClick={() => onDeleteStudent(student.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
-                      <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
-                  );
-                })()}
               </div>
             </TableCell>
             )}
