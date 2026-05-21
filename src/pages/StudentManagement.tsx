@@ -11,7 +11,6 @@ import AddStudentDialog from '@/components/students/AddStudentDialog';
 import EditStudentDialog from '@/components/students/EditStudentDialog';
 import ImportStudentDialog from '@/components/students/ImportStudentDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { fetchStudentsByClientId } from '@/services/student/fetchStudentService';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,10 +35,11 @@ interface StudentManagementProps {
 }
 
 const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
-  const { students, deleteStudent, refreshStudents, isLoading } = useStudents();
+  const { students, totalStudents, deleteStudent, refreshStudents, isLoading } = useStudents();
   const { employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
   const [campusFilter, setCampusFilter] = useState('all');
@@ -53,11 +53,26 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500); // 500ms debounce
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  
+  // Fetch students with current pagination and filters
   useEffect(() => {
     if (employeeData?.clientId) {
-      refreshStudents(); 
+      // Small debounce for filters/pagination changes as well
+      const timer = setTimeout(() => {
+        refreshStudents(currentPage, itemsPerPage, debouncedSearchQuery, gradeFilter, sectionFilter, campusFilter);
+      }, 50);
+      
+      return () => clearTimeout(timer);
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, refreshStudents, currentPage, itemsPerPage, debouncedSearchQuery, gradeFilter, sectionFilter, campusFilter]);
   
   const handleEditClick = (student: Student) => {
     if (isReadOnlySwitchedContext) {
@@ -97,6 +112,8 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       setIsDeleting(true);
       try {
         await deleteStudent(studentToDelete);
+        // After deletion, if we're on a page that might now be empty, we might need to go back
+        // But for now, refreshStudents will be called via realtime or manually
       } catch (error) {
         console.error('Delete error:', error);
       } finally {
@@ -119,7 +136,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       
       // Refresh the students list after successful import
       console.log('Import completed, refreshing student list...');
-      await refreshStudents();
+      await refreshStudents(currentPage, itemsPerPage, searchQuery, gradeFilter, sectionFilter, campusFilter);
       
       toast.success("Students imported successfully");
       setIsImportDialogOpen(false);
@@ -129,38 +146,19 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
     }
   };
 
-  // Filter students based on search query and filters
-  const filteredStudents = useMemo(() => {
-    return students.filter(student => {
-      const matchesSearch = 
-        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.grade.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.campus.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesGrade = gradeFilter === 'all' || student.grade === gradeFilter;
-      const matchesSection = sectionFilter === 'all' || student.section === sectionFilter;
-      const matchesCampus = campusFilter === 'all' || student.campus === campusFilter;
-      
-      return matchesSearch && matchesGrade && matchesSection && matchesCampus;
-    });
-  }, [students, searchQuery, gradeFilter, sectionFilter, campusFilter]);
+  // With server-side pagination/filtering, filteredStudents is just the students from context
+  const filteredStudents = students;
 
-  // Pagination logic
-  const totalItems = filteredStudents.length;
+  // Pagination logic using total count from server
+  const totalItems = totalStudents;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   
-  const paginatedStudents = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredStudents.slice(startIndex, endIndex);
-  }, [filteredStudents, currentPage, itemsPerPage]);
+  const paginatedStudents = students;
 
-  // Reset to first page when filters change
+  // Reset to first page when search or filters change (but NOT itemsPerPage)
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, gradeFilter, sectionFilter, campusFilter, itemsPerPage]);
+  }, [searchQuery, gradeFilter, sectionFilter, campusFilter]);
 
   // Clear all filters
   const clearAllFilters = () => {
@@ -548,6 +546,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
               {filteredStudents && filteredStudents.length > 0 ? (
                 <StudentsList
                   students={paginatedStudents}
+                  totalStudents={totalStudents}
                   onEditClick={handleEditClick}
                   onDeleteStudent={handleDeleteClick}
                   canManageStudents={!isReadOnlySwitchedContext}

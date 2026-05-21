@@ -21,7 +21,8 @@ serve(async (req) => {
       getSupabaseServiceRoleKey()
     );
 
-    const { clientId, employeeId, isSuperAdmin } = await req.json();
+    const body = await req.json();
+    const { clientId, employeeId, isSuperAdmin, action, studentId } = body;
 
     if (!clientId) {
       throw new Error('Client ID is required');
@@ -43,6 +44,47 @@ serve(async (req) => {
           message: 'Access denied. Your IP address is not whitelisted for this client.'
         }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle 'check-references' action
+    if (action === 'check-references') {
+      if (!studentId) {
+        throw new Error('Student ID is required for check-references action');
+      }
+
+      console.log(`Checking incident references for student ${studentId} (Client: ${clientId})`);
+      
+      const { data: matchingIncidents, error: refError } = await supabaseClient
+        .from('incidents')
+        .select('id, people_involved')
+        .eq('client_id', clientId)
+        .not('people_involved', 'is', null);
+
+      if (refError) throw refError;
+
+      const filteredIncidents = (matchingIncidents || []).filter(incident => {
+        if (!incident.people_involved) return false;
+        const people = Array.isArray(incident.people_involved) ? incident.people_involved : [];
+        return people.some((person: any) => {
+          const personIdStr = String(person?.id || '').trim();
+          const searchIdStr = String(studentId || '').trim();
+          return personIdStr === searchIdStr && person?.role === 'Student';
+        });
+      });
+
+      const count = filteredIncidents.length;
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          hasReferences: count > 0,
+          count: count,
+          message: count > 0 
+            ? `This student is linked to ${count} incident(s) and cannot be deleted.`
+            : ''
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
@@ -99,11 +141,11 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(200);
 
-    const { data: incidents, error } = await query;
+    const { data: incidents, error: fetchError } = await query;
 
-    if (error) {
-      console.error('Error fetching incidents:', error);
-      throw new Error(`Failed to fetch incidents: ${error.message}`);
+    if (fetchError) {
+      console.error('Error fetching incidents:', fetchError);
+      throw new Error(`Failed to fetch incidents: ${fetchError.message}`);
     }
 
     console.log(`Successfully fetched ${incidents?.length || 0} incidents for client ${clientId}`);

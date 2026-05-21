@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,11 +9,12 @@ import { useLocation } from 'react-router-dom';
 
 interface StudentContextType {
   students: Student[];
+  totalStudents: number;
   addStudent: (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateStudent: (id: string, student: Partial<Student>) => Promise<void>;
   deleteStudent: (id: string) => Promise<void>;
   getStudent: (id: string) => Student | undefined;
-  refreshStudents: () => Promise<void>;
+  refreshStudents: (page?: number, pageSize?: number, search?: string, grade?: string, section?: string, campus?: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -21,51 +22,75 @@ const StudentContext = createContext<StudentContextType | undefined>(undefined);
 
 export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudents] = useState<Student[]>([]);
+  const [totalStudents, setTotalStudents] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { employeeData } = useAuth();
   const location = useLocation();
   const isUsersRoute = location.pathname === '/users';
+  const fetchInProgress = useRef(false);
 
   // Fetch students function
-  const fetchStudents = useCallback(async () => {
+  const fetchStudents = useCallback(async (
+    page: number = 1, 
+    pageSize: number = 10, 
+    search?: string,
+    grade?: string,
+    section?: string,
+    campus?: string
+  ) => {
     if (!employeeData?.clientId) {
       console.log('No client ID available, skipping student fetch');
       setStudents([]);
+      setTotalStudents(0);
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    if (fetchInProgress.current) {
+      console.log('Fetch already in progress, skipping duplicate call');
+      return;
+    }
+
     try {
-      console.log('Fetching students for client ID:', employeeData.clientId);
-      const studentData = await fetchStudentsByClientId(employeeData.clientId);
+      fetchInProgress.current = true;
+      setIsLoading(true);
+      console.log(`Fetching students for client ${employeeData.clientId}, page ${page}, filters:`, { search, grade, section, campus });
+      const { students: studentData, totalCount } = await fetchStudentsByClientId(
+        employeeData.clientId, 
+        page, 
+        pageSize, 
+        search,
+        grade,
+        section,
+        campus
+      );
       setStudents(studentData);
-      console.log('Successfully fetched students:', studentData.length);
+      setTotalStudents(totalCount);
+      console.log(`Successfully fetched ${studentData.length} students (Total: ${totalCount})`);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Failed to load students');
       setStudents([]);
+      setTotalStudents(0);
     } finally {
       setIsLoading(false);
+      fetchInProgress.current = false;
     }
   }, [employeeData?.clientId]);
 
   // Public refresh method
-  const refreshStudents = useCallback(async () => {
-    console.log('Refreshing students...');
-    await fetchStudents();
+  const refreshStudents = useCallback(async (
+    page?: number, 
+    pageSize?: number, 
+    search?: string,
+    grade?: string,
+    section?: string,
+    campus?: string
+  ) => {
+    console.log('Refreshing students with params:', { page, pageSize, search, grade, section, campus });
+    await fetchStudents(page, pageSize, search, grade, section, campus);
   }, [fetchStudents]);
   
-  // Fetch students when clientId becomes available or changes
-  useEffect(() => {
-    if (isUsersRoute) {
-      setStudents([]);
-      setIsLoading(false);
-      return;
-    }
-    console.log('StudentContext useEffect triggered, clientId:', employeeData?.clientId);
-    fetchStudents();
-  }, [fetchStudents, employeeData?.clientId, isUsersRoute]);
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -89,8 +114,6 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       setStudents(prev => [data, ...prev]);
       toast.success('Student added successfully');
       
-      // Refresh to ensure consistency
-      await refreshStudents();
       return data;
     } catch (error) {
       console.error('Error adding student:', error);
@@ -125,8 +148,6 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       );
       // toast.success('Student updated successfully');
       
-      // Refresh to ensure consistency
-      await refreshStudents();
       return data;
     } catch (error) {
       console.error('Error updating student:', error);
@@ -168,6 +189,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const value: StudentContextType = {
     students,
+    totalStudents,
     addStudent,
     updateStudent,
     deleteStudent,
