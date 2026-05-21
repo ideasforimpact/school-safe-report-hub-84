@@ -25,7 +25,7 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
     }
   }, [user?.client?.name, employeeData?.client?.name]);
 
-  if (!isVisible) return null;
+  if (!isVisible || !displayName) return null;
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-primary-50 via-white to-blue-50 z-[9999] overflow-hidden">
@@ -86,8 +86,8 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
               </>
             ) : (
               <>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">Welcome</h2>
-                <h3 className="text-xl font-semibold text-primary-700">Safety Command Center</h3>
+                {/* <h2 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">Welcome</h2>
+                <h3 className="text-xl font-semibold text-primary-700">Safety Command Center</h3> */}
               </>
             )}
             <p className="text-gray-600 mt-2 text-sm">Your comprehensive safety management platform</p>
