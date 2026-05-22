@@ -25,6 +25,10 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   const [lastFetchTime, setLastFetchTime] = useState<Record<string, number>>({});
   const location = useLocation();
   const isUsersRoute = location.pathname === '/users';
+  const isEmployeeVerificationRoute =
+    location.pathname.startsWith('/employee-verification') ||
+    location.pathname.startsWith('/backoffice/employee-verification') ||
+    location.pathname.startsWith('/backoffice-employee-verification');
 
   // Use the employee management hook
   const { 
@@ -230,12 +234,12 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
 
   // Fetch initial data when the context mounts, but only once
   useEffect(() => {
-    if (isUsersRoute) {
+    if (isUsersRoute || !isEmployeeVerificationRoute) {
       return;
     }
     fetchDocumentTypes();
     fetchDocumentStatuses();
-  }, [isUsersRoute]);
+  }, [isUsersRoute, isEmployeeVerificationRoute, fetchDocumentTypes, fetchDocumentStatuses]);
   const handleEmployeeDocumentsRealtime = useCallback(
     (payload: any) => {
       const employeeId = payload.new?.employee_id || payload.old?.employee_id;

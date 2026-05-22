@@ -27,6 +27,8 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const { employeeData } = useAuth();
   const location = useLocation();
   const isUsersRoute = location.pathname === '/users';
+  const isStudentDataRoute =
+    location.pathname.startsWith('/students');
   const fetchInProgress = useRef(false);
 
   // Fetch students function
@@ -91,6 +93,16 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     await fetchStudents(page, pageSize, search, grade, section, campus);
   }, [fetchStudents]);
   
+  // Fetch students when clientId becomes available or changes
+  useEffect(() => {
+    if (isUsersRoute || !isStudentDataRoute) {
+      setStudents([]);
+      setIsLoading(false);
+      return;
+    }
+    console.log('StudentContext useEffect triggered, clientId:', employeeData?.clientId);
+    fetchStudents();
+  }, [fetchStudents, employeeData?.clientId, isUsersRoute, isStudentDataRoute]);
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
