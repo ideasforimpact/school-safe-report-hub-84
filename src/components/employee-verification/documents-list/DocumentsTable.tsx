@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock, File, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock, File, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import GovernmentEmblemIcon from '@/components/ui/GovernmentEmblemIcon';
 import { Button } from '@/components/ui/button';
 import {
@@ -423,24 +423,53 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           if (docType === 'driving_license') {
                           const doe = doc.audit?.data?.doe || doc.audit?.response?.data?.doe;
 
-                          const today = new Date();
+                         const today = new Date();
                           today.setHours(0, 0, 0, 0);
 
-                          const isValid = doe ? new Date(doe) > today : false;
+                          const expiryDate = doe ? new Date(doe) : null;
+
+                          const sixMonthsLater = new Date();
+                          sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+
+                          const isExpired =
+                            expiryDate ? expiryDate < today : false;
+
+                          const isExpiringSoon =
+                            expiryDate
+                              ? expiryDate >= today && expiryDate <= sixMonthsLater
+                              : false;
+
+                          const isValid =
+                            expiryDate ? expiryDate > sixMonthsLater : false;
 
                           return (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center gap-1 cursor-pointer">
-                                    {formatDocumentTypeName(doc.documentTypeName || '')}
+                                  <span className="inline-flex items-center gap-2">
+                                    <span>
+                                      {formatDocumentTypeName(doc.documentTypeName || '')}
+                                    </span>
 
                                     {doe && (
-                                      isValid ? (
-                                        <CheckCircle className="h-4 w-4 text-green-600" />
-                                      ) : (
-                                        <XCircle className="h-4 w-4 text-red-600" />
-                                      )
+                                      <>
+                                        {isExpired ? (
+                                          <span className="inline-flex items-center gap-1 text-red-600 text-xs font-medium">
+                                            <XCircle className="h-4 w-4" />
+                                            Expired
+                                          </span>
+                                        ) : isExpiringSoon ? (
+                                          <span className="inline-flex items-center gap-1 text-yellow-600 text-xs font-medium">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            ! Expiring Soon
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
+                                            <CheckCircle className="h-4 w-4" />
+                                            Valid
+                                          </span>
+                                        )}
+                                      </>
                                     )}
                                   </span>
                                 </TooltipTrigger>
@@ -448,9 +477,19 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                                 <TooltipContent
                                   side="bottom"
                                   align="center"
-                                  className={isValid ? "bg-green-600 text-white" : "bg-red-600 text-white"}
-                                >
-                                  {isValid ? "Valid Driving License" : "Driving License Expired"}
+                                  className={
+                                    isExpired
+                                      ? "bg-red-600 text-white"
+                                      : isExpiringSoon
+                                      ? "bg-yellow-500 text-white"
+                                      : "bg-green-600 text-white"
+                                  }
+                                  >
+                                    {isExpired
+                                      ? "Driving License Expired"
+                                      : isExpiringSoon
+                                      ? "Driving License Expiring Soon"
+                                      : "Valid Driving License"}
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
