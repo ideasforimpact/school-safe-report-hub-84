@@ -141,7 +141,15 @@ export const useIncidentForm = () => {
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setForm((prev) => ({ ...prev, [name]: value }));
+    if (name === 'categoryId') {
+      setForm((prev) => ({ ...prev, categoryId: value, subcategoryId: '' }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleMultiSelectChange = (fields: Partial<FormData>) => {
+    setForm((prev) => ({ ...prev, ...fields }));
   };
 
   const handleDateTimeChange = (name: string, value: Date | string) => {
@@ -202,6 +210,7 @@ export const useIncidentForm = () => {
     peopleInvolved,
     handleChange,
     handleSelectChange,
+    handleMultiSelectChange,
     handleDateTimeChange,
     handlePersonChange,
     addPerson,
