@@ -57,6 +57,61 @@ export const getLatestVerificationFieldValue = (
   return item?.value;
 };
 
+const normalizeVehicleTypeText = (value: unknown): string =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ');
+
+export const getCommonVehicleTypeLabel = (vehicle: Vehicle): string => {
+  const candidates = [
+    getLatestVerificationFieldValue(vehicle, 'vehicle_category_description'),
+    getLatestVerificationFieldValue(vehicle, 'vehicle_category'),
+    getLatestVerificationFieldValue(vehicle, 'vehicle_type'),
+    vehicle.typeName,
+    vehicle.type,
+  ]
+    .map(normalizeVehicleTypeText)
+    .filter(Boolean);
+
+  const matchesAny = (values: string[]) =>
+    candidates.some((candidate) => values.some((value) => candidate.includes(value)));
+
+  if (matchesAny(['2w', '2wn', 'mcwg'])) {
+    return 'Two Wheeler';
+  }
+
+  if (matchesAny(['hgv', 'hgmv'])) {
+    return 'Truck / Lorry';
+  }
+
+  if (matchesAny(['hpv', 'hpmv'])) {
+    return 'Bus';
+  }
+
+  if (matchesAny(['lpv'])) {
+    return 'Van';
+  }
+
+  if (matchesAny(['lmv'])) {
+    return 'Car';
+  }
+
+  return vehicle.typeName || String(vehicle.type || 'Unknown');
+};
+
+export const getCommonVehicleTypeIcon = (vehicle: Vehicle): string | null => {
+  const commonType = getCommonVehicleTypeLabel(vehicle).toLowerCase();
+
+  if (commonType.includes('two wheeler')) return 'motorcycle';
+  if (commonType.includes('truck') || commonType.includes('lorry')) return 'truck';
+  if (commonType.includes('bus')) return 'bus';
+  if (commonType.includes('van')) return 'van';
+  if (commonType.includes('car')) return 'car';
+
+  return vehicle.vehicleTypeIcon || null;
+};
+
 /**
  * Get document status based on expiry date
  */
@@ -342,6 +397,17 @@ export type VerificationFieldKey = typeof VERIFICATION_FIELD_ORDER[number];
 // Runtime type guard – helps us safely filter dynamic field names
 export const isVerificationFieldKey = (field: string): field is VerificationFieldKey => {
   return (VERIFICATION_FIELD_ORDER as readonly string[]).includes(field);
+};
+
+export const getVerificationFieldLabel = (field: string): string => {
+  const labels: Record<string, string> = {
+    vehicle_type: 'Vehicle Type',
+    display_year: 'Registration Year',
+  };
+
+  return labels[field] || field
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c: string) => c.toUpperCase());
 };
 
 /**

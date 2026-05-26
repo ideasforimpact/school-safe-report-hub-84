@@ -13,7 +13,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { getDocumentStatus, getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
+import {
+  getCommonVehicleTypeLabel,
+  getDocumentStatus,
+  getLatestVerificationLog,
+  findVerificationField,
+} from '@/utils/transport-safety/documentStatusUtils';
 import { Vehicle } from '@/types/transportSafety';
 import ImportVehiclesDialog from './ImportVehiclesDialog';
 import { getPendingChallansFromVehicleChallans } from '@/services/transport-safety/vehicleService';
@@ -135,7 +140,7 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
         return {
           'Registration Number': vehicle.registrationNumber,
           'Model': vehicle.model,
-          'Type': vehicle.typeName || vehicle.type || 'Unknown',
+          'Type': getCommonVehicleTypeLabel(vehicle),
           'Year': vehicle.year,
           'Vehicle Status': vehicle.status,
           'Driver': vehicle.driver || 'N/A',
