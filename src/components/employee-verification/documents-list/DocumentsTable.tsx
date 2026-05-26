@@ -86,6 +86,26 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     useState<GovernmentDocumentType>("driving_license");
   const [selectedGovData, setSelectedGovData] = useState<any>(null);
 
+  const parseDoe = (dateStr: string | undefined) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('/');
+    if (parts.length === 3 && parts[0].length <= 2) {
+      const [d, m, y] = parts.map(Number);
+      return new Date(y, m - 1, d);
+    }
+    return new Date(dateStr);
+  };
+
+  const getDrivingLicenseDoe = (doc: VerificationDocument): string | undefined => {
+    const govLog = doc.employee_docs_log?.find(log =>
+      log.response && (log.response.success === true || log.response.status_code === 200)
+    );
+    if (!govLog) return undefined;
+    const raw = govLog.response?.data;
+    const data = raw?.data?.data || raw?.data || raw;
+    return data?.doe;
+  };
+
   // Log documents for debugging
   console.log('DocumentsTable - All documents:', documents);
   
@@ -417,16 +437,16 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {getDocumentIcon(doc.documentTypeName || '')}
-                      <span className="capitalize">
+                      <span className="capitalize flex items-center gap-1 flex-wrap">
                         {(() => {
                           const docType = doc.documentTypeName?.toLowerCase();
                           if (docType === 'driving_license') {
-                          const doe = doc.audit?.data?.doe || doc.audit?.response?.data?.doe;
+                          const doe = getDrivingLicenseDoe(doc);
 
                          const today = new Date();
                           today.setHours(0, 0, 0, 0);
 
-                          const expiryDate = doe ? new Date(doe) : null;
+                          const expiryDate = parseDoe(doe);
 
                           const sixMonthsLater = new Date();
                           sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
@@ -446,7 +466,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center gap-2">
+                                  <span className="inline-flex items-center gap-2 whitespace-nowrap">
                                     <span>
                                       {formatDocumentTypeName(doc.documentTypeName || '')}
                                     </span>
@@ -461,7 +481,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                                         ) : isExpiringSoon ? (
                                           <span className="inline-flex items-center gap-1 text-yellow-600 text-xs font-medium">
                                             <AlertTriangle className="h-4 w-4" />
-                                            ! Expiring Soon
+                                            Expiring Soon
                                           </span>
                                         ) : (
                                           <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
