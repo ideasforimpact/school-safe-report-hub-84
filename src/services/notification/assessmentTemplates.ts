@@ -12,7 +12,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
     id: 'frontend-assessment-assigned',
     module: 'assessment',
     type: 'assessment_assigned',
-    subject: 'New Assessment Assigned – [Assessment ID: {{Assessment_ID}}]',
+    subject: 'New Assessment Assigned – [{{Assessment_Title}}]',
     body: `<div style="${assessmentBaseStyles}">
 <div style="${assessmentHeaderStyles}">
 <h2 style="margin:0;color:#1f2937;font-size:24px;">🎯 New Assessment Assigned</h2>
@@ -22,8 +22,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
 <p style="margin:0 0 20px;font-size:16px;">A new assessment has been assigned to you.</p>
 <div style="background-color:#dbeafe;padding:16px;border-radius:6px;border-left:4px solid #3b82f6;margin:20px 0;">
 <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Assessment Details:</h3>
-<p style="margin:6px 0;"><strong>Assessment ID:</strong> {{Assessment_ID}}</p>
-<p style="margin:6px 0;"><strong>Title:</strong> {{Assessment_Title}}</p>
+<p style="margin:6px 0;"><strong>Assessment Name:</strong> {{Assessment_Title}}</p>
 <p style="margin:6px 0;"><strong>Assigned On:</strong> {{Assigned_Date}}</p>
 <p style="margin:6px 0;"><strong>Due Date:</strong> {{Due_Date}}</p>
 </div>
@@ -43,7 +42,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
     id: 'frontend-assessment-submitted',
     module: 'assessment',
     type: 'assessment_submitted',
-    subject: 'Assessment Submitted – [Assessment ID: {{Assessment_ID}}]',
+    subject: 'Assessment Submitted – [{{Assessment_Title}}]',
     body: `<div style="${assessmentBaseStyles}">
 <div style="${assessmentHeaderStyles}">
 <h2 style="margin:0;color:#1f2937;font-size:24px;">📝 Assessment Submitted</h2>
@@ -53,8 +52,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
 <p style="margin:0 0 20px;font-size:16px;">The following assessment has been successfully submitted:</p>
 <div style="background-color:#ecfccb;padding:16px;border-radius:6px;border-left:4px solid #65a30d;margin:20px 0;">
 <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Submission Details:</h3>
-<p style="margin:6px 0;"><strong>Assessment ID:</strong> {{Assessment_ID}}</p>
-<p style="margin:6px 0;"><strong>Title:</strong> {{Assessment_Title}}</p>
+<p style="margin:6px 0;"><strong>Assessment Name:</strong> {{Assessment_Title}}</p>
 <p style="margin:6px 0;"><strong>Submitted By:</strong> {{Submitted_By}}</p>
 <p style="margin:6px 0;"><strong>Submission Date:</strong> {{Submitted_Date}}</p>
 </div>
@@ -74,7 +72,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
     id: 'frontend-assessment-completed',
     module: 'assessment',
     type: 'assessment_completed',
-    subject: 'Assessment Completed – [Assessment ID: {{Assessment_ID}}]',
+    subject: 'Assessment Completed – [{{Assessment_Title}}]',
     body: `<div style="${assessmentBaseStyles}">
 <div style="${assessmentHeaderStyles}">
 <h2 style="margin:0;color:#1f2937;font-size:24px;">✅ Assessment Completed</h2>
@@ -84,8 +82,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
 <p style="margin:0 0 20px;font-size:16px;">The following assessment has been completed:</p>
 <div style="background-color:#dcfce7;padding:16px;border-radius:6px;border-left:4px solid #16a34a;margin:20px 0;">
 <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Completion Details:</h3>
-<p style="margin:6px 0;"><strong>Assessment ID:</strong> {{Assessment_ID}}</p>
-<p style="margin:6px 0;"><strong>Title:</strong> {{Assessment_Title}}</p>
+<p style="margin:6px 0;"><strong>Assessment Name:</strong> {{Assessment_Title}}</p>
 <p style="margin:6px 0;"><strong>Completed By:</strong> {{Completed_By}}</p>
 <p style="margin:6px 0;"><strong>Completion Date:</strong> {{Completed_Date}}</p>
 </div>
@@ -105,7 +102,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
     id: 'frontend-assessment-rework-required',
     module: 'assessment',
     type: 'assessment_rework_required',
-    subject: 'Rework Required – [Assessment ID: {{Assessment_ID}}]',
+    subject: 'Rework Required – [{{Assessment_Title}}]',
     body: `<div style="${assessmentBaseStyles}">
 <div style="${assessmentHeaderStyles}">
 <h2 style="margin:0;color:#1f2937;font-size:24px;">🔄 Rework Required</h2>
@@ -115,8 +112,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
 <p style="margin:0 0 20px;font-size:16px;">Your submitted assessment requires rework.</p>
 <div style="background-color:#fef3c7;padding:16px;border-radius:6px;border-left:4px solid #f59e0b;margin:20px 0;">
 <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Rework Details:</h3>
-<p style="margin:6px 0;"><strong>Assessment ID:</strong> {{Assessment_ID}}</p>
-<p style="margin:6px 0;"><strong>Title:</strong> {{Assessment_Title}}</p>
+<p style="margin:6px 0;"><strong>Assessment Name:</strong> {{Assessment_Title}}</p>
 <p style="margin:6px 0;"><strong>Requested By:</strong> {{Requested_By}}</p>
 <p style="margin:6px 0;"><strong>Reason:</strong> {{Rework_Reason}}</p>
 </div>
@@ -136,7 +132,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
     id: 'frontend-assessment-due-5-days',
     module: 'assessment',
     type: 'assessment_due_5_days',
-    subject: 'Reminder – 5 Days Left for Assessment Due Date [Assessment ID: {{Assessment_ID}}]',
+    subject: 'Reminder – 5 Days Left for Assessment Due Date [{{Assessment_Title}}]',
     body: `<div style="${assessmentBaseStyles}">
 <div style="${assessmentHeaderStyles}">
 <h2 style="margin:0;color:#1f2937;font-size:24px;">⏰ Assessment Due Reminder</h2>
@@ -146,8 +142,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
 <p style="margin:0 0 20px;font-size:16px;">This is a reminder that your assessment is due in <strong>5 days</strong>.</p>
 <div style="background-color:#fef3c7;padding:16px;border-radius:6px;border-left:4px solid #f59e0b;margin:20px 0;">
 <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Assessment Details:</h3>
-<p style="margin:6px 0;"><strong>Assessment ID:</strong> {{Assessment_ID}}</p>
-<p style="margin:6px 0;"><strong>Title:</strong> {{Assessment_Title}}</p>
+<p style="margin:6px 0;"><strong>Assessment Name:</strong> {{Assessment_Title}}</p>
 <p style="margin:6px 0;"><strong>Due Date:</strong> {{Due_Date}}</p>
 </div>
 <p style="margin:20px 0;font-size:16px;color:#6b7280;">Kindly complete and submit it on time. <a href="{{Assessment_URL}}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
@@ -166,7 +161,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
     id: 'frontend-assessment-overdue',
     module: 'assessment',
     type: 'assessment_overdue',
-    subject: 'Assessment Overdue by {{Overdue_Days}} Days – [Assessment ID: {{Assessment_ID}}]',
+    subject: 'Assessment Overdue by {{Overdue_Days}} Days – [{{Assessment_Title}}]',
     body: `<div style="${assessmentBaseStyles}">
 <div style="${assessmentHeaderStyles}">
 <h2 style="margin:0;color:#1f2937;font-size:24px;">🚨 Assessment Overdue</h2>
@@ -176,8 +171,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
 <p style="margin:0 0 20px;font-size:16px;">The following assessment is overdue by <strong>{{Overdue_Days}} days</strong> and requires immediate attention.</p>
 <div style="background-color:#fee2e2;padding:16px;border-radius:6px;border-left:4px solid #dc2626;margin:20px 0;">
 <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Overdue Assessment:</h3>
-<p style="margin:6px 0;"><strong>Assessment ID:</strong> {{Assessment_ID}}</p>
-<p style="margin:6px 0;"><strong>Title:</strong> {{Assessment_Title}}</p>
+<p style="margin:6px 0;"><strong>Assessment Name:</strong> {{Assessment_Title}}</p>
 <p style="margin:6px 0;"><strong>Due Date:</strong> {{Due_Date}}</p>
 <p style="margin:6px 0;"><strong>Days Overdue:</strong> {{Overdue_Days}}</p>
 </div>

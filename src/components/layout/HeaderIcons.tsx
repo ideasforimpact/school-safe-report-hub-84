@@ -37,7 +37,7 @@ interface NotificationItem {
 const getModuleNameFromPath = (pathname: string): string => {
   if (pathname.startsWith('/incidents') || pathname.startsWith('/incident') || pathname.startsWith('/report-incident')) return 'incident';
   if (pathname.startsWith('/assessments') || pathname.startsWith('/assessment')) return 'assessment';
-  if (pathname.startsWith('/grievances')) return 'grievance';
+  if (pathname.startsWith('/forms')) return 'grievance';
   if (pathname.startsWith('/employee-verification')) return 'employee-verification';
   if (pathname.startsWith('/transport-safety')) return 'transport-safety';
   if (pathname.startsWith('/child-audit')) return 'child-audit';
