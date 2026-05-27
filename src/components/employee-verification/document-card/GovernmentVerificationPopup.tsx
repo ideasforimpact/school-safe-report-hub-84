@@ -185,12 +185,17 @@ const DOC_CONFIGS: Record<GovernmentDocumentType, DocConfig> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const getMonthDiff = (from: Date, to: Date): number =>
+  (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+
 const getLicenseStatus = (dateStr?: string) => {
   if (!dateStr) {
     return {
       isExpired: false,
       isExpiringSoon: false,
       isValid: false,
+      monthsExpired: 0, 
+      monthsUntilExpiry: 0
     };
   }
 
@@ -200,6 +205,8 @@ const getLicenseStatus = (dateStr?: string) => {
       isExpired: false,
       isExpiringSoon: false,
       isValid: false,
+      monthsExpired: 0, 
+      monthsUntilExpiry: 0 
     };
   }
 
@@ -221,10 +228,15 @@ const getLicenseStatus = (dateStr?: string) => {
 
   const isValid = expiryDate > sixMonthsLater;
 
-  return {
-    isExpired,
-    isExpiringSoon,
-    isValid,
+  const monthsExpired = isExpired ? getMonthDiff(expiryDate, today) : 0;
+  const monthsUntilExpiry = isExpiringSoon ? getMonthDiff(today, expiryDate) : 0;
+
+  return { 
+    isExpired, 
+    isExpiringSoon, 
+    isValid, 
+    monthsExpired, 
+    monthsUntilExpiry 
   };
 };
 
@@ -296,10 +308,12 @@ const GovernmentVerificationPopup: React.FC<GovernmentVerificationPopupProps> = 
   const uploadedFileUrl = safeData.uploadedFileUrl;
   const fileType = safeData.fileType;
   const {
-  isExpired: expired,
-  isExpiringSoon,
-  isValid,
-} = getLicenseStatus(summaryLeftValue);
+    isExpired: expired,
+    isExpiringSoon,
+    isValid,
+    monthsExpired,
+    monthsUntilExpiry,
+  } = getLicenseStatus(summaryLeftValue);
   console.log({
   uploadedFileUrl,
   documentType,
@@ -486,18 +500,18 @@ console.log("isViewMode:", isViewMode);
                     <TooltipContent
                       side="bottom"
                       align="center"
-                     className={
-                      expired
-                        ? "bg-red-600 text-white"
-                        : isExpiringSoon
-                        ? "bg-yellow-500 text-white"
-                        : "bg-green-600 text-white"
-                    }
+                      className={`text-xs px-2 py-1 ${
+                        expired
+                          ? "bg-red-600 text-white"
+                          : isExpiringSoon
+                          ? "bg-yellow-500 text-white"
+                          : "bg-green-600 text-white"
+                      }`}
                     >
                       {expired
-                        ? "Driving License Expired"
+                        ? `Driving License Expired${monthsExpired > 0 ? ` · ${monthsExpired} month${monthsExpired > 1 ? "s" : ""} ago` : " · less than a month ago"}`
                         : isExpiringSoon
-                        ? "Driving License Expiring Soon"
+                        ? `Driving License Expiring Soon${monthsUntilExpiry > 0 ? ` · ${monthsUntilExpiry} month${monthsUntilExpiry > 1 ? "s" : ""} remaining` : " · less than a month remaining"}`
                         : "Valid Driving License"}
                     </TooltipContent>
                   </Tooltip>
