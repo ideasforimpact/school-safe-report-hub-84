@@ -143,5 +143,3 @@ verify_jwt = false
 
 [functions.get-student-people-involved]
 verify_jwt = false
-[functions.classify-incident]
-verify_jwt = false

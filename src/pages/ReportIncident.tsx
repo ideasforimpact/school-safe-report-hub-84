@@ -57,7 +57,6 @@ const ReportIncident = () => {
     peopleInvolved,
     handleChange: formHandleChange,
     handleSelectChange: formHandleSelectChange,
-    handleMultiSelectChange,
     handleDateTimeChange: formHandleDateTimeChange,
     handlePersonChange,
     addPerson,
@@ -731,10 +730,7 @@ const ReportIncident = () => {
                 <IncidentDetailsForm
                   formData={safeFormData}
                   onChange={handleChange}
-                  onSelectChange={handleSelectChange}
-                  onApplySuggestion={(categoryId, subcategoryId) =>
-                    handleMultiSelectChange({ categoryId, subcategoryId: subcategoryId ?? '' })
-                  }
+                  onSelectChange={handleSelectChange} 
                   onDateTimeChange={handleDateTimeChange}
                   supportingFiles={supportingFiles}
                   onFilesChange={handleFilesChange}
