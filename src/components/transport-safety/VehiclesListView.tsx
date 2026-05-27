@@ -13,9 +13,9 @@ import { cn } from '@/lib/utils';
 import { 
   getDocumentStatus, 
   getDocumentStatusColor, 
+  getCommonVehicleTypeIcon,
   getVehicleRowClassName,
-  getLatestVerificationLog,
-  getLatestVerificationFieldValue
+  getLatestVerificationLog
 } from '@/utils/transport-safety/documentStatusUtils';
 import { getPendingChallansFromVehicleChallans } from '@/services/transport-safety/vehicleService';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
@@ -151,11 +151,12 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               const vehicleHasChallan = hasPendingChallans(vehicle);
               const pendingChallanCount = getPendingChallanCount(vehicle);
               const rowClassName = hasVerification ? getVehicleRowClassName(vehicle) : "hover:bg-muted/50 border-l-4 border-l-gray-300";
+              const commonVehicleIcon = getCommonVehicleTypeIcon(vehicle);
               
               return <TableRow key={vehicle.id} className={rowClassName}>
                   <TableCell>
                     <div className="bg-gray-100 p-2 rounded-lg inline-flex">
-                      <VehicleTypeIcon type={vehicle.type} icon={vehicle.vehicleTypeIcon} />
+                      <VehicleTypeIcon type={vehicle.type} icon={commonVehicleIcon} />
                     </div>
                   </TableCell>
                   <TableCell>
@@ -166,7 +167,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                   <TableCell>
                     <div className="flex items-center text-left">
                       <div className="text-left">
-                        <div className="font-medium text-left">{vehicle.internalVehicleName || '-'}</div>
+                        <div className="font-medium text-left">{vehicle.model || '-'}</div>
                       </div>
                     </div>
                   </TableCell>
