@@ -22,21 +22,38 @@ export interface UploadedDocument {
   }[];
 }
 
-// Utility function to format Supabase URLs
+/**
+ * Turn stored `document_url` values into a browser-openable URL when they are
+ * storage paths (same rules as employee verification / backoffice mapping).
+ */
 export const formatSupabaseUrl = (url: string): string => {
   if (!url) return '';
-  
-  // If it's already a full URL, return as is
-  if (url.startsWith('http')) return url;
-  
-  // If it's a data URL, return as is
-  if (url.startsWith('data:')) return url;
-  
-  // If it's a Supabase storage path, format it properly
-  if (url.includes('supabase')) return url;
-  
-  // Default fallback
-  return url;
+
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  if (trimmed.startsWith('data:')) return trimmed;
+
+  const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL as string | undefined;
+
+  if (!base || typeof base !== 'string') return trimmed;
+
+  const normalizedBase = base.replace(/\/$/, '');
+  let path = trimmed.replace(/^\/+/, '');
+
+  if (path.includes('employee_other_documents/')) {
+    const after = path.split('employee_other_documents/')[1] || path;
+    return `${normalizedBase}/employee_other_documents/${after}`;
+  }
+  if (path.includes('employee_other_type_statement/')) {
+    const after = path.split('employee_other_type_statement/')[1] || path;
+    return `${normalizedBase}/employee_other_type_statement/${after}`;
+  }
+  if (path.includes('employee-documents/')) {
+    const after = path.split('employee-documents/')[1] || path;
+    return `${normalizedBase}/employee-documents/${after}`;
+  }
+
+  return `${normalizedBase}/employee-documents/${path}`;
 };
 
 // Utility function to check if a file is a PDF

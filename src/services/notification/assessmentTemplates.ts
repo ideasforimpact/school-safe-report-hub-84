@@ -26,7 +26,7 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
 <p style="margin:6px 0;"><strong>Assigned On:</strong> {{Assigned_Date}}</p>
 <p style="margin:6px 0;"><strong>Due Date:</strong> {{Due_Date}}</p>
 </div>
-<p style="margin:20px 0;font-size:16px;color:#6b7280;">Please review and complete it within the given timeline. <a href="{{Assessment_URL}}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
+<p style="margin:20px 0;font-size:16px;color:#6b7280;">Please review and complete it within the given timeline. <a href="{{Assessment_URL}}?assessmentId={{Assessment_ID}}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
 </div>
 <div style="${assessmentFooterStyles}">
 <p style="margin:0;font-size:14px;">Regards,<br/><strong>Safe School Team</strong></p>

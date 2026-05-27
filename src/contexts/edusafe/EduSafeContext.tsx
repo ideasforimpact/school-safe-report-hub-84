@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { formatUserFullName } from '@/utils/userUtils';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -102,9 +101,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           tags: Array.isArray(resource.tags) ? resource.tags : [],
           uploadDate: resource.uploadDate,
           uploaderId: resource.uploaderId,
-          uploaderName: resource.uploaderName || (resource.uploaderId && user?.id === resource.uploaderId
-            ? formatUserFullName(user)
-            : 'Unknown'),
+          uploaderName: resource.uploaderName || user?.client?.name || 'Unknown',
           ownerType: resource.ownerType,
           clientId: resource.clientId,
           resourceType: resource.resourceType,
@@ -114,7 +111,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
             id: `file-${resource.id}`,
             name: extractFileNameFromUrl(resource.document_url, resource.title),
             type: 'application/pdf',
-            size: 0,
+            size: resource.file?.size || resource.file_size || 0,
             base64: resource.document_url
           }
         }));
@@ -165,7 +162,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
             tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
             uploadDate: record.created_at,
             uploaderId: record.uploaded_by || 'unknown',
-            uploaderName: formatUserFullName(user),
+            uploaderName: user?.client?.name || 'Unknown',
             ownerType: 'school',
             clientId: record.client_id,
             resourceType: 'Organisational Resource',
@@ -175,7 +172,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
               id: `file-${record.id}`,
               name: extractFileNameFromUrl(record.document_url, record.title),
               type: 'application/pdf',
-              size: 0,
+              size: (record as any).file_size || 0,
               base64: record.document_url
             }
           });
@@ -344,88 +341,66 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   
   const downloadResource = async (resource: EduSafeResource) => {
     try {
-      let downloadUrl = resource.document_url;
-      let filename = `${resource.title}`;
+      const rawUrl = resource.document_url;
 
-      if (!downloadUrl && resource.file?.base64) {
-        // Fallback to base64 if document_url is not available
-        downloadUrl = resource.file.base64;
-        filename = resource.file.name || `${resource.title}`;
-      }
-
-      if (!downloadUrl) {
+      if (!rawUrl) {
         toast.error('No file available to download');
         return;
       }
 
-      // Extract filename and extension from URL if it's a document_url
-      if (resource.document_url) {
-        const urlParts = resource.document_url.split('/');
-        const lastPart = urlParts[urlParts.length - 1];
-        if (lastPart && lastPart.includes('.')) {
-          filename = lastPart;
-        } else {
-          // If no extension in URL, try to determine from content type or default to .pdf
-          const fileExtension = resource.document_url.split('.').pop()?.toLowerCase();
-          if (fileExtension && ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx', 'xls', 'xlsx'].includes(fileExtension)) {
-            filename = `${resource.title}.${fileExtension}`;
-          } else {
-            filename = `${resource.title}.pdf`;
-          }
-        }
-      } else {
-        // For base64 files, use the file name if available
-        filename = resource.file?.name || `${resource.title}.pdf`;
-      }
+      // Derive a clean filename from the URL or title
+      const urlFilename = rawUrl.split('?')[0].split('/').pop();
+      const filename = urlFilename && urlFilename.includes('.')
+        ? decodeURIComponent(urlFilename)
+        : resource.file?.name || `${resource.title}.pdf`;
 
-      // For Supabase storage URLs, we need to fetch the file as a blob to force download
-      if (resource.document_url && resource.document_url.includes('supabase.co')) {
+      // Always download via blob so the `download` attribute is honoured.
+      // Browsers silently ignore `download` on cross-origin URLs, which causes
+      // them to open the file in a new tab instead of saving it.
+      const getBlob = async (): Promise<Blob> => {
+        // Try Supabase SDK first (handles auth, works for private buckets)
         try {
-          const response = await fetch(downloadUrl);
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+          const urlObj = new URL(rawUrl);
+          const pathMatch = urlObj.pathname.match(
+            /\/storage\/v1\/object\/(?:public|sign)\/edusafe-resources\/(.+)/
+          );
+          if (pathMatch?.[1]) {
+            const filePath = decodeURIComponent(pathMatch[1].split('?')[0]);
+            const { data, error } = await supabase.storage
+              .from('edusafe-resources')
+              .download(filePath);
+            if (!error && data) return data;
           }
-          
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          
-          // Create a link element
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = filename;
-          
-          // Append to document
-          document.body.appendChild(link);
-          
-          // Trigger download
-          link.click();
-          
-                // Clean up
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-        } catch (fetchError) {
-          console.error('Error fetching file:', fetchError);
-          // Fallback to direct link if fetch fails
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.download = filename;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+        } catch {
+          // rawUrl is not an absolute URL — fall through
         }
-      } else {
-        // For other URLs (like base64), use the original method
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = filename;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+
+        // Relative path fallback: "edusafe-resources/client/file.pdf"
+        const relMatch = rawUrl.replace(/^\//, '').match(/^edusafe-resources\/(.+)/);
+        if (relMatch?.[1]) {
+          const filePath = decodeURIComponent(relMatch[1].split('?')[0]);
+          const { data, error } = await supabase.storage
+            .from('edusafe-resources')
+            .download(filePath);
+          if (!error && data) return data;
+        }
+
+        // Last resort: plain fetch (works for public URLs)
+        const res = await fetch(rawUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      };
+
+      const blob = await getBlob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      // Delay revocation so the browser has time to start the download
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
     } catch (error) {
       toast.error('Failed to download resource');
       console.error('Download error:', error);

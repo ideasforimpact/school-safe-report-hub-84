@@ -4,6 +4,7 @@
  */
 
 import { crypto } from 'https://deno.land/std@0.168.0/crypto/mod.ts';
+import { getJwtSecret, importHmacKey } from './jwt.ts';
 
 /**
  * Generate a cryptographically secure random refresh token
@@ -22,26 +23,16 @@ export async function generateRefreshToken(): Promise<string> {
 }
 
 /**
- * Hash a refresh token using HMAC-SHA256
- * Uses SAFE_JWT_SECRET as the key
+ * Hash a refresh token using HMAC-SHA256 with SAFE_JWT_SECRET
+ *
+ * @param token - refresh token
  */
 export async function hashRefreshToken(token: string): Promise<string> {
-  const secret = Deno.env.get('SAFE_JWT_SECRET');
-  if (!secret) {
-    throw new Error('SAFE_JWT_SECRET environment variable is required');
-  }
-
+  const secret = getJwtSecret();
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
   const tokenData = encoder.encode(token);
 
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
+  const key = await importHmacKey(secret, ['sign']);
 
   const signature = await crypto.subtle.sign('HMAC', key, tokenData);
   const hashArray = Array.from(new Uint8Array(signature));

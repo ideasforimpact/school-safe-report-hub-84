@@ -106,8 +106,19 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
     }
   };
 
-  const { icon: Icon, text, bgColor } = getStatusConfig();
+  const { icon: Icon, text, bgColor: defaultBgColor } = getStatusConfig();
   const finalText = labelOverride || text;
+
+  let bgColor = defaultBgColor;
+  let DisplayIcon = Icon;
+
+  if (labelOverride === 'License Expired') {
+    bgColor = 'bg-red-100 text-red-800 border-red-200';
+    DisplayIcon = AlertCircle;
+  } else if (labelOverride === 'License Expiring Soon') {
+    bgColor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    DisplayIcon = AlertCircle;
+  }
 
   // Check if this document has details that can be shown in a dialog
   const isGovernanceVerified = (status === 'verified' || status === 'completed') && documentStatusName === 'governance';
@@ -239,7 +250,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           title={finalText}
           onClick={isClickable ? handleClick : onClick}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <DisplayIcon className="h-3.5 w-3.5" />
           {finalText}
           {isClickable && (
             <span className="sr-only">(click to view details)</span>

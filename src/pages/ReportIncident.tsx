@@ -48,7 +48,7 @@ const ReportIncident = () => {
   const { incident: existingIncident, isLoading: isLoadingIncident, error: incidentError, getFormData } = useIncidentDetail(incidentId);
   
   // Add validation hook
-  const { errors, validateForm } = useIncidentFormValidation();
+  const { errors, validateForm, setErrors } = useIncidentFormValidation();
   
   const {
     nextTicketId,
@@ -619,6 +619,17 @@ const ReportIncident = () => {
   const handleSelectChange = (name: string, value: string) => {
     formHandleSelectChange(name, value);
   };
+
+  const handlePersonChangeWithClear = (index: number, field: string, value: string, additionalFields?: Record<string, string>) => {
+    handlePersonChange(index, field as any, value, additionalFields);
+    if (value && value.trim() !== '') {
+      setErrors(prev => {
+        const updated = { ...prev };
+        delete updated[`peopleInvolved.${index}.${field}`];
+        return updated;
+      });
+    }
+  };
   
   const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
     if (date) {
@@ -727,7 +738,7 @@ const ReportIncident = () => {
 
                 <PeopleInvolvedSection
                   peopleInvolved={peopleInvolved}
-                  onPersonChange={handlePersonChange}
+                  onPersonChange={handlePersonChangeWithClear}
                   onAddPerson={addPerson}
                   onRemovePerson={removePerson}
                   students={students}
