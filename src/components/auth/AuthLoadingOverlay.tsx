@@ -6,7 +6,7 @@ import { capitalizeClientName } from '@/utils/clientNameUtils';
 interface AuthLoadingOverlayProps {
   isVisible: boolean;
 }
-// const AUTH_CLIENT_NAME_KEY = 'clientName';
+
 
 const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
   const { user, employeeData } = useAuth();
@@ -86,8 +86,8 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
               </>
             ) : (
               <>
-                {/* <h2 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">Welcome</h2>
-                <h3 className="text-xl font-semibold text-primary-700">Safety Command Center</h3> */}
+                <h2 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">Welcome</h2>
+                <h3 className="text-xl font-semibold text-primary-700">Safety Command Center</h3>
               </>
             )}
             <p className="text-gray-600 mt-2 text-sm">Your comprehensive safety management platform</p>
