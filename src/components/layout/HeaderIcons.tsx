@@ -55,7 +55,8 @@ const HeaderIcons = () => {
   const isBackofficeRoute =
     location.pathname.startsWith('/backoffice') ||
     location.pathname.startsWith('/backoffice-');
-  const skipNotifications = isBackofficeRoute || isBackofficeUser;
+  const isTransportSafetyRoute = location.pathname.startsWith('/transport-safety');
+  const skipNotifications = isBackofficeRoute || isBackofficeUser || isTransportSafetyRoute;
 
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);

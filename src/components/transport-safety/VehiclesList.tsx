@@ -32,18 +32,20 @@ interface VehiclesListProps {
 }
 
 const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle,onVehiclesChanged }) => {
-  const { vehicles, loading, error, hasFetched , fetchVehicles, } = useTransportSafety();
+  const { vehicles, loading, error, hasFetched, fetchVehicles, totalCount } = useTransportSafety();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   // State for edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showLoader, setShowLoader] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | undefined>(undefined);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+
+  // Show full-page loader only on the very first load; after that use inline loading state
   useEffect(() => {
-    if (!loading) {
-      setTimeout(() => setShowLoader(false), 300); 
+    if (!loading && !initialLoaded) {
+      setTimeout(() => setInitialLoaded(true), 300);
     }
-  }, [loading]);
+  }, [loading, initialLoaded]);
 
   const {
     // State
@@ -115,13 +117,13 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     };
   };
   useEffect(() => {
-  onVehiclesChanged({
-    total: vehicles.length,
-    filtered: filteredVehicles.length,
-    hasFetched,
-    vehicles,
-  });
-}, [vehicles, filteredVehicles, onVehiclesChanged]);
+    onVehiclesChanged({
+      total: totalCount,
+      filtered: filteredVehicles.length,
+      hasFetched,
+      vehicles,
+    });
+  }, [vehicles, filteredVehicles, totalCount, hasFetched, onVehiclesChanged]);
 
   // Export vehicles to Excel
   const exportToExcel = () => {
@@ -180,7 +182,7 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
   //     </div>
   //   );
   // }
-  if (showLoader) {
+  if (!initialLoaded) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader text="Loading vehicles..." />
@@ -265,20 +267,27 @@ return (
         </div>
       </div>
     </div>
-    {/* --- Only this part changes based on filter results --- */}
-    {filteredVehicles.length === 0 ? (
-      <EmptyVehiclesState
-        setShowAddVehicle={setShowAddVehicle}
-        statusFilter={statusFilter}
-      />
-    ) : (
-      <VehiclesListView
-        vehicles={filteredVehicles}
-        onRefresh={handleRefresh}
-        onEditVehicle={isReadOnlySwitchedContext ? undefined : handleEditVehicle}
-        isReadOnly={isReadOnlySwitchedContext}
-      />
-    )}
+    {/* --- Only this part changes based on filter/search results --- */}
+    <div className="relative">
+      {loading && (
+        <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10 rounded-md">
+          <Loader text="Searching..." />
+        </div>
+      )}
+      {filteredVehicles.length === 0 && !loading ? (
+        <EmptyVehiclesState
+          setShowAddVehicle={setShowAddVehicle}
+          statusFilter={statusFilter}
+        />
+      ) : (
+        <VehiclesListView
+          vehicles={filteredVehicles}
+          onRefresh={handleRefresh}
+          onEditVehicle={isReadOnlySwitchedContext ? undefined : handleEditVehicle}
+          isReadOnly={isReadOnlySwitchedContext}
+        />
+      )}
+    </div>
     {/* Edit Vehicle Dialog */}
     <AddVehicleDialog
       open={showEditDialog && !isReadOnlySwitchedContext}

@@ -58,7 +58,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const navigate = useNavigate();
   const [challanError, setChallanError] = useState<string | null>(null);
   const [hasChallanData, setHasChallanData] = useState<boolean>(true);
-  const [vehicleChallans, setVehicleChallans] = useState<VehicleChallans | null>(null);
+  const [vehicleChallans, setVehicleChallans] = useState<VehicleChallans | null>(vehicle.vehicleChallans || null);
 
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
@@ -84,22 +84,6 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     
     return false;
   }, [isSuperAdmin, state.configuredModules]);
-
-  // Fetch vehicle_challans when component mounts
-  useEffect(() => {
-    const fetchVehicleChallans = async () => {
-      if (vehicleId) {
-        try {
-          const challans = await getVehicleChallans(vehicleId);
-          setVehicleChallans(challans);
-        } catch (error) {
-          console.error('Error fetching vehicle_challans:', error);
-        }
-      }
-    };
-
-    fetchVehicleChallans();
-  }, [vehicleId]);
 
   const getLatestVerificationData = () => {
     if (!vehicle.verificationData) return null;

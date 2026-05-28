@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
 import VehicleTypeIcon from './VehicleTypeIcon';
-import { usePagination } from '@/hooks/usePagination';
+import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { cn } from '@/lib/utils';
 import { 
   getDocumentStatus, 
@@ -36,20 +36,10 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
     const shouldHideWriteActions = isReadOnly || isReadOnlySwitchedContext;
 
-    const sortedVehicles = React.useMemo(() => {
-      return [...vehicles].sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0).getTime();
-        const dateB = new Date(b.createdAt || 0).getTime();
-        return dateB - dateA;
-      });
-    }, [vehicles]);
+    const { currentPage, setCurrentPage, totalPages } = useTransportSafety();
 
-    const {
-      paginatedItems,
-      currentPage,
-      setCurrentPage,
-      totalPages
-    } = usePagination(sortedVehicles, 10);
+    // Vehicles are already sorted and paginated from the server
+    const paginatedItems = vehicles;
 
   const getDocumentIcon = (status: string) => {
     switch (status) {

@@ -21,8 +21,8 @@ const TransportSafetyPage = () => {
   const navigate = useNavigate();
   
 
-const handleVehiclesChanged = useCallback(({ vehicles }) => {
-  setTotalVehicles(vehicles.length);
+const handleVehiclesChanged = useCallback(({ total, vehicles }) => {
+  setTotalVehicles(total);
   
   // Recalculate pending challans from vehicle_challans
   let totalPendingAmount = 0;

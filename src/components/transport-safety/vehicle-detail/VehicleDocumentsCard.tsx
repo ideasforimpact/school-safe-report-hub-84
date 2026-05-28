@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FileX, FileCheck, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBadge';
@@ -10,7 +10,6 @@ import {
   getDocumentStatus, 
   getDocumentStatusColor
 } from '@/utils/transport-safety/documentStatusUtils';
-import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
 import ChallanDetailsDialog from '../ChallanDetailsDialog';
 
 interface VehicleDocumentsCardProps {
@@ -18,25 +17,9 @@ interface VehicleDocumentsCardProps {
 }
 
 const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) => {
-  const { id: vehicleId, documents } = vehicle;
-  const [vehicleChallans, setVehicleChallans] = useState<VehicleChallans | null>(null);
+  const { documents } = vehicle;
+  const [vehicleChallans] = useState<VehicleChallans | null>(vehicle.vehicleChallans || null);
   const [showChallanDetails, setShowChallanDetails] = useState(false);
-  
-  // Fetch vehicle_challans when component mounts
-  useEffect(() => {
-    const fetchVehicleChallans = async () => {
-      if (vehicleId) {
-        try {
-          const challans = await getVehicleChallans(vehicleId);
-          setVehicleChallans(challans);
-        } catch (error) {
-          console.error('Error fetching vehicle_challans:', error);
-        }
-      }
-    };
-
-    fetchVehicleChallans();
-  }, [vehicleId, vehicle.verificationDate, vehicle.verificationStatus]);
   
   // Check if vehicle has verification data
   const hasVerificationData = vehicle.verificationData && vehicle.verificationData.length > 0;
