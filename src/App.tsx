@@ -118,6 +118,7 @@ import CommitteesPage from './pages/committees/CommitteesPage';
 import CommitteeEventsPage from './pages/committees/CommitteeEventsPage';
 import CommitteeEventViewPage from './pages/committees/CommitteeEventViewPage';
 import ChildAuditPage from './pages/child-audit/ChildAuditPage';
+import BackofficeChildAuditPage from './pages/backoffice/BackofficeChildAuditPage';
 
 
 function App() {
@@ -388,6 +389,11 @@ function App() {
                   <Route path="/backoffice/edusafe-resources" element={
                     <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
                       <BackofficeWrapper component={BackofficeEduSafeResourcesPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/child-audit" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={BackofficeChildAuditPage} />
                     </RouteGuard>
                   } />
 
