@@ -8,16 +8,15 @@ import { supabase } from '@/integrations/supabase/client';
 export const useResponseManagement = (
   template: any,
   assessment: any,
-  existingResponse: any,
+  _existingResponse: any,
   user: any
 ) => {
   const navigate = useNavigate();
   const [questionResponses, setQuestionResponses] = useState<QuestionResponse[]>(() => {
     if (template) {
-      // Create empty responses for each question
-      return template.questions.map(question => ({
+      return template.questions.map((question: { id: string }) => ({
         questionId: question.id,
-        answer: undefined as any, // Initialize as undefined
+        answer: undefined as any,
         comment: null,
         attachments: null
       }));
@@ -43,8 +42,8 @@ export const useResponseManagement = (
     if (!template) return false;
     
     // Check if all required questions have been answered
-    const requiredQuestions = template.questions.filter(q => q.required);
-    const unansweredRequired = requiredQuestions.some(requiredQ => {
+    const requiredQuestions = template.questions.filter((q: { required: boolean }) => q.required);
+    const unansweredRequired = requiredQuestions.some((requiredQ: { id: string }) => {
       const response = questionResponses.find(r => r.questionId === requiredQ.id);
       return response?.answer === undefined; // No answer for this required question
     });
@@ -60,19 +59,22 @@ export const useResponseManagement = (
   
   const handleSave = async () => {
     if (!template || !assessment || !user) return;
-    
-    setSaving(true);
-    
-    try {
-      // Save response data to assessment
-      const responseData = {
-        assessment_id: assessment.id,
-        user_id: user.id,
-        responses: questionResponses,
-        status: 'Draft'
-      };
 
-      console.log('Saving assessment response:', responseData);
+    setSaving(true);
+
+    try {
+      const { error: updateError } = await supabase
+      .functions.invoke('save-assessment-draft/save-draft', {
+        body: {
+          assessment_id: (assessment as any).assessment_id,
+          client_id: (assessment as any).client_id,
+          status: 'Draft',
+          answers: questionResponses,
+        },
+      });
+
+      if (updateError) throw updateError;
+
       toast.success("Progress saved successfully");
     } catch (error) {
       console.error('Error saving response:', error);
@@ -97,14 +99,27 @@ export const useResponseManagement = (
       const yesAnswers = questionResponses.filter(r => r.answer === true).length;
       const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
 
-      // Update assessment status and score
       const { error: updateError } = await supabase
-        .from('assessments')
-        .update({ 
-          status: 'Submitted',
-          score: score
-        })
-        .eq('id', assessment.id);
+      .functions.invoke('save-assessment-draft/submit-assessment', {
+        body: {
+          assessment_id: (assessment as any).assessment_id,
+          client_id: (assessment as any).client_id,
+          score,
+          answers: questionResponses,
+          performed_by: {
+            id: user?.id || '',
+            first_name: '',
+            last_name: '',
+            email: user?.email || '',
+          },
+          assessment_info: {
+            id: (assessment as any).id,
+            name: (assessment as any).name,
+            created_by: (assessment as any).created_by,
+            assigned_to: (assessment as any).assigned_to,
+          },
+        },
+      });
 
       if (updateError) {
         throw updateError;
