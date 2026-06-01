@@ -60,7 +60,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
   const { client } = useClient();
-  
+
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
@@ -71,7 +71,6 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
   const [importantNotes, setImportantNotes] = useState('');
   const [categories, setCategories] = useState<SOPCategory[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingCategories, setLoadingCategories] = useState(false);
 
   // Populate form when editing
   useEffect(() => {
@@ -106,33 +105,25 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
 
   // Fetch categories when dialog opens
   useEffect(() => {
-    if (open) {
-      fetchCategories();
-    }
-  }, [open]);
-
-  const fetchCategories = async () => {
-    setLoadingCategories(true);
-    try {
-      const { data, error } = await supabase
-        .from('sop_categories' as any)
-        .select('id, category_name')
-        .order('category_name', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching categories:', error);
-        toast.error('Failed to load categories');
-        return;
-      }
-
-      setCategories((data || []) as unknown as SOPCategory[]);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
-    } finally {
-      setLoadingCategories(false);
-    }
-  };
+    if (!open) return;
+    const clientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
+    supabase.functions
+      .invoke('fetch-sop-categories', { body: { client_id: clientId } })
+      .then(({ data, error }) => {
+        if (error) {
+          // Edge function unavailable — fall back to direct query
+          console.warn('[AddSOPDialog] fetch-sop-categories error, falling back:', error);
+          return (supabase as any)
+            .from('sop_categories')
+            .select('id, category_name')
+            .order('category_name', { ascending: true })
+            .then(({ data: fbData, error: fbError }: any) => {
+              if (!fbError && fbData) setCategories(fbData);
+            });
+        }
+        if (data?.data?.length) setCategories(data.data);
+      });
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddStep = () => {
     const newId = String(Date.now());
@@ -283,27 +274,6 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
         return;
       }
 
-      // Check for duplicate SOP title (case-insensitive, within same client)
-      const { data: existingSOPs, error: checkError } = await supabase
-        .from('sop' as any)
-        .select('id, title')
-        .eq('client_id', clientId)
-        .ilike('title', trimmedTitle);
-
-      if (checkError) {
-        console.error('Error checking for duplicate SOP:', checkError);
-      } else if (existingSOPs && existingSOPs.length > 0) {
-        // If editing, allow if it's the same SOP
-        if (editingSOP && existingSOPs && existingSOPs.some((s: any) => s.id === editingSOP.id)) {
-          // Same SOP, allow update
-        } else {
-          // Duplicate found
-          toast.error(`An SOP with the title "${trimmedTitle}" already exists`);
-          setLoading(false);
-          return;
-        }
-      }
-
       // Call edge function to create or update SOP
       const functionName = editingSOP ? 'update-sop' : 'create-sop';
       const requestBody: any = {
@@ -415,7 +385,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             </Label>
             <Select value={categoryId} onValueChange={setCategoryId} required>
               <SelectTrigger>
-                <SelectValue placeholder={loadingCategories ? "Loading..." : "Select category"} />
+                <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((category) => (

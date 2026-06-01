@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -33,9 +33,7 @@ import { getEmployeeData } from '@/store/employeeSelectors';
 import { useClient } from '@/contexts/ClientContext';
 import SignoffRequestDialog from '@/components/sop/SignoffRequestDialog';
 import GroupDetailsDialog from '@/components/sop/GroupDetailsDialog';
-import { getEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { useCallback } from 'react';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
 
@@ -103,54 +101,16 @@ const AssignedSOPPage = () => {
   // Resolve clientId from employeeData (same pattern as SOPPage)
   const resolvedClientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
 
-  // Fetch employee statistics
-  const fetchEmployeeStatistics = useCallback(async () => {
-    if (!resolvedClientId || !employeeData?.id) {
-      setStatisticsLoading(false);
-      return;
-    }
-
-    try {
-      console.log('[AssignedSOPPage] Fetching employee statistics...', { resolvedClientId, employeeId: employeeData.id });
-      setStatisticsLoading(true);
-      const stats = await getEmployeeSOPStatistics(resolvedClientId, employeeData.id);
-      console.log('[AssignedSOPPage] Employee statistics fetched:', stats);
-      setEmployeeTotalSOPs(stats.totalSOPs);
-      setEmployeeTotalSOPsSignedOff(stats.totalSOPsSignedOff);
-      setEmployeeTotalSOPsToBeDone(stats.totalSOPsToBeDone);
-    } catch (error) {
-      console.error('[AssignedSOPPage] Error fetching employee SOP statistics:', error);
-    } finally {
-      setStatisticsLoading(false);
-    }
-  }, [resolvedClientId, employeeData?.id]);
+  // Guards to prevent concurrent / duplicate fetch-assigned-sop calls
+  const fetchingRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDirectFetchRef = useRef<number>(0);
 
   useEffect(() => {
     if (resolvedClientId && employeeData?.id) {
-    fetchAssignedSOPs();
-      fetchEmployeeStatistics();
-      fetchCategories();
+      fetchAssignedSOPs();
     }
-  }, [resolvedClientId, employeeData?.id, fetchEmployeeStatistics]);
-
-  // Fetch categories
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('sop_categories' as any)
-        .select('id, category_name')
-        .order('category_name', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching categories:', error);
-        return;
-      }
-
-      setCategories((data || []) as unknown as Array<{ id: string; category_name: string }>);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
+  }, [resolvedClientId, employeeData?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filter SOPs based on search, status, and category
   useEffect(() => {
@@ -184,15 +144,18 @@ const AssignedSOPPage = () => {
     setSops(filtered);
   }, [searchTerm, statusFilter, categoryFilter, allSops]);
 
-  const fetchAssignedSOPs = async () => {
+  const fetchAssignedSOPs = useCallback(async () => {
+    if (fetchingRef.current) return; // drop concurrent call
+    fetchingRef.current = true;
+    lastDirectFetchRef.current = Date.now();
     setLoading(true);
     try {
       const clientId = resolvedClientId;
       const employeeId = employeeData?.id || null;
 
       if (!clientId || !employeeId) {
-        toast.error('Client ID or Employee ID not found');
         setLoading(false);
+        fetchingRef.current = false;
         return;
       }
 
@@ -215,17 +178,42 @@ const AssignedSOPPage = () => {
       }
 
       if (data && data.success) {
-        const sopList = data.data || [];
+        const sopList: any[] = data.data || [];
         setAllSops(sopList);
         setSops(sopList);
+
+        // Derive unique categories from fetched SOPs (for filter dropdown)
+        const seen = new Set<string>();
+        const derived = sopList
+          .filter((s) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
+          .map((s) => ({ id: s.category_id, category_name: s.category_name }))
+          .sort((a, b) => a.category_name.localeCompare(b.category_name));
+        setCategories(derived);
+
+        // Compute statistics from the same data — no extra edge function call needed
+        const total = sopList.length;
+        const signedOff = sopList.filter((s) => s.signoff_request_status === 'Completed').length;
+        setEmployeeTotalSOPs(total);
+        setEmployeeTotalSOPsSignedOff(signedOff);
+        setEmployeeTotalSOPsToBeDone(Math.max(0, total - signedOff));
+        setStatisticsLoading(false);
       }
     } catch (error) {
       console.error('Error fetching assigned SOPs:', error);
       toast.error('Failed to load assigned SOPs');
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
-  };
+  }, [resolvedClientId, employeeData?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced wrapper — suppressed for 2s after a direct fetch to avoid double-calling
+  // when the same DB write triggers both the success callback and a real-time event
+  const scheduleFetchAssignedSOPs = useCallback(() => {
+    if (Date.now() - lastDirectFetchRef.current < 2000) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchAssignedSOPs(), 300);
+  }, [fetchAssignedSOPs]);
 
   // Truncate text helper
   const truncateText = (text: string, maxLength: number) => {
@@ -271,46 +259,31 @@ const AssignedSOPPage = () => {
     return <span>{displayText}</span>;
   };
 
-  // Real-time updates for employee statistics
+  // Real-time updates: refresh assigned SOPs (stats recomputed from the same response)
   useRealTimeSubHook({
-    channelName: 'assigned-sop-stats-assigned',
+    channelName: 'assigned-sop-realtime-assigned',
     events: ['INSERT', 'UPDATE', 'DELETE'],
     table: 'sop_assigned',
     filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
     enabled: !!resolvedClientId && !!employeeData?.id,
-    onPayload: (payload) => {
-      console.log('[AssignedSOPPage] Real-time update from sop_assigned table:', payload.eventType, payload);
-      setTimeout(() => {
-        fetchEmployeeStatistics();
-      }, 100);
-    },
+    onPayload: () => scheduleFetchAssignedSOPs(),
   });
 
   useRealTimeSubHook({
-    channelName: 'assigned-sop-stats-signoff',
+    channelName: 'assigned-sop-realtime-signoff',
     events: ['INSERT', 'UPDATE', 'DELETE'],
     table: 'sop_signoff_request',
     filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
     enabled: !!resolvedClientId && !!employeeData?.id,
-    onPayload: (payload) => {
-      console.log('[AssignedSOPPage] Real-time update from sop_signoff_request table:', payload.eventType, payload);
-      setTimeout(() => {
-        fetchEmployeeStatistics();
-      }, 100);
-    },
+    onPayload: () => scheduleFetchAssignedSOPs(),
   });
 
   useRealTimeSubHook({
-    channelName: 'assigned-sop-stats-group-employees',
+    channelName: 'assigned-sop-realtime-group-employees',
     events: ['INSERT', 'UPDATE', 'DELETE'],
     table: 'group_employees',
     enabled: !!resolvedClientId && !!employeeData?.id,
-    onPayload: (payload) => {
-      console.log('[AssignedSOPPage] Real-time update from group_employees table:', payload.eventType, payload);
-      setTimeout(() => {
-        fetchEmployeeStatistics();
-      }, 100);
-    },
+    onPayload: () => scheduleFetchAssignedSOPs(),
   });
 
   return (
@@ -548,7 +521,6 @@ const AssignedSOPPage = () => {
           sopSignoffRequestExist={signoffSOP?.sop_signoff_request_exist}
           onSuccess={() => {
             fetchAssignedSOPs();
-            fetchEmployeeStatistics();
           }}
         />
 
