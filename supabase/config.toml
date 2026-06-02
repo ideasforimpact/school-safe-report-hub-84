@@ -149,3 +149,6 @@ verify_jwt = true
  
 [functions.list-child-audit-unseeded-clients]
 verify_jwt = true
+
+[functions.classify-incident]
+verify_jwt = false
