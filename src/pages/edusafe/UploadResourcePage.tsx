@@ -36,7 +36,7 @@ const UploadResourceContent = () => {
 const UploadResourcePage = () => {
   return (
     <Layout>
-      <EduSafeProvider>
+      <EduSafeProvider skipInitialFetch>
         <UploadResourceContent />
       </EduSafeProvider>
     </Layout>

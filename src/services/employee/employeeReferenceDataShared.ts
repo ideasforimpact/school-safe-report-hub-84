@@ -17,12 +17,16 @@ export interface EmployeeTypeOption {
 /**
  * Single in-flight promise per resource so React 18 Strict Mode (double effect run)
  * does not duplicate identical REST calls.
+ * Session-lifetime cache: departments and types are fetched once per page load.
+ * They rarely change during a session, so re-fetching on every route change is unnecessary.
  */
 let departmentsInflight: Promise<EmployeeDepartmentOption[]> | null = null;
 let typesInflight: Promise<EmployeeTypeOption[]> | null = null;
 let departmentsRecent: { at: number; value: EmployeeDepartmentOption[] } | null = null;
 let typesRecent: { at: number; value: EmployeeTypeOption[] } | null = null;
-const SHARED_DEDUPE_MS = 1200;
+// 30-minute TTL — covers the full normal session; prevents repeated employee-management
+// calls on every route change while still refreshing if the tab is open for hours.
+const SHARED_DEDUPE_MS = 30 * 60 * 1000;
 
 export function fetchEmployeeDepartmentsShared(): Promise<EmployeeDepartmentOption[]> {
   const now = Date.now();

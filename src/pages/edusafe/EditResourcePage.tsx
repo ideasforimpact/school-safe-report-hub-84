@@ -24,7 +24,7 @@ import { EDUSAFE_DESCRIPTION_MAX_LENGTH, EDUSAFE_TAG_MAX_LENGTH, TITLE_MAX_LENGT
 
 const EditResourceContent = () => {
   const { resourceId } = useParams<{ resourceId: string }>();
-  const { getResourceById, updateResource, loading, refreshResources } = useEduSafe();
+  const { getResourceById, updateResource, loading } = useEduSafe();
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -217,14 +217,10 @@ const EditResourceContent = () => {
           tags
         });
       }
-      
-      // Refresh resources to get the updated file name
-      await refreshResources();
-      
-      // Clear the selected file since it's been uploaded
+
       setFile(null);
-      
       toast.success('Resource updated successfully');
+      // Navigate directly — the listing page's EduSafeProvider fetches fresh data on mount
       navigate('/edusafe');
     } catch (error) {
       console.error('Error updating resource:', error);
