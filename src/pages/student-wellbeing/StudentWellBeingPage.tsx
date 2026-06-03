@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Heart, Users, FolderOpen, Plus, Search, MessageSquare, Pencil, Trash2, MoreVertical, Zap, Calendar, X, Eye, Download, History } from 'lucide-react';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { DateRange } from 'react-day-picker';
@@ -42,7 +42,17 @@ import {
   deleteStudentWellbeingRecord,
   type StudentWellbeingRecord,
   type StudentWellbeingSummary,
+  type PaginationInfo,
 } from '@/services/student-wellbeing/studentWellbeingService';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { NewWellBeingRecordDialog } from '@/components/student-wellbeing/NewWellBeingRecordDialog';
@@ -149,8 +159,16 @@ const StudentWellBeingPage = () => {
     underObservation: 0,
     closed: 0,
   });
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    page: 1,
+    pageSize: 10,
+    totalCount: 0,
+    totalPages: 1,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [academicYearFilter, setAcademicYearFilter] = useState<string>(() => getCurrentAcademicYear());
@@ -175,30 +193,64 @@ const StudentWellBeingPage = () => {
   const [auditDialogOpen, setAuditDialogOpen] = useState(false);
   const [recordForAudit, setRecordForAudit] = useState<StudentWellbeingRecord | null>(null);
   
+  // Debounce the search input: wait 400ms after the user stops typing before firing
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Derive ISO date strings for date_of_observation filtering
+  const formatDateParam = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const dateFromParam = dateRange?.from ? formatDateParam(dateRange.from) : null;
+  const dateToParam = dateRange?.to ? formatDateParam(dateRange.to) : null;
+
+  // Reset to page 1 when any filter changes (not when page itself changes)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter, academicYearFilter, dateFromParam, dateToParam]);
+
   const loadRecords = useCallback(async () => {
     if (!clientId) {
       setRecords([]);
       setSummary({ studentsCount: 0, openCases: 0, underObservation: 0, closed: 0 });
+      setPagination({ page: 1, pageSize: 10, totalCount: 0, totalPages: 1 });
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
-      const academicYear = academicYearFilter && academicYearFilter !== 'all' ? academicYearFilter : undefined;
-      const result = await fetchStudentWellbeingRecords(clientId, employeeData?.id, academicYear);
+      const result = await fetchStudentWellbeingRecords({
+        clientId,
+        employeeId: employeeData?.id,
+        academicYear: academicYearFilter !== 'all' ? academicYearFilter : undefined,
+        page: currentPage,
+        search: debouncedSearch,
+        status: statusFilter,
+        dateFrom: dateFromParam,
+        dateTo: dateToParam,
+      });
       setRecords(result.records);
       setSummary(result.summary);
+      setPagination(result.pagination);
     } catch (err) {
       console.error('Failed to load student well-being records:', err);
       setRecords([]);
     } finally {
       setLoading(false);
+      isFirstRender.current = false;
     }
-  }, [clientId, employeeData?.id, academicYearFilter]);
+  }, [clientId, employeeData?.id, academicYearFilter, currentPage, debouncedSearch, statusFilter, dateFromParam, dateToParam]);
 
   useEffect(() => {
-      loadRecords();
-    }, [loadRecords]);
+    loadRecords();
+  }, [loadRecords]);
 
   const handleDeleteConfirm = async () => {
     if (!recordToDelete || !clientId || !employeeData?.id) return;
@@ -216,42 +268,15 @@ const StudentWellBeingPage = () => {
     }
   };
 
-  const filteredRecords = records.filter((r) => {
-    const matchStatus = statusFilter === 'all' || r.status === statusFilter;
-    if (!matchStatus) return false;
-    const obs = r.date_of_observation ? new Date(r.date_of_observation) : null;
-    const obsDay = obs && !isNaN(obs.getTime())
-      ? new Date(obs.getFullYear(), obs.getMonth(), obs.getDate())
-      : null;
+  // Records are already filtered and paginated server-side; use directly
+  const filteredRecords = records;
 
-    if (dateRange?.from || dateRange?.to) {
-      if (!obsDay) return false;
-      if (dateRange.from) {
-        const fromDay = new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate());
-        if (obsDay < fromDay) return false;
-      }
-      if (dateRange.to) {
-        const toDay = new Date(dateRange.to.getFullYear(), dateRange.to.getMonth(), dateRange.to.getDate());
-        if (obsDay > toDay) return false;
-      }
-    }
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    const studentId = (r.student_display_id ?? r.student_id ?? '').toLowerCase();
-    return (
-      studentId.includes(q) ||
-      r.student_name?.toLowerCase().includes(q) ||
-      r.class?.toLowerCase().includes(q) ||
-      r.concern?.toLowerCase().includes(q)
-    );
-  });
-  // Active filter count
   const activeFilterCount = [
     searchQuery,
     statusFilter !== 'all' ? statusFilter : '',
     dateRange?.from || dateRange?.to ? 'date' : '',
     academicYearFilter !== getCurrentAcademicYear() ? academicYearFilter : '',
-  ].filter(value => {
+  ].filter((value) => {
     if (!value) return false;
     if (typeof value === 'string') return value.trim() !== '';
     return true;
@@ -264,7 +289,7 @@ const StudentWellBeingPage = () => {
     setAcademicYearFilter(getCurrentAcademicYear());
   };
 
-  const exportToCsv = () => {
+  const exportToCsv = async () => {
     const maxConsultations = 5;
     const maxActions = 5;
     const escape = (v: string) => {
@@ -308,7 +333,30 @@ const StudentWellBeingPage = () => {
         `Action ${i + 1} - Description`,
       ]).flat(),
     ];
-    const rows = filteredRecords.map((r) => {
+    // Fetch all records matching current filters (no pagination) for export
+    let exportRecords = filteredRecords;
+    if (!clientId) {
+      toast.error('Unable to export: no client selected');
+      return;
+    }
+    try {
+      const exportResult = await fetchStudentWellbeingRecords({
+        clientId,
+        employeeId: employeeData?.id,
+        academicYear: academicYearFilter !== 'all' ? academicYearFilter : undefined,
+        search: debouncedSearch,
+        status: statusFilter,
+        dateFrom: dateFromParam,
+        dateTo: dateToParam,
+        exportAll: true,
+      });
+      exportRecords = exportResult.records;
+    } catch {
+      toast.error('Failed to fetch records for export');
+      return;
+    }
+
+    const rows = exportRecords.map((r) => {
       const consultations = r.consultations ?? [];
       const actions = r.actions ?? [];
       const rowAcademicYear = getAcademicYearForDate(r.date_of_observation ?? r.created_at);
@@ -345,7 +393,7 @@ const StudentWellBeingPage = () => {
     a.download = `student-wellbeing-records-${fromStr}-${toStr}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredRecords.length} record(s)`);
+    toast.success(`Exported ${exportRecords.length} record(s)`);
   };
 
 
@@ -396,7 +444,7 @@ const StudentWellBeingPage = () => {
                 variant="outline"
                 className="flex items-center gap-2"
                 onClick={exportToCsv}
-                disabled={filteredRecords.length === 0}
+                disabled={pagination.totalCount === 0}
               >
                 <Download className="h-4 w-4" />
                 <span>Export</span>
@@ -473,7 +521,7 @@ const StudentWellBeingPage = () => {
 
           {loading ? (
             <Loader text="Loading Records..." />
-          ) : filteredRecords.length === 0 ? (
+          ) : records.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
               <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-3" />
               <h3 className="text-lg font-medium text-gray-700 mb-1">No records</h3>
@@ -482,6 +530,7 @@ const StudentWellBeingPage = () => {
               </p>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto rounded-md border border-gray-200">
               <Table>
                 <TableHeader>
@@ -498,7 +547,7 @@ const StudentWellBeingPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRecords.map((row) => (
+                  {records.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell className="font-medium">{row.student_display_id ?? row.student_id ?? '—'}</TableCell>
                       <TableCell className="font-medium">{row.student_name}</TableCell>
@@ -661,6 +710,68 @@ const StudentWellBeingPage = () => {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination */}
+            {pagination.totalCount > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Showing {Math.min((pagination.page - 1) * pagination.pageSize + 1, pagination.totalCount)}–{Math.min(pagination.page * pagination.pageSize, pagination.totalCount)} of {pagination.totalCount} records
+                </p>
+                <Pagination className="w-auto mx-0">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }}
+                        className={currentPage <= 1 ? 'pointer-events-none opacity-50' : ''}
+                        aria-disabled={currentPage <= 1}
+                      />
+                    </PaginationItem>
+
+                    {(() => {
+                      const pages: (number | 'ellipsis')[] = [];
+                      const total = pagination.totalPages;
+                      if (total <= 7) {
+                        for (let i = 1; i <= total; i++) pages.push(i);
+                      } else if (currentPage <= 4) {
+                        pages.push(1, 2, 3, 4, 5, 'ellipsis', total);
+                      } else if (currentPage >= total - 3) {
+                        pages.push(1, 'ellipsis', total - 4, total - 3, total - 2, total - 1, total);
+                      } else {
+                        pages.push(1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', total);
+                      }
+                      return pages.map((p, idx) =>
+                        p === 'ellipsis' ? (
+                          <PaginationItem key={`ellipsis-${idx}`}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        ) : (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              href="#"
+                              isActive={p === currentPage}
+                              onClick={(e) => { e.preventDefault(); setCurrentPage(p as number); }}
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        )
+                      );
+                    })()}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); if (currentPage < pagination.totalPages) setCurrentPage(currentPage + 1); }}
+                        className={currentPage >= pagination.totalPages ? 'pointer-events-none opacity-50' : ''}
+                        aria-disabled={currentPage >= pagination.totalPages}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+            </>
           )}
 
         </div>
