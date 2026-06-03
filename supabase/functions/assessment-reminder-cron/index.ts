@@ -207,8 +207,10 @@ async function queueAssessmentDueReminderNotification(
   // Use shared function to get frontend URL
   const getBaseUrl = () => getFrontendUrl();
 
+  const recipientDisplayName = `${assignedEmployee.first_name ?? ''} ${assignedEmployee.last_name ?? ''}`.trim() || assignedEmployee.email;
+
   const variables = {
-    User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+    User_Name: recipientDisplayName,
     Assessment_ID: assessment.id,
     Assessment_Title: assessment.title,
     Due_Date: assessment.target_completion_date ? new Date(assessment.target_completion_date).toLocaleDateString('en-US', {
@@ -227,7 +229,7 @@ async function queueAssessmentDueReminderNotification(
       notification_type: 'assessment_due_5_days',
       client_id: assessment.client_id,
       recipient_email: assignedEmployee.email,
-      recipient_name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+      recipient_name: recipientDisplayName,
       subject: 'Reminder – 5 Days Left for Assessment Due Date [Assessment ID: {{Assessment_ID}}]'
         .replace('{{Assessment_ID}}', assessment.id),
       body: generateAssessmentDueReminderEmailBody(variables),
@@ -284,8 +286,10 @@ async function queueAssessmentOverdueNotification(
   // Use shared function to get frontend URL
   const getBaseUrl = () => getFrontendUrl();
 
+  const recipientDisplayName = `${assignedEmployee.first_name ?? ''} ${assignedEmployee.last_name ?? ''}`.trim() || assignedEmployee.email;
+
   const variables = {
-    User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+    User_Name: recipientDisplayName,
     Assessment_ID: assessment.id,
     Assessment_Title: assessment.title,
     Due_Date: assessment.target_completion_date ? new Date(assessment.target_completion_date).toLocaleDateString('en-US', {
@@ -305,7 +309,7 @@ async function queueAssessmentOverdueNotification(
       notification_type: 'assessment_overdue',
       client_id: assessment.client_id,
       recipient_email: assignedEmployee.email,
-      recipient_name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+      recipient_name: recipientDisplayName,
       subject: 'Assessment Overdue by {{Overdue_Days}} Days – [Assessment ID: {{Assessment_ID}}]'
         .replace('{{Assessment_ID}}', assessment.id)
         .replace('{{Overdue_Days}}', overdueDays.toString()),

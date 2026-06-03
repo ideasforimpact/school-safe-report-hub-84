@@ -214,7 +214,7 @@ serve(async (req) => {
           try {
             // Generate email body with recipient's name
             const emailBody = generateGrievanceNotificationBody({
-              User_Name: `${recipient.first_name} ${recipient.last_name}`,
+              User_Name: `${recipient.first_name ?? ''} ${recipient.last_name ?? ''}`.trim() || recipient.email,
               Grievance_ID: emailEntry.params?.Grievance_ID,
               Grievance_Title: emailEntry.params?.Grievance_Title,
               Grievance_Description: emailEntry.params?.Grievance_Description,

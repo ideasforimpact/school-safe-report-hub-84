@@ -40,14 +40,12 @@ export class NotificationService {
       if (notificationData.module !== 'grievance') {
         const shouldSkip = await this.shouldSkipNotification(notificationData, currentEmployeeData);
         if (shouldSkip) {
-          console.log('Notification skipped due to rules');
-          await this.logNotification({
-            ...notificationData,
-            subject: '',
-            body: '',
-            status: 'skipped',
-            metadata: { skipReason: shouldSkip }
-          });
+          console.log('Notification skipped due to rules:', shouldSkip);
+          // No longer write a status='skipped' row to notification_logs — that table is
+          // now reserved for actual delivery attempts (pending/sent/failed).
+          // Instead, stamp the source record so a UI can show "notification suppressed"
+          // and an admin can audit which event was skipped and why.
+          await this.recordSkipOnSource(notificationData, shouldSkip);
           return false;
         }
       } else {
@@ -264,29 +262,118 @@ export class NotificationService {
   }
 
   /**
-   * Check if user is performing action on their own incident
+   * Skip when the person performing the action is also the recipient — we should
+   * not email someone about an action they performed themselves.
+   *
+   * Applies to any module whose notification_rules row lists 'self_action' in
+   * skip_conditions (currently both incident_* and assessment_*). The previous
+   * `module !== 'incident'` guard meant assessment self_action was a no-op even
+   * though the DB rule declared it.
+   *
+   * Returns false if we don't know who the current actor is — better to send a
+   * potentially-redundant email than to silently drop a legitimate one.
    */
   private checkSelfAction(notificationData: NotificationData, currentEmployeeData?: any): boolean {
-    if (notificationData.module !== 'incident') return false;
-    
-    const incidentData = notificationData as IncidentNotificationData;
-    
-    // Check if the current logged-in user is the recipient (self-action)
-    if (currentEmployeeData?.id != incidentData.metadata?.reportedBy) {
-      return true;
-    }
+    if (!currentEmployeeData?.id) return false;
+    return currentEmployeeData.id === notificationData.recipientId;
+  }
 
-    // Check if the user is the one who reported the incident
-    if (incidentData.metadata?.reportedBy === notificationData.recipientId) {
-      return true;
+  /**
+   * Stamp the source record (incidents / assessments) when a notification gets skipped.
+   *
+   * - Sets is_skipped = true (sticky; once true, stays true).
+   * - Appends a structured entry to skipped_notifications jsonb so we keep full audit
+   *   history without writing a row to notification_logs.
+   *
+   * Read-modify-write rather than a server-side jsonb append: skips are rare events
+   * (only on self-action / inactive user / no-email cases), so the race window is
+   * negligible. If we ever see contention, swap to a SECURITY DEFINER RPC that does
+   *   UPDATE ... SET skipped_notifications = skipped_notifications || $entry
+   * atomically.
+   *
+   * Silently returns on unknown modules (e.g. grievance) — grievance bypasses skip
+   * checks upstream, so this should never be reached for it.
+   */
+  private async recordSkipOnSource(
+    notificationData: NotificationData,
+    skipReason: string
+  ): Promise<void> {
+    try {
+      // module → { table, metadata key holding the source row id }
+      const moduleToSource: Record<string, { table: string; idKey: string }> = {
+        incident:   { table: 'incidents',   idKey: 'incidentId' },
+        assessment: { table: 'assessments', idKey: 'assessmentId' },
+      };
+
+      const config = moduleToSource[notificationData.module];
+      if (!config) {
+        // grievance / unknown module — nothing to stamp.
+        return;
+      }
+
+      const sourceId = (notificationData.metadata as Record<string, any> | undefined)?.[config.idKey];
+      if (!sourceId) {
+        console.warn(
+          `recordSkipOnSource: missing ${config.idKey} in metadata for module=${notificationData.module}, skipping write`
+        );
+        return;
+      }
+
+      const skipEntry = {
+        type: notificationData.type,
+        reason: skipReason,
+        recipient_id: notificationData.recipientId ?? null,
+        recipient_email: notificationData.recipientEmail ?? null,
+        skipped_at: new Date().toISOString(),
+      };
+
+      // Read existing list. If the row is gone, bail quietly.
+      const { data: current, error: fetchErr } = await supabase
+        .from(config.table)
+        .select('skipped_notifications')
+        .eq('id', sourceId)
+        .maybeSingle();
+
+      if (fetchErr) {
+        console.error(
+          `recordSkipOnSource: fetch failed for ${config.table} id=${sourceId}:`,
+          fetchErr
+        );
+        return;
+      }
+      if (!current) {
+        console.warn(
+          `recordSkipOnSource: source row not found in ${config.table} (id=${sourceId}); skip not recorded`
+        );
+        return;
+      }
+
+      const existing = Array.isArray((current as any).skipped_notifications)
+        ? (current as any).skipped_notifications
+        : [];
+
+      const { error: updateErr } = await supabase
+        .from(config.table)
+        .update({
+          is_skipped: true,
+          skipped_notifications: [...existing, skipEntry],
+        })
+        .eq('id', sourceId);
+
+      if (updateErr) {
+        console.error(
+          `recordSkipOnSource: update failed for ${config.table} id=${sourceId}:`,
+          updateErr
+        );
+        return;
+      }
+
+      console.log(
+        `recordSkipOnSource: stamped skip on ${config.table} id=${sourceId} (type=${notificationData.type}, reason=${skipReason})`
+      );
+    } catch (error) {
+      console.error('recordSkipOnSource: unexpected error:', error);
     }
-    
-    // Check if the user is the one who updated/closed/reopened the incident
-    if (incidentData.metadata?.actionBy === notificationData.recipientId) {
-      return true;
-    }
-    
-    return false;
   }
 
   /**
@@ -395,6 +482,10 @@ export class NotificationService {
       const logEntry = {
         module: logData.module,
         type: logData.type,
+        // notification_logs.client_id was previously left null because we never read it
+        // from the source NotificationData. Populating it now so per-tenant queries on
+        // notification_logs actually work (and so the FK to clients is meaningful).
+        client_id: logData.clientId ?? null,
         recipient_id: logData.recipientId,
         recipient_email: logData.recipientEmail,
         subject: logData.subject || '',
@@ -409,6 +500,7 @@ export class NotificationService {
       console.log('Logging notification:', {
         module: logEntry.module,
         type: logEntry.type,
+        client_id: logEntry.client_id,
         recipient_id: logEntry.recipient_id,
         status: logEntry.status
       });

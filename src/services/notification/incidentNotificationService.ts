@@ -1,10 +1,11 @@
 import { notificationService } from './notificationService';
-import { 
-  IncidentNotificationData, 
+import {
+  IncidentNotificationData,
   NotificationData,
-  NotificationType 
+  NotificationType
 } from '@/types/notification';
 import { Incident } from '@/types/incident';
+import { formatEmployeeName } from './formatHelpers';
 
 // Define the Employee interface based on the database structure
 interface Employee {
@@ -32,8 +33,9 @@ export class IncidentNotificationService {
    */
   async queueIncidentAssignedNotification(incident: any, assignedEmployee: Employee, currentEmployeeData?: any): Promise<boolean> {
     try {
-      // Validate required employee data
-      if (!assignedEmployee?.id || !assignedEmployee?.email || !assignedEmployee?.first_name || !assignedEmployee?.last_name) {
+      // Validate required employee data — only id + email are required for delivery.
+      // first_name / last_name may legitimately be empty for shared / single-name accounts.
+      if (!assignedEmployee?.id || !assignedEmployee?.email) {
         console.error('Invalid assigned employee data:', assignedEmployee);
         return false;
       }
@@ -44,16 +46,18 @@ export class IncidentNotificationService {
         return false;
       }
 
+      const displayName = formatEmployeeName(assignedEmployee);
+
       const notificationData: NotificationData = {
         module: 'incident',
         type: 'incident_assigned' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: displayName,
         clientId: incident.client_id,
         priority: 'medium',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: displayName,
           Incident_ID: incident.ticket_id,
           Incident_Title: incident.description || 'No description provided',
           Reported_Date: new Date(incident.created_at).toLocaleDateString('en-US', {
@@ -104,19 +108,22 @@ export class IncidentNotificationService {
         return false;
       }
 
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+      const actorDisplayName = formatEmployeeName(updatedBy);
+
       const notificationData: NotificationData = {
         module: 'incident',
         type: 'incident_updated' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: incident.client_id,
         priority: 'medium',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Incident_ID: incident.ticket_id,
           Incident_Title: incident.description,
-          Updated_By: `${updatedBy.first_name} ${updatedBy.last_name}`,
+          Updated_By: actorDisplayName,
           Update_Notes: updateNotes || 'Incident has been updated',
           Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`,
           created_by: incident.created_by,
@@ -151,19 +158,22 @@ export class IncidentNotificationService {
         return false;
       }
 
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+      const actorDisplayName = formatEmployeeName(closedBy);
+
       const notificationData: NotificationData = {
         module: 'incident',
         type: 'incident_closed' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: incident.client_id,
         priority: 'medium',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Incident_ID: incident.ticket_id,
           Incident_Title: incident.description,
-          Closed_By: `${closedBy.first_name} ${closedBy.last_name}`,
+          Closed_By: actorDisplayName,
           Closed_Date: new Date().toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -205,19 +215,22 @@ export class IncidentNotificationService {
         return false;
       }
 
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+      const actorDisplayName = formatEmployeeName(reopenedBy);
+
       const notificationData: NotificationData = {
         module: 'incident',
         type: 'incident_reopened' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: incident.client_id,
         priority: 'high',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Incident_ID: incident.ticket_id,
           Incident_Title: incident.description,
-          Reopened_By: `${reopenedBy.first_name} ${reopenedBy.last_name}`,
+          Reopened_By: actorDisplayName,
           Reopen_Reason: reopenReason || 'Incident has been reopened',
           Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`,
           created_by: incident.created_by,
@@ -246,16 +259,18 @@ export class IncidentNotificationService {
     currentEmployeeData?: any
   ): Promise<boolean> {
     try {
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+
       const notificationData: NotificationData = {
         module: 'incident',
         type: 'incident_reminder' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: incident.client_id,
         priority: 'high',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Incident_ID: incident.ticket_id,
           Incident_Title: incident.description,
           Reported_Date: new Date(incident.created_at).toLocaleDateString('en-US', {
