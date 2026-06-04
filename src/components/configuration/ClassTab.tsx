@@ -15,8 +15,6 @@ import { Plus, Pencil, Trash2, Loader2, Search, X } from 'lucide-react';
 import { ClassItem, CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
-import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/auth/useAuth';
 import {
   Select,
@@ -57,45 +55,6 @@ export const ClassTab = ({
   const [filterCampusId, setFilterCampusId] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const [gradeReferences, setGradeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
-
-  // Pre-load reference info so we can disable delete button for linked grades
-  useEffect(() => {
-    const clientId = employeeData?.clientId || employeeData?.client_id;
-    if (!clientId || classes.length === 0) {
-      setGradeReferences({});
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchReferences = async () => {
-      try {
-        const results = await Promise.all(
-          classes.map(async (cls) => {
-            const refInfo = await incidentReferenceService.checkGradeReferences(cls.id, clientId);
-            return { id: cls.id, refInfo };
-          })
-        );
-
-        if (isCancelled) return;
-
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
-        setGradeReferences(map);
-      } catch (error) {
-        console.error('Error preloading grade reference info:', error);
-      }
-    };
-
-    fetchReferences();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [classes, employeeData]);
 
   // Validation: allow any characters, max 10 length
   const isValidGradeName = (name: string) => {
@@ -422,59 +381,15 @@ export const ClassTab = ({
                         <Pencil className="h-4 w-4" />
                       </Button>
                       
-                      {(() => {
-                        const refInfo = gradeReferences[cls.id];
-                        const isLinked = refInfo?.hasReferences || false;
-                        const message = refInfo?.message || '';
-
-                        if (isLinked) {
-                          return (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon"
-                                      disabled={true}
-                                      aria-disabled="true"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                      }}
-                                      className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent 
-                                  side="left" 
-                                  align="center" 
-                                  sideOffset={8} 
-                                  className="max-w-xs whitespace-normal text-left"
-                                >
-                                  <p className="text-xs leading-snug text-left">
-                                    {message}
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          );
-                        }
-
-                        return (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleClassDelete(cls.id)}
-                            disabled={loading}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        );
-                      })()}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleClassDelete(cls.id)}
+                        disabled={loading}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                   )}

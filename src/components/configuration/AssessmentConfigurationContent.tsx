@@ -20,9 +20,7 @@ const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigur
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [viewingTemplateId, setViewingTemplateId] = useState<string | null>(null);
   
-  useEffect(() => {
-    refreshTemplates();
-  }, []);
+  // Templates are loaded by AssessmentContext via useTemplateManagement — no extra fetch needed here
 
   const handleCreateTemplate = () => {
     setEditingTemplateId(null);

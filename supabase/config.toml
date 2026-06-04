@@ -105,6 +105,12 @@ verify_jwt = true
 [functions.profile_info]
 verify_jwt = true
 
+[functions.init-incident-data]
+verify_jwt = true
+
+[functions.incident-configuration]
+verify_jwt = true
+
 [functions.backoffice-client-management]
 verify_jwt = false
 
