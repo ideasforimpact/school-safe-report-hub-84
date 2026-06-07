@@ -435,7 +435,7 @@ serve(async (req) => {
           title,
           description,
           category_id: categoryId,
-          is_active: true,
+          is_active: isActive,
           questions: processedQuestions,
           created_by: employeeId,
           client_id: clientId

@@ -153,7 +153,7 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
           Assessment_URL: `${getBaseUrl()}/assessments`
         };
 
-        const subject = `Reminder – 5 Days Left for Assessment Due Date [Assessment ID: ${variables.Assessment_ID}]`;
+        const subject = `Reminder – 5 Days Left for Assessment Due Date [${variables.Assessment_Title}]`;
         const body = generateAssessmentDueReminderEmailBody(variables);
         const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-notification-email', {
           body: { to: email.recipient_email, toName: email.recipient_name, subject, body, priority: email.priority > 0 ? 'high' : 'normal' },
@@ -279,7 +279,7 @@ async function processOverdueReminders(supabase: any, today: Date, result: any) 
           Assessment_URL: `${getBaseUrl()}/assessments`
         };
 
-        const subject = `Assessment Overdue by ${variables.Overdue_Days} Days – [Assessment ID: ${variables.Assessment_ID}]`;
+        const subject = `Assessment Overdue by ${variables.Overdue_Days} Days – [${variables.Assessment_Title}]`;
         const body = generateAssessmentOverdueEmailBody(variables);
         const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-notification-email', {
           body: { to: email.recipient_email, toName: email.recipient_name, subject, body, priority: 'high' },
@@ -506,8 +506,7 @@ function generateAssessmentDueReminderEmailBody(variables: any): string {
 <p style="margin:0 0 20px;font-size:16px;">This is a reminder that your assessment is due in <strong>5 days</strong>.</p>
 <div style="background-color:#fef3c7;padding:16px;border-radius:6px;border-left:4px solid #f59e0b;margin:20px 0;">
 <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Assessment Details:</h3>
-<p style="margin:6px 0;"><strong>Assessment ID:</strong> ${variables.Assessment_ID}</p>
-<p style="margin:6px 0;"><strong>Title:</strong> ${variables.Assessment_Title}</p>
+<p style="margin:6px 0;"><strong>Assessment Name:</strong> ${variables.Assessment_Title}</p>
 <p style="margin:6px 0;"><strong>Due Date:</strong> ${variables.Due_Date}</p>
 </div>
 <p style="margin:20px 0;font-size:16px;color:#6b7280;">Kindly complete and submit it on time. <a href="${variables.Assessment_URL}?assessmentId=${encodeURIComponent(String(variables.Assessment_ID))}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
@@ -529,8 +528,7 @@ function generateAssessmentOverdueEmailBody(variables: any): string {
 <p style="margin:0 0 20px;font-size:16px;">The following assessment is overdue by <strong>${variables.Overdue_Days} days</strong> and requires immediate attention.</p>
 <div style="background-color:#fee2e2;padding:16px;border-radius:6px;border-left:4px solid #dc2626;margin:20px 0;">
 <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Overdue Assessment:</h3>
-<p style="margin:6px 0;"><strong>Assessment ID:</strong> ${variables.Assessment_ID}</p>
-<p style="margin:6px 0;"><strong>Title:</strong> ${variables.Assessment_Title}</p>
+<p style="margin:6px 0;"><strong>Assessment Name:</strong> ${variables.Assessment_Title}</p>
 <p style="margin:6px 0;"><strong>Due Date:</strong> ${variables.Due_Date}</p>
 <p style="margin:6px 0;"><strong>Days Overdue:</strong> ${variables.Overdue_Days}</p>
 </div>

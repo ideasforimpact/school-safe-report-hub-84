@@ -761,12 +761,15 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             Date of Birth <span className="text-red-500">*</span>
           </Label>
           <div className="mt-1">
-            <DatePickerWithYearMonth
-              date={dateOfBirth}
-              onChange={setDateOfBirth}
-              placeholderText="Select date of birth"
-              minYear={1900}
-              maxYear={new Date().getFullYear()}
+            <Input
+              type="date"
+              value={dateOfBirth ? format(dateOfBirth, 'yyyy-MM-dd') : ''}
+              onChange={(e) =>
+                setDateOfBirth(
+                  e.target.value ? new Date(e.target.value) : undefined
+                )
+              }
+              max={new Date().toISOString().split('T')[0]}
             />
           </div>
         </div>
