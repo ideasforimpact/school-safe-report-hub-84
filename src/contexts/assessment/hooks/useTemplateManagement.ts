@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AssessmentTemplate } from '@/types/assessment';
 import { toast } from 'sonner';
 import { templateService } from '@/services/assessment/templateService';
@@ -9,6 +9,7 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const { employeeData } = useAuth();
+  const fetchedForClientRef = useRef<string | null>(null);
 
   // Load templates from Supabase
   const loadTemplates = async () => {
@@ -32,12 +33,10 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
   };
 
   useEffect(() => {
-    if (!enabled) {
-      return;
-    }
-    if (employeeData?.clientId) {
-      loadTemplates();
-    }
+    if (!enabled || !employeeData?.clientId) return;
+    if (fetchedForClientRef.current === employeeData.clientId) return;
+    fetchedForClientRef.current = employeeData.clientId;
+    loadTemplates();
   }, [employeeData?.clientId, enabled]);
 
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {

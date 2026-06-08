@@ -101,41 +101,19 @@ async function convertFilesToBase64(questions: AssessmentQuestion[]): Promise<an
 }
 
 export const templateService = {
-  // Get all templates for a client
+  // Get all templates for a client via edge function
   getTemplates: async (clientId: string): Promise<AssessmentTemplate[]> => {
     try {
-      const { data, error } = await supabase
-        .from('assessment_templates')
-        .select(`
-          id,
-          title,
-          description,
-          category_id,
-          is_active,
-          questions,
-          created_at,
-          created_by,
-          template_categories(
-            id,
-            name,
-            description
-          )
-        `)
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
+      const { data: result, error } = await supabase.functions.invoke('create-assessment-template', {
+        body: { action: 'list', clientId },
+      });
 
-      if (error) {
-        console.error('Error fetching templates:', error);
-        throw new Error(`Failed to fetch templates: ${error.message}`);
-      }
+      if (error) throw new Error(`Failed to fetch templates: ${error.message}`);
 
-      console.log({
-        data,
-        clientId
-      },"assessment validation");
-      
+      const data = result?.templates ?? [];
+
       // Transform data to include type from category relationship
-      const templates = data?.map(template => ({
+      const templates = data.map((template: any) => ({
         id: template.id,
         title: template.title,
         description: template.description,
