@@ -11,6 +11,7 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
   const { employeeData } = useAuth();
   const lastFetchKeyRef = useRef('');
 
+  const fetchedForClientRef = useRef<string | null>(null);
   const loadTemplates = async (force = false) => {
     const clientId = employeeData?.clientId;
     if (!clientId) return;
@@ -33,12 +34,10 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
   };
 
   useEffect(() => {
-    if (!enabled) {
-      return;
-    }
-    if (employeeData?.clientId) {
-      loadTemplates();
-    }
+    if (!enabled || !employeeData?.clientId) return;
+    if (fetchedForClientRef.current === employeeData.clientId) return;
+    fetchedForClientRef.current = employeeData.clientId;
+    loadTemplates();
   }, [employeeData?.clientId, enabled]);
 
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {

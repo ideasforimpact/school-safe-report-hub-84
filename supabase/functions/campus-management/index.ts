@@ -35,6 +35,28 @@ serve(async (req) => {
     
     // Handle the different actions
     switch (action) {
+      case 'fetch-all': {
+        const clientId = body.clientId;
+        if (!clientId) {
+          return new Response(JSON.stringify({ error: 'Client ID is required' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+        }
+        const [campuses, grades, sections, facilities] = await Promise.all([
+          supabase.from('campuses').select('*').eq('client_id', clientId),
+          supabase.from('grades').select('*').eq('client_id', clientId),
+          supabase.from('sections').select('*').eq('client_id', clientId),
+          supabase.from('facilities').select('*').eq('client_id', clientId),
+        ]);
+        return new Response(
+          JSON.stringify({
+            campuses: campuses.data ?? [],
+            grades: grades.data ?? [],
+            sections: sections.data ?? [],
+            facilities: facilities.data ?? [],
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'list': {
         const clientId = req.method === 'GET'
           ? new URL(req.url).searchParams.get('clientId')

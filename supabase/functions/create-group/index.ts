@@ -80,6 +80,37 @@ serve(async (req) => {
     }
 
     switch (action) {
+      case 'list': {
+        const { data: groupsData, error: groupsError } = await supabaseClient
+          .from('groups')
+          .select('id, name, description, group_type, status, client_id, employee_id, department_id, created_at, updated_at, group_employees:group_employees(count)')
+          .eq('client_id', client_id)
+          .order('created_at', { ascending: false });
+
+        if (groupsError) throw groupsError;
+
+        const groupIds = (groupsData || []).map((g: any) => g.id);
+        let assignedGroupIds: string[] = [];
+
+        if (groupIds.length > 0) {
+          const { data: sopData } = await supabaseClient
+            .from('sop_assigned')
+            .select('group_id')
+            .in('group_id', groupIds)
+            .not('group_id', 'is', null);
+          assignedGroupIds = (sopData || []).map((r: any) => r.group_id).filter(Boolean);
+        }
+
+        const assignedSet = new Set(assignedGroupIds);
+        const groups = (groupsData || []).map((g: any) => ({
+          ...g,
+          member_count: g.group_employees?.[0]?.count ?? 0,
+          is_assigned_to_sop: assignedSet.has(g.id),
+        }));
+
+        return new Response(JSON.stringify({ groups }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
       case 'create':
         return await handleCreate(supabaseClient, { client_id, employee_id, name, description, group_type, employee_ids, department_id });
       case 'update':
@@ -141,6 +172,21 @@ async function handleCreate(supabaseClient: any, data: any) {
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
+    );
+  }
+
+  // Check for duplicate name within the same client (case-insensitive)
+  const { data: existing } = await supabaseClient
+    .from('groups')
+    .select('id')
+    .eq('client_id', client_id)
+    .ilike('name', name.trim())
+    .maybeSingle();
+
+  if (existing) {
+    return new Response(
+      JSON.stringify({ error: `A group with the name "${name.trim()}" already exists` }),
+      { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 

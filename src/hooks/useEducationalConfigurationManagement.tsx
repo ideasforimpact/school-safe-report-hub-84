@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ConfigItem, CampusItem, ClassItem, SectionItem } from '@/contexts/types';
@@ -11,7 +11,7 @@ export function useEducationalConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('campuses');
   const { employeeData } = useAuth();
-  
+  const fetchedForClientRef = useRef<string | null>(null);
   // Local states
   const [loading, setLoading] = useState(false);
   const [campuses, setCampuses] = useState<CampusItem[]>([]);
@@ -27,114 +27,39 @@ export function useEducationalConfigurationManagement() {
     }
   }, [searchParams]);
 
-  // Fetch data from Supabase when employeeData changes
-  useEffect(() => {
-    if (employeeData?.clientId) {
-      fetchCampuses();
-      fetchClasses();
-      fetchSections();
-      fetchFacilities();
-    }
-  }, [employeeData?.clientId]);
-
-  // Fetch campuses
-  const fetchCampuses = useCallback(async () => {
+  // Single call fetches all 4 educational datasets at once
+  const fetchAllEducationalData = useCallback(async () => {
     if (!employeeData?.clientId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { clientId: employeeData.clientId, action: 'list' }
+        body: { clientId: employeeData.clientId, action: 'fetch-all' }
       });
 
       if (error) throw error;
-      
-      setCampuses(data.campuses.map((campus: any) => ({
-        id: campus.id,
-        name: campus.name
-      })));
+      setCampuses((data.campuses ?? []).map((c: any) => ({ id: c.id, name: c.name })));
+      setClasses((data.grades ?? []).map((g: any) => ({ id: g.id, name: g.name, campusId: g.campus_id })));
+      setSections((data.sections ?? []).map((s: any) => ({ id: s.id, name: s.name, classId: s.grade_id, campusId: s.campus_id })));
+      setFacilities((data.facilities ?? []).map((f: any) => ({ id: f.id, name: f.name, campusId: f.campus_id })));
     } catch (error) {
-      console.error("Error fetching campuses:", error);
-      toast.error("Failed to load campuses");
+      console.error("Error fetching educational data:", error);
+      toast.error("Failed to load educational structure");
     } finally {
       setLoading(false);
     }
   }, [employeeData?.clientId]);
 
-  // Fetch classes/grades
-  const fetchClasses = useCallback(async () => {
-    if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { clientId: employeeData.clientId, action: 'list' }
-      });
+  // Keep individual fetch helpers for post-mutation refreshes
+  const fetchCampuses = fetchAllEducationalData;
+  const fetchClasses = fetchAllEducationalData;
+  const fetchSections = fetchAllEducationalData;
+  const fetchFacilities = fetchAllEducationalData;
 
-      if (error) throw error;
-      
-      setClasses(data.grades.map((grade: any) => ({
-        id: grade.id,
-        name: grade.name,
-        campusId: grade.campus_id
-      })));
-    } catch (error) {
-      console.error("Error fetching grades:", error);
-      toast.error("Failed to load grades");
-    } finally {
-      setLoading(false);
-    }
-  }, [employeeData?.clientId]);
-
-  // Fetch sections with campus_id
-  const fetchSections = useCallback(async () => {
-    if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { clientId: employeeData.clientId, action: 'list' }
-      });
-
-      if (error) throw error;
-      
-      setSections(data.sections.map((section: any) => ({
-        id: section.id,
-        name: section.name,
-        classId: section.grade_id,
-        campusId: section.campus_id
-      })));
-    } catch (error) {
-      console.error("Error fetching sections:", error);
-      toast.error("Failed to load sections");
-    } finally {
-      setLoading(false);
-    }
-  }, [employeeData?.clientId]);
-
-  // Fetch facilities
-  const fetchFacilities = useCallback(async () => {
-    if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { clientId: employeeData.clientId, action: 'list' }
-      });
-
-      if (error) throw error;
-      
-      setFacilities(data.facilities.map((facility: any) => ({
-        id: facility.id,
-        name: facility.name,
-        campusId: facility.campus_id
-      })));
-    } catch (error) {
-      console.error("Error fetching facilities:", error);
-      toast.error("Failed to load facilities");
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    if (!employeeData?.clientId || fetchedForClientRef.current === employeeData.clientId) return;
+    fetchedForClientRef.current = employeeData.clientId;
+    fetchAllEducationalData();
   }, [employeeData?.clientId]);
 
   // Campus management with Supabase
@@ -500,20 +425,9 @@ export function useEducationalConfigurationManagement() {
   };
 
   const refetchAllEducationalConfig = useCallback(async () => {
-    if (!employeeData?.clientId) return;
-
-    await Promise.all([
-      fetchCampuses(),
-      fetchClasses(),
-      fetchSections(),
-      fetchFacilities(),
-    ]);
+    await fetchAllEducationalData();
   }, [
-    employeeData?.clientId,
-    fetchCampuses,
-    fetchClasses,
-    fetchSections,
-    fetchFacilities,
+    fetchAllEducationalData,
   ]);
 
   useRealTimeSubHook({

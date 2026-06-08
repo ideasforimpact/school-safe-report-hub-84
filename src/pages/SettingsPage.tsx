@@ -9,70 +9,45 @@ import { useAuth } from '@/contexts/auth';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
 import UserManagement from '@/pages/UserManagement';
 import StudentManagement from '@/pages/StudentManagement';
-import { EducationalStructureConfig } from '@/pages/configuration/EducationalStructureConfig';
-import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
+import EducationalStructureTab from '@/components/configuration/EducationalStructureTab';
 import AssessmentConfigurationContent from '@/components/configuration/AssessmentConfigurationContent';
 import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
 import GroupConfigurationContent from '@/components/configuration/GroupConfigurationContent';
-import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useClientIntegration } from '@/hooks/useClientIntegration';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const SettingsPage = () => {
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
-  const { employeeData } = useAuth();
+  const { user, employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [clientType, setClientType] = useState<string | null>(null);
-  
-  const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
-          handleAddCampus, handleUpdateCampus, handleDeleteCampus,
-          handleAddClass, handleUpdateClass, handleDeleteClass,
-          handleAddSection, handleUpdateSection, handleDeleteSection,
-          handleAddFacility, handleUpdateFacility, handleDeleteFacility } = useEducationalConfigurationManagement();
-  
-  // Check if client integration is linked
+
+  const defaultTab = searchParams.get('tab') === 'form' ? 'form' : 'incident';
+  // Only mount a tab's content the first time it is visited
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set([defaultTab]));
+  const markVisited = (tab: string) => setVisitedTabs(prev => new Set(prev).add(tab));
+
   const { isClientLinked } = useClientIntegration();
 
-  // Check for tab parameter in URL and set active tab accordingly
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'form') {
-      // Don't change activeTab since that's for educational configuration
-      // The Tabs component will handle the form tab activation
-    }
-  }, [searchParams]);
-
-  // Determine client type from employeeData or user data
-  useEffect(() => {
-    console.log('SettingsPage - employeeData:', employeeData);
-    console.log('SettingsPage - user:', user);
-    
     let detectedClientType = null;
-    
-    // First check employeeData
     if (employeeData?.clientType?.key) {
       detectedClientType = employeeData.clientType.key;
     } else if (employeeData?.client?.client_type?.key) {
       detectedClientType = employeeData.client.client_type.key;
-    } 
-    // Fallback to user data if employeeData doesn't have clientType
-    else if (user?.clientType?.key) {
+    } else if (user?.clientType?.key) {
       detectedClientType = user.clientType.key;
     } else if (user?.client?.client_type?.key) {
       detectedClientType = user.client.client_type.key;
     }
-    
-    console.log('SettingsPage - Detected client type:', detectedClientType);
     setClientType(detectedClientType);
   }, [employeeData, user]);
 
-  const defaultTab = searchParams.get('tab') === 'form' ? 'form' : 'incident';
-
-  // Determine if educational tabs should be shown (for schools and similar educational institutions)
-  const showEducationalTabs = clientType === 'school' || clientType === 'college' || clientType === 'university' || clientType === 'educational';
-
-  console.log('SettingsPage - showEducationalTabs:', showEducationalTabs, 'clientType:', clientType);
+  const showEducationalTabs =
+    clientType === 'school' ||
+    clientType === 'college' ||
+    clientType === 'university' ||
+    clientType === 'educational';
 
   return (
     <Layout>
@@ -87,8 +62,7 @@ const SettingsPage = () => {
               </div>
             </div>
           </div>
-          
-          <Tabs defaultValue={defaultTab} className="w-full pl-5 pr-[25px]">
+          <Tabs defaultValue={defaultTab} className="w-full pl-5 pr-[25px]" onValueChange={markVisited}>
             <TabsList className="mb-6">
               <TabsTrigger value="incident" className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
@@ -112,8 +86,8 @@ const SettingsPage = () => {
               </TabsTrigger>
               {showEducationalTabs && (
                 <>
-                  <TabsTrigger 
-                    value="student" 
+                  <TabsTrigger
+                    value="student"
                     className="flex items-center gap-2"
                     disabled={isClientLinked}
                     title={isClientLinked ? "Student Management is disabled when client integration is linked" : ""}
@@ -128,7 +102,6 @@ const SettingsPage = () => {
                 </>
               )}
             </TabsList>
-            
             <TabsContent value="incident">
               <Card>
                 <CardHeader>
@@ -136,11 +109,10 @@ const SettingsPage = () => {
                   <CardDescription>Configure incident categories, priorities, and other settings</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <IncidentConfigurationContent />
+                  {visitedTabs.has('incident') && <IncidentConfigurationContent />}
                 </CardContent>
               </Card>
             </TabsContent>
-            
             <TabsContent value="assessment">
               <Card className="w-full">
                 <CardHeader>
@@ -148,11 +120,10 @@ const SettingsPage = () => {
                   <CardDescription>Create and manage assessment templates with yes/no questions</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <AssessmentConfigurationContent embedded={true} />
+                  {visitedTabs.has('assessment') && <AssessmentConfigurationContent embedded={true} />}
                 </CardContent>
               </Card>
             </TabsContent>
-            
             <TabsContent value="form">
               <Card className="w-full">
                 <CardHeader>
@@ -160,11 +131,10 @@ const SettingsPage = () => {
                   <CardDescription>Create and manage custom forms with a simple form builder</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <FormConfigurationContent />
+                  {visitedTabs.has('form') && <FormConfigurationContent />}
                 </CardContent>
               </Card>
             </TabsContent>
-            
             <TabsContent value="user" className="p-0">
               <Card className="w-full">
                 <CardHeader>
@@ -172,11 +142,11 @@ const SettingsPage = () => {
                   <CardDescription>Manage users and their permissions in your institution</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <UserManagement embedded={true} />
+                  {visitedTabs.has('user') && <UserManagement embedded={true} />}
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="group" className="p-0">
               <Card className="w-full">
                 <CardHeader>
@@ -184,11 +154,10 @@ const SettingsPage = () => {
                   <CardDescription>Manage groups and their members</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <GroupConfigurationContent />
+                  {visitedTabs.has('group') && <GroupConfigurationContent />}
                 </CardContent>
               </Card>
             </TabsContent>
-            
             {showEducationalTabs && (
               <>
                 <TabsContent value="student" className="p-0">
@@ -198,11 +167,10 @@ const SettingsPage = () => {
                       <CardDescription>Manage students in your institution</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <StudentManagement embedded={true} />
+                      {visitedTabs.has('student') && <StudentManagement embedded={true} />}
                     </CardContent>
                   </Card>
                 </TabsContent>
-                
                 <TabsContent value="educational" className="p-0">
                   <Card className="w-full">
                     <CardHeader>
@@ -210,28 +178,7 @@ const SettingsPage = () => {
                       <CardDescription>Manage campuses, classes, sections, and facilities</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <EducationalStructureConfig 
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        loading={loading}
-                        campuses={campuses}
-                        addCampus={handleAddCampus}
-                        updateCampus={handleUpdateCampus}
-                        deleteCampus={handleDeleteCampus}
-                        classes={classes}
-                        addClass={handleAddClass}
-                        updateClass={handleUpdateClass}
-                        deleteClass={handleDeleteClass}
-                        sections={sections}
-                        addSection={handleAddSection}
-                        updateSection={handleUpdateSection}
-                        deleteSection={handleDeleteSection}
-                        facilities={facilities}
-                        addFacility={handleAddFacility}
-                        updateFacility={handleUpdateFacility}
-                        deleteFacility={handleDeleteFacility}
-                        canCreate={!isReadOnlySwitchedContext}
-                      />
+                      {visitedTabs.has('educational') && <EducationalStructureTab />}
                     </CardContent>
                   </Card>
                 </TabsContent>
