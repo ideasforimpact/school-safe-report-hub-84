@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -33,9 +33,7 @@ import { getEmployeeData } from '@/store/employeeSelectors';
 import { useClient } from '@/contexts/ClientContext';
 import SignoffRequestDialog from '@/components/sop/SignoffRequestDialog';
 import GroupDetailsDialog from '@/components/sop/GroupDetailsDialog';
-import { getEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { useCallback } from 'react';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
 
@@ -82,12 +80,14 @@ const AssignedSOPPage = () => {
   const employeeData = getEmployeeData(state);
   const { client } = useClient();
   const [sops, setSops] = useState<SOP[]>([]);
-  const [allSops, setAllSops] = useState<SOP[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 10;
   const [signoffDialogOpen, setSignoffDialogOpen] = useState(false);
   const [signoffSOP, setSignoffSOP] = useState<SOP | null>(null);
   const [groupDetailsDialogOpen, setGroupDetailsDialogOpen] = useState(false);
@@ -103,129 +103,135 @@ const AssignedSOPPage = () => {
   // Resolve clientId from employeeData (same pattern as SOPPage)
   const resolvedClientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
 
-  // Fetch employee statistics
-  const fetchEmployeeStatistics = useCallback(async () => {
-    if (!resolvedClientId || !employeeData?.id) {
-      setStatisticsLoading(false);
-      return;
-    }
+  // Guards to prevent concurrent / duplicate fetch-assigned-sop calls
+  const fetchingRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDirectFetchRef = useRef<number>(0);
+  const currentPageRef = useRef(1);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    try {
-      console.log('[AssignedSOPPage] Fetching employee statistics...', { resolvedClientId, employeeId: employeeData.id });
-      setStatisticsLoading(true);
-      const stats = await getEmployeeSOPStatistics(resolvedClientId, employeeData.id);
-      console.log('[AssignedSOPPage] Employee statistics fetched:', stats);
-      setEmployeeTotalSOPs(stats.totalSOPs);
-      setEmployeeTotalSOPsSignedOff(stats.totalSOPsSignedOff);
-      setEmployeeTotalSOPsToBeDone(stats.totalSOPsToBeDone);
-    } catch (error) {
-      console.error('[AssignedSOPPage] Error fetching employee SOP statistics:', error);
-    } finally {
-      setStatisticsLoading(false);
-    }
-  }, [resolvedClientId, employeeData?.id]);
+  // Keep ref in sync
+  useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
+  // Initial load
   useEffect(() => {
     if (resolvedClientId && employeeData?.id) {
-    fetchAssignedSOPs();
-      fetchEmployeeStatistics();
-      fetchCategories();
+      setCurrentPage(1);
+      currentPageRef.current = 1;
+      fetchAssignedSOPs();
     }
-  }, [resolvedClientId, employeeData?.id, fetchEmployeeStatistics]);
+  }, [resolvedClientId, employeeData?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch categories
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('sop_categories' as any)
-        .select('id, category_name')
-        .order('category_name', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching categories:', error);
-        return;
-      }
-
-      setCategories((data || []) as unknown as Array<{ id: string; category_name: string }>);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
-
-  // Filter SOPs based on search, status, and category
-  useEffect(() => {
-    let filtered = [...allSops];
-
-    // Apply search filter
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (sop) =>
-          sop.title.toLowerCase().includes(searchLower) ||
-          (sop.description && sop.description.toLowerCase().includes(searchLower)) ||
-          (sop.category_name && sop.category_name.toLowerCase().includes(searchLower))
-      );
-    }
-
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'signed-off') {
-        filtered = filtered.filter((sop) => sop.signoff_request_status === 'Completed');
-      } else if (statusFilter === 'in-progress') {
-        filtered = filtered.filter((sop) => sop.signoff_request_status !== 'Completed');
-      }
-    }
-
-    // Apply category filter
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter((sop) => sop.category_id === categoryFilter);
-    }
-
-    setSops(filtered);
-  }, [searchTerm, statusFilter, categoryFilter, allSops]);
-
-  const fetchAssignedSOPs = async () => {
+  const fetchAssignedSOPs = useCallback(async () => {
+    if (fetchingRef.current) return; // drop concurrent call
+    fetchingRef.current = true;
+    lastDirectFetchRef.current = Date.now();
     setLoading(true);
     try {
       const clientId = resolvedClientId;
       const employeeId = employeeData?.id || null;
 
       if (!clientId || !employeeId) {
-        toast.error('Client ID or Employee ID not found');
         setLoading(false);
+        fetchingRef.current = false;
         return;
       }
 
       const { data, error } = await supabase.functions.invoke('fetch-assigned-sop', {
-        body: {
-          client_id: clientId,
-          employee_id: employeeId,
-        },
+        body: { client_id: clientId, employee_id: employeeId, page: 1, limit: PAGE_SIZE },
       });
 
-      if (error) {
-        console.error('Error fetching assigned SOPs:', error);
-        toast.error('Failed to load assigned SOPs');
-        return;
-      }
+      if (error) { console.error('Error fetching assigned SOPs:', error); toast.error('Failed to load assigned SOPs'); return; }
+      if (data?.error) { toast.error(data.error || 'Failed to load assigned SOPs'); return; }
 
-      if (data && data.error) {
-        toast.error(data.error || 'Failed to load assigned SOPs');
-        return;
-      }
-
-      if (data && data.success) {
-        const sopList = data.data || [];
-        setAllSops(sopList);
+      if (data?.success) {
+        const sopList: any[] = data.data || [];
         setSops(sopList);
+        setTotalCount(data.pagination?.total ?? sopList.length);
+
+        // Categories for filter dropdown (from first page)
+        const seen = new Set<string>();
+        setCategories(sopList
+          .filter((s: any) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
+          .map((s: any) => ({ id: s.category_id, category_name: s.category_name }))
+          .sort((a: any, b: any) => a.category_name.localeCompare(b.category_name)));
+
+        // Stats — total from server count
+        const total = data.pagination?.total ?? sopList.length;
+        const signedOff = sopList.filter((s: any) => s.signoff_request_status === 'Completed').length;
+        setEmployeeTotalSOPs(total);
+        setEmployeeTotalSOPsSignedOff(signedOff);
+        setEmployeeTotalSOPsToBeDone(Math.max(0, total - signedOff));
+        setStatisticsLoading(false);
       }
     } catch (error) {
       console.error('Error fetching assigned SOPs:', error);
       toast.error('Failed to load assigned SOPs');
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
-  };
+  }, [resolvedClientId, employeeData?.id, PAGE_SIZE]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced wrapper — suppressed for 2s after a direct fetch
+  const scheduleFetchAssignedSOPs = useCallback((page: number = 1) => {
+    if (Date.now() - lastDirectFetchRef.current < 2000) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchAssignedSOPs(), 300);
+  }, [fetchAssignedSOPs]);
+
+  // Server-side filtered fetch — updates table + totalCount only
+  const fetchFilteredAssignedSOPs = useCallback(async (search: string, status: string, categoryId: string, page: number = 1) => {
+    const clientId = resolvedClientId;
+    const employeeId = employeeData?.id || null;
+    if (!clientId || !employeeId) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-assigned-sop', {
+        body: {
+          client_id: clientId, employee_id: employeeId,
+          search: search.trim() || null,
+          status: status !== 'all' ? status : null,
+          category_id: categoryId !== 'all' ? categoryId : null,
+          page, limit: PAGE_SIZE,
+        },
+      });
+      if (error) { console.error('Error:', error); return; }
+      if (data?.success) {
+        setSops(data.data || []);
+        setTotalCount(data.pagination?.total ?? (data.data || []).length);
+      }
+    } catch (error) {
+      console.error('Error fetching filtered assigned SOPs:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [resolvedClientId, employeeData?.id, PAGE_SIZE]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Filter change — debounce 400ms, reset to page 1
+  useEffect(() => {
+    const hasFilters = searchTerm.trim() || statusFilter !== 'all' || categoryFilter !== 'all';
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (!hasFilters) {
+      setCurrentPage(1);
+      fetchAssignedSOPs();
+      return;
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      setCurrentPage(1);
+      fetchFilteredAssignedSOPs(searchTerm, statusFilter, categoryFilter, 1);
+    }, 400);
+  }, [searchTerm, statusFilter, categoryFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Page change — re-fetch keeping current filters
+  useEffect(() => {
+    const hasFilters = searchTerm.trim() || statusFilter !== 'all' || categoryFilter !== 'all';
+    if (hasFilters) {
+      fetchFilteredAssignedSOPs(searchTerm, statusFilter, categoryFilter, currentPage);
+    } else {
+      fetchAssignedSOPs();
+    }
+  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Truncate text helper
   const truncateText = (text: string, maxLength: number) => {
@@ -271,46 +277,31 @@ const AssignedSOPPage = () => {
     return <span>{displayText}</span>;
   };
 
-  // Real-time updates for employee statistics
+  // Real-time updates: refresh assigned SOPs (stats recomputed from the same response)
   useRealTimeSubHook({
-    channelName: 'assigned-sop-stats-assigned',
+    channelName: 'assigned-sop-realtime-assigned',
     events: ['INSERT', 'UPDATE', 'DELETE'],
     table: 'sop_assigned',
     filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
     enabled: !!resolvedClientId && !!employeeData?.id,
-    onPayload: (payload) => {
-      console.log('[AssignedSOPPage] Real-time update from sop_assigned table:', payload.eventType, payload);
-      setTimeout(() => {
-        fetchEmployeeStatistics();
-      }, 100);
-    },
+    onPayload: () => scheduleFetchAssignedSOPs(currentPageRef.current),
   });
 
   useRealTimeSubHook({
-    channelName: 'assigned-sop-stats-signoff',
+    channelName: 'assigned-sop-realtime-signoff',
     events: ['INSERT', 'UPDATE', 'DELETE'],
     table: 'sop_signoff_request',
     filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
     enabled: !!resolvedClientId && !!employeeData?.id,
-    onPayload: (payload) => {
-      console.log('[AssignedSOPPage] Real-time update from sop_signoff_request table:', payload.eventType, payload);
-      setTimeout(() => {
-        fetchEmployeeStatistics();
-      }, 100);
-    },
+    onPayload: () => scheduleFetchAssignedSOPs(currentPageRef.current),
   });
 
   useRealTimeSubHook({
-    channelName: 'assigned-sop-stats-group-employees',
+    channelName: 'assigned-sop-realtime-group-employees',
     events: ['INSERT', 'UPDATE', 'DELETE'],
     table: 'group_employees',
     enabled: !!resolvedClientId && !!employeeData?.id,
-    onPayload: (payload) => {
-      console.log('[AssignedSOPPage] Real-time update from group_employees table:', payload.eventType, payload);
-      setTimeout(() => {
-        fetchEmployeeStatistics();
-      }, 100);
-    },
+    onPayload: () => scheduleFetchAssignedSOPs(currentPageRef.current),
   });
 
   return (
@@ -433,7 +424,7 @@ const AssignedSOPPage = () => {
           {!loading && (
             <div className="mb-4">
               <p className="text-sm text-gray-600">
-                Showing {sops.length} of {allSops.length} SOPs
+                Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalCount)}–{Math.min(currentPage * PAGE_SIZE, totalCount)} of {totalCount} SOPs
               </p>
             </div>
           )}
@@ -528,6 +519,55 @@ const AssignedSOPPage = () => {
                   ))}
                 </TableBody>
               </Table>
+
+              {/* Pagination */}
+              {totalCount > PAGE_SIZE && (
+                <div className="flex items-center justify-between px-2 pt-4 border-t border-gray-100">
+                  <p className="text-sm text-gray-500">
+                    Page {currentPage} of {Math.ceil(totalCount / PAGE_SIZE)}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="px-2 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+                    >«</button>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+                    >Previous</button>
+                    {Array.from({ length: Math.ceil(totalCount / PAGE_SIZE) }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === Math.ceil(totalCount / PAGE_SIZE) || Math.abs(p - currentPage) <= 1)
+                      .reduce<(number | '...')[]>((acc, p, i, arr) => {
+                        if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...');
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, i) =>
+                        p === '...' ? (
+                          <span key={`e-${i}`} className="px-2 py-1 text-sm text-gray-400">…</span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => setCurrentPage(p as number)}
+                            className={`px-3 py-1 text-sm rounded border ${currentPage === p ? 'bg-primary text-white border-primary' : 'border-gray-200 hover:bg-gray-50'}`}
+                          >{p}</button>
+                        )
+                      )}
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(Math.ceil(totalCount / PAGE_SIZE), p + 1))}
+                      disabled={currentPage === Math.ceil(totalCount / PAGE_SIZE)}
+                      className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+                    >Next</button>
+                    <button
+                      onClick={() => setCurrentPage(Math.ceil(totalCount / PAGE_SIZE))}
+                      disabled={currentPage === Math.ceil(totalCount / PAGE_SIZE)}
+                      className="px-2 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+                    >»</button>
+                  </div>
+                </div>
+              )}
             </div>
             </TooltipProvider>
           )}
@@ -548,7 +588,6 @@ const AssignedSOPPage = () => {
           sopSignoffRequestExist={signoffSOP?.sop_signoff_request_exist}
           onSuccess={() => {
             fetchAssignedSOPs();
-            fetchEmployeeStatistics();
           }}
         />
 
