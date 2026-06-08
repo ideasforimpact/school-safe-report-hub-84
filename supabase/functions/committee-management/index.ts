@@ -15,8 +15,16 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
+    const url = new URL(req.url);
+
+    // Derive action from URL path: /committee-management/<action>
+    const pathSegments = url.pathname.split('/').filter(Boolean);
+    const fnIdx = pathSegments.lastIndexOf('committee-management');
+    const pathAction = fnIdx !== -1 ? (pathSegments[fnIdx + 1] ?? '') : '';
+
     const body = await req.json();
-    const action = body?.action;
+    // Path-based action takes priority; fall back to body.action for legacy callers
+    const action = pathAction || body?.action;
     const clientId = body?.client_id || null;
 
     if (!action) {
@@ -24,7 +32,6 @@ serve(async (req) => {
     }
 
     if (clientId) {
-      const url = new URL(req.url);
       const ipValidation = await validateIPWhitelist(supabase, req, clientId, url.pathname);
       if (!ipValidation.allowed) {
         return json(
@@ -39,7 +46,7 @@ serve(async (req) => {
 
     switch (action) {
       case 'list_committees':
-        return json(await listCommittees(supabase, body.client_id));
+        return json(await listCommittees(supabase, body.client_id, body.page, body.page_size, body.search));
       case 'get_committee':
         return json(await getCommittee(supabase, body.client_id, body.committee_id));
       case 'create_committee':
@@ -54,6 +61,12 @@ serve(async (req) => {
         );
       case 'get_committee_members':
         return json(await getCommitteeMembers(supabase, body.client_id, body.committee_id));
+      case 'get_all_committee_members':
+        return json(await getAllCommitteeMembers(supabase, body.client_id));
+      case 'get_form_data':
+        return json(await getFormData(supabase, body.client_id));
+      case 'get_events_page_data':
+        return json(await getEventsPageData(supabase, body.client_id, body.committee_id));
       case 'list_events':
         return json(await listEvents(supabase, body.client_id, body.committee_id));
       case 'get_event':
@@ -196,12 +209,27 @@ function getCommitteeNameConflictError(error: any): Error {
   return new Error(message || 'Failed to save committee');
 }
 
-async function listCommittees(supabase: any, clientId: string) {
-  const { data: committees, error } = await supabase
+async function listCommittees(
+  supabase: any,
+  clientId: string,
+  page = 1,
+  pageSize = 10,
+  search = '',
+) {
+  const offset = (page - 1) * pageSize;
+
+  let query = supabase
     .from('committees')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('client_id', clientId)
-    .order('created_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .range(offset, offset + pageSize - 1);
+
+  if (search && search.trim()) {
+    query = query.ilike('name', `%${search.trim()}%`);
+  }
+
+  const { data: committees, error, count } = await query;
   if (error) throw new Error(error.message);
 
   const committeeIds = (committees || []).map((c: any) => c.id);
@@ -214,10 +242,17 @@ async function listCommittees(supabase: any, clientId: string) {
     memberCountByCommittee.set(row.committee_id, (memberCountByCommittee.get(row.committee_id) || 0) + 1);
   });
 
-  return (committees || []).map((committee: any) => ({
-    ...committee,
-    member_count: memberCountByCommittee.get(committee.id) || 0,
-  }));
+  const totalCount = count ?? 0;
+  return {
+    committees: (committees || []).map((committee: any) => ({
+      ...committee,
+      member_count: memberCountByCommittee.get(committee.id) || 0,
+    })),
+    total_count: totalCount,
+    page,
+    page_size: pageSize,
+    total_pages: Math.max(1, Math.ceil(totalCount / pageSize)),
+  };
 }
 
 async function getCommittee(supabase: any, clientId: string, committeeId: string) {
@@ -412,6 +447,41 @@ async function getCommitteeMembers(supabase: any, clientId: string, committeeId:
   return data || [];
 }
 
+async function getFormData(supabase: any, clientId: string) {
+  const [employeesResult, rolesResult] = await Promise.all([
+    supabase
+      .from('employees')
+      .select('id, first_name, last_name')
+      .eq('client_id', clientId)
+      .eq('status', true)
+      .order('first_name', { ascending: true }),
+    supabase
+      .from('committee_member_roles')
+      .select('id, name, sort_order, active')
+      .eq('active', true)
+      .order('sort_order', { ascending: true }),
+  ]);
+
+  const employees = (employeesResult.data || []).map((e: any) => ({
+    id: e.id,
+    name: `${e.first_name || ''} ${e.last_name || ''}`.trim() || 'Unnamed Employee',
+  }));
+
+  return {
+    employees,
+    member_roles: rolesResult.data || [],
+  };
+}
+
+async function getAllCommitteeMembers(supabase: any, clientId: string) {
+  const { data, error } = await supabase
+    .from('committee_members')
+    .select('id, committee_id, client_id, employee_id, role')
+    .eq('client_id', clientId);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 async function getCommitteeAttachments(supabase: any, clientId: string, committeeId: string) {
   const { data, error } = await supabase
     .from('committee_attachments')
@@ -531,6 +601,19 @@ async function updateEvent(supabase: any, payload: any) {
   });
 
   return await getEvent(supabase, client_id, event_id);
+}
+
+async function getEventsPageData(supabase: any, clientId: string, committeeId: string) {
+  const [committeeResult, eventsData, membersData] = await Promise.all([
+    getCommittee(supabase, clientId, committeeId),
+    listEvents(supabase, clientId, committeeId),
+    getCommitteeMembers(supabase, clientId, committeeId),
+  ]);
+  return {
+    committee: committeeResult,
+    events: eventsData,
+    members: membersData,
+  };
 }
 
 async function listEvents(supabase: any, clientId: string, committeeId: string) {
