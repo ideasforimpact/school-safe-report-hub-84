@@ -244,16 +244,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 variant: 'destructive',
               });
             }, 0);
-            // Best-effort rollback: delete the created document immediately
+            // Best-effort rollback: delete the created document via edge function
             try {
               if (createdDocumentId) {
-                const { error: rollbackErr } = await supabase
-                  .from('employee_documents')
-                  .delete()
-                  .eq('id', createdDocumentId);
-                if (rollbackErr) {
-                  console.error('Immediate rollback failed (createSignedUploadUrl error)', rollbackErr);
-                }
+                await supabase.functions.invoke('employee-documents', {
+                  body: { action: 'purgeDocument', employeeId, documentId: createdDocumentId },
+                });
               }
             } catch (rbErr) {
               console.error('Immediate rollback exception', rbErr);
@@ -357,17 +353,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       }
     } catch (error: any) {
       console.error(`Error uploading ${verificationType} files:`, error);
-      // Best-effort rollback: delete the document record if it was created
+      // Best-effort rollback: delete the document record via edge function
       try {
-        const toDeleteId = createdDocumentId || undefined;
-        if (toDeleteId) {
-          const { error: rollbackErr } = await supabase
-            .from('employee_documents')
-            .delete()
-            .eq('id', toDeleteId);
-          if (rollbackErr) {
-            console.error('Rollback failed: could not delete document record', rollbackErr);
-          }
+        if (createdDocumentId) {
+          await supabase.functions.invoke('employee-documents', {
+            body: { action: 'purgeDocument', employeeId, documentId: createdDocumentId },
+          });
         }
       } catch (rbErr) {
         console.error('Rollback exception', rbErr);

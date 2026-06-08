@@ -106,8 +106,16 @@ serve(async (req) => {
     }
  
     switch (operation) {
+      case 'get_reference_data':
+        return await handleGetReferenceData(supabaseClient);
+      case 'find_by_employee_id':
+        return await handleFindByEmployeeId(supabaseClient, requestData);
       case 'list_departments':
         return await handleListDepartments(supabaseClient);
+      case 'list_employee_types':
+        return await handleListEmployeeTypes(supabaseClient);
+      case 'get_employee':
+        return await handleGetEmployee(supabaseClient, requestData);
       case 'list':
         return await handleList(supabaseClient, requestData);
       case 'create':
@@ -596,6 +604,44 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
   );
 }
 
+async function handleGetEmployee(supabaseClient: any, requestData: any) {
+  const { employeeId, clientId } = requestData;
+
+  if (!employeeId || !clientId) {
+    return new Response(
+      JSON.stringify({ error: 'employeeId and clientId are required' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const { data, error } = await supabaseClient
+    .from('employees')
+    .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
+    .eq('id', employeeId)
+    .eq('client_id', clientId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching employee:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch employee' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (!data) {
+    return new Response(
+      JSON.stringify({ error: 'Employee not found' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ employee: data }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
 async function handleList(supabaseClient: any, requestData: any) {
   const clientId = requestData.clientId;
   const page = Math.max(1, Number(requestData.page || 1));
@@ -604,16 +650,74 @@ async function handleList(supabaseClient: any, requestData: any) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  const toLabel = (value: string) =>
+    value.split('_').filter(Boolean).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+
+  const normalizeStatus = (status: string | null | undefined) => {
+    if (!status) return 'pending';
+    const n = status.toLowerCase();
+    if (n === 'verified' || n === 'completed') return 'verified';
+    if (n === 'failed' || n === 'rejected') return 'failed';
+    return 'pending';
+  };
+
+  // === Pre-filters for document type and document status ===
+  let docTypeEmpIds: string[] | null = null;
+  let docStatusEmpIds: string[] | null = null;
+
+  if (filters.documentTypeId && filters.documentTypeId !== 'all') {
+    const { data: dtRows } = await supabaseClient
+      .from('employee_documents')
+      .select('employee_id')
+      .eq('document_type_id', filters.documentTypeId)
+      .eq('is_delete', 0);
+    docTypeEmpIds = [...new Set((dtRows || []).map((d: any) => d.employee_id).filter(Boolean))] as string[];
+  }
+
+  if (filters.documentStatus && filters.documentStatus !== 'all') {
+    const { data: allEmpRows } = await supabaseClient
+      .from('employees')
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('status', true);
+    const allClientEmpIds: string[] = (allEmpRows || []).map((e: any) => e.id);
+
+    if (allClientEmpIds.length > 0) {
+      const { data: allDocs } = await supabaseClient
+        .from('employee_documents')
+        .select('employee_id, verification_status')
+        .in('employee_id', allClientEmpIds)
+        .eq('is_delete', 0);
+
+      const statusByEmp = new Map<string, string[]>();
+      (allDocs || []).forEach((doc: any) => {
+        if (!statusByEmp.has(doc.employee_id)) statusByEmp.set(doc.employee_id, []);
+        statusByEmp.get(doc.employee_id)!.push(doc.verification_status || 'pending');
+      });
+
+      docStatusEmpIds = [];
+      const requestedStatus = filters.documentStatus;
+      allClientEmpIds.forEach((empId: string) => {
+        const statuses = statusByEmp.get(empId) || [];
+        const hasFailed = statuses.some((s: string) => s === 'failed' || s === 'rejected');
+        const hasPending = statuses.some((s: string) => s === 'pending' || s === 'in-progress');
+        const hasVerified = statuses.some((s: string) => s === 'verified' || s === 'completed');
+        const hasAny = statuses.length > 0;
+        if (requestedStatus === 'failed' && hasFailed) docStatusEmpIds!.push(empId);
+        else if (requestedStatus === 'pending' && !hasFailed && (hasPending || !hasAny)) docStatusEmpIds!.push(empId);
+        else if (requestedStatus === 'verified' && !hasFailed && !hasPending && hasVerified) docStatusEmpIds!.push(empId);
+      });
+    } else {
+      docStatusEmpIds = [];
+    }
+  }
+
+  // === Build main paginated query ===
   let query = supabaseClient
     .from('employees')
     .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)', { count: 'exact' })
-    .eq('client_id', clientId);
-
-  if (filters.status === 'active') {
-    query = query.eq('status', true);
-  } else if (filters.status === 'inactive') {
-    query = query.eq('status', false);
-  }
+    .eq('client_id', clientId)
+    .eq('status', true);
 
   if (filters.departmentId && filters.departmentId !== 'all') {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -635,6 +739,16 @@ async function handleList(supabaseClient: any, requestData: any) {
     query = query.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,employee_id.ilike.%${term}%`);
   }
 
+  const emptyOk = { employees: [], total: 0, stats: null };
+  if (docTypeEmpIds !== null) {
+    if (docTypeEmpIds.length === 0) return new Response(JSON.stringify(emptyOk), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    query = query.in('id', docTypeEmpIds);
+  }
+  if (docStatusEmpIds !== null) {
+    if (docStatusEmpIds.length === 0) return new Response(JSON.stringify(emptyOk), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    query = query.in('id', docStatusEmpIds);
+  }
+
   const { data, error, count } = await query
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -651,62 +765,155 @@ async function handleList(supabaseClient: any, requestData: any) {
   }
 
   const employees = data || [];
-  const employeeIds = employees.map((employee: any) => employee.id).filter(Boolean);
-  const documentsByEmployee = new Map<string, any[]>();
+  const employeeIds: string[] = employees.map((e: any) => e.id).filter(Boolean);
 
+  // === Fetch documents for current page ===
+  const documentsByEmployee = new Map<string, any[]>();
   if (employeeIds.length > 0) {
     const { data: documentsData, error: documentsError } = await supabaseClient
       .from('employee_documents')
-      .select('id, employee_id, verification_status, params, document_type:document_type_id(name)')
+      .select('id, employee_id, verification_status, params, document_type_id, personal_info, document_type:document_type_id(name)')
       .in('employee_id', employeeIds)
       .eq('is_delete', 0);
 
-    if (documentsError) {
-      console.error("Error listing employee document summaries:", documentsError);
-    } else {
-      const toLabel = (value: string) =>
-        value
-          .split('_')
-          .filter(Boolean)
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(' ');
-
-      const normalizeStatus = (status: string | null | undefined) => {
-        if (!status) return 'pending';
-        const normalized = status.toLowerCase();
-        if (normalized === 'verified' || normalized === 'completed') return 'verified';
-        if (normalized === 'failed' || normalized === 'rejected') return 'failed';
-        return 'pending';
-      };
-
+    if (!documentsError) {
       (documentsData || []).forEach((doc: any) => {
-        const employeeId = doc.employee_id;
-        if (!employeeId) return;
-
-        const selected = doc?.params?.selected;
+        const empId = doc.employee_id;
+        if (!empId) return;
         const typeName = doc?.document_type?.name;
+        const selected = doc?.params?.selected;
         const displayName = toLabel(typeName || selected || 'document');
-        const docs = documentsByEmployee.get(employeeId) || [];
-
+        const docs = documentsByEmployee.get(empId) || [];
         docs.push({
           id: doc.id,
-          name: displayName,
-          status: normalizeStatus(doc.verification_status),
+          documentTypeId: doc.document_type_id || '',
+          documentTypeName: displayName,
+          verificationStatus: normalizeStatus(doc.verification_status),
+          personalInfo: doc.personal_info || null,
         });
-        documentsByEmployee.set(employeeId, docs);
+        documentsByEmployee.set(empId, docs);
       });
+    } else {
+      console.error("Error listing employee document summaries:", documentsError);
     }
   }
 
-  const employeesWithDocumentSummaries = employees.map((employee: any) => ({
+  // === Global stats (employee verification counts) — only when requested ===
+  // Requested on initial page load (includeStats: true) to populate the header counters.
+  // Subsequent pagination/filter calls skip this to avoid redundant queries.
+  let globalStats: { totalEmployees: number; verifiedEmployees: number } | null = null;
+  if (requestData.includeStats === true) {
+    try {
+      const { count: totalActive } = await supabaseClient
+        .from('employees')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', clientId)
+        .eq('status', true);
+
+      const { data: allEmpForStats } = await supabaseClient
+        .from('employees')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('status', true);
+
+      const allEmpIdsForStats: string[] = (allEmpForStats || []).map((e: any) => e.id);
+      let verifiedCount = 0;
+
+      if (allEmpIdsForStats.length > 0) {
+        const { data: allDocsForStats } = await supabaseClient
+          .from('employee_documents')
+          .select('employee_id, verification_status')
+          .in('employee_id', allEmpIdsForStats)
+          .eq('is_delete', 0);
+
+        const docsByEmpForStats = new Map<string, string[]>();
+        (allDocsForStats || []).forEach((d: any) => {
+          if (!docsByEmpForStats.has(d.employee_id)) docsByEmpForStats.set(d.employee_id, []);
+          docsByEmpForStats.get(d.employee_id)!.push(d.verification_status || 'pending');
+        });
+        docsByEmpForStats.forEach((statuses) => {
+          if (statuses.length > 0 && statuses.every((s: string) => s === 'verified' || s === 'completed')) {
+            verifiedCount++;
+          }
+        });
+      }
+
+      globalStats = { totalEmployees: totalActive || 0, verifiedEmployees: verifiedCount };
+    } catch (statsErr) {
+      console.error("Error computing global stats:", statsErr);
+    }
+  }
+
+  // === Compose final response (employee verification data only) ===
+  const employeesWithData = employees.map((employee: any) => ({
     ...employee,
     documentSummaries: documentsByEmployee.get(employee.id) || [],
   }));
 
   return new Response(
+    JSON.stringify({ employees: employeesWithData, total: count || 0, stats: globalStats }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+// Look up an employee by their human-readable employee_id field (e.g. "EMP001")
+async function handleFindByEmployeeId(supabaseClient: any, requestData: any) {
+  const { employeeId, clientId } = requestData;
+  if (!employeeId) {
+    return new Response(
+      JSON.stringify({ error: 'employeeId is required' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  let query = supabaseClient
+    .from('employees')
+    .select('id, employee_id, first_name, last_name, status')
+    .eq('employee_id', employeeId);
+
+  if (clientId) query = query.eq('client_id', clientId);
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    return new Response(
+      JSON.stringify({ error: 'Failed to query employee' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ found: !!data, employee: data || null }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+// Single call that returns both departments and employee types
+async function handleGetReferenceData(supabaseClient: any) {
+  const [depsResult, typesResult] = await Promise.all([
+    supabaseClient.from('employee_departments').select('*').order('department_name', { ascending: true }),
+    supabaseClient.from('employee_type').select('*').order('type_name', { ascending: true }),
+  ]);
+
+  if (depsResult.error) {
+    console.error('Error fetching departments:', depsResult.error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch reference data' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+  if (typesResult.error) {
+    console.error('Error fetching employee types:', typesResult.error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch reference data' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  return new Response(
     JSON.stringify({
-      employees: employeesWithDocumentSummaries,
-      total: count || 0,
+      departments: depsResult.data || [],
+      employeeTypes: typesResult.data || [],
     }),
     {
       status: 200,
@@ -734,13 +941,30 @@ async function handleListDepartments(supabaseClient: any) {
 
   return new Response(
     JSON.stringify({ departments: data || [] }),
-    {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    }
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
- 
+
+async function handleListEmployeeTypes(supabaseClient: any) {
+  const { data, error } = await supabaseClient
+    .from('employee_type')
+    .select('*')
+    .order('type_name', { ascending: true });
+
+  if (error) {
+    console.error('Error listing employee types:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch employee types' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ employeeTypes: data || [] }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
 async function handleCreate(supabaseClient: any, employee: any) {
   const clientId = employee.clientId || employee.client_id;
   
