@@ -25,33 +25,20 @@ export const useAssignmentData = () => {
         try {
           setLoading(true);
           
-          // Fetch assessment from Supabase using assessment_id
-          const { data: assessmentData, error: assessmentError } = await supabase
-            .from('assessments')
-            .select(`
-              id,
-              assessment_id,
-              name,
-              description,
-              status,
-              target_completion_date,
-              template_id,
-              assigned_to,
-              created_by,
-              score,
-              client_id
-            `)
-            .eq('assessment_id', parseInt(assessmentId))
-            .eq('client_id', clientId)
-            .single();
+          const { data: responseData, error: fetchError } = await supabase.functions.invoke('list-assessments', {
+            body: { assessment_id: parseInt(assessmentId), 
+            client_id: clientId },
+            headers: { path: 'get' },
+          });
 
-          if (assessmentError) {
-            console.error('Error fetching assessment:', assessmentError);
+          if (fetchError) {
+            console.error('Error fetching assessment:', fetchError);
             setNotFound(true);
             setLoading(false);
             return;
           }
 
+          const assessmentData = responseData?.assessment;
           if (!assessmentData) {
             console.log(`Assessment with ID ${assessmentId} not found`);
             setNotFound(true);
@@ -61,30 +48,13 @@ export const useAssignmentData = () => {
 
           setAssessment(assessmentData);
 
-          // Fetch template from Supabase
-          if (assessmentData.template_id) {
-            const { data: templateData, error: templateError } = await supabase
-              .from('assessment_templates')
-              .select('*')
-              .eq('id', assessmentData.template_id)
-              .eq('client_id', clientId)
-              .single();
-
-            if (templateError) {
-              console.error('Error fetching template:', templateError);
-              setNotFound(true);
-            } else if (templateData) {
-              setTemplate(templateData);
-              setNotFound(false);
-            } else {
-              console.log(`Template for assessment ${assessmentId} not found`);
-              setNotFound(true);
-            }
+          if (assessmentData.template) {
+            setTemplate(assessmentData.template);
+            setNotFound(false);
           } else {
-            console.log('Assessment has no template_id');
             setNotFound(true);
           }
-          
+
           setLoading(false);
         } catch (error) {
           console.error('Error in fetchAssessmentData:', error);

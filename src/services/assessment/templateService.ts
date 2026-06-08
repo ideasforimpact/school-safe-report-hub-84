@@ -104,16 +104,15 @@ export const templateService = {
   // Get all templates for a client via edge function
   getTemplates: async (clientId: string): Promise<AssessmentTemplate[]> => {
     try {
-      const { data: result, error } = await supabase.functions.invoke('create-assessment-template', {
-        body: { action: 'list', clientId },
+      const { data, error } = await supabase.functions.invoke('list-assessments', {
+        body: { client_id: clientId },
+        headers: { path: 'templates' },
       });
 
       if (error) throw new Error(`Failed to fetch templates: ${error.message}`);
 
-      const data = result?.templates ?? [];
-
       // Transform data to include type from category relationship
-      const templates = data.map((template: any) => ({
+      const templates = data?.templates?.map((template: any) => ({
         id: template.id,
         title: template.title,
         description: template.description,
@@ -123,7 +122,7 @@ export const templateService = {
         createdAt: template.created_at,
         createdBy: template.created_by,
         isActive: template.is_active
-      })) || [];
+      }));
 
       return templates;
     } catch (error) {
