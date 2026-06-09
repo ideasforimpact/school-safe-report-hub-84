@@ -101,7 +101,6 @@ function generateGrievanceNotificationBody(variables: any) {
         <p style="margin:0 0 20px;font-size:16px;">Your grievance has been successfully submitted. Our team will review it and take the necessary action.</p>
         <div style="background-color:#f3f4f6;padding:16px;border-radius:6px;border-left:4px solid #6b7280;margin:20px 0;">
           <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Details:</h3>
-          <p style="margin:6px 0;"><strong>Grievance ID:</strong> ${variables.Grievance_ID}</p>
           <p style="margin:6px 0;"><strong>Title:</strong> ${variables.Grievance_Title}</p>
           <p style="margin:6px 0;"><strong>Description:</strong> ${variables.Grievance_Description}</p>
           <p style="margin:6px 0;"><strong>Submitted On:</strong> ${variables.Submitted_Date}</p>
@@ -215,7 +214,7 @@ serve(async (req) => {
           try {
             // Generate email body with recipient's name
             const emailBody = generateGrievanceNotificationBody({
-              User_Name: `${recipient.first_name} ${recipient.last_name}`,
+              User_Name: `${recipient.first_name ?? ''} ${recipient.last_name ?? ''}`.trim() || recipient.email,
               Grievance_ID: emailEntry.params?.Grievance_ID,
               Grievance_Title: emailEntry.params?.Grievance_Title,
               Grievance_Description: emailEntry.params?.Grievance_Description,
@@ -240,6 +239,11 @@ serve(async (req) => {
               entryFailed++
             } else {
               console.log(`✅ Successfully sent email to ${recipient.email}`)
+              await recordCentralizedNotification({
+                supabase,
+                emailEntry,
+                recipient,
+              })
               entryProcessed++
             }
           } catch (recipientError) {
@@ -377,4 +381,43 @@ serve(async (req) => {
       }
     )
   }
-}) 
+})
+ 
+async function recordCentralizedNotification({
+  supabase,
+  emailEntry,
+  recipient,
+}: {
+  supabase: any;
+  emailEntry: any;
+  recipient: { id: string; email: string };
+}) {
+  try {
+    const messagePreview = (emailEntry.body || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 240)
+ 
+    const { error } = await supabase.rpc('create_centralized_notification', {
+      p_client_id: emailEntry.client_id,
+      p_module_id: null,
+      p_module_name: emailEntry.module_name || 'grievance',
+      p_email_id: emailEntry.id,
+      p_notification_type: emailEntry.notification_type || 'grievance_submitted',
+      p_channel: 'email',
+      p_title: emailEntry.subject || null,
+      p_message: messagePreview || null,
+      p_payload: emailEntry.params || {},
+      p_recipient_employee_id: recipient.id,
+      p_recipient_email: recipient.email,
+    })
+ 
+    if (error) {
+      console.error('Failed to create centralized grievance notification:', error)
+    }
+  } catch (error) {
+    console.error('Error creating centralized grievance notification:', error)
+  }
+}
+ 

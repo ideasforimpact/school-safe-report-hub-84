@@ -88,6 +88,22 @@ redirect_uri = "http://localhost:54321/auth/v1/callback"
 url = ""
 
 
+## azure (Microsoft Entra ID / Microsoft 365)
+# Strategy: "common" endpoint accepts any Microsoft account (work, school, personal).
+# Access to the app itself is still gated by the `employees` table via validate-employee,
+# so users without a matching employee record will hit /no-access after sign-in.
+[auth.external.azure]
+enabled = true
+client_id = "env(VITE_AZURE_CLIENT_KEY)"
+secret = "env(VITE_AZURE_SECRET_KEY)"
+
+# Overrides the default auth redirectUrl. Must match a Redirect URI registered in the Azure app.
+redirect_uri = "http://localhost:54321/auth/v1/callback"
+# `url` is the tenant-scoped OAuth authority. /common = any Microsoft account.
+# For single-tenant lock-down, replace `common` with the tenant UUID.
+url = "https://login.microsoftonline.com/common"
+
+
 [analytics]
 enabled = false
 port = 54327
@@ -148,4 +164,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-student-people-involved]
+verify_jwt = false
+
+[functions.sync-child-audit-template]
+verify_jwt = true
+ 
+[functions.list-child-audit-unseeded-clients]
+verify_jwt = true
+
+[functions.classify-incident]
 verify_jwt = false

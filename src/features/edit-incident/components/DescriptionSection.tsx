@@ -2,7 +2,7 @@
 import React from 'react';
 import { FileItem } from '@/types/incident';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
-import DragDropFileUpload from '@/components/file/DragDropFileUpload';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import ImageUpload from '@/components/ImageUpload';
 
 interface DescriptionSectionProps {
@@ -59,14 +59,18 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           <label className="text-sm font-medium">
             Additional Files (Optional)
           </label>
-          <DragDropFileUpload
+          <ReusableFileUploader
             onFilesChange={onFilesChange}
             initialFiles={supportingFiles}
             maxFiles={5}
+            maxSize={10}
+            maxTotalSize={50}
+            allowedTypes={['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']}
+            accept=".pdf,.jpg,.jpeg,.png"
             className="min-h-52"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Upload up to 5 files (images, videos, documents) to support this incident report
+            Upload up to 5 files (PDF, JPG, or PNG) to support this incident report
           </p>
         </div>
       </div>

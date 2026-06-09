@@ -68,36 +68,14 @@ export function useIncidentFormValidation() {
       newErrors.owner = 'Assignment is required';
     }
     
-    // Enhanced validation for People Involved
+    // Validate People Involved — only when a person row has been added
     if (peopleInvolved && peopleInvolved.length > 0) {
       peopleInvolved.forEach((person, index) => {
-        // Check if this person entry has any meaningful data
-        const hasName = person.name && person.name.trim() !== '';
-        const hasNonDefaultRole = person.role && person.role !== 'Student';
-        const hasNotes = person.notes && person.notes.trim() !== '';
-        
-        // If any field has a value, then all required fields must be filled
-        const hasAnyValue = hasName || hasNonDefaultRole || hasNotes;
-        
-        if (hasAnyValue) {
-          if (!person.role) {
-            newErrors[`peopleInvolved.${index}.role`] = `Person ${index + 1}: Role is required`;
-          }
-          
-          if (!person.name || person.name.trim() === '') {
-            newErrors[`peopleInvolved.${index}.name`] = `Person ${index + 1}: Name is required`;
-          }
+        if (!person.role) {
+          newErrors[`peopleInvolved.${index}.role`] = `Person ${index + 1}: Role is required`;
         }
-        
-        // If there are multiple people involved, make all fields mandatory for each person
-        if (peopleInvolved.length > 1) {
-          if (!person.role) {
-            newErrors[`peopleInvolved.${index}.role`] = `Person ${index + 1}: Role is required when multiple people are involved`;
-          }
-          
-          if (!person.name || person.name.trim() === '') {
-            newErrors[`peopleInvolved.${index}.name`] = `Person ${index + 1}: Name is required when multiple people are involved`;
-          }
+        if (!person.name || person.name.trim() === '') {
+          newErrors[`peopleInvolved.${index}.name`] = `Person ${index + 1}: Name is required`;
         }
       });
     }

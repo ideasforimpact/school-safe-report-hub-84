@@ -101,7 +101,7 @@ async function createResource(supabase: any, data: any) {
   }
   
   let document_url = data.document_url;
-  
+  let fileSize: number | null = null;
   // If document_url contains base64 data, upload to storage
   if (data.document_url && data.document_url.startsWith('data:')) {
     try {
@@ -117,7 +117,7 @@ async function createResource(supabase: any, data: any) {
       // Convert base64 to blob
       const base64Data = data.document_url.split(',')[1];
       const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-      
+      fileSize = binaryData.length;
       // Upload to storage
       const { data: uploadResult, error: uploadError } = await supabase.storage
         .from('edusafe-resources')
@@ -156,7 +156,8 @@ async function createResource(supabase: any, data: any) {
     tags: Array.isArray(data.tags) ? data.tags : [],
     document_url: document_url,
     client_type_id: data.client_type_id,
-    uploaded_by: uploadedByUuid, // Use proper UUID instead of string
+    uploaded_by: uploadedByUuid,
+    file_size: fileSize,
   }
 
   const { data: resource, error } = await supabase
@@ -210,7 +211,7 @@ async function updateResource(supabase: any, data: any) {
       // Convert base64 to blob
       const base64Data = data.document_url.split(',')[1];
       const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-      
+      updateData.file_size = binaryData.length;
       // Upload to storage
       const { data: uploadResult, error: uploadError } = await supabase.storage
         .from('edusafe-resources')
@@ -234,7 +235,7 @@ async function updateResource(supabase: any, data: any) {
       
     } catch (storageError) {
       console.error('Error uploading to storage:', storageError);
-      // Don't update document_url if storage fails
+      // Don't update document_url or file_size if storage fails
     }
   }
 

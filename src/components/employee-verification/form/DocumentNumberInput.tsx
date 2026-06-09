@@ -74,28 +74,34 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
         return {
           label: 'Driving License Number',
           placeholder: 'TN38 20230008943',
-          maxLength: 20,
-          pattern: /^[A-Z0-9-]+$/,
-          format: (val: string) => val.toUpperCase(),
-          validate: (val: string) => val.length >= 8
+          maxLength: 16,
+          pattern: /^[A-Z]{2}[0-9]{2}\s?[0-9]{4}\s?[0-9]{7}$/,
+          format: (val: string) =>
+            val.toUpperCase().replace(/[^A-Z0-9\s]/g, ''),
+          validate: (val: string) =>
+            /^[A-Z]{2}[0-9]{2}\s?[0-9]{4}\s?[0-9]{7}$/.test(val)
         };
       case 'voter_id':
         return {
           label: 'Voter ID Number',
           placeholder: 'ABC1234567',
-          maxLength: 15,
-          pattern: /^[A-Z0-9]+$/,
-          format: (val: string) => val.toUpperCase(),
-          validate: (val: string) => val.length >= 8
+          maxLength: 10,
+          pattern: /^[A-Z]{3}[0-9]{7}$/,
+          format: (val: string) =>
+            val.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+          validate: (val: string) =>
+            /^[A-Z]{3}[0-9]{7}$/.test(val)
         };
       case 'passport':
         return {
           label: 'File Number',
           placeholder: 'CB1063503341321',
-          maxLength: 20,
-          pattern: /^[A-Z0-9-]+$/,
-          format: (val: string) => val.toUpperCase(),
-          validate: (val: string) => /^[A-Z0-9-]{8,20}$/.test(val)
+          maxLength: 16,
+          pattern: /^[A-Z]{2}[0-9]{14}$/,
+          format: (val: string) =>
+            val.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+          validate: (val: string) =>
+            /^[A-Z]{2}[0-9]{14}$/.test(val)
         };
       default:
         return {
@@ -154,11 +160,11 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
         case 'pan':
           return 'PAN must be in format: ABCDE1234F';
         case 'driving_license':
-          return 'Driving license number must be at least 8 characters';
+          return 'Driving License number must be in format: TN38 20230008943';
         case 'voter_id':
-          return 'Voter ID must be at least 8 characters';
+          return 'Voter ID must be in format: IVZ2144343';
         case 'passport':
-          return 'Passport must be in format: A1234567';
+          return 'Passport must be in format: CB1063503341321';
         default:
           return 'Invalid format';
       }

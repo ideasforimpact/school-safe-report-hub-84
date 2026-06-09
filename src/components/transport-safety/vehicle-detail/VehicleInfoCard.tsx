@@ -31,7 +31,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { getLatestVerificationFieldValue } from '@/utils/transport-safety/documentStatusUtils';
+import {
+  getCommonVehicleTypeIcon,
+  getLatestVerificationFieldValue,
+} from '@/utils/transport-safety/documentStatusUtils';
 import VerificationDetailsDialog from '../VerificationDetailsDialog';
 import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
 import { VehicleChallans } from '@/types/transportSafety';
@@ -256,6 +259,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
 
   // Get the latest verification data for display
   const latestVerificationData = getLatestVerificationData();
+  const commonVehicleIcon = getCommonVehicleTypeIcon(vehicle);
   const latestChallanSuccessLog = React.useMemo(() => {
     const logs = vehicleChallans?.challan_history_log;
     if (!logs || typeof logs !== 'object') return null;
@@ -283,7 +287,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center">
           <div className="bg-gray-100 p-3 rounded-lg mr-4">
-            <VehicleTypeIcon type={type} icon={vehicle.vehicleTypeIcon} size={32} />
+            <VehicleTypeIcon type={type} icon={commonVehicleIcon} size={32} />
           </div>
           <div>
             <CardTitle>{make} {model}</CardTitle>

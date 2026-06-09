@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getConfiguredModules } from '@/store/employeeSelectors';
+import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ export default function AuthCallback() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <p className="mb-4">Signing you in…</p>
+        <AuthLoadingOverlay isVisible={true} />
         {errorMsg && <p className="text-red-500">{errorMsg}</p>}
       </div>
     </div>
