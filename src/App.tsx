@@ -1,5 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+
+console.log('Spike is activated');
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/auth';
 import { StudentProvider } from './contexts/StudentContext';
