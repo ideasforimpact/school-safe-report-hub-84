@@ -79,11 +79,11 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     error: null,
   });
   
-  // Get client ID from auth context
-  const { employeeData } = useAuth();
-  
-  // Use the hook to get report types with RLS - no manual client validation needed
-  const { reportTypes, loading, fetchReportTypes } = useReportTypes();
+  // Get client ID and type from auth context
+  const { employeeData, user } = useAuth();
+  const clientTypeKey = employeeData?.clientType?.key || (user as any)?.clientType?.key;
+  // Use the hook to get report types filtered by client type
+  const { reportTypes, loading, fetchReportTypes } = useReportTypes(clientTypeKey);
   const [reportTypeReferences, setReportTypeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
 
   // Pre-load reference info so we can disable delete button for linked report types

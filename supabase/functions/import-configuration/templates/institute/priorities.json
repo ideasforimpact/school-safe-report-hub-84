@@ -1,0 +1,49 @@
+{
+  "priorities": [
+    {
+      "id": "",
+      "name": "Critical",
+      "description": "Immediate action required — student safety at risk, legal obligation, or regulatory breach",
+      "color": "#dc2626",
+      "weight": 1,
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "High",
+      "description": "Urgent attention required — significant impact on student welfare, campus security, or institutional reputation",
+      "color": "#ea580c",
+      "weight": 2,
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Medium",
+      "description": "Needs timely follow-up — moderate impact on academic operations or campus environment",
+      "color": "#d97706",
+      "weight": 3,
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Low",
+      "description": "Can be addressed in routine workflow — minimal disruption to campus operations",
+      "color": "#16a34a",
+      "weight": 4,
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Informational",
+      "description": "For documentation and awareness only — no immediate corrective action required",
+      "color": "#6b7280",
+      "weight": 5,
+      "is_active": true,
+      "client_id": ""
+    }
+  ]
+}

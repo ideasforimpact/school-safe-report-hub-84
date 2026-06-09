@@ -1,0 +1,62 @@
+[
+  {
+    "id": "",
+    "title": "Anti-Ragging Policy",
+    "description": "Defines ragging as a punishable offense and outlines the institute's zero-tolerance stance. Details the complaint mechanism, investigation process, and consequences in line with regulatory requirements.",
+    "category": "policy",
+    "tags": ["Safety", "Student Welfare"],
+    "document_url": "edusafe-resources/client_type_id/anti_ragging_policy.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  },
+  {
+    "id": "",
+    "title": "Academic Integrity & Anti-Plagiarism Policy",
+    "description": "Sets out the standards of academic honesty expected from students and researchers. Describes the definition of plagiarism, acceptable citation practices, detection tools used, and the disciplinary process for violations.",
+    "category": "policy",
+    "tags": ["Academic", "Research"],
+    "document_url": "edusafe-resources/client_type_id/academic_integrity_policy.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  },
+  {
+    "id": "",
+    "title": "Student Data Privacy Policy",
+    "description": "Safeguards students' personal and academic information from unauthorized access or misuse. Ensures all student data is collected, stored, and processed responsibly in compliance with data protection regulations.",
+    "category": "policy",
+    "tags": ["Privacy", "Data Protection"],
+    "document_url": "edusafe-resources/client_type_id/student_data_privacy_policy.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  },
+  {
+    "id": "",
+    "title": "Prevention of Sexual Harassment (POSH) Policy",
+    "description": "Establishes a safe and inclusive campus environment by defining prohibited conduct, providing a clear complaints mechanism, and ensuring timely redressal of sexual harassment complaints.",
+    "category": "policy",
+    "tags": ["HR", "Compliance", "POSH"],
+    "document_url": "edusafe-resources/client_type_id/posh_policy.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  },
+  {
+    "id": "",
+    "title": "Research Ethics Guidelines",
+    "description": "Provides guidelines for conducting ethical research involving human participants, data collection, intellectual property rights, and publication standards. Ensures research integrity across all academic departments.",
+    "category": "guide",
+    "tags": ["Research", "Ethics"],
+    "document_url": "edusafe-resources/client_type_id/research_ethics_guidelines.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  }
+]

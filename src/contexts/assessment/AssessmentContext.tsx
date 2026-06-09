@@ -6,8 +6,6 @@ import { useTemplateManagement } from './hooks/useTemplateManagement';
 import { useQuestionManagement } from './hooks/useQuestionManagement';
 import { useAssignmentManagement } from './hooks/useAssignmentManagement';
 import { useResponseManagement } from './hooks/useResponseManagement';
-import { initializeMockData } from '@/components/assessments/data/initialMockData';
-
 const AssessmentContext = createContext<AssessmentContextType | undefined>(undefined);
 
 export const useAssessment = () => {
@@ -20,11 +18,6 @@ export const useAssessment = () => {
 
 export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { user } = useAuth();
-  
-  // Initialize mock data when the app starts
-  useEffect(() => {
-    initializeMockData();
-  }, []);
   
   // Set up template management
   const { 

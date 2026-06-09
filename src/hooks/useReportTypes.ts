@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { reportTypeService, ReportTypeItem } from '@/services/incident/reportTypeService';
 
-export function useReportTypes() {
+export function useReportTypes(clientTypeKey?: string) {
   const [reportTypes, setReportTypes] = useState<ReportTypeItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,10 +11,7 @@ export function useReportTypes() {
     try {
       setLoading(true);
       setError(null);
-      
-      // RLS handles client filtering automatically - no need for manual client checks
-      const types = await reportTypeService.getReportTypes(activeOnly);
-      
+      const types = await reportTypeService.getReportTypes(activeOnly, clientTypeKey);
       // Sort active report types to the top
       const sortedTypes = (types || []).sort((a, b) => {
         // Active items first
@@ -36,7 +33,7 @@ export function useReportTypes() {
 
   useEffect(() => {
     fetchReportTypes();
-  }, []);
+  }, [clientTypeKey]);
 
   return {
     reportTypes,

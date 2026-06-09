@@ -2,92 +2,37 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 
+// School templates
+import schoolCategories from './templates/school/categories.json' assert { type: 'json' };
+import schoolContribFactors from './templates/school/contributing-factors.json' assert { type: 'json' };
+import schoolReportTypes from './templates/school/report-types.json' assert { type: 'json' };
+import schoolPriorities from './templates/school/priorities.json' assert { type: 'json' };
+import schoolForm from './templates/school/forms.json' assert { type: 'json' };
+import schoolAssessments from './templates/school/assessment-templates.json' assert { type: 'json' };
+import schoolEduResources from './templates/school/edu-resources.json' assert { type: 'json' };
+
+// Work templates
+import workCategories from './templates/work/categories.json' assert { type: 'json' };
+import workContribFactors from './templates/work/contributing-factors.json' assert { type: 'json' };
+import workReportTypes from './templates/work/report-types.json' assert { type: 'json' };
+import workPriorities from './templates/work/priorities.json' assert { type: 'json' };
+import workForm from './templates/work/forms.json' assert { type: 'json' };
+import workAssessments from './templates/work/assessment-templates.json' assert { type: 'json' };
+import workEduResources from './templates/work/edu-resources.json' assert { type: 'json' };
+
+// Institute templates
+import instituteCategories from './templates/institute/categories.json' assert { type: 'json' };
+import instituteContribFactors from './templates/institute/contributing-factors.json' assert { type: 'json' };
+import instituteReportTypes from './templates/institute/report-types.json' assert { type: 'json' };
+import institutePriorities from './templates/institute/priorities.json' assert { type: 'json' };
+import instituteForm from './templates/institute/forms.json' assert { type: 'json' };
+import instituteAssessments from './templates/institute/assessment-templates.json' assert { type: 'json' };
+import instituteEduResources from './templates/institute/edu-resources.json' assert { type: 'json' };
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-interface CategoryPayload {
-  id?: string; // empty in templates
-  name: string;
-  description?: string;
-  client_id?: string; // empty in templates
-  subcategories?: Array<{
-    id?: string;
-    name: string;
-    description?: string;
-    category_id?: string;
-    client_id?: string;
-  }>
-}
-
-interface ContributingFactorPayload {
-  id?: string;
-  name: string;
-  description?: string;
-  weight?: string | null;
-  client_id?: string;
-}
-
-interface ReportTypePayload {
-  id?: string;
-  name: string;
-  description?: string | null;
-  is_active?: boolean;
-  client_id?: string;
-}
-
-interface PriorityPayload {
-  id?: string;
-  name: string;
-  description?: string | null;
-  color?: string | null;
-  weight?: number | null;
-  is_active?: boolean;
-  client_id?: string;
-}
-
-interface AssessmentTemplatePayload {
-  title: string;
-  description?: string | null;
-  category_id?: string | null;
-  category_name?: string | null; // Look up category_id from template_categories table
-  questions?: unknown;
-  is_active?: boolean;
-  client_id?: string | null;
-}
-
-interface EduResourcePayload {
-  id?: string; // empty in templates
-  title: string;
-  description?: string;
-  category?: string;
-  tags?: string[] | null;
-  document_url?: string;
-  created_at?: string;
-  updated_at?: string;
-  uploaded_by?: string; // empty in templates
-  client_type_id?: string; // empty in templates
-}
-
-interface ImportRequest {
-  client_id: string;
-  categories?: CategoryPayload[];
-  contributing_factors?: ContributingFactorPayload[];
-  report_types?: ReportTypePayload[];
-  priorities?: PriorityPayload[];
-  forms?: Array<{
-    title: string;
-    description?: string | null;
-    is_active?: boolean;
-    client_logo?: string | null;
-    fields: unknown;
-  }>;
-  assessment_templates?: AssessmentTemplatePayload[];
-  edu_resources?: EduResourcePayload[];
-  // Optional: when true, load default templates from /templates
-  use_defaults?: boolean;
-}
 
 type PerTableLog = {
   inserted_ids: string[];
@@ -95,13 +40,50 @@ type PerTableLog = {
   errors: string[];
 }
 
+const TEMPLATES_BY_TYPE: Record<string, {
+  categories: any[];
+  contributing_factors: any[];
+  report_types: any[];
+  priorities: any[];
+  forms: any[];
+  assessment_templates: any[];
+  edu_resources: any[];
+}> = {
+  school: {
+    categories: (schoolCategories as any).categories,
+    contributing_factors: (schoolContribFactors as any).contributing_factors,
+    report_types: (schoolReportTypes as any).report_types,
+    priorities: (schoolPriorities as any).priorities,
+    forms: [schoolForm],
+    assessment_templates: schoolAssessments as any[],
+    edu_resources: schoolEduResources as any[],
+  },
+  work: {
+    categories: (workCategories as any).categories,
+    contributing_factors: (workContribFactors as any).contributing_factors,
+    report_types: (workReportTypes as any).report_types,
+    priorities: (workPriorities as any).priorities,
+    forms: [workForm],
+    assessment_templates: workAssessments as any[],
+    edu_resources: workEduResources as any[],
+  },
+  institute: {
+    categories: (instituteCategories as any).categories,
+    contributing_factors: (instituteContribFactors as any).contributing_factors,
+    report_types: (instituteReportTypes as any).report_types,
+    priorities: (institutePriorities as any).priorities,
+    forms: [instituteForm],
+    assessment_templates: instituteAssessments as any[],
+    edu_resources: instituteEduResources as any[],
+  },
+};
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-    const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
+  const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
 
   let responseStatus = 'success';
   let responseCode = 200;
@@ -118,608 +100,280 @@ serve(async (req) => {
   };
 
   try {
-    const body = (await req.json()) as ImportRequest;
-    const clientId = body.client_id;
+    const body = await req.json();
+    const clientId: string = body.client_id;
 
     if (!clientId) {
-      responseStatus = 'failed';
-      responseCode = 400;
-      return new Response(JSON.stringify({ error: 'client_id is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(
+        JSON.stringify({ error: 'client_id is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Expect templates to be sent in the request body from the UI
-    const contributingFactors = body.contributing_factors;
-    const reportTypes = body.report_types;
-    const priorities = body.priorities;
-    const categories = body.categories;
-    const forms = body.forms;
-    const assessmentTemplates = body.assessment_templates;
-    const eduResources = body.edu_resources;
+    // Import all 3 client types for this client
+    for (const typeKey of ['school', 'work', 'institute']) {
+      const templates = TEMPLATES_BY_TYPE[typeKey];
 
-    console.log('Received forms:', forms ? `${forms.length} forms` : 'undefined');
-    console.log('Received assessment templates:', assessmentTemplates ? `${assessmentTemplates.length} assessment templates` : 'undefined');
-    console.log('Received edu resources:', eduResources ? `${eduResources.length} edu resources` : 'undefined');
-
-    // Validate required templates
-    const missing: string[] = [];
-    if (!Array.isArray(categories) || categories.length === 0) missing.push('categories');
-    if (!Array.isArray(contributingFactors) || contributingFactors.length === 0) missing.push('contributing_factors');
-    if (!Array.isArray(reportTypes) || reportTypes.length === 0) missing.push('report_types');
-    if (!Array.isArray(priorities) || priorities.length === 0) missing.push('priorities');
-
-    if (missing.length > 0) {
-      responseStatus = 'failed';
-      responseCode = 400;
-      const message = `Missing template(s): ${missing.join(', ')}`;
-      // Log a minimal failure entry
-      await supabase.from('configuration_import_logs').insert({
-        client_id: clientId,
-        response_status: responseStatus,
-        response_code: responseCode,
-        log: { error: message }
-      });
-      return new Response(JSON.stringify({ error: message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    
-
-    // Insert/Reuse Contributing Factors
-    if (Array.isArray(contributingFactors) && contributingFactors.length > 0) {
-      for (const factor of contributingFactors) {
+      // ── Contributing Factors ──────────────────────────────────────────────
+      for (const factor of templates.contributing_factors) {
         const name = factor.name?.trim();
         if (!name) continue;
-        // Check existing by (client_id, lower(name))
-        const { data: existing, error: findErr } = await supabase
-          .from('contributing_factors')
-          .select('id')
-          .eq('client_id', clientId)
-          .eq('name', name);
-        if (!findErr && existing && existing.length > 0) {
+        const { data: existing } = await supabase
+          .from('contributing_factors').select('id')
+          .eq('client_id', clientId).eq('name', name).eq('client_type_key', typeKey);
+        if (existing && existing.length > 0) {
           tableLogs.contributing_factors.already_existing_ids.push(existing[0].id);
           continue;
         }
-
-        const record = {
-          name,
-          description: factor.description ?? null,
-          // Coerce weight to null unless string (many schemas store text like 'Low'|'Medium'|'High')
-          weight: typeof (factor as any).weight === 'string' ? (factor as any).weight : null,
-          client_id: clientId,
-        };
         const { data, error } = await supabase
           .from('contributing_factors')
-          .insert(record)
-          .select('id')
-          .single();
-        if (error) {
-          tableLogs.contributing_factors.errors.push(error.message);
-          responseStatus = 'failed';
-          responseCode = 207; // multi-status
-        } else if (data?.id) {
-          tableLogs.contributing_factors.inserted_ids.push(data.id);
+          .insert({ name, description: factor.description ?? null, weight: null, client_id: clientId, client_type_key: typeKey })
+          .select('id').single();
+        if (error) { tableLogs.contributing_factors.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
+        else if (data?.id) tableLogs.contributing_factors.inserted_ids.push(data.id);
         }
-      }
-    }
-
-    // Insert/Reuse Report Types
-    if (Array.isArray(reportTypes) && reportTypes.length > 0) {
-      for (const rt of reportTypes) {
+      // ── Report Types ──────────────────────────────────────────────────────
+      for (const rt of templates.report_types) {
         const name = rt.name?.trim();
         if (!name) continue;
-        const { data: existing, error: findErr } = await supabase
-          .from('incident_report_types')
-          .select('id')
-          .eq('client_id', clientId)
-          .eq('name', name);
-        if (!findErr && existing && existing.length > 0) {
+        const { data: existing } = await supabase
+          .from('incident_report_types').select('id')
+          .eq('client_id', clientId).eq('name', name).eq('client_type_key', typeKey);
+        if (existing && existing.length > 0) {
           tableLogs.report_types.already_existing_ids.push(existing[0].id);
           continue;
         }
-        const record = {
-          name,
-          description: rt.description ?? null,
-          is_active: rt.is_active ?? true,
-          client_id: clientId,
-        };
         const { data, error } = await supabase
           .from('incident_report_types')
-          .insert(record)
-          .select('id')
-          .single();
-        if (error) {
-          tableLogs.report_types.errors.push(error.message);
-          responseStatus = 'failed';
-          responseCode = 207;
-        } else if (data?.id) {
-          tableLogs.report_types.inserted_ids.push(data.id);
-        }
+          .insert({ name, description: rt.description ?? null, is_active: rt.is_active ?? true, client_id: clientId, client_type_key: typeKey })
+          .select('id').single();
+        if (error) { tableLogs.report_types.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
+        else if (data?.id) tableLogs.report_types.inserted_ids.push(data.id);
       }
-    }
-
-    // Insert/Reuse Priorities
-    if (Array.isArray(priorities) && priorities.length > 0) {
-      for (const pr of priorities) {
+      // ── Priorities ────────────────────────────────────────────────────────
+      for (const pr of templates.priorities) {
         const name = pr.name?.trim();
         if (!name) continue;
-        const { data: existing, error: findErr } = await supabase
-          .from('incident_priorities')
-          .select('id')
-          .eq('client_id', clientId)
-          .eq('name', name);
-        if (!findErr && existing && existing.length > 0) {
+        const { data: existing } = await supabase
+          .from('incident_priorities').select('id')
+          .eq('client_id', clientId).eq('name', name).eq('client_type_key', typeKey);
+        if (existing && existing.length > 0) {
           tableLogs.priorities.already_existing_ids.push(existing[0].id);
           continue;
         }
-        const record = {
-          name,
-          description: pr.description ?? null,
-          color: pr.color ?? null,
-          weight: pr.weight ?? null,
-          is_active: pr.is_active ?? true,
-          client_id: clientId,
-        };
         const { data, error } = await supabase
           .from('incident_priorities')
-          .insert(record)
-          .select('id')
-          .single();
-        if (error) {
-          tableLogs.priorities.errors.push(error.message);
-          responseStatus = 'failed';
-          responseCode = 207;
-        } else if (data?.id) {
-          tableLogs.priorities.inserted_ids.push(data.id);
+          .insert({ name, description: pr.description ?? null, color: pr.color ?? null, weight: pr.weight ?? null, is_active: pr.is_active ?? true, client_id: clientId, client_type_key: typeKey })
+          .select('id').single();
+        if (error) { tableLogs.priorities.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
+        else if (data?.id) tableLogs.priorities.inserted_ids.push(data.id);
         }
-      }
-    }
-
-    // Insert/Reuse Categories and Subcategories
-    if (Array.isArray(categories) && categories.length > 0) {
-      for (const cat of categories) {
+      // ── Categories + Subcategories ────────────────────────────────────────
+      for (const cat of templates.categories) {
         const catName = cat.name?.trim();
         if (!catName) continue;
-        // Check existing category
-        const { data: existCat, error: findCatErr } = await supabase
-          .from('incident_categories')
-          .select('id')
-          .eq('client_id', clientId)
-          .eq('name', catName);
+        const { data: existCat } = await supabase
+          .from('incident_categories').select('id')
+          .eq('client_id', clientId).eq('name', catName).eq('client_type_key', typeKey);
         let categoryId: string | null = null;
-        if (!findCatErr && existCat && existCat.length > 0) {
+        if (existCat && existCat.length > 0) {
           categoryId = existCat[0].id;
           tableLogs.categories.already_existing_ids.push(categoryId);
         } else {
-          const catRecord = {
-            name: catName,
-            description: cat.description ?? null,
-            client_id: clientId,
-          };
           const { data: insertedCat, error: catError } = await supabase
             .from('incident_categories')
-            .insert(catRecord)
-            .select('id')
-            .single();
+            .insert({ name: catName, description: cat.description ?? null, client_id: clientId, client_type_key: typeKey })
+            .select('id').single();
           if (catError || !insertedCat?.id) {
             tableLogs.categories.errors.push(catError?.message || 'Unknown category insert error');
-            responseStatus = 'failed';
-            responseCode = 207;
+            responseStatus = 'failed'; responseCode = 207;
             continue;
           }
           categoryId = insertedCat.id;
           tableLogs.categories.inserted_ids.push(categoryId);
         }
 
-        // Subcategories for this category
-        if (categoryId && Array.isArray(cat.subcategories) && cat.subcategories.length > 0) {
+        if (categoryId && Array.isArray(cat.subcategories)) {
           for (const sub of cat.subcategories) {
             const subName = sub.name?.trim();
             if (!subName) continue;
-            const { data: existSub, error: findSubErr } = await supabase
-              .from('incident_subcategories')
-              .select('id')
-              .eq('client_id', clientId)
-              .eq('category_id', categoryId)
-              .eq('name', subName);
-            if (!findSubErr && existSub && existSub.length > 0) {
+            const { data: existSub } = await supabase
+              .from('incident_subcategories').select('id')
+              .eq('client_id', clientId).eq('category_id', categoryId).eq('name', subName);
+            if (existSub && existSub.length > 0) {
               tableLogs.sub_categories.already_existing_ids.push(existSub[0].id);
               continue;
             }
-            const subRecord = {
-              name: subName,
-              description: sub.description ?? null,
-              category_id: categoryId,
-              client_id: clientId,
-            };
             const { data: insertedSub, error: subError } = await supabase
               .from('incident_subcategories')
-              .insert(subRecord)
-              .select('id')
-              .single();
-            if (subError) {
-              tableLogs.sub_categories.errors.push(subError.message);
-              responseStatus = 'failed';
-              responseCode = 207;
-            } else if (insertedSub?.id) {
-              tableLogs.sub_categories.inserted_ids.push(insertedSub.id);
-            }
+              .insert({ name: subName, description: sub.description ?? null, category_id: categoryId, client_id: clientId, client_type_key: typeKey })
+              .select('id').single();
+            if (subError) { tableLogs.sub_categories.errors.push(subError.message); responseStatus = 'failed'; responseCode = 207; }
+            else if (insertedSub?.id) tableLogs.sub_categories.inserted_ids.push(insertedSub.id);
           }
         }
       }
-    }
 
-    // Insert/Reuse Custom Forms
-    if (Array.isArray(forms) && forms.length > 0) {
-      console.log(`Processing ${forms.length} forms for client ${clientId}`);
-      // Try to fetch client logo once (whatever column exists)
+      // ── Custom Forms ──────────────────────────────────────────────────────
       let clientLogo: string | null = null;
       try {
         const { data: clientData } = await supabase
-          .from('clients')
-          .select('logo, client_logo, logo_url')
-          .eq('id', clientId)
-          .single();
+          .from('clients').select('logo, client_logo, logo_url').eq('id', clientId).single();
         clientLogo = (clientData as any)?.client_logo || (clientData as any)?.logo || (clientData as any)?.logo_url || null;
       } catch (_) {}
 
-      for (const form of forms) {
+      for (const form of templates.forms) {
         const title = form.title?.trim();
         if (!title) continue;
-        // Check existing by (client_id, title)
-        const { data: existForm, error: findFormErr } = await supabase
-          .from('custom_forms')
-          .select('id')
-          .eq('client_id', clientId)
-          .eq('title', title);
-        if (!findFormErr && existForm && existForm.length > 0) {
+        const { data: existForm } = await supabase
+          .from('custom_forms').select('id')
+          .eq('client_id', clientId).eq('title', title).eq('client_type_key', typeKey);
+        if (existForm && existForm.length > 0) {
           tableLogs.custom_forms.already_existing_ids.push(existForm[0].id);
           continue;
         }
-
-        const record: any = {
-          client_id: clientId,
-          title,
-          description: form.description ?? null,
-          is_active: form.is_active ?? true,
-          fields: form.fields,
-          client_logo: form.client_logo ?? clientLogo ?? null
-        };
-
         const { data, error } = await supabase
           .from('custom_forms')
-          .insert(record)
-          .select('id')
-          .single();
-        if (error) {
-          console.log(`Error inserting form "${title}":`, error.message);
-          tableLogs.custom_forms.errors.push(error.message);
-          responseStatus = 'failed';
-          responseCode = 207;
-        } else if (data?.id) {
-          console.log(`Successfully inserted form "${title}" with ID: ${data.id}`);
-          tableLogs.custom_forms.inserted_ids.push(data.id);
-        }
+          .insert({ client_id: clientId, title, description: form.description ?? null, is_active: form.is_active ?? true, fields: form.fields, client_logo: (form as any).client_logo ?? clientLogo ?? null, client_type_key: typeKey })
+          .select('id').single();
+        if (error) { tableLogs.custom_forms.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
+        else if (data?.id) tableLogs.custom_forms.inserted_ids.push(data.id);
       }
-    }
 
-    // Insert/Reuse Assessment Templates
-    if (Array.isArray(assessmentTemplates) && assessmentTemplates.length > 0) {
-      console.log(`Processing ${assessmentTemplates.length} assessment templates for client ${clientId}`);
-      
-      // Find super admin employee for created_by field
+      // ── Assessment Templates ──────────────────────────────────────────────
       let superAdminId: string | null = null;
       try {
-        const { data: superAdminData } = await supabase
-          .from('employees')
-          .select('id')
-          .eq('client_id', clientId)
-          .eq('is_super_admin', true)
-          .single();
-        superAdminId = superAdminData?.id || null;
-        console.log(`Found super admin ID: ${superAdminId}`);
-      } catch (error) {
-        console.log('No super admin found for client:', clientId);
-      }
+        const { data: sa } = await supabase
+          .from('employees').select('id').eq('client_id', clientId).eq('is_super_admin', true).single();
+        superAdminId = sa?.id || null;
+      } catch (_) {}
 
-      for (const template of assessmentTemplates) {
+      for (const template of templates.assessment_templates) {
         const title = template.title?.trim();
         if (!title) continue;
-        
-        // Check existing by (client_id, title)
-        const { data: existTemplate, error: findTemplateErr } = await supabase
-          .from('assessment_templates')
-          .select('id')
-          .eq('client_id', clientId)
-          .eq('title', title);
-        if (!findTemplateErr && existTemplate && existTemplate.length > 0) {
+        const { data: existTemplate } = await supabase
+          .from('assessment_templates').select('id')
+          .eq('client_id', clientId).eq('title', title).eq('client_type_key', typeKey);
+        if (existTemplate && existTemplate.length > 0) {
           tableLogs.assessment_templates.already_existing_ids.push(existTemplate[0].id);
           continue;
         }
-
-        // Look up category_id from template_categories table if category_name is provided
         let categoryId: string | null = null;
         if (template.category_name) {
-          const categoryName = template.category_name.trim();
-          const { data: categoryData, error: categoryErr } = await supabase
-            .from('template_categories')
-            .select('id')
-            .eq('name', categoryName)
-            .single();
-          if (!categoryErr && categoryData?.id) {
-            categoryId = categoryData.id;
-            console.log(`Mapped category_name "${categoryName}" to category_id: ${categoryId}`);
-          } else {
-            console.log(`Warning: Could not find category with name "${categoryName}" in template_categories table`);
-          }
-        } else if (template.category_id) {
-          // Fallback to direct category_id if provided (for backward compatibility)
-          categoryId = template.category_id;
+          const { data: catData } = await supabase
+            .from('template_categories').select('id').eq('name', template.category_name.trim()).single();
+          categoryId = catData?.id || null;
         }
-
-        const record: any = {
-          client_id: clientId,
-          title,
-          description: template.description ?? null,
-          category_id: categoryId,
-          questions: template.questions ?? null,
-          is_active: template.is_active ?? true,
-          created_by: superAdminId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
+        const questionsWithIds = (template.questions ?? []).map((q: any) => ({
+          id: q.id || crypto.randomUUID(),
+          text: q.text,
+          allowComments: q.allowComments ?? false,
+          allowAttachments: q.allowAttachments ?? false,
+          required: q.required ?? false,
+          files: q.files ?? [],
+        }));
         const { data, error } = await supabase
           .from('assessment_templates')
-          .insert(record)
-          .select('id')
-          .single();
-        if (error) {
-          console.log(`Error inserting assessment template "${title}":`, error.message);
-          tableLogs.assessment_templates.errors.push(error.message);
-          responseStatus = 'failed';
-          responseCode = 207;
-        } else if (data?.id) {
-          console.log(`Successfully inserted assessment template "${title}" with ID: ${data.id}`);
-          tableLogs.assessment_templates.inserted_ids.push(data.id);
-        }
+          .insert({ client_id: clientId, title, description: template.description ?? null, category_id: categoryId, questions: questionsWithIds, is_active: template.is_active ?? true, created_by: superAdminId, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), client_type_key: typeKey })
+          .select('id').single();
+        if (error) { tableLogs.assessment_templates.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
+        else if (data?.id) tableLogs.assessment_templates.inserted_ids.push(data.id);
       }
-    }
 
-    // Insert/Reuse Edu Resources
-    if (Array.isArray(eduResources) && eduResources.length > 0) {
-      console.log(`Processing ${eduResources.length} edu resources for client ${clientId}`);
-      
-      // Get current user from auth header
-      let uploadedById: string | null = null;
-      try {
-        const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
-        if (authHeader) {
-          const token = authHeader.replace('Bearer ', '');
-          const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-          if (!userError && user) {
-            // Get backoffice_users id from auth_user_id
-            const { data: backofficeUser, error: backofficeError } = await supabase
-              .from('backoffice_users')
-              .select('id')
-              .eq('email','backofficesafeschool@gmail.com')
-              .single();
-            if (!backofficeError && backofficeUser?.id) {
-              uploadedById = backofficeUser.id;
-              console.log(`Found backoffice user ID: ${uploadedById}`);
-            } else {
-              console.log('No backoffice user found for auth_user_id:', user.id);
+      // ── Edu Resources (global table, keyed by client_type_id) ─────────────
+      const { data: clientTypeData } = await supabase
+        .from('client_type').select('id').eq('key', typeKey).single();
+      const clientTypeId: string | null = clientTypeData?.id || null;
+
+      if (clientTypeId) {
+        let uploadedById: string | null = null;
+        try {
+          const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+          if (authHeader) {
+            const token = authHeader.replace('Bearer ', '');
+            const { data: { user } } = await supabase.auth.getUser(token);
+            if (user) {
+              const { data: bu } = await supabase.from('backoffice_users').select('id').eq('email', 'backofficesafeschool@gmail.com').single();
+              uploadedById = bu?.id || null;
             }
           }
-        }
-      } catch (error) {
-        console.log('Error getting current user:', error);
-      }
+        } catch (_) {}
 
-      // Get client_type_id where key = 'school'
-      let clientTypeId: string | null = null;
-      try {
-        const { data: clientTypeData, error: clientTypeError } = await supabase
-          .from('client_type')
-          .select('id')
-          .eq('key', 'school')
-          .single();
-        if (!clientTypeError && clientTypeData?.id) {
-          clientTypeId = clientTypeData.id;
-          console.log(`Found client_type_id for 'school': ${clientTypeId}`);
-        } else {
-          console.log('Warning: Could not find client_type with key "school"');
-        }
-      } catch (error) {
-        console.log('Error getting client_type:', error);
-      }
-
-      for (const resource of eduResources) {
-        const title = resource.title?.trim();
-        if (!title) continue;
-        
-        // Check existing by (client_type_id, title)
-        const { data: existResource, error: findResourceErr } = await supabase
-          .from('backoffice_edusafe_resource')
-          .select('id')
-          .eq('client_type_id', clientTypeId)
-          .eq('title', title);
-        if (!findResourceErr && existResource && existResource.length > 0) {
-          tableLogs.backoffice_edusafe_resource.already_existing_ids.push(existResource[0].id);
-          continue;
-        }
-
-        // Generate UUID for id
-        const resourceId = crypto.randomUUID();
-
-        // Replace 'client_type_id' placeholder in document_url with actual client_type_id UUID
-        let documentUrl = resource.document_url ?? null;
-        if (documentUrl && clientTypeId) {
-          documentUrl = documentUrl.replace(/client_type_id/g, clientTypeId);
-        }
-
-        const record: any = {
-          id: resourceId,
-          title,
-          description: resource.description ?? null,
-          category: resource.category ?? null,
-          tags: resource.tags ?? null,
-          document_url: documentUrl,
-          created_at: resource.created_at || new Date().toISOString(),
-          updated_at: resource.updated_at || new Date().toISOString(),
-          uploaded_by: uploadedById,
-          client_type_id: clientTypeId,
-        };
-
-        const { data, error } = await supabase
-          .from('backoffice_edusafe_resource')
-          .insert(record)
-          .select('id')
-          .single();
-        if (error) {
-          console.log(`Error inserting edu resource "${title}":`, error.message);
-          tableLogs.backoffice_edusafe_resource.errors.push(error.message);
-          responseStatus = 'failed';
-          responseCode = 207;
-        } else if (data?.id) {
-          console.log(`Successfully inserted edu resource "${title}" with ID: ${data.id}`);
-          tableLogs.backoffice_edusafe_resource.inserted_ids.push(data.id);
+        for (const resource of templates.edu_resources) {
+          const title = resource.title?.trim();
+          if (!title) continue;
+          const { data: existRes } = await supabase
+            .from('backoffice_edusafe_resource').select('id')
+            .eq('client_type_id', clientTypeId).eq('title', title);
+          if (existRes && existRes.length > 0) {
+            tableLogs.backoffice_edusafe_resource.already_existing_ids.push(existRes[0].id);
+            continue;
+          }
+          let documentUrl = resource.document_url ?? null;
+          if (documentUrl) documentUrl = documentUrl.replace(/client_type_id/g, clientTypeId);
+          const { data, error } = await supabase
+            .from('backoffice_edusafe_resource')
+            .insert({ id: crypto.randomUUID(), title, description: resource.description ?? null, category: resource.category ?? null, tags: resource.tags ?? null, document_url: documentUrl, created_at: resource.created_at || new Date().toISOString(), updated_at: resource.updated_at || new Date().toISOString(), uploaded_by: uploadedById, client_type_id: clientTypeId })
+            .select('id').single();
+          if (error) { tableLogs.backoffice_edusafe_resource.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
+          else if (data?.id) tableLogs.backoffice_edusafe_resource.inserted_ids.push(data.id);
         }
       }
-    }
+    } // end for typeKey
 
-    // Create "All" group and assign all employees
+    // ── Create "All" group ────────────────────────────────────────────────
     try {
-      // Get super admin employee_id for this client
-      let superAdminEmployeeId: string | null = null;
-      const { data: superAdminData, error: superAdminError } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('client_id', clientId)
-        .eq('is_super_admin', true)
-        .single();
+      const { data: superAdminData } = await supabase
+        .from('employees').select('id').eq('client_id', clientId).eq('is_super_admin', true).single();
+      const superAdminEmployeeId: string | null = superAdminData?.id || null;
 
-      if (superAdminError || !superAdminData) {
-        console.log('Warning: Could not find super admin employee for client:', clientId);
-      } else {
-        superAdminEmployeeId = superAdminData.id;
-        console.log(`Found super admin employee ID: ${superAdminEmployeeId}`);
+      if (superAdminEmployeeId) {
+        const { data: allEmployees } = await supabase
+          .from('employees').select('id').eq('client_id', clientId).eq('status', true);
+        const employeeIds = (allEmployees || []).map((e: any) => e.id);
+        const { data: existingGroup, error: groupCheckError } = await supabase
+          .from('groups').select('id').eq('client_id', clientId).eq('name', 'All').single();
+        let groupId: string | null = null;
 
-        // Get all employee_ids for this client
-        const { data: allEmployees, error: employeesError } = await supabase
-          .from('employees')
-          .select('id')
-          .eq('client_id', clientId)
-          .eq('status', true);
-
-        if (employeesError) {
-          console.log('Error fetching employees:', employeesError);
-        } else if (allEmployees && allEmployees.length > 0) {
-          const employeeIds = allEmployees.map(emp => emp.id);
-          console.log(`Found ${employeeIds.length} employees for client ${clientId}`);
-
-          // Check if "All" group exists for this client
-          const { data: existingGroup, error: groupCheckError } = await supabase
+        if (groupCheckError?.code === 'PGRST116') {
+          const { data: newGroup } = await supabase
             .from('groups')
-            .select('id')
-            .eq('client_id', clientId)
-            .eq('name', 'All')
-            .single();
+            .insert({ name: 'All', description: 'All employees group - includes all employees in the organization', group_type: 'Employee', status: true, client_id: clientId, employee_id: superAdminEmployeeId })
+            .select('id').single();
+          groupId = newGroup?.id || null;
+        } else if (existingGroup) {
+          groupId = existingGroup.id;
+        }
 
-          let groupId: string | null = null;
-
-          if (groupCheckError && groupCheckError.code === 'PGRST116' && superAdminEmployeeId) {
-            // Group doesn't exist, create it
-            console.log('Creating "All" group for client:', clientId);
-            const { data: newGroup, error: createGroupError } = await supabase
-              .from('groups')
-              .insert({
-                name: 'All',
-                description: 'All employees group - includes all employees in the organization',
-                group_type: 'Employee',
-                status: true,
-                client_id: clientId,
-                employee_id: superAdminEmployeeId,
-              })
-              .select('id')
-              .single();
-
-            if (createGroupError || !newGroup) {
-              console.log('Error creating "All" group:', createGroupError);
-            } else {
-              groupId = newGroup.id;
-              console.log(`Successfully created "All" group with ID: ${groupId}`);
-            }
-          } else if (existingGroup) {
-            // Group already exists
-            groupId = existingGroup.id;
-            console.log(`"All" group already exists with ID: ${groupId}`);
-          } else if (groupCheckError) {
-            console.log('Error checking for existing "All" group:', groupCheckError);
-          }
-
-          // If we have a group_id and superAdminEmployeeId, insert employees into group_employees
-          if (groupId && superAdminEmployeeId) {
-            // Get existing group_employees to avoid duplicates
-            const { data: existingGroupEmployees, error: existingError } = await supabase
-              .from('group_employees')
-              .select('employee_id')
-              .eq('group_id', groupId);
-
-            const existingEmployeeIds = new Set(
-              (existingGroupEmployees || []).map((ge: any) => ge.employee_id).filter(Boolean)
+        if (groupId && employeeIds.length > 0) {
+          const { data: existingGE } = await supabase
+            .from('group_employees').select('employee_id').eq('group_id', groupId);
+          const existingSet = new Set((existingGE || []).map((ge: any) => ge.employee_id));
+          const toAdd = employeeIds.filter((id: string) => !existingSet.has(id));
+          if (toAdd.length > 0) {
+            await supabase.from('group_employees').insert(
+              toAdd.map((empId: string) => ({ group_id: groupId, employee_id: empId, role_id: null, client_id: clientId, created_by_employee_id: superAdminEmployeeId }))
             );
-
-            // Filter out employees that are already in the group
-            const employeesToAdd = employeeIds.filter(empId => !existingEmployeeIds.has(empId));
-
-            if (employeesToAdd.length > 0) {
-              console.log(`Adding ${employeesToAdd.length} employees to "All" group`);
-              const groupEmployeesToInsert = employeesToAdd.map((empId: string) => ({
-                group_id: groupId,
-                employee_id: empId,
-                role_id: null,
-                client_id: clientId,
-                created_by_employee_id: superAdminEmployeeId,
-              }));
-
-              const { error: insertError } = await supabase
-                .from('group_employees')
-                .insert(groupEmployeesToInsert);
-
-              if (insertError) {
-                console.log('Error inserting employees into "All" group:', insertError);
-              } else {
-                console.log(`Successfully added ${employeesToAdd.length} employees to "All" group`);
-              }
-            } else {
-              console.log('All employees are already in the "All" group');
-            }
           }
-        } else {
-          console.log(`No active employees found for client ${clientId}`);
         }
       }
-    } catch (error) {
-      console.log('Error creating "All" group:', error);
-      // Don't fail the entire import if this fails
-    }
+    } catch (_) {}
 
-    // Write log to intermediate table
-    const logPayload = {
+    await supabase.from('configuration_import_logs').insert({
       client_id: clientId,
       response_status: responseStatus,
       response_code: responseCode,
       log: tableLogs,
-    } as const;
-
-    await supabase.from('configuration_import_logs').insert(logPayload);
+    });
 
     return new Response(
       JSON.stringify({ status: responseStatus, code: responseCode, details: tableLogs }),
       { status: responseCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (e: any) {
-    const errResp = { status: 'failed', code: 500, error: e?.message || 'Unknown error' };
-    return new Response(JSON.stringify(errResp), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(
+      JSON.stringify({ status: 'failed', code: 500, error: e?.message || 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });
-
-

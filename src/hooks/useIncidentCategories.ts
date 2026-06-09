@@ -8,21 +8,21 @@ export function useIncidentCategories() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [subcategoryMappings, setSubcategoryMappings] = useState<Record<string, SubcategoryItem[]>>({});
   const [loading, setLoading] = useState(true);
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
 
   // Load categories and subcategories on mount
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      if (!employeeData?.clientId) {
+      const clientTypeKey = employeeData?.clientType?.key || (user as any)?.clientType?.key;
+      if (!employeeData?.clientId || !clientTypeKey) {
         toast.error('Client information not available');
         return;
       }
 
       const [categoriesData, subcategoriesData] = await Promise.all([
-        categoryService.getCategories(employeeData.clientId),
-        categoryService.getSubcategories(undefined, employeeData.clientId)
+        categoryService.getCategories(employeeData.clientId, clientTypeKey),
+        categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeKey)
       ]);
 
       setCategories(categoriesData);

@@ -37,8 +37,8 @@ export const reportTypeService = {
     }
   },
 
-  // Get report types - RLS handles client filtering automatically
-  getReportTypes: async (activeOnly: boolean = false) => {
+  // Get report types filtered by client type key
+  getReportTypes: async (activeOnly: boolean = false, clientTypeKey?: string) => {
     try {
       let query = supabase
         .from('incident_report_types')
@@ -47,7 +47,9 @@ export const reportTypeService = {
       if (activeOnly) {
         query = query.eq('is_active', true);
       }
-      
+      if (clientTypeKey) {
+        query = query.eq('client_type_key', clientTypeKey);
+      }
       const { data, error } = await query.order('name');
       
       if (error) {

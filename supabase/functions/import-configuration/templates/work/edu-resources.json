@@ -1,0 +1,62 @@
+[
+  {
+    "id": "",
+    "title": "Workplace Health & Safety Policy",
+    "description": "Outlines the organization's commitment to maintaining a safe and healthy work environment. Covers hazard identification, risk assessment, employee responsibilities, and compliance with occupational health and safety regulations.",
+    "category": "policy",
+    "tags": ["Safety", "Health", "Compliance"],
+    "document_url": "edusafe-resources/client_type_id/workplace_health_safety_policy.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  },
+  {
+    "id": "",
+    "title": "Prevention of Sexual Harassment (POSH) Policy",
+    "description": "Defines prohibited conduct, the complaint mechanism, investigation process, and consequences for sexual harassment at the workplace. Ensures compliance with applicable legislation and protects all employees from harassment.",
+    "category": "policy",
+    "tags": ["HR", "Compliance", "POSH"],
+    "document_url": "edusafe-resources/client_type_id/posh_policy.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  },
+  {
+    "id": "",
+    "title": "Code of Conduct & Ethics Policy",
+    "description": "Sets the standards of professional behavior, ethical conduct, and integrity expected of all employees. Covers conflicts of interest, confidentiality, use of company resources, and disciplinary procedures.",
+    "category": "policy",
+    "tags": ["Ethics", "Conduct"],
+    "document_url": "edusafe-resources/client_type_id/code_of_conduct_policy.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  },
+  {
+    "id": "",
+    "title": "Grievance Redressal Policy",
+    "description": "Provides employees with a structured mechanism to raise workplace concerns and grievances. Details the escalation path, timelines, and resolution process to ensure fair and prompt redressal.",
+    "category": "policy",
+    "tags": ["HR", "Grievance"],
+    "document_url": "edusafe-resources/client_type_id/grievance_redressal_policy.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  },
+  {
+    "id": "",
+    "title": "Cybersecurity Awareness Guide",
+    "description": "Educates employees on identifying phishing attacks, protecting passwords, handling company data securely, and following IT security best practices to protect the organization from cyber threats.",
+    "category": "guide",
+    "tags": ["IT Security", "Cybersecurity"],
+    "document_url": "edusafe-resources/client_type_id/cybersecurity_awareness_guide.docx",
+    "created_at": "2025-10-08 07:43:07.792967+00",
+    "updated_at": "2025-10-08 07:43:07.792967+00",
+    "uploaded_by": "",
+    "client_type_id": ""
+  }
+]

@@ -1,0 +1,49 @@
+{
+  "priorities": [
+    {
+      "id": "",
+      "name": "Critical",
+      "description": "Immediate action required — life-threatening injury, severe legal exposure, or major operations impact",
+      "color": "#dc2626",
+      "weight": 1,
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "High",
+      "description": "Urgent attention required — significant risk to employee safety, compliance, or business continuity",
+      "color": "#ea580c",
+      "weight": 2,
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Medium",
+      "description": "Important but not immediately urgent — moderate risk that needs timely follow-up",
+      "color": "#d97706",
+      "weight": 3,
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Low",
+      "description": "Minimal risk — can be addressed in routine workflow without immediate escalation",
+      "color": "#16a34a",
+      "weight": 4,
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Informational",
+      "description": "For awareness and record-keeping only — no corrective action required",
+      "color": "#6b7280",
+      "weight": 5,
+      "is_active": true,
+      "client_id": ""
+    }
+  ]
+}

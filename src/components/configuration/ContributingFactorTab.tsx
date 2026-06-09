@@ -59,7 +59,8 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
+  const clientTypeKey = employeeData?.clientType?.key || (user as any)?.clientType?.key;
   const [factors, setFactors] = useState<ContributingFactorItem[]>([]);
   const [factorReferences, setFactorReferences] = useState<Record<string, IncidentReferenceCheck>>({});
   
@@ -84,14 +85,15 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   
   // Fetch contributing factors directly using the service
   const fetchContributingFactors = useCallback(async () => {
-    if (!employeeData?.clientId) {
+    if (!employeeData?.clientId || !clientTypeKey) {
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
       const result = await contributingFactorService.getContributingFactors(
-        employeeData.clientId
+        employeeData.clientId,
+        clientTypeKey
       );
       setFactors(result);
     } catch (error) {
@@ -99,7 +101,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, clientTypeKey]);
 
   useEffect(() => {
     fetchContributingFactors();
@@ -171,7 +173,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       );
       
       // Refresh factors from service
-      const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+      const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId, clientTypeKey);
       setFactors(updatedFactors);
       
       // Reset form and close dialog
@@ -218,7 +220,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       );
       
       // Refresh factors from service
-      const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+      const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId, clientTypeKey);
       setFactors(updatedFactors);
       
       setIsEditDialogOpen(false);
@@ -272,7 +274,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
           await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
           
           // Refresh factors from service 
-          const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+          const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId, clientTypeKey);
           setFactors(updatedFactors);
           
           // Call the prop function to notify parent

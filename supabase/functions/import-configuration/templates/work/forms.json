@@ -1,0 +1,115 @@
+{
+  "client_id": "",
+  "title": "Workplace Grievance Form",
+  "description": "Submit your workplace complaint or grievance",
+  "is_active": true,
+  "client_logo": null,
+  "fields": [
+    {
+      "id": "subject",
+      "type": "text",
+      "label": "Subject / Title of Grievance",
+      "required": true,
+      "maxLength": 200,
+      "placeholder": "Enter a brief summary of your grievance"
+    },
+    {
+      "id": "name",
+      "type": "text",
+      "label": "Your Name",
+      "required": false,
+      "maxLength": 100,
+      "placeholder": "Enter your name (optional)"
+    },
+    {
+      "id": "employee_id",
+      "type": "text",
+      "label": "Employee ID",
+      "required": false,
+      "maxLength": 50,
+      "placeholder": "Your employee ID (optional)"
+    },
+    {
+      "id": "department",
+      "type": "text",
+      "label": "Department",
+      "required": false,
+      "maxLength": 100,
+      "placeholder": "Your department"
+    },
+    {
+      "id": "incident_date",
+      "type": "date",
+      "label": "Date of Incident",
+      "required": true
+    },
+    {
+      "id": "incident_location",
+      "type": "text",
+      "label": "Location of Incident",
+      "required": false,
+      "maxLength": 200,
+      "placeholder": "Where did the incident occur?"
+    },
+    {
+      "id": "incident_type",
+      "type": "select",
+      "label": "Type of Grievance",
+      "required": true,
+      "options": [
+        "Harassment / Bullying",
+        "Discrimination",
+        "Safety Concern",
+        "Policy Violation",
+        "Management Misconduct",
+        "Pay or Benefits Issue",
+        "Other"
+      ]
+    },
+    {
+      "id": "description",
+      "type": "textarea",
+      "label": "Detailed Description",
+      "required": true,
+      "maxLength": 2000,
+      "placeholder": "Describe the incident in detail"
+    },
+    {
+      "id": "witnesses",
+      "type": "textarea",
+      "label": "Witnesses (if any)",
+      "required": false,
+      "maxLength": 500,
+      "placeholder": "Names or descriptions of any witnesses"
+    },
+    {
+      "id": "previous_reporting",
+      "type": "radio",
+      "label": "Have you reported this before?",
+      "required": true,
+      "options": ["Yes", "No"]
+    },
+    {
+      "id": "previous_reporting_details",
+      "type": "textarea",
+      "label": "If yes, provide details of previous reporting",
+      "required": false,
+      "maxLength": 500,
+      "placeholder": "Who did you report to, and when?"
+    },
+    {
+      "id": "desired_outcome",
+      "type": "textarea",
+      "label": "Desired Outcome",
+      "required": false,
+      "maxLength": 500,
+      "placeholder": "What resolution are you seeking?"
+    },
+    {
+      "id": "consent",
+      "type": "checkbox",
+      "label": "I confirm that the information provided is accurate to the best of my knowledge",
+      "required": true
+    }
+  ]
+}

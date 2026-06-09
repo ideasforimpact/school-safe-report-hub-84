@@ -1,0 +1,74 @@
+{
+  "report_types": [
+    {
+      "id": "",
+      "name": "Incident Report",
+      "description": "Standard report for accidents, injuries, or safety incidents on campus",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Student Grievance Report",
+      "description": "Formal complaint raised by a student regarding academic or campus issues",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Ragging or Bullying Complaint",
+      "description": "Report for incidents of ragging, bullying, or peer harassment",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Sexual Harassment Complaint (POSH)",
+      "description": "Formal complaint under the Prevention of Sexual Harassment policy",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Academic Misconduct Report",
+      "description": "Report for plagiarism, cheating, exam irregularities, or research misconduct",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Infrastructure or Facilities Report",
+      "description": "Report for physical damage, hazards, or facility-related issues on campus",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Near Miss Report",
+      "description": "Report for incidents that could have caused harm but did not",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Emergency Report",
+      "description": "Report for urgent situations requiring immediate response",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Investigation Report",
+      "description": "Detailed findings and analysis following a formal campus investigation",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Corrective Action Report",
+      "description": "Documentation of corrective or preventive measures following an incident",
+      "is_active": true,
+      "client_id": ""
+    }
+  ]
+}

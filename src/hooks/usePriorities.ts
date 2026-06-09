@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { priorityService, PriorityItem } from '@/services/incident/priorityService';
 
-export function usePriorities() {
+export function usePriorities(clientTypeKey?: string) {
   const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,10 +11,7 @@ export function usePriorities() {
     try {
       setLoading(true);
       setError(null);
-      
-      // RLS handles client filtering automatically - no need for manual client checks
-      const data = await priorityService.getPriorities(false); // Fetch all priorities (active and inactive)
-      
+      const data = await priorityService.getPriorities(false, clientTypeKey);
       // Sort active priorities to the top
       const sortedPriorities = (data || []).sort((a, b) => {
         // Active items first
@@ -36,7 +33,7 @@ export function usePriorities() {
 
   useEffect(() => {
     fetchPriorities();
-  }, []);
+  }, [clientTypeKey]);
 
   return { priorities, loading, error, refetch: fetchPriorities };
 }

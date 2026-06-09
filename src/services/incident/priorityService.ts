@@ -39,8 +39,8 @@ export const priorityService = {
     }
   },
 
-  // Get priorities - RLS handles client filtering automatically
-  getPriorities: async (activeOnly: boolean = false) => {
+  // Get priorities filtered by client type key
+  getPriorities: async (activeOnly: boolean = false, clientTypeKey?: string) => {
     try {
       let query = supabase
         .from('incident_priorities')
@@ -49,7 +49,10 @@ export const priorityService = {
       if (activeOnly) {
         query = query.eq('is_active', true);
       }
-      
+
+      if (clientTypeKey) {
+        query = query.eq('client_type_key', clientTypeKey);
+      }
       const { data, error } = await query.order('weight');
       
       if (error) {

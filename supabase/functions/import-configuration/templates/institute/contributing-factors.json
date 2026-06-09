@@ -1,0 +1,74 @@
+{
+  "contributing_factors": [
+    {
+      "id": "",
+      "name": "Inadequate Student Supervision",
+      "description": "Insufficient monitoring of students in classrooms, labs, hostels, or common areas",
+      "weight": 1,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Policy Non-Compliance",
+      "description": "Failure by students, faculty, or staff to follow institute rules and code of conduct",
+      "weight": 2,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Facility or Infrastructure Hazard",
+      "description": "Unsafe physical conditions such as broken equipment, poor lighting, or structural issues",
+      "weight": 3,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Academic Pressure or Stress",
+      "description": "Excessive academic demands, examination stress, or competitive environment",
+      "weight": 4,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Lack of Awareness or Training",
+      "description": "Insufficient orientation, safety training, or awareness programs for students or staff",
+      "weight": 5,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Peer Influence",
+      "description": "Negative influence from peer groups leading to misconduct or unsafe behavior",
+      "weight": 6,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Poor Communication",
+      "description": "Miscommunication between students, faculty, administration, or parents",
+      "weight": 7,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Mental Health or Wellbeing Factor",
+      "description": "Underlying mental health challenges, personal issues, or emotional distress",
+      "weight": 8,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "System or IT Failure",
+      "description": "Technical failures in academic portals, exam systems, or campus IT infrastructure",
+      "weight": 9,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Environmental or External Factor",
+      "description": "Weather, off-campus events, or external circumstances contributing to the incident",
+      "weight": 10,
+      "client_id": ""
+    }
+  ]
+}

@@ -73,7 +73,7 @@ export const categoryService = {
   },
 
   // Categories
-  getCategories: async (clientId?: string) => {
+  getCategories: async (clientId?: string, clientTypeKey?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -81,10 +81,11 @@ export const categoryService = {
       let query = supabase
         .from('incident_categories')
         .select('*')
+        .eq('client_id', clientId)
         .order('name');
 
-      if (clientId) {
-        query = query.eq('client_id', clientId);
+      if (clientTypeKey) {
+        query = query.eq('client_type_key', clientTypeKey);
       }
 
       const { data: categories, error } = await query;
@@ -223,7 +224,7 @@ export const categoryService = {
   },
 
   // Subcategories - Updated to include client_id validation
-  getSubcategories: async (categoryId?: string, clientId?: string) => {
+  getSubcategories: async (categoryId?: string, clientId?: string, clientTypeKey?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -237,7 +238,10 @@ export const categoryService = {
       if (categoryId) {
         query = query.eq('category_id', categoryId);
       }
-      
+
+      if (clientTypeKey) {
+        query = query.eq('client_type_key', clientTypeKey);
+      }
       const { data: subcategories, error } = await query.order('name');
 
       if (error) {
