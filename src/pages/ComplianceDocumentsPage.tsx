@@ -352,12 +352,11 @@ const ComplianceDocumentsPage: React.FC = () => {
   const refresh = async () => {
     if (!clientId) return;
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from('compliance_documents')
-      .select('id, folder_exists, folder_id, parent_folder_id, files,is_valid,valid_date')
-      .eq('client_id', clientId)
-      .eq('is_delete', 0); // Only fetch non-deleted records
+    const { data: result, error } = await supabase.functions.invoke('compliance-docs', {
+      body: { action: 'list', clientId },
+    });
     if (error) throw error;
+    const data = result?.data ?? [];
       
     const folderRowsAll = (data || []).filter(
       (r: any) => r.folder_exists === true
@@ -551,7 +550,12 @@ const ComplianceDocumentsPage: React.FC = () => {
     setLoading(false);
   };
 
+  const fetchedKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!clientId) return;
+    const key = `${clientId}::${currentFolderId ?? ''}`;
+    if (fetchedKeyRef.current === key) return;
+    fetchedKeyRef.current = key;
     refresh();
   }, [clientId, currentFolderId]);
 
@@ -559,15 +563,13 @@ const ComplianceDocumentsPage: React.FC = () => {
   const fetchAllFilesForExport = async () => {
     if (!clientId) return [];
 
-    const { data, error } = await (supabase as any)
-      .from('compliance_documents')
-      .select('id, folder_exists, files, is_valid, valid_date, is_delete, parent_folder_id')
-      .eq('client_id', clientId)
-      .eq('is_delete', 0);
+    const { data: result, error } = await supabase.functions.invoke('compliance-docs', {
+      body: { action: 'list', clientId },
+    });
 
     if (error) throw error;
 
-    const rows: any[] = data || [];
+    const rows: any[] = result?.data ?? [];
 
     // Map of folder row id -> folder row for building full folder chain
     const folderMap = new Map<string, any>();
@@ -845,11 +847,13 @@ const ComplianceDocumentsPage: React.FC = () => {
 
     const uploadOne = async (file: File, idx: number) => {
       const objectPath = `${baseFolderSlug}/${file.name}`;
-      // Create signed upload URL
-      const signed = await supabase.storage.from(bucketName).createSignedUploadUrl(objectPath);
-      if (signed.error || !signed.data?.signedUrl) throw new Error(signed.error?.message || 'Failed to create signed upload URL');
+      // Create signed upload URL via edge function
+      const { data: signedData, error: signError } = await supabase.functions.invoke('compliance-docs', {
+        body: { action: 'create_signed_upload_url', clientId, objectPath },
+      });
+      if (signError || !signedData?.signedUrl) throw new Error(signError?.message || 'Failed to create signed upload URL');
 
-      await xhrPut(signed.data.signedUrl, file, (pct) => {
+      await xhrPut(signedData.signedUrl, file, (pct) => {
         setUploadItems((prev) => prev.map((it, i) => i === idx ? { ...it, progress: pct } : it));
       });
 
