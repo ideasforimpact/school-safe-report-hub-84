@@ -66,6 +66,7 @@ const IncidentsList = () => {
     dateTo: ''
   });
   const [config, setConfig] = useState<any>(null);
+  const [globalStats, setGlobalStats] = useState({ total: 0, open: 0, closed: 0 });
 
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
@@ -93,6 +94,17 @@ const IncidentsList = () => {
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [isSuperAdmin, employeeState.configuredModules]);
 
+
+  // Fetch global stats (unaffected by page filters) so the stats box always shows totals
+  useEffect(() => {
+    const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+    const employeeDataForStats = employeeState.employeeData || authEmployeeData;
+    if (!clientId || !employeeDataForStats) return;
+
+    incidentDataService.getIncidentStats(clientId, employeeDataForStats, hasIncidentAdmin).then(stats => {
+      setGlobalStats({ total: stats.total, open: stats.open, closed: stats.closed });
+    });
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, hasIncidentAdmin]);
 
   // Client-side pagination function
   const applyClientSidePagination = useCallback((incidents: IncidentRecord[], page: number, pageSize: number) => {
@@ -226,7 +238,7 @@ const IncidentsList = () => {
   const handleFilterChange = useCallback((field: string, value: any) => {
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
-    fetchIncidents(newFilters, false, 1);
+    fetchIncidents(newFilters, true, 1);
   }, [filters, fetchIncidents]);
 
   // Clear all filters (triggers server request)
@@ -243,7 +255,7 @@ const IncidentsList = () => {
       dateTo: ''
     };
     setFilters(emptyFilters);
-    fetchIncidents(emptyFilters, false, 1);
+    fetchIncidents(emptyFilters, true, 1);
   }, [fetchIncidents]);
 
   // Pagination handlers
@@ -322,34 +334,38 @@ const incidentAnalyticsStats = useMemo(() => {
 
   const dbCategoryOptions = useMemo(
     () => {
-      if (config?.categories) return config.categories.map((c: any) => c.name).sort();
+      if (config?.categories) return Array.from(new Set(config.categories.map((c: any) => c.name).filter(Boolean))).sort();
       return Array.from(new Set(originalIncidents.map((inc) => inc.category).filter(Boolean))).sort();
     },
     [originalIncidents, config]
   );
   const dbSubcategoryOptions = useMemo(
     () => {
-      if (config?.subcategories) return config.subcategories.map((c: any) => c.name).sort();
+      if (config?.subcategories) return Array.from(new Set(config.subcategories.map((c: any) => c.name).filter(Boolean))).sort();
       return Array.from(new Set(originalIncidents.map((inc) => inc.subcategory).filter(Boolean))).sort();
     },
     [originalIncidents, config]
   );
   const dbPriorityOptions = useMemo(
     () => {
-      if (config?.priorities) return config.priorities.map((p: any) => p.name).sort();
+      if (config?.priorities) return Array.from(new Set(config.priorities.map((p: any) => p.name).filter(Boolean))).sort();
       return Array.from(new Set(originalIncidents.map((inc) => inc.priority).filter(Boolean))).sort();
     },
     [originalIncidents, config]
   );
   const dbLocationOptions = useMemo(
     () => {
-      if (config?.locations) return config.locations.map((l: any) => l.name).sort();
+      if (config?.locations) return Array.from(new Set(config.locations.map((l: any) => l.name).filter(Boolean))).sort();
       return Array.from(new Set(originalIncidents.map((inc) => inc.location).filter(Boolean))).sort();
     },
     [originalIncidents, config]
   );
   const dbStatusOptions = useMemo(() => {
-    if (config?.statuses) return config.statuses.map((s: any) => s.name).sort();
+    if (config?.statuses) {
+      const statuses = Array.from(new Set(config.statuses.map((s: any) => s.name).filter(Boolean)));
+      if (!statuses.includes('Reopen')) statuses.push('Reopen');
+      return statuses.sort();
+    }
     const statuses = Array.from(new Set(originalIncidents.map((inc) => inc.status).filter(Boolean)));
     if (!statuses.includes('Reopen')) statuses.push('Reopen');
     return statuses.sort();
@@ -383,21 +399,21 @@ const incidentAnalyticsStats = useMemo(() => {
               <div className='ms-16'>
                 <p className="text-sm text-gray-500">Total Incidents</p>
                 <p className="text-3xl font-semibold text-gray-900">
-                  {incidentAnalyticsStats.total}
+                  {globalStats.total}
                 </p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500">Open Incidents</p>
                 <p className="text-3xl font-semibold text-orange-600">
-                  {incidentAnalyticsStats.open}
+                  {globalStats.open}
                 </p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500">Closed Incidents</p>
                 <p className="text-3xl font-semibold text-green-600">
-                  {incidentAnalyticsStats.closed}
+                  {globalStats.closed}
                 </p>
               </div>
             </div>
