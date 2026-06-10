@@ -18,12 +18,13 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   isSuperAdmin = false,
   department 
 }) => {
-  const { employeeDepartments } = useEmployeeDepartments();
+  const { employeeDepartments, loading: departmentsLoading } = useEmployeeDepartments();
 
-  const departmentLabel = employeeDepartmentName(
-    department,
-    employeeDepartments
-  );
+  const departmentLabel = departmentsLoading
+    ? ''
+    : employeeDepartmentName(department, 
+      employeeDepartments
+    );
 
   // Log values for debugging
   console.log("UserRoleBadge Props:", { isSaasOwner, isAdmin, isSuperAdmin, department });
