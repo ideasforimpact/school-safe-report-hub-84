@@ -30,11 +30,13 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
     location.pathname.startsWith('/assessment/');
   const uuidLike = !!department && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(department.trim());
   const needsDepartmentLookup = !isUsersRoute && !isIncidentRoute && !isAssessmentsRoute && uuidLike;
-  const { employeeDepartments } = useEmployeeDepartments(needsDepartmentLookup);
+  const { employeeDepartments, loading: departmentsLoading } = useEmployeeDepartments();
 
-  const departmentLabel = needsDepartmentLookup
-    ? employeeDepartmentName(department, employeeDepartments)
-    : uuidLike ? '' : (department?.trim() || '');
+  const departmentLabel = departmentsLoading
+    ? ''
+    : needsDepartmentLookup
+      ? employeeDepartmentName(department, employeeDepartments)
+      : uuidLike ? '' : (department?.trim() || '');
 
   // If user is logged in through backoffice, they are a SaaS Owner
   if (isSaasOwner) {
