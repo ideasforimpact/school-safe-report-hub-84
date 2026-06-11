@@ -34,7 +34,9 @@ serve(async (req) => {
       subcategory = '',
       status = '',
       priority = '',
-      location = ''
+      location = '',
+      dateFrom = '',
+      dateTo = ''
     } = body;
 
     if (!clientId) {
@@ -151,6 +153,15 @@ serve(async (req) => {
     console.log('Employee ID:', employeeId);
     console.log('Is Super Admin:', isSuperAdmin);
 
+    // Resolve filter names to IDs before building the query
+    const [categoryIdRes, subcategoryIdRes, statusIdRes, priorityIdRes, locationIdRes] = await Promise.all([
+      category ? supabaseClient.from('incident_categories').select('id').eq('name', category).eq('client_id', clientId).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+      subcategory ? supabaseClient.from('incident_subcategories').select('id').eq('name', subcategory).eq('client_id', clientId).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+      status ? supabaseClient.from('incident_status').select('id').eq('name', status).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+      priority ? supabaseClient.from('incident_priorities').select('id').eq('name', priority).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+      location ? supabaseClient.from('campuses').select('id').eq('name', location).eq('client_id', clientId).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+
     // Fetch incidents and config data in parallel
     const [incidentsRes, reportTypesRes, categoriesRes, subcategoriesRes, locationsRes, facilitiesRes, prioritiesRes, statusRes, employeesRes, studentsRes] = await Promise.all([
       // Fetch incidents with pagination and search
@@ -197,12 +208,33 @@ serve(async (req) => {
           query = query.or(`ticket_id.ilike.%${search}%,description.ilike.%${search}%`);
         }
 
-        // Apply other filters if provided
-        if (category) query = query.eq('incident_categories.name', category);
-        if (subcategory) query = query.eq('incident_subcategories.name', subcategory);
-        if (status) query = query.eq('incident_status.name', status);
-        if (priority) query = query.eq('incident_priorities.name', priority);
-        if (location) query = query.eq('campuses.name', location);
+        // Apply filters using resolved IDs
+        if (category) {
+          const id = categoryIdRes.data?.id;
+          query = id ? query.eq('category_id', id) : query.eq('category_id', 'no-match');
+        }
+        if (subcategory) {
+          const id = subcategoryIdRes.data?.id;
+          query = id ? query.eq('subcategory_id', id) : query.eq('subcategory_id', 'no-match');
+        }
+        if (status) {
+          const id = statusIdRes.data?.id;
+          query = id ? query.eq('status_id', id) : query.eq('status_id', 'no-match');
+        }
+        if (priority) {
+          const id = priorityIdRes.data?.id;
+          query = id ? query.eq('priority_id', id) : query.eq('priority_id', 'no-match');
+        }
+        if (location) {
+          const id = locationIdRes.data?.id;
+          query = id ? query.eq('location_id', id) : query.eq('location_id', 'no-match');
+        }
+        if (dateFrom) {
+          query = query.gte('date', dateFrom);
+        }
+        if (dateTo) {
+          query = query.lte('date', dateTo);
+        }
 
         // Apply pagination
         const from = (page - 1) * pageSize;

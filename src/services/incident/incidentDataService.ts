@@ -212,13 +212,17 @@ class IncidentDataService {
       const allIncidents = this.incidentCache.get(cacheKey)!;
       
       if (returnAllData) {
-        // Return ALL incidents without pagination for client-side handling
+        // Paginate from cache using the requested page
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedData = allIncidents.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(allIncidents.length / pageSize);
         return {
-          data: allIncidents,
+          data: paginatedData,
           totalCount: allIncidents.length,
-          hasMore: false,
-          currentPage: 1,
-          totalPages: 1
+          hasMore: page < totalPages,
+          currentPage: page,
+          totalPages
         };
       } else {
         // Apply client-side pagination (for backward compatibility)
@@ -241,14 +245,18 @@ class IncidentDataService {
     if (this.isLoading) {
       console.log('⚠️ Request already in progress, returning cached or empty data');
       const cachedData = this.incidentCache.get(cacheKey) || [];
-      
+
       if (returnAllData) {
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedData = cachedData.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(cachedData.length / pageSize);
         return {
-          data: cachedData,
+          data: paginatedData,
           totalCount: cachedData.length,
-          hasMore: false,
-          currentPage: 1,
-          totalPages: 1
+          hasMore: page < totalPages,
+          currentPage: page,
+          totalPages
         };
       } else {
         const startIndex = (page - 1) * pageSize;
@@ -282,7 +290,9 @@ class IncidentDataService {
           subcategory: filters.subcategory || '',
           status: filters.status || '',
           priority: filters.priority || '',
-          location: filters.location || ''
+          location: filters.location || '',
+          dateFrom: filters.dateFrom || '',
+          dateTo: filters.dateTo || ''
         },
       });
 
