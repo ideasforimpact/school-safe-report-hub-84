@@ -37,55 +37,7 @@ type SwitchClientResponse = {
   error?: string;
 };
 
-type ConfiguredModuleRow = {
-  module_id: string;
-  enabled?: boolean;
-  access_level?: unknown;
-  modules?: {
-    id?: string;
-    name?: string;
-    icon?: string;
-    level?: string;
-    order?: number;
-    url?: string;
-  } | null;
-};
-
-type NavigationModule = {
-  url?: string;
-};
-
-const cachedSwitchableClientsByUserId: Record<string, SwitchableClient[]> = {};
-const switchClientInflight = new Map<string, Promise<{ data: SwitchClientResponse | null; error: unknown }>>();
-const switchClientRecent = new Map<string, { at: number; value: { data: SwitchClientResponse | null; error: unknown } }>();
-const SWITCH_CLIENT_DEDUPE_MS = 1200;
-
-const invokeSwitchClient = async (body: Record<string, unknown>) => {
-  const key = JSON.stringify(body);
-  const now = Date.now();
-  const recent = switchClientRecent.get(key);
-  if (recent && now - recent.at < SWITCH_CLIENT_DEDUPE_MS) {
-    return recent.value;
-  }
-
-  const existing = switchClientInflight.get(key);
-  if (existing) {
-    return existing;
-  }
-
-  const request = supabase.functions
-    .invoke<SwitchClientResponse>('switch-client', { body })
-    .then((value) => {
-      switchClientRecent.set(key, { at: Date.now(), value });
-      return value;
-    })
-    .finally(() => {
-      switchClientInflight.delete(key);
-    });
-
-  switchClientInflight.set(key, request);
-  return request;
-};
+let cachedSwitchableClientsByUserId: Record<string, SwitchableClient[]> = {};
 
 interface HeaderClientSwitcherProps {
   currentUser: User | null;
@@ -162,13 +114,13 @@ console.log(shouldShow,'shouldShow');
         allowedModuleIds = new Set((employeeModules || []).map((row) => row.module_id));
       }
 
-      const modules = ((clientModules || []) as ConfiguredModuleRow[])
-        .filter((row) => {
+      const modules = (clientModules || [])
+        .filter((row: any) => {
           if (isSuperAdmin) return true;
           if (allowedModuleIds.size === 0) return true;
           return allowedModuleIds.has(row.module_id);
         })
-        .map((row) => ({
+        .map((row: any) => ({
           id: row.modules?.id || row.module_id,
           name: row.modules?.name || 'Module',
           key: row.modules?.level || row.module_id,
@@ -217,7 +169,9 @@ console.log(shouldShow,'shouldShow');
     }
 
     try {
-      const { data, error } = await invokeSwitchClient({ action: 'list-switchable-clients' });
+      const { data, error } = await supabase.functions.invoke<SwitchClientResponse>('switch-client', {
+        body: { action: 'list-switchable-clients' },
+      });
 
       if (error || !data?.success) {
         setSwitchableClients([]);
@@ -238,9 +192,11 @@ console.log(shouldShow,'shouldShow');
 
       // Fresh login should always land on Head Office (home client), not previous switched client.
       if (!state.isSwitchedContext && homeId && activeId !== homeId) {
-        const { data: resetData, error: resetError } = await invokeSwitchClient({
-          action: 'switch-client',
-          target_client_id: homeId,
+        const { data: resetData, error: resetError } = await supabase.functions.invoke<SwitchClientResponse>('switch-client', {
+          body: {
+            action: 'switch-client',
+            target_client_id: homeId,
+          },
         });
 
         if (!resetError && resetData?.success) {
@@ -284,9 +240,11 @@ console.log(shouldShow,'shouldShow');
     try {
       setIsLoading(true);
       dispatch(setLoading(true));
-      const { data, error } = await invokeSwitchClient({
-        action: 'switch-client',
-        target_client_id: targetClientId,
+      const { data, error } = await supabase.functions.invoke<SwitchClientResponse>('switch-client', {
+        body: {
+          action: 'switch-client',
+          target_client_id: targetClientId,
+        },
       });
 
       if (error || !data?.success || !data.selected_client) {

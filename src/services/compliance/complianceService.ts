@@ -63,11 +63,20 @@ export async function updateComplianceValidity(params: {
   validDate: string | null;
 }) {
   const { rowId, clientId, employeeId, isValid, validDate } = params;
-  const { data, error } = await supabase.functions.invoke('compliance-docs', {
-    body: { action: 'set_validity', rowId, clientId, employeeId, isValid, validDate }
-  });
+
+  const { data, error } = await supabase
+    .from("compliance_documents")
+    .update({
+      is_valid: isValid,
+      valid_date: validDate,
+    })
+    .eq("id", rowId)
+    .eq("client_id", clientId)
+    .eq("created_by", employeeId ?? null)
+    .select("id, is_valid, valid_date");
+
   if (error) throw error;
-  return data?.data;
+  return data;
 }
 
 export async function enqueueUploadMetadata(payload: {

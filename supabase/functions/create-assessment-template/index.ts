@@ -159,20 +159,7 @@ serve(async (req) => {
     )
 
     // Parse request body
-    const body = await req.json()
-
-    // list action: return all templates for a client
-    if (body?.action === 'list' && body?.clientId) {
-      const { data, error } = await supabaseClient
-        .from('assessment_templates')
-        .select('id, title, description, category_id, is_active, questions, created_at, created_by, template_categories(id, name, description)')
-        .eq('client_id', body.clientId)
-        .order('created_at', { ascending: false });
-      if (error) throw new Error(error.message);
-      return new Response(JSON.stringify({ templates: data ?? [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    const { title, description, type, isActive, questions, clientId, employeeId, templateId }: CreateTemplateRequest = body
+    const { title, description, type, isActive, questions, clientId, employeeId, templateId }: CreateTemplateRequest = await req.json()
 
     const isUpdate = !!templateId;
     console.log(`${isUpdate ? 'Updating' : 'Creating'} template with files:`, { 

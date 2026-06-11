@@ -42,22 +42,27 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   const [reopenReason, setReopenReason] = useState('');
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPayload, setAiPayload] = useState<any | null>(null);
+  const [policyTitles, setPolicyTitles] = useState<string[]>([]);
 
-  const handleAiClick = async () => {
-    let policyTitles: string[] = [];
-    try {
-      const clientId = (user as any)?.clientId || (user as any)?.client?.id;
-      if (clientId) {
+  React.useEffect(() => {
+    const loadPolicyDocs = async () => {
+      try {
+        const clientId = (user as any)?.clientId || (user as any)?.client?.id;
+        if (!clientId) return;
         const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
           body: { action: 'fetch_resources', data: { client_id: clientId } }
         });
-        if (!error) {
-          policyTitles = (data?.resources || []).map((r: any) => r?.title).filter(Boolean);
-        }
+        if (error) return;
+        const titles = (data?.resources || []).map((r: any) => r?.title).filter(Boolean);
+        setPolicyTitles(titles);
+      } catch (_) {
+        // ignore
       }
-    } catch (_) {
-      // no-op; proceed without policy docs
-    }
+    };
+    loadPolicyDocs();
+  }, [user]);
+
+  const handleAiClick = () => {
     const payload: any = {
       id: (incident as any).id,
       category: (incident as any).category,
@@ -69,6 +74,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
       learning_points: (incident as any).learning_points ?? null,
       action_taken: (incident as any).action_taken ?? null,
       policy_docs: policyTitles,
+      // Include recommended_action from incident
       recommended_action: (incident as any).recommended_action ?? (incident as any).recommendedAction ?? null,
     };
     setAiPayload(payload);

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FileItem } from '@/types/fileTypes';
 import { ResourceCategory } from '@/types/eduSafeTypes';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -42,7 +43,6 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
   const { refreshResources } = useEduSafe();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const titlesFetchedForClientRef = React.useRef<string | null>(null);
 
   // YouTube URL validation function
   const isValidYouTubeUrl = (url: string): boolean => {
@@ -58,30 +58,25 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         return;
       }
 
-      if (titlesFetchedForClientRef.current === user.clientId) {
-        setTitlesLoading(false);
-        return;
-      }
-      titlesFetchedForClientRef.current = user.clientId;
-
       try {
         setTitlesLoading(true);
+        console.log('Fetching existing resource titles for client:', user.clientId);
 
-        const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
-          body: {
-            action: 'fetch_titles',
-            data: { client_id: user.clientId }
-          }
-        });
+        const { data: resourcesData, error } = await supabase
+          .from('edusafe_resources')
+          .select('title')
+          .eq('client_id', user.clientId);
 
         if (error) {
-          console.error('Error fetching existing resource titles:', error);
+          console.error('Error fetching existing resources:', error);
           return;
         }
 
-        setExistingResourceTitles(data?.titles || []);
+        const resourceTitles = resourcesData?.map(resource => resource.title.toLowerCase()) || [];
+        console.log('Existing resource titles:', resourceTitles);
+        setExistingResourceTitles(resourceTitles);
       } catch (error) {
-        console.error('Error fetching existing resource titles:', error);
+        console.error('Error fetching existing resources:', error);
       } finally {
         setTitlesLoading(false);
       }
@@ -286,13 +281,13 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
 
       console.log('Resource uploaded successfully:', data.resource);
       toast.success('Resource uploaded successfully');
-
+      
+      // Refresh the resources list
+      await refreshResources();
+      
       if (onComplete) {
-        // In modal/inline context: refresh the list then notify parent
-        await refreshResources();
         onComplete();
       } else {
-        // Navigating to listing page — its EduSafeProvider will fetch fresh data on mount
         navigate('/edusafe');
       }
     } catch (error) {

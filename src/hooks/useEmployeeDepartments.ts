@@ -1,50 +1,44 @@
 import { useState, useEffect } from 'react';
-import {
-  fetchEmployeeDepartmentsShared,
-  type EmployeeDepartmentOption,
-} from '@/services/employee/employeeReferenceDataShared';
+import { supabase } from '@/integrations/supabase/client';
 
-export type { EmployeeDepartmentOption };
+export interface EmployeeDepartmentOption {
+  id: string;
+  department_name: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
-export function useEmployeeDepartments(enabled: boolean = true) {
+export function useEmployeeDepartments() {
   const [employeeDepartments, setEmployeeDepartments] = useState<EmployeeDepartmentOption[]>([]);
-  const [loading, setLoading] = useState(enabled);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
-      setEmployeeDepartments([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
+    async function fetchEmployeeDepartments() {
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchEmployeeDepartmentsShared();
-        if (!cancelled) {
-          setEmployeeDepartments(data);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Error fetching employee departments:', err);
-          setError(err instanceof Error ? err.message : 'Failed to fetch employee departments');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled]);
+        const { data, error: fetchError } = await supabase
+          .from('employee_departments')
+          .select('*')
+          .order('department_name', { ascending: true });
+
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        setEmployeeDepartments(data || []);
+      } catch (err) {
+        console.error('Error fetching employee departments:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch employee departments');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchEmployeeDepartments();
+  }, []);
 
   return { employeeDepartments, loading, error };
 }

@@ -47,29 +47,6 @@ export const isValidEmail = (email: string): boolean => {
   return emailPattern.test(email);
 };
 
-/** Backoffice client onboarding (BasicInfoTab) — stricter than `isValidEmail`. */
-export const isValidClientFormEmail = (email: string): boolean => {
-  const trimmed = email.trim();
-  if (!trimmed) return false;
-  return /^(?!.*\.\.)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/.test(trimmed);
-};
-
-export const isValidClientName = (name: string): boolean => {
-  const trimmed = name.trim();
-  if (!trimmed) return false;
-  return /^[A-Za-z]+(?:\s[A-Za-z]+)*$/.test(trimmed);
-};
-
-export const isValidContactPerson = (name: string): boolean => {
-  const trimmed = name.trim();
-  if (!trimmed) return false;
-  return /^[A-Za-z\s]{1,20}$/.test(trimmed);
-};
-
-/** Indian mobile: 10 digits starting 6–9 */
-export const isValidClientFormPhone = (phone?: string): boolean =>
-  !!phone && /^[6-9]\d{9}$/.test(phone);
-
 export const isValidEmployeeType = (employeeType: string): boolean => {
   const validTypes: EmployeeType[] = ['permanent', 'contract', 'part_time', 'consultant', 'intern'];
   return validTypes.includes(employeeType as EmployeeType);

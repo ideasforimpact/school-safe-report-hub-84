@@ -17,14 +17,12 @@ interface AssignmentSectionProps {
   owner: string;
   onSelectChange: (name: string, value: string) => void;
   isLoading?: boolean;
-  employees?: Employee[];
 }
 
 const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   owner,
   onSelectChange,
-  isLoading = false,
-  employees: propEmployees
+  isLoading = false
 }) => {
   const { employeeData } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -32,17 +30,8 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   
-  // Update local employees state when prop changes
-  useEffect(() => {
-    if (propEmployees && propEmployees.length > 0) {
-      setEmployees(propEmployees);
-      setIsLoadingEmployees(false);
-    }
-  }, [propEmployees]);
-
-  // Fetch employees based on client_id - only if not provided by prop
+  // Fetch employees based on client_id
     const fetchEmployees = useCallback(async () => {
-      if (propEmployees && propEmployees.length > 0) return;
       if (!employeeData?.clientId) {
         setIsLoadingEmployees(false);
         return;
@@ -76,26 +65,23 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
       } finally {
         setIsLoadingEmployees(false);
       }
-    }, [employeeData?.clientId, propEmployees]);
+    }, [employeeData?.clientId]);
 
     useEffect(() => {
-      if (!propEmployees || propEmployees.length === 0) {
-        fetchEmployees();
-      }
-    }, [fetchEmployees, propEmployees]);
+      fetchEmployees();
+    }, [fetchEmployees]);
 
     const handleEmployeesRealtime = useCallback(async () => {
-      console.log('real time update', employeeData?.clientId);
-      if (!propEmployees || propEmployees.length === 0) {
-        await fetchEmployees();
-      }
-    }, [fetchEmployees, employeeData?.clientId, propEmployees]);
+      console.log('real time update',employeeData?.clientId);
+      
+      await fetchEmployees();
+    }, [fetchEmployees]);
 
     useRealTimeSubHook({
       channelName: 'employees-realtime',
       events: '*',
       table: 'employees',
-      enabled: !propEmployees || propEmployees.length === 0,
+      enabled: true,
       onPayload: handleEmployeesRealtime,
     });
 

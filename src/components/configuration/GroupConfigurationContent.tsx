@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,9 +46,8 @@ interface Group {
 const GroupConfigurationContent = () => {
   const { employeeData, user } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  const clientId = useMemo(() => employeeData?.clientId || user?.clientId, [employeeData?.clientId, user?.clientId]);
-  const employeeId = useMemo(() => employeeData?.id || user?.id, [employeeData?.id, user?.id]);
-  const fetchedForClientRef = useRef<string | null>(null);
+  const clientId = employeeData?.clientId || user?.clientId;
+  const employeeId = employeeData?.id || user?.id;
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,9 +61,9 @@ const GroupConfigurationContent = () => {
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
 
   useEffect(() => {
-    if (!clientId || fetchedForClientRef.current === clientId) return;
-    fetchedForClientRef.current = clientId;
-    fetchGroups();
+    if (clientId) {
+      fetchGroups();
+    }
   }, [clientId]);
 
   const fetchGroups = async () => {
@@ -72,13 +71,36 @@ const GroupConfigurationContent = () => {
 
     try {
       setLoading(true);
-      const { data: result, error } = await supabase.functions.invoke('create-group', {
-        body: { action: 'list', client_id: clientId, employee_id: employeeId },
-      });
+      const { data, error } = await supabase
+        .from('groups' as any)
+        .select('id, name, description, group_type, status, client_id, employee_id, department_id, created_at, updated_at, group_employees:group_employees(count)')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const data = result?.groups ?? [];
+      // Get all group IDs to check SOP assignments
+      const groupIds = (data || []).map((g: any) => g.id);
+
+      // Check which groups are assigned to any SOP
+      let assignedGroupIds = new Set<string>();
+      if (groupIds.length > 0) {
+        const { data: sopAssignedData, error: sopAssignedError } = await supabase
+          .from('sop_assigned')
+          .select('group_id')
+          .in('group_id', groupIds)
+          .not('group_id', 'is', null);
+
+        if (sopAssignedError) {
+          console.error('Error checking SOP assignments:', sopAssignedError);
+        } else if (sopAssignedData) {
+          assignedGroupIds = new Set(
+            sopAssignedData
+              .map((item: any) => item.group_id)
+              .filter((id: string | null) => id !== null)
+          );
+        }
+      }
 
       const mapped = (data || []).map((g: any) => ({
         id: g.id,
@@ -91,8 +113,10 @@ const GroupConfigurationContent = () => {
         department_id: g.department_id ?? null,
         created_at: g.created_at,
         updated_at: g.updated_at,
-        member_count: g.member_count ?? 0,
-        is_assigned_to_sop: g.is_assigned_to_sop ?? false,
+        member_count: Array.isArray(g.group_employees) && g.group_employees.length > 0
+          ? g.group_employees[0].count
+          : 0,
+        is_assigned_to_sop: assignedGroupIds.has(g.id),
       })) as Group[];
 
       setGroups(mapped);

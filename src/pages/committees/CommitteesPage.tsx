@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Users, User, Plus, Search, Pencil, Eye, CalendarPlus, List, X, Trash2 } from 'lucide-react';
@@ -39,6 +39,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts';
+import { supabase } from '@/integrations/supabase/client';
 import SearchMultiSelect, { SearchMultiSelectOption } from '@/components/common/SearchMultiSelect';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
@@ -57,8 +58,7 @@ import {
   createCommitteeEvent,
   deleteCommitteeAttachment,
   fetchCommitteeById,
-  fetchCommitteeFormData,
-  fetchAllCommitteeMembers,
+  fetchCommitteeMemberRoles,
   fetchCommitteeMembers,
   fetchCommittees,
   updateCommittee,
@@ -105,12 +105,8 @@ const CommitteesPage = () => {
   const [committeeMemberIdsByCommittee, setCommitteeMemberIdsByCommittee] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [memberFilterId, setMemberFilterId] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const pageSize = 10 as const;
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCommittee, setEditingCommittee] = useState<Committee | null>(null);
@@ -152,29 +148,36 @@ const CommitteesPage = () => {
   const [committeeEvents, setCommitteeEvents] = useState<CommitteeEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
 
-  const loadCommittees = useCallback(async (page: number, search: string) => {
+  const loadCommittees = useCallback(async () => {
     if (!clientId) {
       setCommittees([]);
       setLoading(false);
       return;
     }
+
     try {
       setLoading(true);
-      const result = await fetchCommittees({ clientId, page, pageSize, search });
-      setCommittees(result.committees);
-      setTotalPages(result.totalPages);
-      setTotalCount(result.totalCount);
-
-      if (result.committees.length === 0) {
+      const data = await fetchCommittees(clientId);
+      const committeesSortedByUpdatedDate = [...data].sort((a, b) => {
+        const aTime = new Date(a.updated_at).getTime();
+        const bTime = new Date(b.updated_at).getTime();
+        return bTime - aTime;
+      });
+      setCommittees(committeesSortedByUpdatedDate);
+      if (committeesSortedByUpdatedDate.length === 0) {
         setCommitteeMemberIdsByCommittee({});
       } else {
-        const allMembers = await fetchAllCommitteeMembers(clientId);
-        const membersByCommittee: Record<string, string[]> = {};
-        for (const member of allMembers) {
-          if (!membersByCommittee[member.committee_id]) membersByCommittee[member.committee_id] = [];
-          membersByCommittee[member.committee_id].push(member.employee_id);
-        }
-        setCommitteeMemberIdsByCommittee(membersByCommittee);
+        const memberEntries = await Promise.all(
+          committeesSortedByUpdatedDate.map(async (committee) => {
+            try {
+              const members = await fetchCommitteeMembers(committee.id, clientId);
+              return [committee.id, members.map((member) => member.employee_id)] as const;
+            } catch {
+              return [committee.id, []] as const;
+            }
+          })
+        );
+        setCommitteeMemberIdsByCommittee(Object.fromEntries(memberEntries));
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to load committees');
@@ -185,32 +188,95 @@ const CommitteesPage = () => {
     }
   }, [clientId]);
 
-  // Load employees + member roles from the edge function — cached after first call, so
-  // clicking create/edit multiple times only fires one network request ever.
-  const loadDialogData = useCallback(async () => {
-    if (!clientId) return;
-    const formData = await fetchCommitteeFormData(clientId);
-    setEmployees(formData.employees);
-    setMemberRoles(formData.memberRoles);
+  const loadEmployees = useCallback(async () => {
+    if (!clientId) {
+      setEmployees([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('employees')
+      .select('id, first_name, last_name')
+      .eq('client_id', clientId)
+      .eq('status', true)
+      .order('first_name', { ascending: true });
+
+    if (error) {
+      setEmployees([]);
+      return;
+    }
+
+    // Some clients store employee status in non-boolean formats. Fallback to all employees.
+    const employeeRowsSource =
+      (data || []).length > 0
+        ? (data || [])
+        : (
+            await supabase
+              .from('employees')
+              .select('id, first_name, last_name')
+              .eq('client_id', clientId)
+              .order('first_name', { ascending: true })
+          ).data || [];
+
+    const rows = employeeRowsSource.map((employee: any) => ({
+      id: employee.id,
+      name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'Unnamed Employee',
+    }));
+    setEmployees(rows);
   }, [clientId]);
 
-  // Debounce search input — reset to page 1 when search changes.
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      setCurrentPage(1);
-      setDebouncedSearch(value);
-    }, 400);
-  };
+  const loadMemberRoles = useCallback(async () => {
+    try {
+      const roles = await fetchCommitteeMemberRoles();
+      setMemberRoles(roles);
+    } catch {
+      setMemberRoles([]);
+    }
+  }, []);
 
   useEffect(() => {
-    loadCommittees(currentPage, debouncedSearch);
-  }, [loadCommittees, currentPage, debouncedSearch]);
+    loadCommittees();
+    loadEmployees();
+    loadMemberRoles();
+  }, [loadCommittees, loadEmployees, loadMemberRoles]);
 
-  const activeCommitteeFilterCount = searchTerm.trim() ? 1 : 0;
+  const filteredCommittees = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return committees.filter((committee) => {
+      const matchesCommitteeName =
+        query.length === 0 ||
+        committee.name.toLowerCase().includes(query) ||
+        (committee.description || '').toLowerCase().includes(query);
+      const memberIds = committeeMemberIdsByCommittee[committee.id] || [];
+      const matchesMember = memberFilterId === 'all' || memberIds.includes(memberFilterId);
+      return matchesCommitteeName && matchesMember;
+    });
+  }, [committees, searchTerm, committeeMemberIdsByCommittee, memberFilterId]);
+
+  const activeCommitteeFilterCount = useMemo(() => {
+    let count = 0;
+    if (searchTerm.trim()) count += 1;
+    if (memberFilterId !== 'all') count += 1;
+    return count;
+  }, [searchTerm, memberFilterId]);
+
+  const pageSize = 10;
+  const totalPages = filteredCommittees.length > 0 ? Math.ceil(filteredCommittees.length / pageSize) : 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const paginatedCommittees = filteredCommittees.slice(startIndex, startIndex + pageSize);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, memberFilterId]);
+
+  const goToPreviousPage = () => {
+    setCurrentPage((prev) => Math.max(1, prev - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+  };
 
   const resetForm = () => {
     setName('');
@@ -234,7 +300,6 @@ const CommitteesPage = () => {
       return;
     }
     resetForm();
-    loadDialogData();
     setOpenDialog(true);
   };
 
@@ -246,7 +311,6 @@ const CommitteesPage = () => {
     setEditingCommittee(committee);
     setName(committee.name);
     setDescription(committee.description || '');
-    loadDialogData();
     if (clientId) {
       try {
         const [members, committeeDetails] = await Promise.all([
@@ -354,7 +418,7 @@ const CommitteesPage = () => {
 
       setOpenDialog(false);
       resetForm();
-      await loadCommittees(currentPage, debouncedSearch);
+      await loadCommittees();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save committee');
     } finally {
@@ -637,7 +701,7 @@ const CommitteesPage = () => {
                 placeholder="Filter by committee name..."
                 className="pl-9"
                 value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             {activeCommitteeFilterCount > 0 && (
@@ -647,8 +711,7 @@ const CommitteesPage = () => {
                 className="inline-flex items-center gap-2"
                 onClick={() => {
                   setSearchTerm('');
-                  setDebouncedSearch('');
-                  setCurrentPage(1);
+                  setMemberFilterId('all');
                 }}
               >
                 <X className="h-4 w-4" />
@@ -674,7 +737,7 @@ const CommitteesPage = () => {
 
           {loading ? (
             <Loader text="Loading committees..."/>
-          ) : committees.length === 0 ? (
+          ) : filteredCommittees.length === 0 ? (
             <div className="text-center py-12 text-gray-500">No committees found</div>
           ) : (
             <div className="overflow-x-auto rounded-md border border-gray-200">
@@ -690,7 +753,7 @@ const CommitteesPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {committees.map((committee) => (
+                  {paginatedCommittees.map((committee) => (
                     <TableRow key={committee.id}>
                       <TableCell className="font-medium">{committee.name}</TableCell>
                       <TableCell>{renderMembersIndicator(committee)}</TableCell>
@@ -746,14 +809,18 @@ const CommitteesPage = () => {
             </div>
           )}
         </div>
-        {totalCount > pageSize && (
+        {filteredCommittees.length > pageSize && (
           <div className="flex justify-center mt-4 pb-6">
             <Pagination>
               <PaginationContent className="flex items-center gap-3">
                 <PaginationItem>
                   <PaginationPrevious
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className={safeCurrentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    onClick={goToPreviousPage}
+                    className={
+                      safeCurrentPage === 1
+                        ? 'pointer-events-none opacity-50'
+                        : 'cursor-pointer'
+                    }
                   />
                 </PaginationItem>
                 <PaginationItem>
@@ -763,8 +830,12 @@ const CommitteesPage = () => {
                 </PaginationItem>
                 <PaginationItem>
                   <PaginationNext
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className={safeCurrentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    onClick={goToNextPage}
+                    className={
+                      safeCurrentPage === totalPages
+                        ? 'pointer-events-none opacity-50'
+                        : 'cursor-pointer'
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>

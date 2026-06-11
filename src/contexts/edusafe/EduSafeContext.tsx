@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useLocation } from 'react-router-dom';
@@ -56,12 +56,11 @@ export const useEduSafe = () => {
   return context;
 };
 
-export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialFetch?: boolean }> = ({ children, skipInitialFetch = false }) => {
+export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [resources, setResources] = useState<EduSafeResource[]>([]);
-  const [loading, setLoading] = useState(!skipInitialFetch);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const location = useLocation();
-  const fetchedForClientRef = useRef<string | null>(null);
 
   const fetchResources = async () => {
     try {
@@ -224,46 +223,35 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
   };
 
   useEffect(() => {
-    if (skipInitialFetch) {
-      setLoading(false);
-      return;
-    }
     if (user?.clientId) {
-      if (fetchedForClientRef.current === user.clientId) return;
-      fetchedForClientRef.current = user.clientId;
       fetchResources();
     } else {
-      fetchedForClientRef.current = null;
+      // Set loading to false and clear resources when no client ID
       setLoading(false);
       setResources([]);
     }
-  }, [user?.clientId, skipInitialFetch]);
+  }, [user?.clientId]);
 
   const addResource = async (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType' | 'resourceType'>) => {
     try {
-      const clientId = user?.role === 'saas_owner' ? null : user?.clientId;
-
-      const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
-        body: {
-          action: 'add_resource',
-          data: {
-            client_id: clientId,
-            resource: {
-              title: resource.title,
-              description: resource.description,
-              category: resource.category,
-              tags: resource.tags,
-              uploaderId: user?.id,
-              file: { url: resource.document_url || resource.file?.base64 }
-            }
-          }
-        }
-      });
+      const { data, error } = await supabase
+        .from('edusafe_resources')
+        .insert({
+          title: resource.title,
+          description: resource.description,
+          category: resource.category,
+          tags: resource.tags,
+          document_url: resource.document_url || resource.file?.base64,
+          uploaded_by: user?.id,
+          client_id: user?.role === 'saas_owner' ? null : user?.clientId
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       toast.success('Resource added successfully');
-      await fetchResources();
+      await fetchResources(); // Refresh the list
     } catch (error) {
       console.error('Error adding resource:', error);
       toast.error('Failed to add resource');
@@ -298,6 +286,8 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
           throw new Error(data.error || 'Failed to update resource');
         }
 
+        // toast.success('Resource updated successfully');
+        await fetchResources(); // Refresh the list
         return;
       }
 
@@ -318,6 +308,8 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
       if (!data.success) {
         throw new Error(data.error || 'Failed to update resource');
       }
+      
+      await fetchResources(); // Refresh the list
     } catch (error) {
       console.error('Error updating resource:', error);
       toast.error('Failed to update resource');
@@ -327,18 +319,15 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
 
   const deleteResource = async (id: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
-        body: {
-          action: 'delete_resource',
-          data: { id, client_id: user?.clientId }
-        }
-      });
+      const { error } = await supabase
+        .from('edusafe_resources')
+        .delete()
+        .eq('id', id);
 
       if (error) throw error;
-      if (!data?.success) throw new Error('Failed to delete resource');
 
       toast.success('Resource deleted successfully');
-      await fetchResources();
+      await fetchResources(); // Refresh the list
     } catch (error) {
       console.error('Error deleting resource:', error);
       toast.error('Failed to delete resource');

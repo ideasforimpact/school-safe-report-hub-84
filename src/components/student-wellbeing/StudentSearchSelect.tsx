@@ -1,29 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/auth';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types/student';
-
-// De-duplicate identical student-management invocations (handles React StrictMode double-effect in dev)
-const _studentMgmtInflight = new Map<string, Promise<any>>();
-const _studentMgmtRecent = new Map<string, { at: number; value: any }>();
-const STUDENT_MGMT_DEDUPE_MS = 1200;
-const invokeStudentList = async (clientId: string) => {
-  const key = `list:${clientId}`;
-  const now = Date.now();
-  const recent = _studentMgmtRecent.get(key);
-  if (recent && now - recent.at < STUDENT_MGMT_DEDUPE_MS) return recent.value;
-  const existing = _studentMgmtInflight.get(key);
-  if (existing) return existing;
-  const request = supabase.functions
-    .invoke('student-management', { body: { client_id: clientId }, headers: { path: 'list' } })
-    .then((res) => { _studentMgmtRecent.set(key, { at: Date.now(), value: res }); return res; })
-    .finally(() => { _studentMgmtInflight.delete(key); });
-  _studentMgmtInflight.set(key, request);
-  return request;
-};
  
 export interface StudentOption {
   id: string;
@@ -68,50 +49,43 @@ export function StudentSearchSelect({
  
   const clientId = employeeData?.clientId;
  
-  useEffect(() => {
+  const fetchStudents = useCallback(async () => {
     if (isIntegrationEnabled || !clientId) {
       setFetchedStudents([]);
       return;
     }
-    let cancelled = false;
-    setIsLoadingStudents(true);
-    invokeStudentList(clientId)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.error(error);
-          setFetchedStudents([]);
-          return;
-        }
-        const studentList: any[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.students)
-            ? data.students
-            : [];
-        setFetchedStudents(
-          studentList.map((s: any) => ({
-            id: s.id,
-            studentId: s.student_id,
-            name: s.name,
-            grade: s.grade,
-            section: s.section,
-            campus: s.campus,
-            createdAt: new Date(s.created_at),
-            updatedAt: new Date(s.updated_at),
-            grade_id: s.grade_id ?? null,
-            section_id: s.section_id ?? null,
-            campus_id: s.campus_id ?? null,
-          }))
-        );
-      })
-      .catch((e) => {
-        if (!cancelled) { console.error(e); setFetchedStudents([]); }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingStudents(false);
-      });
-    return () => { cancelled = true; };
-  }, [clientId, isIntegrationEnabled, refreshKey]);
+    try {
+      setIsLoadingStudents(true);
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, student_id, name, grade, section, grade_id, section_id')
+        .eq('client_id', clientId);
+      if (error) throw error;
+      setFetchedStudents(
+        (data || []).map((s) => ({
+          id: s.id,
+          studentId: s.student_id,
+          name: s.name,
+          grade: s.grade ?? '',
+          section: s.section ?? '',
+          campus: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          grade_id: s.grade_id ?? null,
+          section_id: s.section_id ?? null,
+        }))
+      );
+    } catch (e) {
+      console.error(e);
+      setFetchedStudents([]);
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  }, [clientId, isIntegrationEnabled]);
+ 
+  useEffect(() => {
+    fetchStudents();
+  }, [refreshKey, fetchStudents]);
  
   const searchStudentsAPI = useCallback(async (term: string): Promise<StudentOption[]> => {
     if (!term || term.length < 3 || !clientId) return [];

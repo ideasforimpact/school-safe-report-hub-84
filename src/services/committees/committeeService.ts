@@ -103,70 +103,37 @@ export interface CommitteeEventPayload {
   employeeId?: string | null;
 }
 
-// ─── Central invoker ──────────────────────────────────────────────────────────
-
-async function invokeCommittee<T = any>(action: string, payload: Record<string, any> = {}): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(`committee-management/${action}`, {
-    body: payload,
+export const fetchCommittees = async (clientId: string): Promise<Committee[]> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: { action: 'list_committees', client_id: clientId },
   });
-  if (error) throw new Error(error.message || `Failed: ${action}`);
-  if (data?.error) throw new Error(data.error);
-  return data as T;
-}
 
-export interface FetchCommitteesParams {
-  clientId: string;
-  page?: number;
-  pageSize?: number;
-  search?: string;
-}
+  if (error) {
+    throw new Error(error.message || 'Failed to fetch committees');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
 
-export interface FetchCommitteesResult {
-  committees: Committee[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-// In-flight deduplication — collapses simultaneous calls with identical params.
-const listInflight = new Map<string, Promise<FetchCommitteesResult>>();
-
-export const fetchCommittees = async ({
-  clientId,
-  page = 1,
-  pageSize = 10,
-  search = '',
-}: FetchCommitteesParams): Promise<FetchCommitteesResult> => {
-  const key = `${clientId}:${page}:${pageSize}:${search}`;
-  const inflight = listInflight.get(key);
-  if (inflight) return inflight;
-
-  const request = invokeCommittee<{
-    committees: Committee[];
-    total_count: number;
-    page: number;
-    page_size: number;
-    total_pages: number;
-  }>('list_committees', { client_id: clientId, page, page_size: pageSize, search })
-    .then((data) => ({
-      committees: data.committees || [],
-      totalCount: data.total_count,
-      page: data.page,
-      pageSize: data.page_size,
-      totalPages: data.total_pages,
-    }))
-    .finally(() => listInflight.delete(key));
-
-  listInflight.set(key, request);
-  return request;
+  return (data || []) as Committee[];
 };
 
 export const fetchCommitteeById = async (
   committeeId: string,
   clientId: string
 ): Promise<Committee | null> => {
-  return invokeCommittee<Committee>('get_committee', { client_id: clientId, committee_id: committeeId });
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: { action: 'get_committee', client_id: clientId, committee_id: committeeId },
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to fetch committee');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return (data as Committee) || null;
 };
 
 export const fetchCommitteeDefaults = async (): Promise<CommitteeDefault[]> => {
@@ -207,184 +174,242 @@ export const fetchCommitteeMemberRoles = async (): Promise<CommitteeMemberRole[]
   return (data || []) as CommitteeMemberRole[];
 };
 
-export const createCommittee = async (payload: CommitteePayload): Promise<Committee> =>
-  invokeCommittee<Committee>('create_committee', {
-    client_id: payload.clientId,
-    employee_id: payload.employeeId || null,
-    name: payload.name,
-    description: payload.description || null,
-    status: payload.status ?? true,
-    members: payload.members || [],
-    attachments: payload.attachments || [],
+export const createCommittee = async (payload: CommitteePayload): Promise<Committee> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: {
+      action: 'create_committee',
+      client_id: payload.clientId,
+      employee_id: payload.employeeId || null,
+      name: payload.name,
+      description: payload.description || null,
+      status: payload.status ?? true,
+      members: payload.members || [],
+      attachments: payload.attachments || [],
+    },
   });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to create committee');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  return data as Committee;
+};
 
 export const updateCommittee = async (
   committeeId: string,
   payload: CommitteePayload
-): Promise<Committee> =>
-  invokeCommittee<Committee>('update_committee', {
-    client_id: payload.clientId,
-    employee_id: payload.employeeId || null,
-    committee_id: committeeId,
-    name: payload.name,
-    description: payload.description || null,
-    status: payload.status ?? true,
-    members: payload.members || [],
-    attachments: payload.attachments || [],
+): Promise<Committee> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: {
+      action: 'update_committee',
+      client_id: payload.clientId,
+      employee_id: payload.employeeId || null,
+      committee_id: committeeId,
+      name: payload.name,
+      description: payload.description || null,
+      status: payload.status ?? true,
+      members: payload.members || [],
+      attachments: payload.attachments || [],
+    },
   });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to update committee');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data as Committee;
+};
 
 export const deleteCommittee = async (
   committeeId: string,
   clientId: string,
   employeeId?: string | null
-): Promise<void> =>
-  invokeCommittee('delete_committee', {
-    client_id: clientId,
-    committee_id: committeeId,
-    employee_id: employeeId || null,
+): Promise<void> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: {
+      action: 'delete_committee',
+      client_id: clientId,
+      committee_id: committeeId,
+      employee_id: employeeId || null,
+    },
   });
 
-export const createCommitteeEvent = async (payload: CommitteeEventPayload): Promise<CommitteeEvent> =>
-  invokeCommittee<CommitteeEvent>('create_event', {
-    client_id: payload.clientId,
-    employee_id: payload.employeeId || null,
-    committee_id: payload.committeeId,
-    event_type: payload.eventType,
-    title: payload.title,
-    description: payload.description || null,
-    event_date: payload.eventDate,
-    participant_ids: payload.participantIds || [],
-    attachments: payload.attachments || [],
+  if (error) {
+    throw new Error(error.message || 'Failed to delete committee');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+};
+
+export const createCommitteeEvent = async (
+  payload: CommitteeEventPayload
+): Promise<CommitteeEvent> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: {
+      action: 'create_event',
+      client_id: payload.clientId,
+      employee_id: payload.employeeId || null,
+      committee_id: payload.committeeId,
+      event_type: payload.eventType,
+      title: payload.title,
+      description: payload.description || null,
+      event_date: payload.eventDate,
+      participant_ids: payload.participantIds || [],
+      attachments: payload.attachments || [],
+    },
   });
 
-export const updateCommitteeEvent = async (payload: CommitteeEventPayload): Promise<CommitteeEvent> => {
-  if (!payload.eventId) throw new Error('Event ID is required');
-  return invokeCommittee<CommitteeEvent>('update_event', {
-    client_id: payload.clientId,
-    employee_id: payload.employeeId || null,
-    event_id: payload.eventId,
-    event_type: payload.eventType,
-    title: payload.title,
-    description: payload.description || null,
-    event_date: payload.eventDate,
-    participant_ids: payload.participantIds || [],
-    attachments: payload.attachments || [],
+  if (error) {
+    throw new Error(error.message || 'Failed to create MOM/Event');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  return data as CommitteeEvent;
+};
+
+export const updateCommitteeEvent = async (
+  payload: CommitteeEventPayload
+): Promise<CommitteeEvent> => {
+  if (!payload.eventId) {
+    throw new Error('Event ID is required');
+  }
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: {
+      action: 'update_event',
+      client_id: payload.clientId,
+      employee_id: payload.employeeId || null,
+      event_id: payload.eventId,
+      event_type: payload.eventType,
+      title: payload.title,
+      description: payload.description || null,
+      event_date: payload.eventDate,
+      participant_ids: payload.participantIds || [],
+      attachments: payload.attachments || [],
+    },
   });
+  if (error) {
+    throw new Error(error.message || 'Failed to update MOM/Event');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  return data as CommitteeEvent;
 };
 
 export const fetchCommitteeEvents = async (
   committeeId: string,
   clientId: string
-): Promise<CommitteeEvent[]> =>
-  invokeCommittee<CommitteeEvent[]>('list_events', { client_id: clientId, committee_id: committeeId });
+): Promise<CommitteeEvent[]> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: { action: 'list_events', client_id: clientId, committee_id: committeeId },
+  });
 
-export interface EventsPageData {
-  committee: Committee | null;
-  events: CommitteeEvent[];
-  members: CommitteeMember[];
-}
-
-const eventsPageInflight = new Map<string, Promise<EventsPageData>>();
-
-export const fetchEventsPageData = async (
-  committeeId: string,
-  clientId: string,
-): Promise<EventsPageData> => {
-  const key = `${clientId}:${committeeId}`;
-  const inflight = eventsPageInflight.get(key);
-  if (inflight) return inflight;
-
-  const request = invokeCommittee<{ committee: any; events: any[]; members: any[] }>(
-    'get_events_page_data',
-    { client_id: clientId, committee_id: committeeId },
-  ).then((data) => ({
-    committee: data.committee ?? null,
-    events: data.events || [],
-    members: data.members || [],
-  })).finally(() => eventsPageInflight.delete(key));
-
-  eventsPageInflight.set(key, request);
-  return request;
+  if (error) {
+    throw new Error(error.message || 'Failed to fetch MOM/Event list');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  return (data || []) as CommitteeEvent[];
 };
 
 export const fetchCommitteeEventById = async (
   eventId: string,
   clientId: string
-): Promise<CommitteeEvent | null> =>
-  invokeCommittee<CommitteeEvent>('get_event', { client_id: clientId, event_id: eventId });
+): Promise<CommitteeEvent | null> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: { action: 'get_event', client_id: clientId, event_id: eventId },
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to fetch MOM/Event');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  return (data as CommitteeEvent) || null;
+};
 
 export const deleteCommitteeEvent = async (
   eventId: string,
   clientId: string,
   employeeId?: string | null
-): Promise<void> =>
-  invokeCommittee('delete_event', { client_id: clientId, event_id: eventId, employee_id: employeeId || null });
+): Promise<void> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: { action: 'delete_event', client_id: clientId, event_id: eventId, employee_id: employeeId || null },
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to delete MOM/Event');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+};
 
 export const deleteCommitteeEventAttachment = async (
   attachmentId: string,
   clientId: string,
   employeeId?: string | null
-): Promise<void> =>
-  invokeCommittee('delete_event_attachment', {
-    client_id: clientId,
-    attachment_id: attachmentId,
-    employee_id: employeeId || null,
+): Promise<void> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: {
+      action: 'delete_event_attachment',
+      client_id: clientId,
+      attachment_id: attachmentId,
+      employee_id: employeeId || null,
+    },
   });
+  if (error) {
+    throw new Error(error.message || 'Failed to delete attachment');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+};
 
 export const deleteCommitteeAttachment = async (
   attachmentId: string,
   clientId: string,
   employeeId?: string | null
-): Promise<void> =>
-  invokeCommittee('delete_committee_attachment', {
-    client_id: clientId,
-    attachment_id: attachmentId,
-    employee_id: employeeId || null,
+): Promise<void> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: {
+      action: 'delete_committee_attachment',
+      client_id: clientId,
+      attachment_id: attachmentId,
+      employee_id: employeeId || null,
+    },
   });
+  if (error) {
+    throw new Error(error.message || 'Failed to delete committee attachment');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+};
 
 export const fetchCommitteeMembers = async (
   committeeId: string,
   clientId: string
-): Promise<CommitteeMember[]> =>
-  invokeCommittee<CommitteeMember[]>('get_committee_members', { client_id: clientId, committee_id: committeeId });
+): Promise<CommitteeMember[]> => {
+  const { data, error } = await supabase.functions.invoke('committee-management', {
+    body: { action: 'get_committee_members', client_id: clientId, committee_id: committeeId },
+  });
 
-// Fetch all members for every committee in one request — use on list pages instead of per-row fetches.
-const allMembersInflight = new Map<string, Promise<CommitteeMember[]>>();
+  if (error) {
+    throw new Error(error.message || 'Failed to fetch committee members');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
 
-export const fetchAllCommitteeMembers = async (clientId: string): Promise<CommitteeMember[]> => {
-  const inflight = allMembersInflight.get(clientId);
-  if (inflight) return inflight;
-
-  const request = invokeCommittee<CommitteeMember[]>('get_all_committee_members', { client_id: clientId })
-    .finally(() => allMembersInflight.delete(clientId));
-
-  allMembersInflight.set(clientId, request);
-  return request;
+  return (data || []) as CommitteeMember[];
 };
-
-export interface CommitteeFormData {
-  employees: { id: string; name: string }[];
-  memberRoles: CommitteeMemberRole[];
-}
-
-let formDataCache: CommitteeFormData | null = null;
-let formDataInflight: Promise<CommitteeFormData> | null = null;
-
-// Fetches employees + member roles from the edge function in one call.
-// Cached after first load — call once on page init, no need to re-fetch on dialog open.
-export const fetchCommitteeFormData = async (clientId: string): Promise<CommitteeFormData> => {
-  if (formDataCache) return formDataCache;
-  if (formDataInflight) return formDataInflight;
-
-  formDataInflight = invokeCommittee<{ employees: { id: string; name: string }[]; member_roles: CommitteeMemberRole[] }>(
-    'get_form_data',
-    { client_id: clientId },
-  ).then((data) => {
-    formDataCache = { employees: data.employees || [], memberRoles: data.member_roles || [] };
-    return formDataCache;
-  }).finally(() => { formDataInflight = null; });
-
-  return formDataInflight;
-};
-
-export const clearCommitteeFormDataCache = () => { formDataCache = null; };

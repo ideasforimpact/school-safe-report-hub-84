@@ -1,153 +1,272 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { categoryService, CategoryItem, SubcategoryItem } from '@/services/incident/categoryService';
-import { ContributingFactorItem } from '@/services/incident/contributingFactorService';
-import { ReportTypeItem } from '@/services/incident/reportTypeService';
-import { PriorityItem } from '@/services/incident/priorityService';
 import { useAuth } from '@/contexts/auth/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-function buildSubcategoryMappings(subcategories: SubcategoryItem[]): Record<string, SubcategoryItem[]> {
-  const mappings: Record<string, SubcategoryItem[]> = {};
-  subcategories.forEach(sub => {
-    if (sub.category_id) {
-      if (!mappings[sub.category_id]) mappings[sub.category_id] = [];
-      mappings[sub.category_id].push(sub);
-    }
-  });
-  return mappings;
-}
 
 export function useIncidentCategories() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [subcategoryMappings, setSubcategoryMappings] = useState<Record<string, SubcategoryItem[]>>({});
-  const [contributingFactors, setContributingFactors] = useState<ContributingFactorItem[]>([]);
-  const [reportTypes, setReportTypes] = useState<ReportTypeItem[]>([]);
-  const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { employeeData } = useAuth();
-  const fetchedForClientRef = useRef<string | null>(null);
 
-  // Single edge-function call fetches all incident config data from the server
+  // Load categories and subcategories on mount
   const loadData = async () => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     try {
       setLoading(true);
+      
+      if (!employeeData?.clientId) {
+        toast.error('Client information not available');
+        return;
+      }
 
-      const { data, error } = await supabase.functions.invoke('init-incident-data', {
-        body: { action: 'fetch-all', clientId: employeeData.clientId },
+      const [categoriesData, subcategoriesData] = await Promise.all([
+        categoryService.getCategories(employeeData.clientId),
+        categoryService.getSubcategories(undefined, employeeData.clientId)
+      ]);
+
+      setCategories(categoriesData);
+      
+      // Group subcategories by category_id
+      const mappings: Record<string, SubcategoryItem[]> = {};
+      subcategoriesData.forEach(sub => {
+        if (sub.category_id) {
+          if (!mappings[sub.category_id]) {
+            mappings[sub.category_id] = [];
+          }
+          mappings[sub.category_id].push(sub);
+        }
       });
-
-      if (error) throw error;
-
-      setCategories(data?.categories ?? []);
-      setSubcategoryMappings(buildSubcategoryMappings(data?.subcategories ?? []));
-      setContributingFactors(data?.contributingFactors ?? []);
-      setReportTypes(data?.reportTypes ?? []);
-      setPriorities(data?.priorities ?? []);
+      
+      setSubcategoryMappings(mappings);
     } catch (error) {
-      console.error('Error loading incident config:', error);
-      toast.error('Failed to load incident configuration');
+      console.error('Error loading categories and subcategories:', error);
+      toast.error('Failed to load categories and subcategories');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!employeeData?.clientId || fetchedForClientRef.current === employeeData.clientId) return;
-    fetchedForClientRef.current = employeeData.clientId;
     loadData();
   }, [employeeData?.clientId]);
 
-  // After mutations, refresh only categories + subcategories (targeted, not full reload)
-  const refreshCategories = async () => {
-    if (!employeeData?.clientId) return;
-    const [cats, subs] = await Promise.all([
-      categoryService.getCategories(employeeData.clientId),
-      categoryService.getSubcategories(undefined, employeeData.clientId),
-    ]);
-    setCategories(cats);
-    setSubcategoryMappings(buildSubcategoryMappings(subs));
-  };
-
   // Category operations
   const addCategory = async (name: string) => {
-    if (!employeeData?.clientId) { toast.error('Client information not available'); return; }
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
       await categoryService.addCategory(name, undefined, employeeData.clientId);
-      await refreshCategories();
+      
+      // Refresh data from server to ensure consistency
+      const [categoriesData, subcategoriesData] = await Promise.all([
+        categoryService.getCategories(employeeData.clientId),
+        categoryService.getSubcategories(undefined, employeeData.clientId)
+      ]);
+
+      setCategories(categoriesData);
+      
+      // Group subcategories by category_id
+      const mappings: Record<string, SubcategoryItem[]> = {};
+      subcategoriesData.forEach(sub => {
+        if (sub.category_id) {
+          if (!mappings[sub.category_id]) {
+            mappings[sub.category_id] = [];
+          }
+          mappings[sub.category_id].push(sub);
+        }
+      });
+      
+      setSubcategoryMappings(mappings);
       toast.success('Category added successfully');
     } catch (error: any) {
       console.error('Error adding category:', error);
-      throw error;
+      // The service already shows the error toast, so we don't need to show another one
+      throw error; // Re-throw to let the component handle it
     }
   };
 
   const updateCategory = async (id: string, name: string) => {
-    if (!employeeData?.clientId) { toast.error('Client information not available'); return; }
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
       await categoryService.updateCategory(id, name, undefined, employeeData.clientId);
-      await refreshCategories();
+      
+      // Refresh data from server to ensure consistency
+      const [categoriesData, subcategoriesData] = await Promise.all([
+        categoryService.getCategories(employeeData.clientId),
+        categoryService.getSubcategories(undefined, employeeData.clientId)
+      ]);
+
+      setCategories(categoriesData);
+      
+      // Group subcategories by category_id
+      const mappings: Record<string, SubcategoryItem[]> = {};
+      subcategoriesData.forEach(sub => {
+        if (sub.category_id) {
+          if (!mappings[sub.category_id]) {
+            mappings[sub.category_id] = [];
+          }
+          mappings[sub.category_id].push(sub);
+        }
+      });
+      
+      setSubcategoryMappings(mappings);
       toast.success('Category updated successfully');
     } catch (error: any) {
       console.error('Error updating category:', error);
-      throw error;
+      // The service already shows the error toast, so we don't need to show another one
+      throw error; // Re-throw to let the component handle it
     }
   };
 
   const deleteCategory = async (id: string) => {
-    if (!employeeData?.clientId) { toast.error('Client information not available'); return; }
+    console.log('Hook: deleteCategory called with id:', id);
+    
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
+      console.log('Hook: Calling categoryService.deleteCategory...');
       await categoryService.deleteCategory(id, employeeData.clientId);
-      await refreshCategories();
+      console.log('Hook: Category service delete completed successfully');
+      
+      // Refresh data from server to ensure consistency
+      console.log('Hook: Refreshing data from server...');
+      const [categoriesData, subcategoriesData] = await Promise.all([
+        categoryService.getCategories(employeeData.clientId),
+        categoryService.getSubcategories(undefined, employeeData.clientId)
+      ]);
+
+      console.log('Hook: Received refreshed data:', { 
+        categoriesCount: categoriesData.length, 
+        subcategoriesCount: subcategoriesData.length 
+      });
+
+      setCategories(categoriesData);
+      
+      // Group subcategories by category_id
+      const mappings: Record<string, SubcategoryItem[]> = {};
+      subcategoriesData.forEach(sub => {
+        if (sub.category_id) {
+          if (!mappings[sub.category_id]) {
+            mappings[sub.category_id] = [];
+          }
+          mappings[sub.category_id].push(sub);
+        }
+      });
+      
+      setSubcategoryMappings(mappings);
+      console.log('Hook: State updated successfully');
       toast.success('Category deleted successfully');
     } catch (error: any) {
-      console.error('Error deleting category:', error);
+      console.error('Hook: Error deleting category:', error);
+      // Re-throw the error so the component can handle it and show the specific error message
       throw error;
     }
   };
 
-  // Subcategory operations
+  // Subcategory operations - Ensure client_id is passed
   const addSubcategory = async (categoryId: string, name: string) => {
-    if (!employeeData?.clientId) { toast.error('Client information not available'); return; }
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
       await categoryService.addSubcategory(name, categoryId, undefined, employeeData.clientId);
-      const subs = await categoryService.getSubcategories(undefined, employeeData.clientId);
-      setSubcategoryMappings(buildSubcategoryMappings(subs));
+      
+      // Refresh subcategories from server to ensure consistency
+      const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId);
+      
+      // Group subcategories by category_id
+      const mappings: Record<string, SubcategoryItem[]> = {};
+      subcategoriesData.forEach(sub => {
+        if (sub.category_id) {
+          if (!mappings[sub.category_id]) {
+            mappings[sub.category_id] = [];
+          }
+          mappings[sub.category_id].push(sub);
+        }
+      });
+      
+      setSubcategoryMappings(mappings);
       toast.success('Subcategory added successfully');
     } catch (error: any) {
       console.error('Error adding subcategory:', error);
-      throw error;
+      // The service already shows the error toast, so we don't need to show another one
+      throw error; // Re-throw to let the component handle it
     }
   };
 
   const updateSubcategory = async (categoryId: string, id: string, name: string) => {
-    if (!employeeData?.clientId) { toast.error('Client information not available'); return; }
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
       await categoryService.updateSubcategory(id, name, categoryId, undefined, employeeData.clientId);
-      const subs = await categoryService.getSubcategories(undefined, employeeData.clientId);
-      setSubcategoryMappings(buildSubcategoryMappings(subs));
+      
+      // Refresh subcategories from server to ensure consistency
+      const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId);
+      
+      // Group subcategories by category_id
+      const mappings: Record<string, SubcategoryItem[]> = {};
+      subcategoriesData.forEach(sub => {
+        if (sub.category_id) {
+          if (!mappings[sub.category_id]) {
+            mappings[sub.category_id] = [];
+          }
+          mappings[sub.category_id].push(sub);
+        }
+      });
+      
+      setSubcategoryMappings(mappings);
       toast.success('Subcategory updated successfully');
     } catch (error: any) {
       console.error('Error updating subcategory:', error);
-      throw error;
+      // The service already shows the error toast, so we don't need to show another one
+      throw error; // Re-throw to let the component handle it
     }
   };
 
   const deleteSubcategory = async (categoryId: string, id: string) => {
-    if (!employeeData?.clientId) { toast.error('Client information not available'); return; }
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
       await categoryService.deleteSubcategory(id, employeeData.clientId);
-      const subs = await categoryService.getSubcategories(undefined, employeeData.clientId);
-      setSubcategoryMappings(buildSubcategoryMappings(subs));
+      
+      // Refresh subcategories from server to ensure consistency
+      const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId);
+      
+      // Group subcategories by category_id
+      const mappings: Record<string, SubcategoryItem[]> = {};
+      subcategoriesData.forEach(sub => {
+        if (sub.category_id) {
+          if (!mappings[sub.category_id]) {
+            mappings[sub.category_id] = [];
+          }
+          mappings[sub.category_id].push(sub);
+        }
+      });
+      
+      setSubcategoryMappings(mappings);
       toast.success('Subcategory deleted successfully');
     } catch (error: any) {
       console.error('Error deleting subcategory:', error);
+      // Re-throw the error so the component can handle it and show the specific error message
       throw error;
     }
   };
@@ -155,12 +274,6 @@ export function useIncidentCategories() {
   return {
     categories,
     subcategoryMappings,
-    contributingFactors,
-    setContributingFactors,
-    reportTypes,
-    setReportTypes,
-    priorities,
-    setPriorities,
     loading,
     addCategory,
     updateCategory,
@@ -168,6 +281,6 @@ export function useIncidentCategories() {
     addSubcategory,
     updateSubcategory,
     deleteSubcategory,
-    loadData,
+    loadData
   };
 }

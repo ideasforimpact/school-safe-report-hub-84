@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -20,8 +20,10 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/useAuth';
-import { ContributingFactorItem } from '@/services/incident/contributingFactorService';
+import { contributingFactorService, ContributingFactorItem } from '@/services/incident/contributingFactorService';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 // Validation function for contributing factor names (no special characters, max 25 chars)
@@ -51,14 +53,16 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   const [currentDescription, setCurrentDescription] = useState('');
   const [currentWeight, setCurrentWeight] = useState('');
   const [currentId, setCurrentId] = useState<string | null>(null);
-  const loading = false;
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { employeeData } = useAuth();
-  const factors = propFactors;
+  const [factors, setFactors] = useState<ContributingFactorItem[]>([]);
+  const [factorReferences, setFactorReferences] = useState<Record<string, IncidentReferenceCheck>>({});
+  
   // Confirmation dialog states
   const [confirmationDialog, setConfirmationDialog] = useState<{
     open: boolean;
@@ -78,6 +82,66 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     error: null,
   });
   
+  // Fetch contributing factors directly using the service
+  const fetchContributingFactors = useCallback(async () => {
+    if (!employeeData?.clientId) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const result = await contributingFactorService.getContributingFactors(
+        employeeData.clientId
+      );
+      setFactors(result);
+    } catch (error) {
+      console.error('Error fetching contributing factors:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [employeeData?.clientId]);
+
+  useEffect(() => {
+    fetchContributingFactors();
+  }, [fetchContributingFactors]);
+
+  // Pre-load reference info so we can disable delete button for linked factors
+  useEffect(() => {
+    const clientId = employeeData?.clientId;
+    if (!clientId || factors.length === 0) {
+      setFactorReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          factors.map(async (factor) => {
+            const refInfo = await incidentReferenceService.checkContributingFactorReferences(factor.id, clientId);
+            return { id: factor.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setFactorReferences(map);
+      } catch (error) {
+        console.error('Error preloading contributing factor reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [factors, employeeData]);
 
   const handleAdd = async () => {
     if (!employeeData?.clientId) {
@@ -98,9 +162,25 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     try {
       setError(null);
       setIsAdding(true);
-      await propAddFactor(currentName.trim(), currentDescription.trim(), currentWeight);
-      setCurrentName(''); setCurrentDescription(''); setCurrentWeight(null);
+      // Strictly using contributingFactorService and passing clientId
+      await contributingFactorService.addContributingFactor(
+        currentName.trim(), 
+        currentDescription.trim(), 
+        currentWeight,
+        employeeData.clientId
+      );
+      
+      // Refresh factors from service
+      const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+      setFactors(updatedFactors);
+      
+      // Reset form and close dialog
+      setCurrentName('');
+      setCurrentDescription('');
+      setCurrentWeight(null);
       setIsAddDialogOpen(false);
+      
+      toast.success('Contributing factor added successfully');
     } catch (error: any) {
       console.error('Error adding contributing factor:', error);
       setError(error.message || 'Failed to add contributing factor');
@@ -128,8 +208,21 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     try {
       setError(null);
       setIsUpdating(true);
-      await propUpdateFactor(currentId, currentName.trim(), currentDescription.trim(), currentWeight);
+      // Strictly using contributingFactorService and passing clientId
+      await contributingFactorService.updateContributingFactor(
+        currentId, 
+        currentName.trim(), 
+        currentDescription.trim(), 
+        currentWeight,
+        employeeData.clientId
+      );
+      
+      // Refresh factors from service
+      const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+      setFactors(updatedFactors);
+      
       setIsEditDialogOpen(false);
+      toast.success('Contributing factor updated successfully');
     } catch (error: any) {
       console.error('Error updating contributing factor:', error);
       setError(error.message || 'Failed to update contributing factor');
@@ -152,6 +245,16 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       return;
     }
 
+    // Check if factor is linked to incidents - prevent deletion if linked
+    const refInfo = factorReferences[id];
+    if (refInfo?.hasReferences) {
+      const message = refInfo?.message || 
+        `This contributing factor is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
+      toast.error(message);
+      return;
+    }
+
+    // Find the contributing factor to get its name for the confirmation message
     const factor = factors.find(f => f.id === id);
     const factorName = factor?.name || 'this contributing factor';
 
@@ -165,8 +268,18 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       onConfirm: async () => {
         try {
           setIsDeleting(true);
-          await propDeleteFactor(id);
+          // Strictly using contributingFactorService and passing clientId
+          await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
+          
+          // Refresh factors from service 
+          const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+          setFactors(updatedFactors);
+          
+          // Call the prop function to notify parent
+          // propDeleteFactor(id);
+          
           setConfirmationDialog(prev => ({ ...prev, open: false }));
+          toast.success(`Contributing factor deleted successfully`);
         } catch (error: any) {
           console.error('Error deleting contributing factor:', error);
           const errorMessage = error?.message || 'Failed to delete contributing factor';
@@ -198,7 +311,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     table: 'contributing_factors',
     events: '*',
     enabled: !!employeeData?.clientId,
-    onPayload: () => {},
+    onPayload: fetchContributingFactors,
   });
 
 
@@ -296,13 +409,61 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(factor.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        {(() => {
+                          const refInfo = factorReferences[factor.id];
+                          const isLinked = refInfo?.hasReferences;
+
+                          if (isLinked) {
+                            const message =
+                              refInfo?.message ||
+                              `This contributing factor is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
+
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        disabled={true}
+                                        aria-disabled="true"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                        }}
+                                        className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent 
+                                    side="left" 
+                                    align="center" 
+                                    sideOffset={8} 
+                                    className="max-w-xs whitespace-normal text-left"
+                                  >
+                                    <p className="text-xs leading-snug text-left">
+                                      {message}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          }
+
+                          return (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(factor.id)}
+                              disabled={loading}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          );
+                        })()}
                       </div>
                       )}
                     </td>

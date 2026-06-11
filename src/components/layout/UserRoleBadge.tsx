@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Crown, Shield, User } from "lucide-react";
 import { useEmployeeDepartments } from "@/hooks/useEmployeeDepartments";
 import { employeeDepartmentName } from "@/services/employeeNameHelpers";
-import { useLocation } from "react-router-dom";
 
 
 interface UserRoleBadgeProps {
@@ -19,25 +18,16 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   isSuperAdmin = false,
   department 
 }) => {
-  const location = useLocation();
-  const isUsersRoute = location.pathname === '/users';
-  const isIncidentRoute =
-    location.pathname.startsWith('/incidents') ||
-    location.pathname.startsWith('/incident/') ||
-    location.pathname.startsWith('/report-incident');
-  const isAssessmentsRoute =
-    location.pathname.startsWith('/assessments') ||
-    location.pathname.startsWith('/assessment/');
-  const uuidLike = !!department && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(department.trim());
-  const needsDepartmentLookup = !isUsersRoute && !isIncidentRoute && !isAssessmentsRoute && uuidLike;
-  const { employeeDepartments, loading: departmentsLoading } = useEmployeeDepartments();
+  const { employeeDepartments } = useEmployeeDepartments();
 
-  const departmentLabel = departmentsLoading
-    ? ''
-    : needsDepartmentLookup
-      ? employeeDepartmentName(department, employeeDepartments)
-      : uuidLike ? '' : (department?.trim() || '');
+  const departmentLabel = employeeDepartmentName(
+    department,
+    employeeDepartments
+  );
 
+  // Log values for debugging
+  console.log("UserRoleBadge Props:", { isSaasOwner, isAdmin, isSuperAdmin, department });
+  
   // If user is logged in through backoffice, they are a SaaS Owner
   if (isSaasOwner) {
     return (

@@ -23,6 +23,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2, Search, X } from 'lucide-react';
 import { ConfigItem, CampusItem } from '@/contexts/types';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/auth/useAuth';
 
 interface FacilityItem extends ConfigItem {
@@ -69,6 +71,45 @@ export const FacilityTab = ({
   const [filterCampusId, setFilterCampusId] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [facilityReferences, setFacilityReferences] = useState<Record<string, IncidentReferenceCheck>>({});
+
+  // Pre-load reference info so we can disable delete button for linked facilities
+  useEffect(() => {
+    const clientId = employeeData?.clientId || employeeData?.client_id;
+    if (!clientId || facilities.length === 0) {
+      setFacilityReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          facilities.map(async (facility) => {
+            const refInfo = await incidentReferenceService.checkFacilityReferences(facility.id, clientId);
+            return { id: facility.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setFacilityReferences(map);
+      } catch (error) {
+        console.error('Error preloading facility reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [facilities, employeeData]);
 
   // Validation: allow any characters, max 50 length
   const isValidFacilityName = (name: string) => {
@@ -394,15 +435,59 @@ export const FacilityTab = ({
                         <Pencil className="h-4 w-4" />
                       </Button>
                       
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteClick(facility)}
-                        disabled={loading}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {(() => {
+                        const refInfo = facilityReferences[facility.id];
+                        const isLinked = refInfo?.hasReferences || false;
+                        const message = refInfo?.message || '';
+
+                        if (isLinked) {
+                          return (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      disabled={true}
+                                      aria-disabled="true"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                      }}
+                                      className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent 
+                                  side="left" 
+                                  align="center" 
+                                  sideOffset={8} 
+                                  className="max-w-xs whitespace-normal text-left"
+                                >
+                                  <p className="text-xs leading-snug text-left">
+                                    {message}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        }
+
+                        return (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteClick(facility)}
+                            disabled={loading}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   )}

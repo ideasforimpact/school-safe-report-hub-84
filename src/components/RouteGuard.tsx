@@ -113,13 +113,12 @@ const RouteGuard = ({
     dispatch
   ]);
 
-  // Reset IP check only when the user identity changes (not on every route change,
-  // since useEmployeeValidation already handles per-route validation via validate-employee).
+  // Reset IP check when route changes
   useEffect(() => {
     setIpCheckCompleted(false);
     setIpWhitelisted(true);
     toastShownRef.current = false;
-  }, [employeeData?.id, employeeData?.clientId]);
+  }, [location.pathname]);
 
   // Handle backoffice route protection with JWT validation (but not on login routes)
   if (isBackoffice && requireAuth && !isOnLoginRoute) {

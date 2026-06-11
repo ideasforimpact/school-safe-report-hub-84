@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import SOPHeader from '@/components/sop/SOPHeader';
 import AssignSOPDialog from '@/components/sop/AssignSOPDialog';
@@ -89,7 +89,6 @@ interface SOP {
   signoff_request_status?: string;
   sop_signoff_request_exist?: boolean;
   completed_date?: string | null;
-  completed_employee_ids?: string[];
 }
 
 const SOPPage = () => {
@@ -108,14 +107,12 @@ const SOPPage = () => {
   const [sopToDelete, setSopToDelete] = useState<SOP | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [sops, setSops] = useState<SOP[]>([]);
+  const [allSops, setAllSops] = useState<SOP[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const PAGE_SIZE = 10;
   const { state } = useEmployeeStore();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const employeeData = getEmployeeData(state);
@@ -127,147 +124,111 @@ const SOPPage = () => {
   const [selectedSopForCompleted, setSelectedSopForCompleted] = useState<string>('');
   const [completedEmployeeIds, setCompletedEmployeeIds] = useState<string[]>([]);
 
-  // Statistics derived from fetch-sop response — no separate edge function needed
-  const [sopStats, setSopStats] = useState({ totalSOPs: 0, totalEmployeesInvolved: 0, totalSOPsSignedOff: 0, totalSOPsToBeDone: 0 });
 
   // Resolve clientId similarly to AddSOPDialog to avoid null client from context
   const resolvedClientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
 
-  // Guards to prevent concurrent / duplicate fetch-sop calls
-  const fetchingRef = useRef(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Timestamp of the last direct (user-action) fetch — real-time triggers are suppressed for 2s after
-  const lastDirectFetchRef = useRef<number>(0);
-  // Separate debounce ref for search/filter changes
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Stable ref so real-time callbacks always see the current page without stale closure
-  const currentPageRef = useRef(1);
+  useEffect(() => {
+    // Clear stale records while switching client context
+    setSops([]);
+    setAllSops([]);
+    setLoading(true);
+    fetchSOPs();
+    fetchCategories();
+  }, [resolvedClientId, employeeData?.id, isSuperAdmin]);
 
-  const fetchSOPs = useCallback(async (page: number = 1) => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-    lastDirectFetchRef.current = Date.now();
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sop_categories' as any)
+        .select('id, category_name')
+        .order('category_name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching categories:', error);
+        return;
+      }
+
+      setCategories((data || []) as unknown as Array<{ id: string; category_name: string }>);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  // Filter SOPs based on search, status, and category
+  useEffect(() => {
+    let filtered = [...allSops];
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (sop) =>
+          sop.title.toLowerCase().includes(searchLower) ||
+          (sop.description && sop.description.toLowerCase().includes(searchLower)) ||
+          (sop.category_name && sop.category_name.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      const statusValue = statusFilter === 'active';
+      filtered = filtered.filter((sop) => sop.status === statusValue);
+    }
+
+    // Apply category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter((sop) => sop.category_id === categoryFilter);
+    }
+
+    setSops(filtered);
+  }, [searchTerm, statusFilter, categoryFilter, allSops]);
+
+  const fetchSOPs = async () => {
     setLoading(true);
     try {
+      // Use resolvedClientId which properly gets client_id from employeeData
       const clientId = resolvedClientId;
       const employeeId = employeeData?.id || null;
-      if (!clientId) { setSops([]); return; }
+
+      if (!clientId) {
+        setAllSops([]);
+        setSops([]);
+        return;
+      }
 
       const { data, error } = await supabase.functions.invoke('fetch-sop', {
-        body: { client_id: clientId, employee_id: employeeId, is_super_admin: isSuperAdmin, page, limit: PAGE_SIZE },
+        body: {
+          client_id: clientId,
+          employee_id: employeeId,
+          is_super_admin: isSuperAdmin,
+        },
       });
 
-      if (error) { console.error('Error fetching SOPs:', error); toast.error('Failed to load SOPs'); return; }
-      if (data?.error) { toast.error(data.error || 'Failed to load SOPs'); return; }
+      if (error) {
+        console.error('Error fetching SOPs:', error);
+        toast.error('Failed to load SOPs');
+        return;
+      }
 
-      if (data?.success) {
-        const sopList: any[] = data.data || [];
+      if (data && data.error) {
+        toast.error(data.error || 'Failed to load SOPs');
+        return;
+      }
+
+      if (data && data.success) {
+        const sopList = data.data || [];
+        setAllSops(sopList);
         setSops(sopList);
-        setTotalCount(data.pagination?.total ?? sopList.length);
-
-        // Categories for filter dropdown (first page only, stable reference)
-        if (page === 1) {
-          const seen = new Set<string>();
-          setCategories(sopList
-            .filter((s: any) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
-            .map((s: any) => ({ id: s.category_id, category_name: s.category_name }))
-            .sort((a: any, b: any) => a.category_name.localeCompare(b.category_name)));
-        }
-
-        // Stats — totalSOPs from server count; others from current page (updated on data changes via real-time)
-        setSopStats({
-          totalSOPs: data.pagination?.total ?? sopList.length,
-          totalEmployeesInvolved: sopList.reduce((sum: number, s: any) => sum + (s.assigned_employee_count || 0), 0),
-          totalSOPsSignedOff: sopList.reduce((sum: number, s: any) => sum + (s.completed_count || 0), 0),
-          totalSOPsToBeDone: sopList.reduce((sum: number, s: any) => sum + (s.to_be_done_count || 0), 0),
-        });
       }
     } catch (error) {
       console.error('Error fetching SOPs:', error);
       toast.error('Failed to load SOPs');
     } finally {
       setLoading(false);
-      fetchingRef.current = false;
     }
-  }, [resolvedClientId, employeeData?.id, isSuperAdmin, PAGE_SIZE]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Debounced wrapper — collapses rapid real-time triggers into one fetch.
-  // Suppressed for 2s after a direct (user-action) fetch to avoid double-calling
-  // when the same DB write triggers both the callback and a real-time event.
-  const scheduleFetchSOPs = useCallback((page: number = 1) => {
-    if (Date.now() - lastDirectFetchRef.current < 2000) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchSOPs(page), 300);
-  }, [fetchSOPs]);
-
-  // Server-side filtered fetch — updates table + totalCount but not stats/categories
-  const fetchFilteredSOPs = useCallback(async (search: string, status: string, categoryId: string, page: number = 1) => {
-    const clientId = resolvedClientId;
-    const employeeId = employeeData?.id || null;
-    if (!clientId) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-sop', {
-        body: {
-          client_id: clientId,
-          employee_id: employeeId,
-          is_super_admin: isSuperAdmin,
-          search: search.trim() || null,
-          status: status !== 'all' ? status : null,
-          category_id: categoryId !== 'all' ? categoryId : null,
-          page,
-          limit: PAGE_SIZE,
-        },
-      });
-      if (error) { console.error('Error fetching filtered SOPs:', error); return; }
-      if (data?.success) {
-        setSops(data.data || []);
-        setTotalCount(data.pagination?.total ?? (data.data || []).length);
-      }
-    } catch (error) {
-      console.error('Error fetching filtered SOPs:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [resolvedClientId, employeeData?.id, isSuperAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Keep ref in sync so real-time callbacks always have the latest page
-  useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
-
-  // Initial load / client-context change — reset to page 1
-  useEffect(() => {
-    setSops([]);
-    setCurrentPage(1);
-    currentPageRef.current = 1;
-    setLoading(true);
-    fetchSOPs(1);
-  }, [fetchSOPs]); // fetchSOPs captures resolvedClientId, employeeData?.id, isSuperAdmin
-
-  // Filter change — debounce 400ms, reset to page 1, call server
-  useEffect(() => {
-    const hasFilters = searchTerm.trim() || statusFilter !== 'all' || categoryFilter !== 'all';
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    if (!hasFilters) {
-      // Filters cleared — go back to page 1 unfiltered
-      setCurrentPage(1);
-      fetchSOPs(1);
-      return;
-    }
-    searchDebounceRef.current = setTimeout(() => {
-      setCurrentPage(1);
-      fetchFilteredSOPs(searchTerm, statusFilter, categoryFilter, 1);
-    }, 400);
-  }, [searchTerm, statusFilter, categoryFilter]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Page change — re-fetch keeping current filters
-  useEffect(() => {
-    const hasFilters = searchTerm.trim() || statusFilter !== 'all' || categoryFilter !== 'all';
-    if (hasFilters) {
-      fetchFilteredSOPs(searchTerm, statusFilter, categoryFilter, currentPage);
-    } else {
-      fetchSOPs(currentPage);
-    }
-  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  };
 
   const handleCreateSOP = () => {
     if (isReadOnlySwitchedContext) {
@@ -432,7 +393,9 @@ const SOPPage = () => {
     table: 'sop',
     filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
     enabled: !!resolvedClientId,
-    onPayload: () => scheduleFetchSOPs(currentPageRef.current),
+    onPayload: () => {
+      fetchSOPs();
+    },
   });
 
   useRealTimeSubHook({
@@ -441,7 +404,9 @@ const SOPPage = () => {
     table: 'sop_assigned',
     filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
     enabled: !!resolvedClientId,
-    onPayload: () => scheduleFetchSOPs(currentPageRef.current),
+    onPayload: () => {
+      fetchSOPs();
+    },
   });
 
   // Active filter count
@@ -504,10 +469,18 @@ const SOPPage = () => {
     }
   };
 
-  const handleViewSOP = (sop: SOP) => {
+  const handleViewSOP = async (sop: SOP) => {
     setViewingSOP(sop);
-    setCompletedEmployeeIds(sop.completed_employee_ids || []);
     setViewDialogOpen(true);
+
+    const { data } = await supabase
+      .from('sop_signoff_request' as any)
+      .select('employee_id')
+      .eq('sop_id', sop.id)
+      .eq('client_id', resolvedClientId)
+      .eq('is_completed', true);
+
+    setCompletedEmployeeIds(data?.map((d) => d.employee_id) || []);
   };
 
   return (
@@ -515,15 +488,13 @@ const SOPPage = () => {
       <div className="w-full py-6">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6 mb-8">
-          <SOPHeader
+          <SOPHeader 
             onCreateSOP={handleCreateSOP}
             canCreateSOP={!isReadOnlySwitchedContext}
-            onRefreshStats={() => scheduleFetchSOPs(currentPageRef.current)}
-            loading={loading}
-            totalSOPs={sopStats.totalSOPs}
-            totalEmployeesInvolved={sopStats.totalEmployeesInvolved}
-            totalSOPsSignedOff={sopStats.totalSOPsSignedOff}
-            totalSOPsToBeDone={sopStats.totalSOPsToBeDone}
+            onStatisticsRefresh={() => {
+              // Statistics will be refreshed automatically via real-time hooks
+              // This callback can be used for additional actions if needed
+            }}
           />
         </div>
 
@@ -590,7 +561,7 @@ const SOPPage = () => {
           {!loading && (
             <div className="mb-4">
               <p className="text-sm text-gray-600">
-                Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalCount)}–{Math.min(currentPage * PAGE_SIZE, totalCount)} of {totalCount} SOPs
+                Showing {sops.length} of {allSops.length} SOPs
               </p>
             </div>
           )}
@@ -852,69 +823,6 @@ const SOPPage = () => {
                   ))}
                 </TableBody>
               </Table>
-
-              {/* Pagination */}
-              {totalCount > PAGE_SIZE && (
-                <div className="flex items-center justify-between px-2 pt-4 border-t border-gray-100">
-                  <p className="text-sm text-gray-500">
-                    Page {currentPage} of {Math.ceil(totalCount / PAGE_SIZE)}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                      className="px-2 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-                    >
-                      «
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-                    >
-                      Previous
-                    </button>
-                    {Array.from({ length: Math.ceil(totalCount / PAGE_SIZE) }, (_, i) => i + 1)
-                      .filter((p) => p === 1 || p === Math.ceil(totalCount / PAGE_SIZE) || Math.abs(p - currentPage) <= 1)
-                      .reduce<(number | '...')[]>((acc, p, i, arr) => {
-                        if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...');
-                        acc.push(p);
-                        return acc;
-                      }, [])
-                      .map((p, i) =>
-                        p === '...' ? (
-                          <span key={`ellipsis-${i}`} className="px-2 py-1 text-sm text-gray-400">…</span>
-                        ) : (
-                          <button
-                            key={p}
-                            onClick={() => setCurrentPage(p as number)}
-                            className={`px-3 py-1 text-sm rounded border ${
-                              currentPage === p
-                                ? 'bg-primary text-white border-primary'
-                                : 'border-gray-200 hover:bg-gray-50'
-                            }`}
-                          >
-                            {p}
-                          </button>
-                        )
-                      )}
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(Math.ceil(totalCount / PAGE_SIZE), p + 1))}
-                      disabled={currentPage === Math.ceil(totalCount / PAGE_SIZE)}
-                      className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-                    >
-                      Next
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage(Math.ceil(totalCount / PAGE_SIZE))}
-                      disabled={currentPage === Math.ceil(totalCount / PAGE_SIZE)}
-                      className="px-2 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-                    >
-                      »
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
             </TooltipProvider>
           )}

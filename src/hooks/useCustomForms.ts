@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 
@@ -47,28 +47,32 @@ export const useCustomForms = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Get client_id and employee_id from employee access context
   const { getClientId, getEmployeeId } = useEmployeeAccess();
-  const hasFetchedRef = useRef(false);
 
   const fetchForms = async () => {
     try {
       setLoading(true);
       const clientId = getClientId();
+      
+      if (!clientId) {
+        throw new Error('Client ID not available. Please ensure you are logged in.');
+      }
 
-      if (!clientId) throw new Error('Client ID not available. Please ensure you are logged in.');
-
-      const { data: result, error } = await supabase.functions.invoke('fetch-forms', {
-        body: { client_id: clientId },
-      });
+      const { data, error } = await supabase
+        .from('custom_forms')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      const raw = result?.data ?? result ?? [];
-      const transformedForms: CustomForm[] = (raw as any[]).map(form => ({
+      
+      // Transform database data to our interface
+      const transformedForms: CustomForm[] = (data || []).map(form => ({
         ...form,
         fields: Array.isArray(form.fields) ? (form.fields as unknown as FormField[]) : []
       }));
-
+      
       setForms(transformedForms);
     } catch (err) {
       console.error('Error fetching forms:', err);
@@ -212,8 +216,6 @@ export const useCustomForms = () => {
   };
 
   useEffect(() => {
-    if (hasFetchedRef.current) return;
-    hasFetchedRef.current = true;
     fetchForms();
   }, []);
 

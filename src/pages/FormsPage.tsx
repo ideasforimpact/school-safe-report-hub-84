@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -156,19 +156,8 @@ const FormsPage = () => {
     }
   };
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 10;
-
-  const setStatusFilterWithReset = (v: string) => { setStatusFilter(v); setCurrentPage(1); };
-  const setDateFromWithReset = (d: Date | undefined) => { setDateFrom(d); setCurrentPage(1); };
-  const setDateToWithReset = (d: Date | undefined) => { setDateTo(d); setCurrentPage(1); };
-
-  // Submissions hook (normal view) — server-side pagination + filters
-  const { submissions, loading: submissionsLoading, refetch: refetchSubmissions, total: submissionsTotal, totalPages, stats: submissionsStats } = useFormSubmissions(
-    selectedForm?.id || null,
-    effectiveClientId || null,
-    { page: currentPage, pageSize: PAGE_SIZE, status: statusFilter, dateFrom, dateTo }
-  );
+  // Submissions hook (normal view)
+  const { submissions, loading: submissionsLoading, refetch: refetchSubmissions } = useFormSubmissions(selectedForm?.id || null, effectiveClientId || null);
 
   // For backoffice, preselect first active client when list loads
   useEffect(() => {
@@ -178,11 +167,10 @@ const FormsPage = () => {
     }
   }, [isBackoffice, clients, selectedClientId]);
 
-  const lastFetchedClientId = useRef<string | null>(null);
   useEffect(() => {
-    if (!effectiveClientId || effectiveClientId === lastFetchedClientId.current) return;
-    lastFetchedClientId.current = effectiveClientId;
-    fetchForms(effectiveClientId);
+    if (effectiveClientId) {
+      fetchForms(effectiveClientId);
+    }
   }, [effectiveClientId]);
 
   // Do not auto-select a form. Default view shows all forms for the client.
@@ -236,11 +224,31 @@ const FormsPage = () => {
       toast.error('Failed to update form');
     }
   };
-  const grievanceStats = {
-    open: submissionsStats.pending,
-    acknowledged: submissionsStats.acknowledged,
-  };
-  const total = submissionsStats.total;
+  const grievanceStats = useMemo(() => {
+      if (!submissions) {
+      return {
+        open: 0,
+        acknowledged: 0,
+      };
+    }
+
+    let open = 0;
+    let acknowledged = 0;
+
+    submissions.forEach((sub: any) => {
+      const status = (sub.status || 'pending').toLowerCase();
+
+      if (status === 'pending') {
+        open += 1;
+      } else if (status === 'acknowledged') {
+        acknowledged += 1;
+      }
+    });
+
+    return { open, acknowledged };
+  }, [submissions]);
+
+  const total = grievanceStats.open + grievanceStats.acknowledged;
   const handleDeleteForm = async (formId: string) => {
     if (!confirm('Are you sure you want to delete this form?')) return;
 
@@ -304,18 +312,56 @@ const FormsPage = () => {
     return `${window.location.origin}/form-preview/${form.id}`;
   };
 
-  // Client-side search filter only (status and date are server-side)
+  // Filtered submissions with all filters applied
   const filteredSubmissions = useMemo(() => {
     if (!submissions) return [];
-    if (!searchTerm.trim()) return submissions;
+    
+    let filtered = [...submissions];
+
+    // Search filter
+    if (searchTerm.trim()) {
     const s = searchTerm.toLowerCase();
-    return submissions.filter((sub: any) =>
-      (getName(sub) || '').toLowerCase().includes(s) ||
-      (getPhone(sub) || '').toLowerCase().includes(s) ||
-      (getTitle(sub) || '').toLowerCase().includes(s) ||
+      filtered = filtered.filter((sub: any) =>
+        (getName(sub) || '').toLowerCase().includes(s) ||
+        (getPhone(sub) || '').toLowerCase().includes(s) ||
+        (getTitle(sub) || '').toLowerCase().includes(s) ||
       (sub.status || '').toLowerCase().includes(s)
     );
-  }, [submissions, searchTerm]);
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((sub: any) => (sub.status || 'pending') === statusFilter);
+    }
+
+    // Form type filter
+    if (formTypeFilter !== 'all') {
+      filtered = filtered.filter((sub: any) => {
+        const formId = sub.form_id;
+        const form = forms.find(f => f.id === formId);
+        return form && form.title === formTypeFilter;
+      });
+    }
+
+    // Date range filter
+    if (dateFrom) {
+      filtered = filtered.filter((sub: any) => {
+        const submissionDate = new Date(sub.created_at);
+        return submissionDate >= dateFrom;
+      });
+    }
+    if (dateTo) {
+      filtered = filtered.filter((sub: any) => {
+        const submissionDate = new Date(sub.created_at);
+        // Set time to end of day for dateTo
+        const endOfDay = new Date(dateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        return submissionDate <= endOfDay;
+      });
+    }
+
+    return filtered;
+  }, [submissions, searchTerm, statusFilter, formTypeFilter, dateFrom, dateTo, forms]);
 
   const clearAllFilters = () => {
     setSearchTerm('');
@@ -323,7 +369,6 @@ const FormsPage = () => {
     setFormTypeFilter('all');
     setDateFrom(undefined);
     setDateTo(undefined);
-    setCurrentPage(1);
   };
 
   // Active filter count
@@ -400,26 +445,25 @@ const FormsPage = () => {
         );
       }
 
-      // 2) Update submission status and acknowledgement details via edge function
-      const acknowledgedByName =
-        (employeeData as any)?.firstName && (employeeData as any)?.lastName
-          ? `${(employeeData as any).firstName} ${(employeeData as any).lastName}`
-          : (user as any)?.firstName
-          ? `${(user as any).firstName} ${((user as any).lastName || '')}`.trim()
-          : null;
-
-      const { data: updateData, error: updateError } = await supabase.functions.invoke('update-form-submission', {
-        body: {
-          submission_id: acknowledgeSubmission.id,
+      // 2) Update submission status and acknowledgement details synchronously
+      const { error: updateError } = await supabase
+        .from('form_submissions')
+        .update({
           status: 'acknowledged',
           comments: trimmedComment || null,
-          acknowledged_by_name: acknowledgedByName,
+          acknowledged_by_name:
+            (employeeData as any)?.firstName && (employeeData as any)?.lastName
+              ? `${(employeeData as any).firstName} ${(employeeData as any).lastName}`
+              : (user as any)?.firstName
+              ? `${(user as any).firstName} ${((user as any).lastName || '')}`.trim()
+              : null,
           acknowledged_at: new Date().toISOString(),
-        },
-      });
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', acknowledgeSubmission.id);
 
-      if (updateError || !updateData?.success) {
-        console.error('Error acknowledging submission:', updateError || updateData?.error);
+      if (updateError) {
+        console.error('Error acknowledging submission:', updateError);
         toast.error('Failed to acknowledge submission');
         return;
       }
@@ -442,7 +486,10 @@ const FormsPage = () => {
       }
 
       toast.success('Submission acknowledged successfully');
-      // Realtime subscription handles the refetch automatically
+      
+      // Refresh only the submissions data using the refetch function
+      await refetchSubmissions();
+      
       setAcknowledgeSubmission(null);
       setAcknowledgeComment('');
       setAcknowledgementFiles([]);
@@ -678,7 +725,7 @@ const Content = (
 
             {/* 2. Status Filter */}
             <div className="w-48">
-              <Select value={statusFilter} onValueChange={setStatusFilterWithReset}>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -735,9 +782,9 @@ const Content = (
                         mode="single"
                         selected={dateFrom}
                         onSelect={(date) => {
-                          setDateFromWithReset(date);
+                          setDateFrom(date);
                           if (dateTo && date && dateTo < date) {
-                            setDateToWithReset(undefined);
+                            setDateTo(undefined);
                           }
                         }}
                         className="rounded-md border"
@@ -748,7 +795,7 @@ const Content = (
                       <CalendarIcon
                         mode="single"
                         selected={dateTo}
-                        onSelect={setDateToWithReset}
+                        onSelect={setDateTo}
                         disabled={(date) =>
                           dateFrom ? date < dateFrom : false
                         }
@@ -770,11 +817,11 @@ const Content = (
           </div>
 
           {/* Results Info */}
-          <div className="text-sm text-muted-foreground">
-            {hasActiveFilters
-              ? `Showing ${filteredSubmissions.length} of ${submissionsTotal} grievances`
-              : `Total: ${submissionsTotal} grievances`}
-          </div>
+          {hasActiveFilters && (
+            <div className="text-sm text-muted-foreground">
+              Showing {filteredSubmissions.length} of {submissions.length} grievances
+            </div>
+          )}
           </div>
 
           {loading ? (
@@ -837,63 +884,6 @@ const Content = (
                   )}
                 </TableBody>
               </Table>
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              >
-                «
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                ‹ Prev
-              </Button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
-                const pageNum = start + i;
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={pageNum === currentPage ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next ›
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                »
-              </Button>
-            </div>
-          </div>
-        )}
-
         {viewSubmission && (
           <Dialog open={!!viewSubmission} onOpenChange={(open) => { if (!open) setViewSubmission(null); }}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

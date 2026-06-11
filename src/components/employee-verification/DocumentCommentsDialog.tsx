@@ -58,15 +58,17 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadedComments, setLoadedComments] = useState<CommentEntry[] | null>(null);
 
-  // Client view: if comments not provided, fetch via edge function by documentId
+  // Client view: if comments not provided, fetch from employee_documents by documentId
   React.useEffect(() => {
     const fetchComments = async () => {
       if (!comments && documentId) {
-        const { data, error } = await supabase.functions.invoke('employee-documents', {
-          body: { action: 'getDocumentComments', documentId },
-        });
+        const { data, error } = await supabase
+          .from('employee_documents')
+          .select('comments')
+          .eq('id', documentId)
+          .maybeSingle();
         if (!error) {
-          const arr = Array.isArray(data?.comments) ? data.comments as CommentEntry[] : [];
+          const arr = Array.isArray((data as any)?.comments) ? (data as any).comments as CommentEntry[] : [];
           setLoadedComments(arr);
         }
       }

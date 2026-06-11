@@ -1,17 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import SearchFilter from '@/components/incidents/filters/SearchFilter';
 import DocumentStatusFilter from './DocumentStatusFilter';
 import EmployeeDocumentTypeFilter from './EmployeeDocumentTypeFilter';
 import DepartmentFilter from './DepartmentFilter';
-import { fetchEmployeeDepartmentsShared } from '@/services/employee/employeeReferenceDataShared';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export interface DepartmentOption {
-  id: string;
-  name: string;
-}
 
 interface FilterBarProps {
   searchTerm: string;
@@ -21,8 +17,11 @@ interface FilterBarProps {
   onClearFilters: () => void;
   documentTypeFilter: string;
   onDocumentTypeChange: (value: string) => void;
-  departmentFilter: string;   // UUID or 'all'
+  departmentFilter: string;
   onDepartmentChange: (value: string) => void;
+  departments: string[];
+  resultCount: number;
+  totalCount: number;
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({
@@ -31,17 +30,30 @@ const FilterBar: React.FC<FilterBarProps> = ({
   documentStatusFilter,
   onDocumentStatusChange,
   onClearFilters,
+  resultCount,
   documentTypeFilter,
   onDocumentTypeChange,
   departmentFilter,
   onDepartmentChange,
+  departments,
+  totalCount
 }) => {
-  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
 
   const fetchDepartments = useCallback(async () => {
     try {
-      const data = await fetchEmployeeDepartmentsShared();
-      setDepartments(data.map(d => ({ id: d.id, name: d.department_name || '' })));
+      const { data, error } = await supabase
+        .from('employee_departments' as any)
+        .select('id, department_name')
+        .order('department_name', { ascending: true });
+
+      if (error) throw error;
+
+      const names = (data || [])
+        .map((item: any) => item.department_name)
+        .filter((name: string | null) => Boolean(name));
+
+      setDepartmentOptions(names);
     } catch (error) {
       console.error('Error fetching departments:', error);
       toast.error('Failed to load departments');
@@ -52,12 +64,21 @@ const FilterBar: React.FC<FilterBarProps> = ({
     fetchDepartments();
   }, [fetchDepartments]);
 
-  const activeFilterCount = [
+  const allDepartments = useMemo(() => {
+    const uniqueDepartments = new Set([...departmentOptions, ...departments]);
+    return Array.from(uniqueDepartments).sort((a, b) => a.localeCompare(b));
+  }, [departmentOptions, departments]);
+
+ const activeFilterCount = [
     searchTerm,
     documentStatusFilter !== 'all' ? documentStatusFilter : '',
     documentTypeFilter !== 'all' ? documentTypeFilter : '',
-    departmentFilter !== 'all' ? departmentFilter : '',
-  ].filter(v => typeof v === 'string' && v.trim() !== '').length;
+    departmentFilter !== 'all' ? departmentFilter : ''
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
 
   const hasActiveFilters = activeFilterCount > 0;
 
@@ -79,13 +100,13 @@ const FilterBar: React.FC<FilterBarProps> = ({
         <DepartmentFilter
           value={departmentFilter}
           onChange={onDepartmentChange}
-          departments={departments}
+          departments={allDepartments}
         />
         <DocumentStatusFilter
           value={documentStatusFilter}
           onChange={onDocumentStatusChange}
         />
-
+        
         {hasActiveFilters && (
           <Button
             variant="outline"
@@ -96,6 +117,15 @@ const FilterBar: React.FC<FilterBarProps> = ({
             <X className="h-4 w-4" />
             Clear Filters ({activeFilterCount})
           </Button>
+        )}
+      </div>
+      
+      <div className="flex justify-between items-center text-sm text-muted-foreground">
+        <span>
+          Showing {resultCount} of {totalCount} employees
+        </span>
+        {hasActiveFilters && (
+          <span className="text-primary">Filters applied</span>
         )}
       </div>
     </div>

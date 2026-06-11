@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
@@ -9,14 +9,19 @@ import { useIncidentForm } from '@/hooks/useIncidentForm';
 import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
-import { useIncidentFormData } from '@/hooks/useIncidentFormData';
+import { IncidentType } from '@/types/incident';
+import { Employee } from '@/types/employeeVerification';
+import { getActiveEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Student } from '@/types/student';
+import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useIncidentDetail } from '@/hooks/incident/useIncidentDetail';
 import { incidentDataService } from '@/services/incident/incidentDataService';
+import { TicketIdService } from '@/services/incident/ticketIdService';
 import { FileItem } from '@/types/fileTypes';
 import IncidentCreationOverlay from '@/components/incident/IncidentCreationOverlay';
+import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 import { ArrowLeft } from 'lucide-react';
 import Loader from '@/components/common/Loader';
 
@@ -30,18 +35,12 @@ interface UserBasicInfo {
 
 const ReportIncident = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
-  const { state: employeeState } = useEmployeeStore();
   const { id: incidentId } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const { 
-    formData: configData, 
-    employees: configEmployees, 
-    statuses: configStatuses,
-    students: configStudents,
-    loading: configLoading,
-    error: configError 
-  } = useIncidentFormData();
-  
+  const { students } = useStudents();
+  const { state: employeeState } = useEmployeeStore();
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   
@@ -52,6 +51,7 @@ const ReportIncident = () => {
   const { errors, validateForm, setErrors } = useIncidentFormValidation();
   
   const {
+    nextTicketId,
     formData,
     supportingFiles,
     peopleInvolved,
@@ -63,6 +63,15 @@ const ReportIncident = () => {
     addPerson,
     removePerson,
     handleFilesChange,
+    getSelectedLocation,
+    getSelectedFacility,
+    locations,
+    facilities,
+    reportTypes,
+    categories: formCategories,
+    subcategories,
+    priorities,
+    users: incidentUsers,
     setFormData,
     setPeopleInvolved
   } = useIncidentForm();
@@ -80,7 +89,33 @@ const ReportIncident = () => {
     }
   }, [incidentError, isEditMode, navigate]);
 
-  // Employees are now fetched via useIncidentFormData combined call
+  // Fetch employees from the database - simplified
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setIsLoadingEmployees(true);
+        // Get clientId from auth context
+        const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+        
+        if (!clientId) {
+          console.warn("Cannot fetch employees: No clientId available");
+          setEmployees([]);
+          return;
+        }
+        
+        const fetchedEmployees = await getActiveEmployeesFromApi(clientId);
+        setEmployees(fetchedEmployees);
+      } catch (error) {
+        console.error("Failed to fetch employees:", error);
+        toast.error("Could not load staff members");
+        setEmployees([]);
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    };
+
+    fetchEmployees();
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,21 +265,20 @@ const ReportIncident = () => {
         console.log('All external students validated successfully');
       }
       
-      // Get the 'Open' status ID from the combined config data if available, otherwise fetch it
-      let openStatusId = configStatuses.find(s => s.name === 'Open')?.id;
-      
-      if (!openStatusId) {
-        const { data: statusData } = await supabase
-          .from('incident_status')
-          .select('id')
-          .eq('name', 'Open')
-          .maybeSingle();
-        openStatusId = statusData?.id;
-      }
+      // Get the 'Open' status ID
+      const { data: statusData } = await supabase
+        .from('incident_status')
+        .select('id')
+        .eq('name', 'Open')
+        .maybeSingle();
 
-      // Build the incident record (without ticket_id — the edge function generates it)
+      // Generate unique ticket ID based on client name
       const clientName = authEmployeeData?.client?.name || 'Unknown Client';
+      const ticketId = await TicketIdService.generateNextTicketId(clientName, clientId);
+
+      // First, create the incident record without documents
       const incidentRecord = {
+        ticket_id: ticketId,
         type_id: formData.typeId || null,
         category_id: formData.categoryId || null,
         subcategory_id: formData.subcategoryId || null,
@@ -254,43 +288,29 @@ const ReportIncident = () => {
         facility_id: formData.facilityId || null,
         priority_id: formData.priorityId || null,
         people_involved: JSON.parse(JSON.stringify(validPeople)),
-        documents: [],
+        documents: [], // Initialize with empty array
         created_by: employeeId,
         assigned_to: formData.owner || null,
         client_id: clientId,
-        status_id: openStatusId || null
+        status_id: statusData?.id || null
       };
-
-      // Look up assignee from already-loaded configEmployees (no extra DB call)
-      const assigneeFromConfig = formData.owner
-        ? configEmployees.find((e: any) => e.id === formData.owner)
-        : null;
-      const assigneeForEdge = assigneeFromConfig
-        ? { id: assigneeFromConfig.id, email: assigneeFromConfig.email, first_name: assigneeFromConfig.first_name, last_name: assigneeFromConfig.last_name }
-        : null;
-
-      // Single edge function call: generates ticket ID + inserts incident + queues notification
-      console.log('Creating incident via edge function...');
-      const { data: createResult, error: createError } = await supabase.functions.invoke('create-incident', {
-        body: {
-          clientId,
-          clientName,
-          employeeId,
-          incidentRecord,
-          assignee: assigneeForEdge,
-          notificationBaseUrl: window.location.origin,
-        },
-      });
-
-      if (createError) {
-        console.error('Error creating incident:', createError);
-        throw new Error(createError.message);
+      
+      console.log('Creating incident in database...');
+      console.log(validPeople,"validPeople");
+      
+      
+      // Insert incident record
+      const { data: incidentData, error: incidentError } = await supabase
+        .from('incidents')
+        .insert(incidentRecord)
+        .select('id, ticket_id')
+        .single();
+      
+      if (incidentError) {
+        console.error('Error creating incident:', incidentError);
+        throw new Error(incidentError.message);
       }
-      if (!createResult?.success) {
-        throw new Error(createResult?.error || 'Failed to create incident');
-      }
-
-      const incidentData = { id: createResult.incidentId, ticket_id: createResult.ticketId };
+      
       console.log('Incident created successfully:', incidentData);
 
       // ========== HANDLE EXTERNAL STUDENTS ==========
@@ -485,6 +505,75 @@ const ReportIncident = () => {
         console.log('External students processing completed');
       }
 
+      // Send notification if incident is assigned to someone
+      if (formData.owner) {
+        console.log('Attempting to send notification for assigned incident:', {
+          owner: formData.owner,
+          incidentId: incidentData.id,
+          ticketId: incidentData.ticket_id
+        });
+        
+        try {
+          console.log('Notification service available, preparing to send notification');
+          
+          // Get assignee details
+          const { data: assignee, error: assigneeError } = await supabase
+            .from('employees')
+            .select('id, email, first_name, last_name')
+            .eq('id', formData.owner)
+            .single();
+
+          if (assigneeError) {
+            console.error('Error fetching assignee:', assigneeError);
+            return;
+          }
+
+          if (assignee) {
+            console.log('Assignee found:', assignee);
+            
+            // Create the incident object with the correct structure
+            const incidentDataForNotification = {
+              id: incidentData.id,
+              ticket_id: incidentData.ticket_id,
+              description: formData.description || 'Incident',
+              created_at: new Date().toISOString(),
+              created_by: employeeId,
+              assigned_to: formData.owner,
+              client_id: clientId
+            };
+
+            // Create the employee object with the correct structure
+            const assignedEmployee = {
+              id: assignee.id,
+              email: assignee.email,
+              first_name: assignee.first_name || '',
+              last_name: assignee.last_name || ''
+            };
+
+            console.log('Calling notification service with:', {
+              incident: incidentDataForNotification,
+              employee: assignedEmployee
+            });
+
+            const notificationResult = await incidentNotificationService.queueIncidentAssignedNotification(
+              incidentDataForNotification,
+              assignedEmployee,
+              authEmployeeData
+            );
+            
+            console.log('Notification service result:', notificationResult);
+            console.log('Incident assignment notification queued');
+          } else {
+            console.error('Assignee not found for ID:', formData.owner);
+          }
+        } catch (notificationError) {
+          console.error('Error queueing incident assignment notification:', notificationError);
+          // Don't fail the incident creation if notification fails
+        }
+      } else {
+        console.log('No owner assigned, skipping notification');
+      }
+
       // Upload supporting files if any exist - clientId is already validated above
       if (supportingFiles && supportingFiles.length > 0) {
         console.log('Uploading supporting files...');
@@ -553,15 +642,19 @@ const ReportIncident = () => {
   };
 
   // Map employees to the simplified UserBasicInfo type
-  const mappedEmployees: UserBasicInfo[] = configEmployees.map((employee: any) => ({
+  const mappedEmployees: UserBasicInfo[] = employees.map(employee => ({
     id: employee.id,
-    firstName: employee.first_name,
-    lastName: employee.last_name,
-    name: `${employee.first_name} ${employee.last_name}`,
-    email: employee.email
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    name: `${employee.firstName} ${employee.lastName}`
   }));
 
   // Helper function to get priority name from ID
+  const getPriorityName = (priorityId: string): 'Low' | 'Medium' | 'High' | 'Critical' => {
+    const priority = priorities.find(p => p.id === priorityId);
+    return (priority?.name as 'Low' | 'Medium' | 'High' | 'Critical') || 'Medium';
+  };
+
   // Create a safe formData object for the component
   const safeFormData = {
     typeId: formData.typeId,
@@ -575,11 +668,12 @@ const ReportIncident = () => {
     priorityId: formData.priorityId,
     owner: formData.owner,
     type: formData.typeId,
-    subcategory: formData.subcategoryId
+    subcategory: formData.subcategoryId,
+    priority: getPriorityName(formData.priorityId)
   };
 
-  // Show loading state for config data
-  if (configLoading) {
+  // Show loading state for employees only
+  if (isLoadingEmployees) {
     return (
       <Layout>
         <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
@@ -644,8 +738,6 @@ const ReportIncident = () => {
                   onDateTimeChange={handleDateTimeChange}
                   supportingFiles={supportingFiles}
                   onFilesChange={handleFilesChange}
-                  configData={configData}
-                  configLoading={configLoading}
                 />
 
                 <PeopleInvolvedSection
@@ -653,7 +745,7 @@ const ReportIncident = () => {
                   onPersonChange={handlePersonChangeWithClear}
                   onAddPerson={addPerson}
                   onRemovePerson={removePerson}
-                  students={configStudents}
+                  students={students}
                   employees={mappedEmployees}
                   errors={errors}
                 />

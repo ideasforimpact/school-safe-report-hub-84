@@ -2,47 +2,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 
-// Module-level dedup for fetchEmployeeDocuments: concurrent calls for the same key share
-// one in-flight request; sequential calls within 3s return the last result without a
-// new network call. Prevents the post-verification callback + realtime double-fetch pattern.
-const docFetchInflight = new Map<string, Promise<VerificationDocument[]>>();
-const docFetchLastTime = new Map<string, number>();
-const DOC_FETCH_COOLDOWN_MS = 3000;
-
-// Map the edge function document response to VerificationDocument
-const mapEdgeDocument = (doc: any): VerificationDocument => ({
-  id: doc.id,
-  employeeId: doc.employeeId,
-  documentTypeId: doc.documentTypeId || '',
-  documentTypeName: doc.documentTypeName || 'Unknown',
-  documentNumber: doc.documentNumber || '',
-  documentImage: doc.documentImage,
-  verificationStatus: (doc.verificationStatus as VerificationDocument['verificationStatus']) || 'pending',
-  documentStatusId: doc.documentStatusId,
-  documentStatusName: doc.documentStatusName,
-  verifiedByEmployeeId: doc.verifiedByEmployeeId || undefined,
-  verificationDate: null,
-  verificationNotes: '',
-  verificationMethod: 'manual',
-  rejectReason: doc.rejectReason || undefined,
-  apiResponseData: doc.apiResponseData || undefined,
-  apiVerificationStatus: doc.apiVerificationStatus || null,
-  apiVerificationDate: doc.apiVerificationDate || undefined,
-  apiVerificationMethod: doc.apiVerificationMethod || undefined,
-  params: doc.params || {},
-  employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
-  documents_files: Array.isArray(doc.documents_files) ? doc.documents_files : [],
-  comments: Array.isArray(doc.comments) ? doc.comments : [],
-  personalInfo: doc.personalInfo || undefined,
-  lastOtpGenerated: doc.lastOtpGenerated || undefined,
-  cronActivate: doc.cronActivate || false,
-  cronActivatedDate: doc.cronActivatedDate || undefined,
-  cronUpdatedDate: doc.cronUpdatedDate || undefined,
-  cronLog: Array.isArray(doc.cronLog) ? doc.cronLog : [],
-  createdAt: doc.createdAt,
-  updatedAt: doc.updatedAt,
-});
-
 export interface EmployeeVerificationData {
   employee: Employee | null;
   documents: VerificationDocument[];
@@ -96,79 +55,169 @@ const uploadDocumentToStorage = async (base64Data: string, employeeId: string, d
 
 export const fetchEmployeeVerificationData = async (employeeId: string, clientId: string): Promise<EmployeeVerificationData> => {
   try {
-    // Fetch employee details via edge function
-    const { data: empData, error: empError } = await supabase.functions.invoke('employee-management', {
-      body: { operation: 'get_employee', employeeId, clientId },
-    });
+    console.log('Fetching employee verification data for:', employeeId, 'client:', clientId);
+    
+    // Fetch employee details
+    const { data: employeeData, error: employeeError } = await (supabase as any)
+      .from('employees')
+      .select(`
+        id,
+        employee_id,
+        first_name,
+        last_name,
+        phone,
+        designation,
+        email,
+        employee_type,
+        department,
+        status,
+        client_id,
+        is_super_admin,
+        user_id,
+        joining_date,
+        created_at,
+        updated_at
+      `)
+      .eq('id', employeeId)
+      .eq('client_id', clientId)
+      .single();
 
-    if (empError || !empData?.employee) {
-      console.error('Error fetching employee:', empError);
+    if (employeeError) {
+      console.error('Error fetching employee:', employeeError);
       return { employee: null, documents: [] };
     }
 
-    const rec = empData.employee;
-    const dept = rec.department;
-    const empType = rec.employee_type;
-    const personalDetailsRaw = rec.personal_details;
-    const personalDetails = Array.isArray(personalDetailsRaw) ? personalDetailsRaw[0] || {} : personalDetailsRaw || {};
-    const otherDetailsRaw = rec.other_details;
-    const otherDetails = Array.isArray(otherDetailsRaw) ? otherDetailsRaw[0] || {} : otherDetailsRaw || {};
-
+    // Map employee data to the expected format
     const employee: Employee = {
-      id: rec.id,
-      employeeId: rec.employee_id || '',
-      name: `${rec.first_name || ''} ${rec.last_name || ''}`.trim(),
-      firstName: rec.first_name || '',
-      lastName: rec.last_name || '',
-      email: rec.email || '',
-      phone: rec.phone || '',
-      designation: rec.designation || '',
+      id: employeeData.id,
+      employeeId: employeeData.employee_id || '',
+      name: `${employeeData.first_name} ${employeeData.last_name}`,
+      firstName: employeeData.first_name,
+      lastName: employeeData.last_name,
+      email: employeeData.email,
+      phone: employeeData.phone || '',
+      designation: employeeData.designation || '',
       dateOfBirth: '',
       address: '',
-      joiningDate: rec.joining_date || new Date().toISOString(),
-      department: typeof dept === 'object' && dept !== null ? dept.department_name || '' : dept || '',
-      position: typeof empType === 'object' && empType !== null ? empType.type_name || '' : empType || '',
-      employeeType: (typeof empType === 'object' && empType !== null ? empType.type_name : empType) as Employee['employeeType'] || 'permanent',
-      status: rec.status === true,
-      createdAt: rec.created_at || new Date().toISOString(),
-      updatedAt: rec.updated_at || new Date().toISOString(),
-      clientId: rec.client_id,
-      isSuperAdmin: rec.is_super_admin,
-      isCpdInvolved: rec.is_cpd_involved === true,
-      personalDetails: {
-        middleName: personalDetails.middle_name || undefined,
-        fatherName: personalDetails.father_name || undefined,
-        gender: personalDetails.gender || undefined,
-        dob: personalDetails.dob || undefined,
-        religion: personalDetails.religion || undefined,
-        nationality: personalDetails.nationality || undefined,
-        bloodGroup: personalDetails.blood_group || undefined,
-        residenceAddress: personalDetails.residence_address || undefined,
-        experience: personalDetails.experience || undefined,
-        qualification: personalDetails.qualification || undefined,
-      },
-      professionalOtherDetails: {
-        aadharNo: otherDetails.aadhaar_number || undefined,
-        panNo: otherDetails.pan_number || undefined,
-        esiNo: otherDetails.esi_number || undefined,
-        pfNo: otherDetails.pf_number || undefined,
-        exitDate: otherDetails.exit_date || undefined,
-        biometricUserId: otherDetails.biometric_user_id || undefined,
-      },
-      documents: [],
+      joiningDate: employeeData.joining_date || new Date().toISOString(),
+      department: employeeData.department || '',
+      position: employeeData.employee_type || '',
+      employeeType: (employeeData.employee_type as Employee['employeeType']) || 'permanent',
+      status: employeeData.status === true,
+      createdAt: employeeData.created_at || new Date().toISOString(),
+      updatedAt: employeeData.updated_at || new Date().toISOString(),
+      clientId: employeeData.client_id,
+      isSuperAdmin: employeeData.is_super_admin,
+      documents: []
     };
 
-    // Fetch employee documents via edge function
-    const { data: docsData, error: docsError } = await supabase.functions.invoke('employee-documents', {
-      body: { employeeId, clientId },
-    });
+    // Fetch employee documents with new cron fields including cron_log
+    const { data: documentsData, error: documentsError } = await (supabase as any)
+      .from('employee_documents')
+      .select(`
+        id,
+        employee_id,
+        document_type_id,
+        document_status_id,
+        document_url,
+        document_number,
+        verification_status,
+        verified_by,
+        params,
+        documents_files,
+        comments,
+        employee_docs_log,
+        last_otp_generated,
+        cron_activate,
+        cron_activated_date,
+        cron_updated_date,
+        cron_log,
+        reject_reason,
+        api_response_data,
+        api_verification_status,
+        api_verification_date,
+        api_verification_method,
+        personal_info,
+        created_at,
+        updated_at,
+        document_type:employee_document_type(name, description),
+        document_status:document_status(name, description),
+        audit_logs:employee_verification_audit_log!fk_employee_verification_audit_document(latest_success_log)
+      `)
+      .eq('employee_id', employeeId)
+      .eq('is_delete', 0);
 
-    if (docsError) {
-      console.error('Error fetching documents:', docsError);
+    if (documentsError) {
+      console.error('Error fetching documents:', documentsError);
       return { employee, documents: [] };
     }
+    
 
-    const documents: VerificationDocument[] = (docsData?.documents || []).map(mapEdgeDocument);
+    // Map documents to the expected format with proper URL handling and new cron fields
+    const documents: VerificationDocument[] = ((documentsData as any[]) || []).map(doc => {
+      let documentUrl = doc.document_url;
+      
+      // If document_url is a storage path, convert to full URL
+      if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+        const normalizedBase = base.replace(/\/$/, '');
+        documentUrl = `${normalizedBase}/employee-documents/${documentUrl}`;
+      }
+      
+      // Ensure verification_status is properly mapped, with fallback to 'pending'
+      const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
+      
+      return {
+        id: doc.id,
+        employeeId: doc.employee_id,
+        documentTypeId: doc.document_type_id || '',
+        documentTypeName: doc.document_type?.name || 'Unknown',
+        documentNumber: doc.document_number || '',
+        documentImage: documentUrl,
+        verificationStatus: verificationStatus || 'pending',
+        documentStatusId: doc.document_status_id,
+        documentStatusName: doc.document_status?.name,
+        verifiedByEmployeeId: doc.verified_by || undefined,
+        verificationDate: null,
+        verificationNotes: '',
+        verificationMethod: 'manual',
+        employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
+          timestamp: string;
+          action: string;
+          response: any;
+          notes?: string;
+        }> : [],
+        documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
+        comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
+        params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+        // Map new cron fields including cron_log
+        cronActivate: doc.cron_activate || false,
+        cronActivatedDate: doc.cron_activated_date || undefined,
+        cronUpdatedDate: doc.cron_updated_date || undefined,
+        cronLog: Array.isArray(doc.cron_log) ? doc.cron_log as Array<{
+          timestamp: string;
+          action: string;
+          status: string;
+          details?: any;
+          error?: string;
+        }> : [],
+        // Map new API response tracking fields
+        apiResponseData: doc.api_response_data || undefined,
+        apiVerificationStatus: doc.api_verification_status as 'pending' | 'completed' | 'failed' | null || null,
+        apiVerificationDate: doc.api_verification_date || undefined,
+        apiVerificationMethod: doc.api_verification_method || undefined,
+        rejectReason: (doc as any).reject_reason || undefined,
+        personalInfo: (doc as any).personal_info || undefined,
+        audit: Array.isArray((doc as any).audit_logs)
+          ? (doc as any).audit_logs[0]?.latest_success_log
+          : (doc as any).audit_logs?.latest_success_log,
+        createdAt: doc.created_at,
+        updatedAt: doc.updated_at
+      };
+    });
+
+    
+    console.log(`Fetched employee and ${documents.length} documents`);
     return { employee, documents };
   } catch (error) {
     console.error('Error in fetchEmployeeVerificationData:', error);
@@ -176,40 +225,153 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
   }
 };
 
-export const fetchEmployeeDocuments = async (
-  employeeId: string,
-  timeframe?: string,
-  force = false
-): Promise<VerificationDocument[]> => {
-  const key = `${employeeId}:${timeframe || ''}`;
+export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: string): Promise<VerificationDocument[]> => {
+  try {
+    console.log('Fetching documents for employee:', employeeId, 'with timeframe:', timeframe || 'all');
+    
+    let query = supabase
+      .from('employee_documents')
+      .select(`
+        id,
+        employee_id,
+        document_type_id,
+        document_status_id,
+        document_url,
+        document_number,
+        verification_status,
+        verified_by,
+        params,
+        documents_files,
+        comments,
+        employee_docs_log,
+        last_otp_generated,
+        api_response_data,
+        api_verification_status,
+        api_verification_date,
+        api_verification_method,
+        cron_activate,
+        cron_activated_date,
+        cron_updated_date,
+        cron_log,
+        reject_reason,
+        personal_info,
+        created_at,
+        updated_at,
+        document_type:employee_document_type(name, description),
+        document_status:document_status(name, description),
+        audit_logs:employee_verification_audit_log!fk_employee_verification_audit_document(latest_success_log)
+      `)
+      .eq('employee_id', employeeId)
+      .eq('is_delete', 0);
 
-  // Concurrent dedup — attach to any in-flight request for the same key
-  const inflight = docFetchInflight.get(key);
-  if (inflight) return inflight;
+    // Apply timeframe filter if provided
+    if (timeframe && timeframe !== 'all') {
+      const now = new Date();
+      let startDate: Date;
 
-  // Sequential cooldown (3s) — skip unless force=true (user-initiated refresh)
-  if (!force) {
-    const last = docFetchLastTime.get(key) || 0;
-    if (Date.now() - last < DOC_FETCH_COOLDOWN_MS) return [];
-  }
+      switch (timeframe) {
+        case 'today':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        case '7':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case '90':
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(0);
+      }
 
-  const promise = (async () => {
-    try {
-      docFetchLastTime.set(key, Date.now());
-      const { data, error } = await supabase.functions.invoke('employee-documents', {
-        body: { employeeId, timeframe: timeframe && timeframe !== 'all' ? timeframe : undefined },
-      });
-      if (error) throw error;
-      return (data?.documents || []).map(mapEdgeDocument);
-    } catch (error) {
-      console.error('Error in fetchEmployeeDocuments:', error);
-      docFetchLastTime.delete(key); // allow immediate retry on error
-      return [];
-    } finally {
-      docFetchInflight.delete(key);
+      query = query.gte('created_at', startDate.toISOString());
     }
-  })();
 
-  docFetchInflight.set(key, promise);
-  return promise;
+    const { data, error } = await (query as any);
+
+    if (error) {
+      console.error('Error fetching employee documents:', error);
+      return [];
+    }
+
+    const documents: VerificationDocument[] = (data || []).map(doc => {
+      let documentUrl = doc.document_url;
+      
+      // If document_url is a storage path, convert to full URL
+      if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+        const normalizedBase = base.replace(/\/$/, '');
+        documentUrl = `${normalizedBase}/employee-documents/${documentUrl}`;
+      }
+      
+      // Ensure verification_status is properly mapped
+      const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
+      
+      return {
+        id: doc.id,
+        employeeId: doc.employee_id,
+        documentTypeId: doc.document_type_id || '',
+        documentTypeName: doc.document_type?.name || 'Unknown',
+        documentNumber: doc.document_number || '',
+        documentImage: documentUrl,
+        verificationStatus: verificationStatus || 'pending',
+        documentStatusId: doc.document_status_id,
+        documentStatusName: doc.document_status?.name,
+        verifiedByEmployeeId: doc.verified_by || undefined,
+        verificationDate: null,
+        verificationNotes: '',
+        verificationMethod: 'manual',
+        employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
+          timestamp: string;
+          action: string;
+          response: any;
+          notes?: string;
+        }> : [],
+        documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
+        comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
+        params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+        // Map new cron fields including cron_log
+        cronActivate: doc.cron_activate || false,
+        cronActivatedDate: doc.cron_activated_date || undefined,
+        cronUpdatedDate: doc.cron_updated_date || undefined,
+        cronLog: Array.isArray(doc.cron_log) ? doc.cron_log as Array<{
+          timestamp: string;
+          action: string;
+          status: string;
+          details?: any;
+          error?: string;
+        }> : [],
+        // Map new API response tracking fields
+        apiResponseData: doc.api_response_data || undefined,
+        apiVerificationStatus: doc.api_verification_status as 'pending' | 'completed' | 'failed' | null || null,
+        apiVerificationDate: doc.api_verification_date || undefined,
+        apiVerificationMethod: doc.api_verification_method || undefined,
+        rejectReason: (doc as any).reject_reason || undefined,
+        personalInfo: (doc as any).personal_info || undefined,
+        lastOtpGenerated: doc.last_otp_generated || undefined,
+        audit: Array.isArray((doc as any).audit_logs)
+          ? (doc as any).audit_logs[0]?.latest_success_log
+          : (doc as any).audit_logs?.latest_success_log,
+        createdAt: doc.created_at,
+        updatedAt: doc.updated_at
+      };
+    });
+
+    console.log('Fetched documents:', documents);
+    return documents;
+  } catch (error) {
+    console.error('Error in fetchEmployeeDocuments:', error);
+    return [];
+  }
 };

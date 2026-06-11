@@ -23,8 +23,6 @@ interface IncidentDetailsFormProps {
   onDateTimeChange: (date: Date | undefined, timeString?: string) => void;
   supportingFiles: FileItem[];
   onFilesChange: (files: FileItem[]) => void;
-  configData?: any;
-  configLoading?: boolean;
 }
 
 const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
@@ -35,19 +33,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   onDateTimeChange,
   supportingFiles,
   onFilesChange,
-  configData: propConfigData,
-  configLoading: propConfigLoading
 }) => {
-  // Get form configuration data from database
-  const hookData = useIncidentFormData();
-  const configData = propConfigData || hookData.formData;
-  const configLoading = propConfigLoading !== undefined ? propConfigLoading : hookData.loading;
-  const employees = (hookData.employees || []).map((emp: any) => ({
-    id: emp.id,
-    firstName: emp.first_name,
-    lastName: emp.last_name,
-    email: emp.email || '',
-  }));
+  const { formData: configData, loading: configLoading } = useIncidentFormData();
+
   const { suggestions, loading: suggestionLoading, noMatch, clearSuggestions } = useIncidentCategorySuggestion(
     formData.description ?? '',
     configData.categories,
@@ -325,7 +313,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         <AssignmentSection
           owner={formData.owner || ''}
           onSelectChange={onSelectChange}
-          employees={employees}
         />
 
         {/* Supporting Files */}

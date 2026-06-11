@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -33,21 +33,17 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     getEmployeeDocuments
   } = useEmployeeVerification();
 
-  const docStatusFetchedRef = useRef(false);
-  const docsFetchedRef = useRef(false);
-
-  // Fetch reference data once — guarded by ref so remounts don't duplicate the call
+  // Fetch document statuses only once when the component mounts
   useEffect(() => {
-    if (docStatusFetchedRef.current) return;
-    docStatusFetchedRef.current = true;
     fetchDocumentStatuses();
   }, [fetchDocumentStatuses]);
-
-  // Fetch employee documents once per employeeId — guarded by ref
+  
+  // Only fetch employee documents once when the component mounts
   useEffect(() => {
-    if (!employeeId || docsFetchedRef.current) return;
-    docsFetchedRef.current = true;
-    fetchEmployeeDocuments(employeeId);
+    // Only fetch if employeeId is available
+    if (employeeId) {
+      fetchEmployeeDocuments(employeeId);
+    }
   }, [employeeId, fetchEmployeeDocuments]);
 
   const handleFileUploaded = (base64: string) => {
