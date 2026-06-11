@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, clientId, folderName, parentFolderId, files, employeeId, folderId, docId } = await req.json();
+    const { action, clientId, folderName, parentFolderId, files, employeeId, folderId, docId, objectPath, rowId, isValid, validDate } = await req.json();
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -99,6 +99,38 @@ serve(async (req) => {
       if (insertRes.error) throw insertRes.error;
       return insertRes.data;
     };
+
+    if (action === "create_signed_upload_url") {
+      if (!objectPath) return new Response(JSON.stringify({ error: "objectPath is required" }), { status: 400, headers: corsHeaders });
+      const { data, error: signError } = await supabaseAdmin.storage
+        .from(bucketName)
+        .createSignedUploadUrl(objectPath);
+      if (signError || !data?.signedUrl) throw signError ?? new Error("Failed to create signed URL");
+      return new Response(JSON.stringify({ signedUrl: data.signedUrl, token: data.token, path: data.path }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "set_validity") {
+      if (!clientId || !rowId) return new Response(JSON.stringify({ error: "clientId and rowId are required" }), { status: 400, headers: corsHeaders });
+      const { data: vd, error: ve } = await supabaseAdmin
+        .from("compliance_documents")
+        .update({ is_valid: isValid, valid_date: validDate })
+        .eq("id", rowId)
+        .eq("client_id", clientId)
+        .select("id, is_valid, valid_date");
+      if (ve) throw ve;
+      return new Response(JSON.stringify({ data: vd }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "list") {
+      if (!clientId) return new Response(JSON.stringify({ error: "clientId is required" }), { status: 400, headers: corsHeaders });
+      const { data, error: listError } = await supabaseAdmin
+        .from("compliance_documents")
+        .select("id, folder_exists, folder_id, parent_folder_id, files, is_valid, valid_date")
+        .eq("client_id", clientId)
+        .eq("is_delete", 0);
+      if (listError) throw listError;
+      return new Response(JSON.stringify({ data: data ?? [] }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     if (action === "create_folder") {
       // Create folder (root or nested)
