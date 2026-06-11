@@ -21,8 +21,9 @@ import {
   createCommitteeEvent,
   deleteCommitteeEvent,
   deleteCommitteeEventAttachment,
-  fetchCommitteeFormData,
-  fetchEventsPageData,
+  fetchCommitteeById,
+  fetchCommitteeEvents,
+  fetchCommitteeMembers,
   updateCommitteeEvent,
 } from '@/services/committees/committeeService';
 import { toast } from 'sonner';
@@ -126,16 +127,38 @@ const CommitteeEventsPage = () => {
     if (!clientId || !committeeId) return;
     try {
       setLoading(true);
-      // One edge-function call for page data + one cached call for form data (employees/roles).
-      const [pageData, formData] = await Promise.all([
-        fetchEventsPageData(committeeId, clientId),
-        fetchCommitteeFormData(clientId),
+      const [committeeData, eventsData, employeesData, committeeMembers] = await Promise.all([
+        fetchCommitteeById(committeeId, clientId),
+        fetchCommitteeEvents(committeeId, clientId),
+        fetchCommitteeMembers(committeeId, clientId),
+        supabase
+          .from('employees')
+          .select('id, first_name, last_name')
+          .eq('client_id', clientId)
+          .eq('status', true)
+          .order('first_name', { ascending: true }),
       ]);
 
-      setCommittee(pageData.committee);
-      setEvents(pageData.events);
-      setIsCommitteeMember(pageData.members.some((m) => m.employee_id === employeeId));
-      setEmployees(formData.employees);
+      setCommittee(committeeData);
+      setEvents(eventsData);
+      const committeeMemberList = Array.isArray(committeeMembers) ? committeeMembers : [];
+      setIsCommitteeMember(committeeMemberList.some((member) => member.employee_id === employeeId));
+      
+      let employeeRowsSource = employeesData.data || [];
+      if (employeeRowsSource.length === 0) {
+        const { data: fallbackEmployees } = await supabase
+          .from('employees')
+          .select('id, first_name, last_name')
+          .eq('client_id', clientId)
+          .order('first_name', { ascending: true });
+        employeeRowsSource = fallbackEmployees || [];
+      }
+
+      const employeeRows = employeeRowsSource.map((employee: any) => ({
+        id: employee.id,
+        name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'Unnamed Employee',
+      }));
+      setEmployees(employeeRows);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to load MOM/Event list');
     } finally {

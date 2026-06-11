@@ -1,11 +1,10 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { DepartmentOption } from './FilterBar';
 
 interface DepartmentFilterProps {
-  value: string;           // UUID or 'all'
+  value: string;
   onChange: (value: string) => void;
-  departments: DepartmentOption[];
+  departments: string[];
 }
 
 const DepartmentFilter: React.FC<DepartmentFilterProps> = ({ 
@@ -23,9 +22,9 @@ const DepartmentFilter: React.FC<DepartmentFilterProps> = ({
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">All Departments</SelectItem>
-        {departments.map((dept) => (
-          <SelectItem key={dept.id} value={dept.id}>
-            {formatDepartmentLabel(dept.name)}
+        {departments.map((department) => (
+          <SelectItem key={department} value={department}>
+            {formatDepartmentLabel(department)}
           </SelectItem>
         ))}
       </SelectContent>

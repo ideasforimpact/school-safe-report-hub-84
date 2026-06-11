@@ -7,17 +7,19 @@ export const checkStudentIdExists = async (studentId: string, clientId: string):
       return false;
     }
 
-    const { data, error } = await supabase.functions.invoke('student-management', {
-      body: { studentId, client_id: clientId },
-      headers: { path: 'validate-id' }
-    });
+    const { data, error } = await supabase
+      .from('students')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('client_id', clientId)
+      .maybeSingle();
 
     if (error) {
-      console.error('Error checking student ID existence via edge function:', error);
+      console.error('Error checking student ID existence:', error);
       return false;
     }
 
-    return data.exists || false;
+    return !!data;
   } catch (error) {
     console.error('Error in checkStudentIdExists:', error);
     return false;
@@ -43,17 +45,18 @@ export const checkBulkStudentIdDuplicates = async (
       return { duplicates: [], errors: [] };
     }
 
-    const { data, error } = await supabase.functions.invoke('student-management', {
-      body: { studentIds: validStudentIds, client_id: clientId },
-      headers: { path: 'bulk-check-ids' }
-    });
+    const { data, error } = await supabase
+      .from('students')
+      .select('student_id')
+      .eq('client_id', clientId)
+      .in('student_id', validStudentIds);
 
     if (error) {
-      console.error('Error checking bulk student ID duplicates via edge function:', error);
+      console.error('Error checking bulk student ID duplicates:', error);
       return { duplicates: [], errors: [`Error checking duplicates: ${error.message}`] };
     }
 
-    const existingStudentIds = data.duplicates || [];
+    const existingStudentIds = data?.map(student => student.student_id) || [];
     
     return { 
       duplicates: existingStudentIds,

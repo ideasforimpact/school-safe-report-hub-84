@@ -5,22 +5,14 @@ import ContributingFactorForm from './ContributingFactorForm';
 import ContributingFactorsList from './ContributingFactorsList';
 import { getWeightColor } from './closureUtils';
 
-interface ContributingFactorOption {
-  id: string;
-  name: string;
-  weight: string;
-}
-
 interface ContributingFactorsSectionProps {
   contributingFactors: ContributingFactor[];
   setContributingFactors: React.Dispatch<React.SetStateAction<ContributingFactor[]>>;
-  factorOptions?: ContributingFactorOption[];
 }
 
 const ContributingFactorsSection: React.FC<ContributingFactorsSectionProps> = ({
   contributingFactors,
-  setContributingFactors,
-  factorOptions = []
+  setContributingFactors
 }) => {
   const [currentFactor, setCurrentFactor] = useState({
     category: '',
@@ -65,7 +57,6 @@ const ContributingFactorsSection: React.FC<ContributingFactorsSectionProps> = ({
         setCurrentFactor={setCurrentFactor}
         addFactor={addFactor}
         contributingFactors={contributingFactors}
-        factorOptions={factorOptions}
       />
 
       {/* Factors List */}

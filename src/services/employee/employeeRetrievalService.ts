@@ -4,56 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { getBatchEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 
-const mapEmployeeRecords = (
-  employeesData: any[],
-  documentsData: any[] = []
-): Employee[] => {
-  return employeesData.map(record => {
-    const employeeDocuments = (documentsData || []).filter(doc => doc.employee_id === record.id);
-
-    const documents: VerificationDocument[] = employeeDocuments.map(doc => ({
-      id: doc.id,
-      employeeId: record.id,
-      documentTypeId: doc.document_type_id || '',
-      documentTypeName: (doc.document_type as any)?.name || 'Unknown',
-      documentNumber: doc.document_number || '',
-      documentImage: doc.document_url || '',
-      verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
-      verificationMethod: 'manual' as const,
-      personalInfo: doc.personal_info || undefined,
-      employee_docs_log: [],
-      params: {},
-      cronActivate: false,
-      createdAt: doc.created_at || new Date().toISOString(),
-      updatedAt: doc.updated_at || new Date().toISOString()
-    }));
-
-    return {
-      id: record.id,
-      employeeId: record.employee_id || '',
-      name: `${record.first_name} ${record.last_name}`,
-      firstName: record.first_name,
-      lastName: record.last_name,
-      email: record.email || '',
-      phone: (record as any).phone || '',
-      designation: (record as any).designation || '',
-      dateOfBirth: '',
-      address: '',
-      joiningDate: record.joining_date || new Date().toISOString(),
-      department: (record.department as any)?.department_name || record.department || '',
-      position: (record.employee_type as any)?.type_name || '',
-      employeeType: (record.employee_type as any)?.type_name ?? '',
-      status: record.status === true,
-      createdAt: record.created_at || new Date().toISOString(),
-      updatedAt: record.updated_at || new Date().toISOString(),
-      isSuperAdmin: record?.is_super_admin,
-      isCpdInvolved: (record as any).is_cpd_involved === true,
-      documents,
-      clientId: record.client_id
-    } as Employee;
-  });
-};
-
 export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoClient: boolean = true): Promise<Employee[]> => {
   try {
     console.log("Calling getAllEmployeesFromApi with clientId:", clientId);

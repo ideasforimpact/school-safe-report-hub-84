@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
 import FilterBar from '@/components/employee-verification/filters/FilterBar';
@@ -9,72 +9,160 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import Loader from "@/components/common/Loader";
-import type { EmployeeListFilters } from '@/contexts/employee-verification/types';
 
 const EmployeeVerificationPage = () => {
-  const {
-    fetchEmployees,
-    employees,
-    totalEmployeesCount,
-    verifiedEmployeesCount,
-    isLoading,
-  } = useEmployeeVerification();
-
+  const { fetchEmployees, employees } = useEmployeeVerification();
   const [searchParams] = useSearchParams();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const realtimeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('all'); // stores department UUID or 'all'
+  const [departmentFilter, setDepartmentFilter] = useState('all');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  
+  // Filter employees based on all criteria
+  // Helper function to get overall status based on priority logic
+  const getOverallStatus = (employee) => {
+    const documents = employee.documents || [];
+    if (documents.length === 0) return 'no-documents';
+    
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress');
+    
+    // Priority-based status logic: Failed > Pending > Verified
+    // If ANY document failed → Overall status is "Failed"
+    // If no failures but ANY pending → Overall status is "Pending"  
+    // If ALL documents verified → Overall status is "Verified"
+    if (failed.length > 0) {
+      return 'failed';
+    } else if (pending.length > 0) {
+      return 'pending';
+    } else {
+      return 'verified';
+    }
+  };
 
-  // Keep a stable ref of current filters for realtime handler
-  const currentFiltersRef = useRef<EmployeeListFilters>({});
+  const departments = useMemo(() => {
+    const uniqueDepartments = new Set(
+      employees
+        .map((emp) => emp.department)
+        .filter(Boolean)
+    );
 
-  const buildFilters = useCallback((
-    search: string,
-    deptId: string,
-    docType: string,
-    docStatus: string
-  ): EmployeeListFilters => ({
-    search: search || '',
-    departmentId: deptId !== 'all' ? deptId : undefined,
-    documentTypeId: docType !== 'all' ? docType : undefined,
-    documentStatus: docStatus !== 'all' ? docStatus : undefined,
-  }), []);
+    return Array.from(uniqueDepartments);
+  }, [employees]);
 
-  const doFetch = useCallback((filters: EmployeeListFilters, page: number) => {
-    currentFiltersRef.current = filters;
-    fetchEmployees(filters, page);
-  }, [fetchEmployees]);
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((employee) => {
+      const documents = employee.documents || [];
 
-  // Initial load and filter changes — reset to page 1
-  // Search is debounced; other filters apply immediately
-  useEffect(() => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      const filters = buildFilters(searchTerm, departmentFilter, documentTypeFilter, documentStatusFilter);
-      doFetch(filters, 1);
-    }, searchTerm ? 350 : 0);
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    };
-  }, [searchTerm, departmentFilter, documentTypeFilter, documentStatusFilter, buildFilters, doFetch]);
+      if (documentTypeFilter !== 'all' && documents.length === 0) {
+        return false;
+      }
 
-  // Parse URL filter param on mount
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          employee.name.toLowerCase().includes(searchLower) ||
+          employee.email.toLowerCase().includes(searchLower) ||
+          employee.employeeId.toLowerCase().includes(searchLower) ||
+          (employee.address && employee.address.toLowerCase().includes(searchLower));
+        
+        if (!matchesSearch) return false;
+      }
+
+      if (departmentFilter !== 'all') {
+        if (employee.department !== departmentFilter) {
+          return false;
+        }
+      }
+
+      if (documentTypeFilter !== 'all') {
+        const matchingDoc = documents.find((doc) => {
+          if (doc.documentTypeId !== documentTypeFilter) return false;
+
+          if (documentStatusFilter === 'all') return true;
+
+          if (documentStatusFilter === 'verified') {
+            return ['verified', 'completed'].includes(doc.verificationStatus);
+          }
+
+          if (documentStatusFilter === 'pending') {
+            return ['pending', 'in-progress'].includes(doc.verificationStatus);
+          }
+
+          if (documentStatusFilter === 'failed') {
+            return ['failed', 'rejected'].includes(doc.verificationStatus);
+          }
+
+          return false;
+        });
+
+        if (!matchingDoc) return false;
+      }
+
+      if (documentTypeFilter === 'all' && documentStatusFilter !== 'all') {
+        const overallStatus = getOverallStatus(employee);
+        if (overallStatus !== documentStatusFilter) return false;
+      }
+
+      return true;
+    });
+  }, [employees, searchTerm, documentStatusFilter, documentTypeFilter, departmentFilter]);
+
+  // Parse URL parameters and set initial filters
   useEffect(() => {
     const filterParam = searchParams.get('filter');
-    if (filterParam && ['verified', 'pending', 'failed'].includes(filterParam)) {
-      setDocumentStatusFilter(filterParam);
+    if (filterParam) {
+      console.log('🔍 Employee Verification - URL filter parameter found:', filterParam);
+      
+      // Map filter parameter to document status filter
+      let initialStatus = '';
+      switch (filterParam) {
+        case 'verified':
+          initialStatus = 'verified';
+          break;
+        case 'pending':
+          initialStatus = 'pending';
+          break;
+        case 'failed':
+          initialStatus = 'failed';
+          break;
+        default:
+          initialStatus = '';
+      }
+      
+      if (initialStatus) {
+        console.log('🎯 Setting initial document status filter to:', initialStatus);
+        setDocumentStatusFilter(initialStatus);
+      }
     }
   }, [searchParams]);
 
+  // Fetch employees when component mounts
+  useEffect(() => {
+    const loadEmployees = async () => {
+      setLoading(true);
+      await fetchEmployees();
+      setLoading(false);
+    };
+
+    loadEmployees();
+  }, [fetchEmployees]);  
+  
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchEmployees(currentFiltersRef.current);
+    setLoading(true);
+
+  await Promise.all([
+    fetchEmployees(),
+    new Promise((resolve) => setTimeout(resolve, 500))
+  ]);
+    setLoading(false);
     setIsRefreshing(false);
   };
 
@@ -84,18 +172,28 @@ const EmployeeVerificationPage = () => {
     setDocumentTypeFilter('all');
     setDepartmentFilter('all');
   };
+  const employeeAnalyticsStats = useMemo(() => {
+    const totalEmployees = employees.length;
 
-  const lastPageRefetchRef = useRef<number>(0);
-  const PAGE_REFETCH_COOLDOWN_MS = 3000;
+    const verifiedEmployees = employees.filter(
+      (employee) => getOverallStatus(employee) === 'verified'
+    ).length;
+
+    return {
+      totalEmployees,
+      verifiedEmployees,
+    };
+  }, [employees]);
+
 
   const handleEmployeesRealtime = useCallback(() => {
-    if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
+    if (realtimeTimeoutRef.current) {
+      clearTimeout(realtimeTimeoutRef.current);
+    }
+
     realtimeTimeoutRef.current = setTimeout(() => {
-      const now = Date.now();
-      if (now - lastPageRefetchRef.current < PAGE_REFETCH_COOLDOWN_MS) return;
-      lastPageRefetchRef.current = now;
-      fetchEmployees(currentFiltersRef.current);
-    }, 800);
+      fetchEmployees();
+    }, 300);
   }, [fetchEmployees]);
 
 
@@ -149,12 +247,16 @@ const EmployeeVerificationPage = () => {
             <div className="flex gap-80">
               <div className='ms-16 '>
                 <p className="text-sm text-gray-500">Total Employees</p>
-                <p className="text-3xl font-semibold text-gray-900">{totalEmployeesCount}</p>
+                <p className="text-3xl font-semibold text-gray-900">
+                  {employeeAnalyticsStats.totalEmployees}
+                </p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500">Verified Employees</p>
-                <p className="text-3xl font-semibold text-green-600">{verifiedEmployeesCount}</p>
+                <p className="text-3xl font-semibold text-green-600">
+                  {employeeAnalyticsStats.verifiedEmployees}
+                </p>
               </div>
             </div>
 
@@ -163,7 +265,7 @@ const EmployeeVerificationPage = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <h2 className="text-lg font-medium mb-4 text-left">Employees</h2>
-
+          
           <FilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
@@ -174,22 +276,15 @@ const EmployeeVerificationPage = () => {
             onClearFilters={handleClearFilters}
             departmentFilter={departmentFilter}
             onDepartmentChange={setDepartmentFilter}
+            departments={departments}
+            resultCount={filteredEmployees.length}
+            totalCount={employees.length}
           />
-
-          {!isLoading && (
-            <div className="flex justify-between items-center text-sm text-muted-foreground mb-3">
-              <span>
-                Showing {employees.length} of {totalEmployeesCount} employees
-              </span>
-              {(searchTerm !== '' || departmentFilter !== 'all' || documentStatusFilter !== 'all' || documentTypeFilter !== 'all') && (
-                <span className="text-primary">Filters applied</span>
-              )}
-            </div>
-          )}
-          {isLoading ? (
+          
+          {loading ? (
             <Loader text="Loading employees..." />
           ) : (
-            <EmployeesList employees={employees} />
+            <EmployeesList employees={filteredEmployees} />
           )}
         </div>
       </div>

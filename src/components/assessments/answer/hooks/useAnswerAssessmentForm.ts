@@ -44,33 +44,46 @@ export const useAnswerAssessmentForm = () => {
       try {
         setLoading(true);
         
-        const { data: responseData, error: fetchError } = await supabase
-        .functions.invoke('list-assessments', {
-          body: { assessment_id: parseInt(assessmentId), 
-          client_id: clientId },
-          headers: { path: 'get' },
-        });
+        // Fetch assessment by assessment_id instead of id
+        const { data: assessmentData, error: assessmentError } = await supabase
+          .from('assessments')
+          .select('*')
+          .eq('assessment_id', parseInt(assessmentId))
+          .eq('client_id', clientId)
+          .single();
 
-        if (fetchError) throw new Error('Assessment not found');
-
-        const assessmentData = responseData?.assessment;
-        if (!assessmentData) throw new Error('Assessment not found');
+        if (assessmentError) {
+          throw new Error('Assessment not found');
+        }
 
         setAssessment(assessmentData);
 
-        if (assessmentData.template) {
-          setTemplate(assessmentData.template);
+        // Fetch template
+        if (assessmentData.template_id) {
+          const { data: templateData, error: templateError } = await supabase
+            .from('assessment_templates')
+            .select('*')
+            .eq('id', assessmentData.template_id)
+            .eq('client_id', clientId)
+            .single();
 
-          const questions = Array.isArray(assessmentData.template.questions)
-            ? (assessmentData.template.questions as unknown as Question[])
+          if (templateError) {
+            throw new Error('Template not found');
+          }
+
+          setTemplate(templateData);
+          
+          // Parse questions from JSONB and initialize answers array
+          const questions = Array.isArray(templateData.questions) 
+            ? (templateData.questions as unknown as Question[])
             : [];
-
+            
           const initialAnswers = questions.map((question: Question) => ({
             questionId: question.id,
             answer: undefined,
             comment: ''
           }));
-
+          
           setAnswers(initialAnswers);
         }
         
@@ -143,26 +156,16 @@ export const useAnswerAssessmentForm = () => {
         comment: answer.comment || ''
       }));
 
-      const { error: updateError } = await supabase.functions.invoke('save-assessment-draft/submit-assessment', {
-        body: {
-          assessment_id: parseInt(assessmentId!),
-          client_id: clientId,
-          score,
-          answers: answersData,
-          performed_by: {
-            id: employeeData?.id || user?.id || '',
-            first_name: employeeData?.firstName || '',
-            last_name: employeeData?.lastName || '',
-            email: employeeData?.email || user?.email || '',
-          },
-          assessment_info: {
-            id: (assessment as any).id,
-            name: (assessment as any).name,
-            created_by: (assessment as any).created_by,
-            assigned_to: (assessment as any).assigned_to,
-          },
-        },
-      });
+      // Update assessment status, score, and answers using assessment_id
+      const { error: updateError } = await supabase
+        .from('assessments')
+        .update({ 
+          status: 'Submitted',
+          score: score,
+          answers: answersData as any
+        })
+        .eq('assessment_id', parseInt(assessmentId!))
+        .eq('client_id', clientId);
 
       if (updateError) {
         throw updateError;

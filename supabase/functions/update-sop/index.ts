@@ -160,24 +160,6 @@ serve(async (req) => {
       }
     }
 
-    // Check for duplicate title on another SOP (case-insensitive, within same client)
-    if (client_id) {
-      const { data: dupSOP } = await supabaseClient
-        .from('sop')
-        .select('id')
-        .eq('client_id', client_id)
-        .ilike('title', title.trim())
-        .neq('id', sop_id)
-        .maybeSingle()
-
-      if (dupSOP) {
-        return new Response(
-          JSON.stringify({ error: `An SOP with the title "${title.trim()}" already exists` }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-    }
-
     // Prepare update data
     const updateData = {
       title: title.trim(),

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
@@ -27,8 +27,10 @@ const AssessmentsPage = () => {
   
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
-  const [assessmentStats, setAssessmentStats] = useState({ total: 0, open: 0, draft: 0, submitted: 0, closed: 0 });
-
+  const [assessments, setAssessments] = useState<any[]>([]);
+  console.log("Current location:", location.pathname);
+  console.log("Has assessment admin access:", hasAssessmentAdmin);
+  
   // Handle assessment creation button click
   const handleCreateAssessment = () => {
     console.log("Create assessment button clicked");
@@ -74,6 +76,33 @@ const AssessmentsPage = () => {
       return <TemplatesList onCreateTemplate={isReadOnlySwitchedContext ? undefined : handleCreateTemplate} />;
     }
   };
+   const assessmentAnalyticsStats = useMemo(() => {
+    const total = assessments.length;
+
+    const open = assessments.filter(a =>
+      ['New'].includes(a.status)
+    ).length;
+
+    const draft = assessments.filter(a =>
+      ['Draft'].includes(a.status)
+    ).length;
+
+    const submitted = assessments.filter(
+      a => a.status === 'Submitted'
+    ).length;
+
+    const closed = assessments.filter(
+      a => a.status === 'Completed'
+    ).length;
+
+    return {
+      total,
+      open,
+      draft,
+      submitted,
+      closed,
+    };
+  }, [assessments]);
 
   // Determine main content based on state
   const renderMainContent = () => {
@@ -118,11 +147,11 @@ const AssessmentsPage = () => {
           <AssessmentsHeader
             onCreateAssessment={() => setShowCreateAssessment(true)}
             canCreateAssessment={!isReadOnlySwitchedContext}
-            totalCount={assessmentStats.total}
-            openCount={assessmentStats.open}
-            draftCount={assessmentStats.draft}
-            submittedCount={assessmentStats.submitted}
-            closedCount={assessmentStats.closed}
+            totalCount={assessmentAnalyticsStats.total}
+            openCount={assessmentAnalyticsStats.open}
+            draftCount={assessmentAnalyticsStats.draft}
+            submittedCount={assessmentAnalyticsStats.submitted}
+            closedCount={assessmentAnalyticsStats.closed}
           />
         </div>
 
@@ -133,7 +162,7 @@ const AssessmentsPage = () => {
               onCancel={() => setShowCreateAssessment(false)}
             />
           ) : (
-            <AssessmentsTable onDataLoaded={counts => setAssessmentStats({ total: counts.total, open: counts.new, draft: counts.draft, submitted: counts.submitted, closed: counts.completed })} />
+            <AssessmentsTable onDataLoaded={setAssessments} />
           )}
         </div>
       </div>

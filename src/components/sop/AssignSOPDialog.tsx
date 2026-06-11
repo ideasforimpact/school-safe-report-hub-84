@@ -56,11 +56,15 @@ const AssignSOPDialog: React.FC<AssignSOPDialogProps> = ({
     if (!clientId || !employeeId) return;
     try {
       setLoadingGroups(true);
-      const { data, error } = await supabase.functions.invoke('fetch-active-groups', {
-        body: { client_id: clientId },
-      });
+      const { data, error } = await (supabase as any)
+        .from('groups')
+        .select('id, name, group_type')
+        .eq('client_id', clientId)
+        .eq('status', true)
+        .order('name');
+
       if (error) throw error;
-      setGroups((data?.data || []) as GroupOption[]);
+      setGroups((data || []) as GroupOption[]);
     } catch (error: any) {
       console.error('Error fetching groups for SOP assignment:', error);
       toast.error('Failed to load groups');

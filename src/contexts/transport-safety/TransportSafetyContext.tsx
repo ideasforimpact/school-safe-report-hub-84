@@ -13,7 +13,6 @@ import {
 } from '@/services/transport-safety/vehicleService';
 import { useAuth } from '@/contexts/auth';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { useLocation } from 'react-router-dom';
 
 const TransportSafetyContext = createContext<TransportSafetyContextType | undefined>(undefined);
 
@@ -31,9 +30,6 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
   const [hasFetched, setHasFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, employeeData } = useAuth();
-  const location = useLocation();
-  const isUsersRoute = location.pathname === '/users';
-  const isTransportSafetyRoute = location.pathname.startsWith('/transport-safety');
 
   const getWriteGuardMessage = (err: unknown, fallback: string) => {
     const message = err instanceof Error ? err.message : '';
@@ -81,18 +77,13 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
 
   // Fetch vehicles on component mount and when client changes
   useEffect(() => {
-    if (isUsersRoute || !isTransportSafetyRoute) {
-      setVehicles([]);
-      setLoading(false);
-      return;
-    }
     if (clientId) {
       fetchVehicles();
     } else {
       setVehicles([]);
       setLoading(false);
     }
-  }, [clientId, isUsersRoute, isTransportSafetyRoute]);
+  }, [clientId]);
 
   const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>) => {
     try {

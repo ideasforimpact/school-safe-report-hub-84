@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -6,7 +6,12 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { supabase } from '@/integrations/supabase/client';
+
+interface DocumentType {
+  id: string;
+  name: string;
+}
 
 interface Props {
   value: string;
@@ -14,18 +19,36 @@ interface Props {
 }
 
 const EmployeeDocumentTypeFilter: React.FC<Props> = ({ value, onChange }) => {
-  const { documentTypes } = useEmployeeVerification();
-
+  const [types, setTypes] = useState<DocumentType[]>([]);
   const orderedTypes = React.useMemo(() => {
-    const result = [...documentTypes];
-    const otherIdx = result.findIndex(t => t.name === 'other_documents');
-    if (otherIdx > -1) {
-      const [other] = result.splice(otherIdx, 1);
-      result.push(other);
-    }
-    return result;
-  }, [documentTypes]);
+    const result: DocumentType[] = [];
+    let other: DocumentType | null = null;
 
+    for (const type of types) {
+      if (type.name === 'other_documents') {
+        other = type;
+      } else {
+        result.push(type);
+      }
+    }
+
+    if (other) result.push(other);
+    return result;
+  }, [types]);
+
+  useEffect(() => {
+    const loadTypes = async () => {
+      const { data } = await supabase
+        .from('employee_document_type')
+        .select('id, name')
+        .order('name');
+
+      setTypes(data || []);
+    };
+
+    loadTypes();
+  }, []);
+  
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-[220px]">

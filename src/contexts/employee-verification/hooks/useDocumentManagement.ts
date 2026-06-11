@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { VerificationDocument } from '../types';
 import { toast } from 'sonner';
@@ -18,13 +18,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     employeeData?.homeClientId ||
     employeeData?.clientId ||
     user?.clientId;
-
-  // Stable ref — updated each render so fetchEmployeeDocuments (empty deps) always reads current value
-  const clientIdRef = useRef<string | undefined>(undefined);
-  clientIdRef.current = clientId;
-
-  // Per-employee in-flight set — prevents concurrent duplicate fetches for the same employee
-  const fetchingEmployeeDocsRef = useRef<Set<string>>(new Set());
 
   // Helper function to upload base64 file to Supabase storage
   const uploadDocumentToStorage = async (base64Data: string, employeeId: string, documentType: string): Promise<string> => {
@@ -74,57 +67,127 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   };
 
-  const fetchEmployeeDocuments = useCallback(async (employeeId: string, timeframe?: string): Promise<VerificationDocument[]> => {
-    // Skip if the same employee is already being fetched (prevents concurrent duplicate calls)
-    const fetchKey = `${employeeId}:${timeframe || ''}`;
-    if (fetchingEmployeeDocsRef.current.has(fetchKey)) return [];
-    fetchingEmployeeDocsRef.current.add(fetchKey);
+  const fetchEmployeeDocuments = useCallback(async (employeeId: string): Promise<VerificationDocument[]> => {
+    if (!clientId) {
+      console.log('No client ID available - cannot fetch documents');
+      return [];
+    }
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('employee-documents', {
-        body: {
-          employeeId,
-          clientId: clientIdRef.current || undefined,
-          timeframe: timeframe && timeframe !== 'all' ? timeframe : undefined,
-        },
+      console.log('Fetching documents for employee:', employeeId, 'client:', clientId);
+      
+      // First verify the employee belongs to the current client
+      const { data: employee, error: empError } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('id', employeeId)
+        .eq('client_id', clientId)
+        .single();
+
+      if (empError || !employee) {
+        console.error('Employee not found or does not belong to current client');
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('employee_documents')
+        .select(`
+          id,
+          employee_id,
+          document_type_id,
+          document_status_id,
+          document_url,
+          document_number,
+          verification_status,
+          verified_by,
+          params,
+          documents_files,
+          comments,
+          employee_docs_log,
+          last_otp_generated,
+          cron_activate,
+          cron_activated_date,
+          cron_updated_date,
+          cron_log,
+          personal_info,
+          created_at,
+          updated_at,
+          document_type:employee_document_type(name, description),
+          document_status:document_status(name, description)
+        `)
+        .eq('employee_id', employeeId)
+        .eq('is_delete', 0);
+
+      if (error) {
+        console.error('Error fetching employee documents:', error);
+        return [];
+      }
+
+      const formattedDocuments: VerificationDocument[] = data.map(doc => {
+        console.log('Processing document:', {
+          id: doc.id,
+          documentTypeName: doc.document_type?.name,
+          verificationStatus: doc.verification_status,
+          documentStatusName: doc.document_status?.name,
+          employeeId: doc.employee_id,
+          // Try to access reject_reason to see if it exists
+          rejectReasonExists: 'reject_reason' in doc,
+          rejectReasonValue: (doc as any).reject_reason
+        });
+
+        let documentUrl = doc.document_url;
+        
+        // If document_url is a storage path, convert to full URL
+        if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
+          const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+          const normalizedBase = base.replace(/\/$/, '');
+          documentUrl = `${normalizedBase}/employee-documents/${documentUrl}`;
+        }
+        
+        return {
+          id: doc.id,
+          employeeId: doc.employee_id,
+          documentTypeId: doc.document_type_id || '',
+          documentTypeName: doc.document_type?.name || 'Unknown',
+          documentNumber: doc.document_number || '',
+          documentImage: documentUrl,
+          verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
+          documentStatusId: doc.document_status_id,
+          documentStatusName: doc.document_status?.name,
+          verifiedByEmployeeId: doc.verified_by || undefined,
+          verificationDate: null,
+          verificationNotes: '',
+          verificationMethod: 'manual',
+          rejectReason: (doc as any).reject_reason || undefined,
+          // Map new cron fields including cron_log with proper type casting
+          cronActivate: doc.cron_activate || false,
+          cronActivatedDate: doc.cron_activated_date || undefined,
+          cronUpdatedDate: doc.cron_updated_date || undefined,
+          cronLog: Array.isArray(doc.cron_log) ? (doc.cron_log as Array<{
+            timestamp: string;
+            action: string;
+            status: string;
+            details?: any;
+            error?: string;
+          }>) : [],
+          documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
+          comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
+          params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+          employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
+            timestamp: string;
+            action: string;
+            response: any;
+            notes?: string;
+          }> : [],
+          personalInfo: (doc as any).personal_info || undefined,
+          lastOtpGenerated: doc.last_otp_generated || undefined,
+          createdAt: doc.created_at,
+          updatedAt: doc.updated_at
+        };
       });
 
-      if (error) throw new Error(error.message || 'Failed to fetch documents');
-
-      const formattedDocuments: VerificationDocument[] = (data?.documents || []).map((doc: any) => ({
-        id: doc.id,
-        employeeId: doc.employeeId,
-        documentTypeId: doc.documentTypeId || '',
-        documentTypeName: doc.documentTypeName || 'Unknown',
-        documentNumber: doc.documentNumber || '',
-        documentImage: doc.documentImage,
-        verificationStatus: (doc.verificationStatus as 'verified' | 'failed' | 'pending') || 'pending',
-        documentStatusId: doc.documentStatusId,
-        documentStatusName: doc.documentStatusName,
-        verifiedByEmployeeId: doc.verifiedByEmployeeId || undefined,
-        verificationDate: null,
-        verificationNotes: '',
-        verificationMethod: 'manual',
-        rejectReason: doc.rejectReason || undefined,
-        apiResponseData: doc.apiResponseData || undefined,
-        apiVerificationStatus: doc.apiVerificationStatus || null,
-        apiVerificationDate: doc.apiVerificationDate || undefined,
-        apiVerificationMethod: doc.apiVerificationMethod || undefined,
-        params: doc.params || {},
-        employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
-        documents_files: Array.isArray(doc.documents_files) ? doc.documents_files : [],
-        comments: Array.isArray(doc.comments) ? doc.comments : [],
-        personalInfo: doc.personalInfo || undefined,
-        lastOtpGenerated: doc.lastOtpGenerated || undefined,
-        cronActivate: doc.cronActivate || false,
-        cronActivatedDate: doc.cronActivatedDate || undefined,
-        cronUpdatedDate: doc.cronUpdatedDate || undefined,
-        cronLog: Array.isArray(doc.cronLog) ? doc.cronLog : [],
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      }));
-
+      console.log('Fetched documents:', formattedDocuments);
       setDocuments(prev => {
         const filtered = prev.filter(d => d.employeeId !== employeeId);
         return [...filtered, ...formattedDocuments];
@@ -136,10 +199,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       return [];
     } finally {
       setIsLoading(false);
-      fetchingEmployeeDocsRef.current.delete(fetchKey);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally empty — reads latest clientId via ref
+  }, [clientId]);
 
   const addDocument = useCallback(async (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!clientId) {
@@ -224,63 +285,91 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
   const verifyDocument = useCallback(async (documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual' = 'manual', notes?: string) => {
     try {
-      // Find the employee ID for this document from local state
-      const doc = documents.find(d => d.id === documentId);
-      const employeeId = doc?.employeeId;
+      console.log('verifyDocument called with:', { documentId, status, method, notes, employeeData });
+      
+      // First get the appropriate status ID from document_status table
+      const statusName = status === 'verified' ? 'governance' : 'rejected';
+      const { data: statusRecord, error: statusError } = await supabase
+        .from('document_status')
+        .select('id')
+        .eq('name', statusName)
+        .single();
 
-      const { data, error } = await supabase.functions.invoke('employee-documents', {
-        body: {
-          action: 'updateVerification',
-          employeeId,
-          documentId,
-          verificationStatus: status,
-          verificationNotes: notes || '',
-        },
-      });
+      if (statusError || !statusRecord) {
+        console.error(`Error fetching ${statusName} status:`, statusError);
+        throw new Error(`Could not find ${statusName} status`);
+      }
 
-      if (error) throw new Error(error.message || 'Failed to update verification');
+      console.log('Found status record:', statusRecord);
 
-      // Update local state with the returned document data
-      const updated = data?.document;
-      setDocuments(prev => prev.map(d =>
-        d.id === documentId
-          ? {
-              ...d,
+      // Update both verification_status and document_status_id
+      const updateData = {
+        verification_status: status,
+        document_status_id: statusRecord.id,
+        updated_at: new Date().toISOString(),
+        ...(employeeData?.id && { verified_by: employeeData.id })
+      };
+
+      console.log('Updating document with data:', updateData);
+
+      const { data, error } = await supabase
+        .from('employee_documents')
+        .update(updateData)
+        .eq('id', documentId)
+        .select('employee_id')
+        .single();
+
+      console.log('Database update result:', { data, error });
+
+      if (error) throw error;
+
+      setDocuments(prev => prev.map(doc => 
+        doc.id === documentId 
+          ? { 
+              ...doc, 
               verificationStatus: status,
-              documentStatusId: updated?.documentStatusId || d.documentStatusId,
-              documentStatusName: updated?.documentStatusName || d.documentStatusName,
+              documentStatusId: statusRecord.id,
               verificationDate: new Date().toISOString(),
               verificationNotes: notes || '',
-              verificationMethod: method,
+              verificationMethod: method
             }
-          : d
+          : doc
       ));
+
+      // Check if all documents are verified for this employee
+      const employeeId = data.employee_id;
+      const employeeDocs = documents.filter(d => d.employeeId === employeeId);
+      const allVerified = employeeDocs.every(d => d.id === documentId ? status === 'verified' : d.verificationStatus === 'verified');
+
+      if (allVerified && status === 'verified') {
+        console.log('All documents verified for employee:', employeeId);
+        await updateEmployeeStatus(employeeId, true);
+      }
 
       toast.success(`Document ${status === 'verified' ? 'approved' : 'rejected'} successfully`);
     } catch (error) {
       console.error('Error verifying document:', error);
       toast.error('Failed to verify document');
     }
-  }, [documents]);
+  }, [documents, updateEmployeeStatus, employeeData]);
 
   const deleteDocument = useCallback(async (documentId: string) => {
     try {
-      const doc = documents.find(d => d.id === documentId);
-      const { error } = await supabase.functions.invoke('employee-documents', {
-        body: {
-          action: 'deleteDocument',
-          employeeId: doc?.employeeId,
-          documentId,
-        },
-      });
-      if (error) throw new Error(error.message || 'Failed to delete document');
-      setDocuments(prev => prev.filter(d => d.id !== documentId));
+      // Soft delete: Set is_delete = 1 instead of hard deleting
+      const { error } = await supabase
+        .from('employee_documents')
+        .update({ is_delete: 1, updated_at: new Date().toISOString() })
+        .eq('id', documentId);
+
+      if (error) throw error;
+
+      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
       toast.success('Document deleted successfully');
     } catch (error) {
       console.error('Error deleting document:', error);
       toast.error('Failed to delete document');
     }
-  }, [documents]);
+  }, []);
 
   const getEmployeeDocuments = useCallback((employeeId: string) => {
     return documents.filter(doc => doc.employeeId === employeeId);

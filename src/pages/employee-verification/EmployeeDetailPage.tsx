@@ -32,7 +32,7 @@ const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { fetchDocumentStatuses } = useEmployeeVerification();
+  const { fetchDocumentStatuses, fetchEmployees } = useEmployeeVerification();
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
@@ -51,35 +51,23 @@ const EmployeeDetailPage = () => {
   const [isProcessingDigiLocker, setIsProcessingDigiLocker] = useState(false);
   const [aadharDialogOpen, setAadharDialogOpen] = useState(false);
   const [aadharVerificationData, setAadharVerificationData] = useState<any>(null);
-  const realtimeDebounceRef = React.useRef<NodeJS.Timeout | null>(null);
-  // Ref so the debounced callback always calls the latest refetchDocuments without needing it in deps
-  const refetchDocumentsRef = React.useRef<() => Promise<void>>(async () => {});
-  // Ref guard: set synchronously before async starts to prevent concurrent initial loads
-  const initialLoadStartedRef = React.useRef(false);
-  // Tracks the last time refetchDocuments ran (any trigger). Automatic callers (realtime,
-  // post-verification callbacks) are suppressed within a 3s cooldown window so that a
-  // single verification that makes multiple DB writes only results in one network call.
-  const lastRefetchTimeRef = React.useRef<number>(0);
-  const REFETCH_COOLDOWN_MS = 3000;
-  // Cooldown: after a realtime-triggered refetch, suppress further ones for 3s.
-  // Verification edge functions make multiple sequential DB updates (status, personal info, audit log)
-  // each of which fires the realtime — the cooldown coalesces them all into one fetch.
-  const lastRealtimeRefetchRef = React.useRef<number>(0);
-  const REALTIME_REFETCH_COOLDOWN_MS = 3000;
-
   const handleEmployeeDocsUpdate = useCallback(
-    (payload: any) => {
-      const docToCheck = payload.new || payload.old;
-      if (!docToCheck || docToCheck.employee_id !== employeeId) return;
+    async (payload: any) => {
 
-      // Debounce rapid consecutive events (800ms), then apply a 3s cooldown guard
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      realtimeDebounceRef.current = setTimeout(() => {
-        const now = Date.now();
-        if (now - lastRealtimeRefetchRef.current < REALTIME_REFETCH_COOLDOWN_MS) return;
-        lastRealtimeRefetchRef.current = now;
-        refetchDocumentsRef.current();
-      }, 800);
+      const newDoc = payload.new;
+      const oldDoc = payload.old;
+
+      const docToCheck = newDoc || oldDoc;
+
+      if (!docToCheck) return;
+
+      if (docToCheck.employee_id !== employeeId) {
+        console.log("Skipping event: employee mismatch");
+        return;
+      }
+
+      await refetchDocuments();
+
     },
     [employeeId]
   );
@@ -222,20 +210,14 @@ const EmployeeDetailPage = () => {
     }
   }, [employeeId, clientId, toast]);
 
-  // Refetch documents — automatic callers (realtime, post-verification callbacks) are subject
-  // to the component-level 3s cooldown. The manual refresh button passes force=true to bypass it.
-  // Always calls the service with force=true so that once the component decides to proceed,
-  // it always receives fresh data regardless of the service-level cooldown.
-  const refetchDocuments = useCallback(async (force = false) => {
+  // New function to refetch documents only
+  const refetchDocuments = useCallback(async () => {
     if (!employeeId) return;
-
-    const now = Date.now();
-    if (!force && now - lastRefetchTimeRef.current < REFETCH_COOLDOWN_MS) return;
-    lastRefetchTimeRef.current = now;
-
+    
     setIsDocumentRefreshing(true);
     try {
-      const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter, true); // always force at service level
+      console.log('Refetching documents for employee:', employeeId);
+      const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter);
       setDocuments(refreshedDocuments);
       console.log('Documents refetched successfully');
     } catch (error) {
@@ -250,15 +232,12 @@ const EmployeeDetailPage = () => {
     }
   }, [employeeId, timeframeFilter, toast]);
 
-  // Keep ref in sync — always points to the latest refetchDocuments
-  refetchDocumentsRef.current = refetchDocuments;
-
   const handleRefreshDocuments = useCallback(async () => {
     if (employeeId && !isRefreshing) {
-      lastRefetchTimeRef.current = Date.now(); // suppress realtime for 3s after manual refresh
+      console.log('Refresh button clicked for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
       setIsRefreshing(true);
       try {
-        const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter, true); // force=true
+        const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter);
         setDocuments(refreshedDocuments);
         console.log('Documents refreshed for employee:', employeeId);
         
@@ -289,7 +268,7 @@ const EmployeeDetailPage = () => {
       setIsRefreshing(true);
       try {
         const timeframe = value === 'all' ? undefined : value;
-        const filteredDocuments = await fetchEmployeeDocuments(employeeId, timeframe, true); // force=true — user action
+        const filteredDocuments = await fetchEmployeeDocuments(employeeId, timeframe);
         setDocuments(filteredDocuments);
         console.log('Filter applied, documents fetched');
         
@@ -310,34 +289,32 @@ const EmployeeDetailPage = () => {
     }
   }, [employeeId, toast]);
 
-  // Fetch data when component mounts — guard with ref (set synchronously) to prevent
-  // concurrent loads caused by clientId changing multiple times during auth init.
+  // Fetch data when component mounts
   useEffect(() => {
-    if (!employeeId || !clientId || initialLoadStartedRef.current) return;
-    initialLoadStartedRef.current = true; // set before async to prevent race
-
+    if (!employeeId || !clientId || initialLoadComplete) return;
+    
     const loadData = async () => {
       try {
         console.log('Initial data loading for employee:', employeeId);
         await Promise.all([
           loadEmployeeData(),
           fetchDocumentStatuses(),
+          fetchEmployees()
         ]);
         console.log('Initial data loading complete for employee:', employeeId);
         setInitialLoadComplete(true);
       } catch (error) {
         console.error('Error loading initial data:', error);
-        initialLoadStartedRef.current = false; // allow retry on error
         toast({
           title: "Data Loading Error",
-          description: "Failed to load employee data. Please try refreshing.",
+          description: "Failed to load some employee data. Please try refreshing.",
           variant: "destructive"
         });
       }
     };
-
+    
     loadData();
-  }, [employeeId, clientId, loadEmployeeData, fetchDocumentStatuses, toast]);
+  }, [employeeId, clientId, initialLoadComplete, loadEmployeeData, fetchDocumentStatuses, toast]);
 
   // Handle DigiLocker return after documents are loaded
   useEffect(() => {

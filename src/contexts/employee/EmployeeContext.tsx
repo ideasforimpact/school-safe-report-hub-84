@@ -38,9 +38,9 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [loading, setLoading] = useState(false);
   const location = useLocation();
 
-  // Only pre-load employees on dedicated employee management routes, not on /settings
-  // (UserManagement tab inside Settings fetches its own list when the tab is opened)
-  const isEmployeeManagementRoute = location.pathname.startsWith('/employees');
+  // Check if we're on an employee management route
+  const isEmployeeManagementRoute = location.pathname.startsWith('/employees') || 
+                                   location.pathname.includes('/settings');
 
   // Initialize employees from storage only on relevant routes
   useEffect(() => {

@@ -2,34 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@10.0.0";
 
-type SupabaseClient = ReturnType<typeof createClient>;
-type CorsHeaders = Record<string, string>;
-
-interface DocumentData {
-  documentImage: string;
-  documentNumber?: string;
-  documentStatusId?: string;
-  documentTypeId?: string;
-  params?: Record<string, unknown>;
-  useBankStatementStorage?: boolean;
-  [key: string]: unknown;
-}
-
-interface RequestBody {
-  employeeId?: string;
-  clientId?: string;
-  documentData?: DocumentData;
-  action?: string;
-  timeframe?: string;
-  documentId?: string;
-  verificationStatus?: string;
-  verificationNotes?: string;
-  documentStatusId?: string;
-  documentNumber?: string;
-  otp?: string;
-  txnId?: string;
-}
-
 // CORS headers setup
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,8 +29,8 @@ serve(async (req) => {
     // Use POST method for both listing documents and uploading
     if (req.method === "POST") {
       const body = await req.json();
-      const { employeeId, clientId, documentData, action, timeframe } = body;
-
+      const { employeeId, documentData, action, timeframe } = body;
+      
       // Handle Aadhar OTP operations
       if (action === 'requestAadharOtp') {
         return await handleAadharOtpRequest(body, corsHeaders);
@@ -68,26 +40,8 @@ serve(async (req) => {
         return await handleGetDocumentTypes(supabase, corsHeaders);
       } else if (action === 'getDocumentStatuses') {
         return await handleGetDocumentStatuses(supabase, corsHeaders);
-      } else if (action === 'getDocumentReferenceData') {
-        // Returns both documentTypes and documentStatuses in a single call
-        return await handleGetDocumentReferenceData(supabase, corsHeaders);
-      } else if (action === 'getDocumentComments') {
-        const { documentId } = body;
-        return await handleGetDocumentComments(documentId, supabase, corsHeaders);
-      } else if (action === 'updateVerification') {
-        // POST-based verification update (same logic as PUT handler)
-        const { documentId, verificationStatus, verificationNotes, documentStatusId } = body;
-        return await handleUpdateVerificationStatus(employeeId, documentId, verificationStatus, verificationNotes, documentStatusId, supabase, corsHeaders);
-      } else if (action === 'deleteDocument') {
-        // Soft delete — marks as deleted but preserves the record for audit/history
-        const { documentId } = body;
-        return await handleSoftDeleteDocument(employeeId, documentId, supabase, corsHeaders);
-      } else if (action === 'purgeDocument') {
-        // Hard delete — used only for rollback when an upload fails mid-way
-        const { documentId } = body;
-        return await handleDocumentDelete(employeeId, documentId, supabase, corsHeaders);
       }
-
+      
       // If documentData is provided, it's an upload operation
       if (documentData) {
         // Check if this is a bank statement analysis upload
@@ -96,10 +50,10 @@ serve(async (req) => {
         } else {
           return await handleDocumentUpload(employeeId, documentData, supabase, corsHeaders);
         }
-      }
+      } 
       // Otherwise it's a list operation
       else if (employeeId) {
-        return await handleListDocuments(employeeId, clientId || null, supabase, corsHeaders, timeframe);
+        return await handleListDocuments(employeeId, supabase, corsHeaders, timeframe);
       }
       else {
         return new Response(
@@ -148,7 +102,7 @@ serve(async (req) => {
 });
 
 // New function to handle Bank Statement Analysis uploads
-async function handleBankStatementAnalysisUpload(employeeId: string, documentData: DocumentData, supabase: SupabaseClient, corsHeaders: CorsHeaders) {
+async function handleBankStatementAnalysisUpload(employeeId, documentData, supabase, corsHeaders) {
   if (!employeeId || !documentData) {
     return new Response(
       JSON.stringify({ error: "Missing required fields" }),
@@ -213,7 +167,7 @@ async function handleBankStatementAnalysisUpload(employeeId: string, documentDat
 }
 
 // New function to handle getting document types
-async function handleGetDocumentTypes(supabase: SupabaseClient, corsHeaders: CorsHeaders) {
+async function handleGetDocumentTypes(supabase, corsHeaders) {
   try {
     const { data, error } = await supabase
       .from('employee_document_type')
@@ -237,16 +191,16 @@ async function handleGetDocumentTypes(supabase: SupabaseClient, corsHeaders: Cor
 }
 
 // New function to handle getting document statuses
-async function handleGetDocumentStatuses(supabase: SupabaseClient, corsHeaders: CorsHeaders) {
+async function handleGetDocumentStatuses(supabase, corsHeaders) {
   try {
     const { data, error } = await supabase
       .from('document_status')
       .select('*');
-
+    
     if (error) {
       throw error;
     }
-
+    
     return new Response(
       JSON.stringify({ documentStatuses: data }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -260,42 +214,15 @@ async function handleGetDocumentStatuses(supabase: SupabaseClient, corsHeaders: 
   }
 }
 
-// Combined: returns both documentTypes and documentStatuses in a single call
-async function handleGetDocumentReferenceData(supabase: SupabaseClient, corsHeaders: CorsHeaders) {
-  try {
-    const [typesResult, statusesResult] = await Promise.all([
-      supabase.from('employee_document_type').select('*').order('name', { ascending: true }),
-      supabase.from('document_status').select('*').order('name', { ascending: true }),
-    ]);
-
-    if (typesResult.error) throw typesResult.error;
-    if (statusesResult.error) throw statusesResult.error;
-
-    return new Response(
-      JSON.stringify({
-        documentTypes: typesResult.data || [],
-        documentStatuses: statusesResult.data || [],
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('Error retrieving document reference data:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-}
-
 // Update the verification status function
 async function handleUpdateVerificationStatus(
-  employeeId: string,
-  documentId: string,
-  verificationStatus: string | undefined,
-  verificationNotes: string | undefined,
-  documentStatusId: string | undefined,
-  supabase: SupabaseClient,
-  corsHeaders: CorsHeaders
+  employeeId, 
+  documentId, 
+  verificationStatus, 
+  verificationNotes,
+  documentStatusId,
+  supabase, 
+  corsHeaders
 ) {
   if (!employeeId || !documentId || (!verificationStatus && !documentStatusId)) {
     return new Response(
@@ -306,7 +233,7 @@ async function handleUpdateVerificationStatus(
   
   try {
     // Prepare update object with only fields that exist in the table
-    const updateObject: Record<string, unknown> = {};
+    const updateObject = {};
     
     if (verificationStatus) {
       updateObject.verification_status = verificationStatus;
@@ -428,7 +355,7 @@ async function handleUpdateVerificationStatus(
   }
 }
 
-async function handleDocumentUpload(employeeId: string, documentData: DocumentData, supabase: SupabaseClient, corsHeaders: CorsHeaders) {
+async function handleDocumentUpload(employeeId, documentData, supabase, corsHeaders) {
   if (!employeeId || !documentData) {
     return new Response(
       JSON.stringify({ error: "Missing required fields" }),
@@ -579,58 +506,16 @@ async function handleDocumentUpload(employeeId: string, documentData: DocumentDa
   }
 }
 
-async function handleGetDocumentComments(documentId: string, supabase: SupabaseClient, corsHeaders: CorsHeaders) {
-  if (!documentId) {
-    return new Response(
-      JSON.stringify({ error: 'documentId is required' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+// Updated function to handle listing documents with full relationship data and time filtering
+async function handleListDocuments(employeeId, supabase, corsHeaders, timeframe = null) {
   try {
-    const { data, error } = await supabase
-      .from('employee_documents')
-      .select('comments')
-      .eq('id', documentId)
-      .maybeSingle();
-    if (error) throw error;
-    const comments = Array.isArray(data?.comments) ? data.comments : [];
-    return new Response(
-      JSON.stringify({ comments }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('Error fetching document comments:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-}
-
-async function handleListDocuments(employeeId: string, clientId: string | null, supabase: SupabaseClient, corsHeaders: CorsHeaders, timeframe: string | null = null) {
-  try {
-    // If clientId provided, verify the employee belongs to this client
-    if (clientId) {
-      const { data: empCheck, error: empErr } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('id', employeeId)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      if (empErr || !empCheck) {
-        return new Response(
-          JSON.stringify({ error: 'Employee not found or access denied' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
+    // Start with base query
     let query = supabase
       .from('employee_documents')
       .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
       .eq('employee_id', employeeId)
       .eq('is_delete', 0);
-
+    
     // Apply time filtering if provided
     if (timeframe) {
       const now = new Date();
@@ -641,13 +526,13 @@ async function handleListDocuments(employeeId: string, clientId: string | null, 
         case 'today':
           startDate = new Date(now.setHours(0, 0, 0, 0));
           break;
-        case 'week': {
+        case 'week':
+          // get the first day of the current week
           const day = now.getDay();
-          const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
           startDate = new Date(now.setDate(diff));
           startDate.setHours(0, 0, 0, 0);
           break;
-        }
         case 'month':
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
           break;
@@ -663,57 +548,54 @@ async function handleListDocuments(employeeId: string, clientId: string | null, 
       }
       
       if (startDate) {
-        query = query.gte('created_at', startDate.toISOString());
+        const isoStartDate = startDate.toISOString();
+        console.log(`Filtering documents since: ${isoStartDate}`);
+        query = query.gte('created_at', isoStartDate);
       }
     }
-
+    
     // Sort by created_at in descending order (newest first)
     query = query.order('created_at', { ascending: false });
     
     // Execute the query
     const { data, error } = await query;
-    if (error) throw error;
-
-    const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL') ||
-      `${Deno.env.get('SUPABASE_URL') || ''}/storage/v1/object/public`;
-
+    
+    if (error) {
+      throw error;
+    }
+    
+    // Process documents to match the expected structure for frontend
     const processedDocuments = data.map(doc => {
       let documentUrl = doc.document_url;
-      if (documentUrl && !documentUrl.startsWith('https://') && !documentUrl.startsWith('data:')) {
-        documentUrl = `${storageBase}/employee-documents/${documentUrl}`;
+      
+      // Handle different storage scenarios
+      if (documentUrl) {
+        if (documentUrl.startsWith('https://')) {
+          // Already a full URL (e.g., bank statement analysis)
+          documentUrl = documentUrl;
+        } else if (!documentUrl.startsWith('data:')) {
+          // Storage path, convert to full URL
+          documentUrl = `${Deno.env.get('SUPABASE_URL') || Deno.env.get('URL') || ''}/storage/v1/object/public/employee-documents/${documentUrl}`;
+        }
       }
-
+      
       return {
         id: doc.id,
         employeeId: doc.employee_id,
-        documentTypeId: doc.document_type_id || '',
+        documentTypeId: doc.document_type_id,
         documentTypeName: doc.document_type?.name || '',
         documentNumber: doc.document_number || '',
         documentImage: documentUrl,
-        verificationStatus: doc.verification_status || 'pending',
+        verificationStatus: doc.verification_status,
         documentStatusId: doc.document_status_id,
         documentStatusName: doc.document_status?.name || '',
-        verifiedByEmployeeId: doc.verified_by || null,
-        rejectReason: doc.reject_reason || null,
-        apiResponseData: doc.api_response_data || null,
-        apiVerificationStatus: doc.api_verification_status || null,
-        apiVerificationDate: doc.api_verification_date || null,
-        apiVerificationMethod: doc.api_verification_method || null,
+        employee_docs_log: doc.employee_docs_log || [],
         params: doc.params || {}, // Include params in the response
-        employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
-        documents_files: Array.isArray(doc.documents_files) ? doc.documents_files : [],
-        comments: Array.isArray(doc.comments) ? doc.comments : [],
-        personalInfo: doc.personal_info || null,
-        lastOtpGenerated: doc.last_otp_generated || null,
-        cronActivate: doc.cron_activate || false,
-        cronActivatedDate: doc.cron_activated_date || null,
-        cronUpdatedDate: doc.cron_updated_date || null,
-        cronLog: Array.isArray(doc.cron_log) ? doc.cron_log : [],
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
     });
-
+    
     return new Response(
       JSON.stringify({ documents: processedDocuments }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -727,59 +609,22 @@ async function handleListDocuments(employeeId: string, clientId: string | null, 
   }
 }
 
-// Soft delete: marks the record as deleted (is_delete=1) while preserving it for audit/history
-async function handleSoftDeleteDocument(employeeId: string | undefined, documentId: string, supabase: SupabaseClient, corsHeaders: CorsHeaders) {
-  if (!documentId) {
+async function handleDocumentDelete(employeeId, documentId, supabase, corsHeaders) {
+  if (!employeeId || !documentId) {
     return new Response(
-      JSON.stringify({ error: 'documentId is required' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-  try {
-    let updateQuery = supabase
-      .from('employee_documents')
-      .update({ is_delete: 1, updated_at: new Date().toISOString() })
-      .eq('id', documentId);
-    if (employeeId) updateQuery = updateQuery.eq('employee_id', employeeId);
-
-    const { error } = await updateQuery;
-    if (error) throw error;
-
-    // Recompute employee verification status after soft delete
-    if (employeeId) {
-      await updateEmployeeVerificationStatus(employeeId, supabase);
-    }
-
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('Error soft-deleting document:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-}
-
-async function handleDocumentDelete(employeeId: string | undefined, documentId: string, supabase: SupabaseClient, corsHeaders: CorsHeaders) {
-  if (!documentId) {
-    return new Response(
-      JSON.stringify({ error: "documentId is required" }),
+      JSON.stringify({ error: "Missing required fields" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-
+  
   try {
-    // Fetch the document by ID; apply employeeId filter only when provided
-    let fetchQuery = supabase
+    // Get the document details first
+    const { data: documentToDelete, error: fetchError } = await supabase
       .from('employee_documents')
       .select('*')
-      .eq('id', documentId);
-    if (employeeId) fetchQuery = fetchQuery.eq('employee_id', employeeId);
-
-    const { data: documentToDelete, error: fetchError } = await fetchQuery.single();
+      .eq('id', documentId)
+      .eq('employee_id', employeeId)
+      .single();
     
     if (fetchError) {
       throw fetchError;
@@ -834,9 +679,7 @@ async function handleDocumentDelete(employeeId: string | undefined, documentId: 
     }
     
     // Update employee verification status based on remaining documents
-    if (employeeId) {
-      await updateEmployeeVerificationStatus(employeeId, supabase);
-    }
+    await updateEmployeeVerificationStatus(employeeId, supabase);
     
     return new Response(
       JSON.stringify({ success: true }),
@@ -852,7 +695,7 @@ async function handleDocumentDelete(employeeId: string | undefined, documentId: 
 }
 
 // Add a helper function to update employee verification status
-async function updateEmployeeVerificationStatus(employeeId: string, supabase: SupabaseClient) {
+async function updateEmployeeVerificationStatus(employeeId, supabase) {
   try {
     // Check remaining documents for verification status
     const { data: remainingDocs } = await supabase
@@ -888,7 +731,7 @@ async function updateEmployeeVerificationStatus(employeeId: string, supabase: Su
 }
 
 // Function to handle Aadhar OTP requests
-async function handleAadharOtpRequest(body: RequestBody, corsHeaders: CorsHeaders) {
+async function handleAadharOtpRequest(body, corsHeaders) {
   const { documentNumber } = body;
   
   if (!documentNumber) {
@@ -939,7 +782,7 @@ async function handleAadharOtpRequest(body: RequestBody, corsHeaders: CorsHeader
 }
 
 // Function to handle Aadhar OTP verification
-async function handleAadharOtpVerify(body: RequestBody, supabase: SupabaseClient, corsHeaders: CorsHeaders) {
+async function handleAadharOtpVerify(body, supabase, corsHeaders) {
   const { otp, txnId, documentId } = body;
   
   if (!otp || !txnId || !documentId) {

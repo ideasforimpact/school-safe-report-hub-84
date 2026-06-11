@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,7 +51,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
   // Employee management state
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [formDataLoading, setFormDataLoading] = useState(true);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
@@ -66,52 +66,99 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [existingAssessments, setExistingAssessments] = useState<string[]>([]);
+  const [assessmentsLoading, setAssessmentsLoading] = useState(true);
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  // Single dedup ref covering both employees + names (now one combined call)
-  const lastFormDataFetchRef = useRef<{ clientId: string; time: number }>({ clientId: '', time: 0 });
-
-  // Fetch employees + existing assessment names in a single edge function call
-  const fetchFormData = useCallback(async () => {
+  // Fetch employees filtered by client_id
+  const fetchEmployees = useCallback(async () => {
     if (!clientId) {
-      setFormDataLoading(false);
+      console.log('No client ID available for fetching employees');
+      setEmployeesLoading(false);
       return;
     }
-
-    const now = Date.now();
-    if (lastFormDataFetchRef.current.clientId === clientId && now - lastFormDataFetchRef.current.time < 5_000) {
-      return;
-    }
-    lastFormDataFetchRef.current = { clientId, time: now };
 
     try {
-      setFormDataLoading(true);
-      const { data, error } = await supabase.functions.invoke('list-assessments', {
-        body: { client_id: clientId },
-        headers: { path: 'create-form' },
-      });
+      setEmployeesLoading(true);
+      console.log('Fetching employees for client:', clientId);
+
+      const { data: employeesData, error } = await supabase
+        .from('employees')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email,
+          department,
+          employee_departments:department (
+            id,
+            department_name
+          )
+        `)
+        .eq('client_id', clientId)
+        .eq('status', true)
+        .not('email', 'is', null) 
+        .order('first_name');
 
       if (error) {
-        console.error('Error fetching form data:', error);
+        console.error('Error fetching employees:', error);
         toast.error('Failed to load employees');
         return;
       }
 
-      setEmployees((data?.employees || []) as unknown as Employee[]);
-      setExistingAssessments(data?.names || []);
+      console.log('Fetched employees:', employeesData);
+      setEmployees((employeesData || []) as unknown as Employee[]);
     } catch (error) {
-      console.error('Error fetching form data:', error);
+      console.error('Error fetching employees:', error);
       toast.error('Failed to load employees');
     } finally {
-      setFormDataLoading(false);
+      setEmployeesLoading(false);
     }
   }, [clientId]);
 
   useEffect(() => {
-    fetchFormData();
-  }, [fetchFormData]);
+    fetchEmployees();
+  }, [fetchEmployees]);
+
+  // Fetch existing assessment names for duplicate validation
+  const fetchExistingAssessments = useCallback(async () => {
+    if (!clientId) {
+      setAssessmentsLoading(false);
+      return;
+    }
+
+    try {
+      setAssessmentsLoading(true);
+      console.log('Fetching existing assessments for client:', clientId);
+
+      const { data: assessmentsData, error } = await supabase
+        .from('assessments')
+        .select('name')
+        .eq('client_id', clientId);
+
+      if (error) {
+        console.error('Error fetching existing assessments:', error);
+        return;
+      }
+
+      const assessmentNames =
+        assessmentsData?.map(assessment =>
+          assessment.name.toLowerCase()
+        ) || [];
+
+      console.log('Existing assessment names:', assessmentNames);
+      setExistingAssessments(assessmentNames);
+    } catch (error) {
+      console.error('Error fetching existing assessments:', error);
+    } finally {
+      setAssessmentsLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    fetchExistingAssessments();
+  }, [fetchExistingAssessments]);
 
   // Find the selected employee
   const selectedEmployee = employees.find(
@@ -227,28 +274,60 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     setIsSubmitting(true);
 
     try {
-      const assignee = employees.find(emp => emp.id === formData.assignedTo);
-      const createdBy = employeeData?.id || user?.id;
-
-      const { data, error } = await supabase.functions.invoke('create-assessment', {
-        body: {
-          client_id: clientId,
+      const { data, error } = await supabase
+        .from('assessments')
+        .insert({
           name: formData.name,
           description: formData.description || null,
           template_id: formData.templateId,
           assigned_to: formData.assignedTo,
-          target_completion_date: formData.targetCompletionDate || null,
-          created_by: createdBy,
-          assignee: assignee && formData.assignedTo !== createdBy ? {
-            id: assignee.id,
-            first_name: assignee.first_name || '',
-            last_name: assignee.last_name || '',
-            email: assignee.email || '',
-          } : null,
-        },
-      });
+          target_completion_date:
+            formData.targetCompletionDate,
+          status: 'New',
+          client_id: clientId,
+          created_by: employeeData?.id || user?.id,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      if (
+        formData.assignedTo &&
+        formData.assignedTo !== employeeData?.id
+      ) {
+        try {
+          const { data: assignee, error: assigneeError } =
+            await supabase
+              .from('employees')
+              .select(
+                'id, email, first_name, last_name'
+              )
+              .eq('id', formData.assignedTo)
+              .single();
+
+          if (!assigneeError && assignee) {
+            await assessmentNotificationService.queueAssessmentAssignedNotification(
+              {
+                id: data.id,
+                title: data.name,
+                target_completion_date:
+                  data.target_completion_date,
+                assigned_to: data.assigned_to,
+                created_by: data.created_by,
+                client_id: data.client_id,
+              },
+              assignee,
+              employeeData
+            );
+          }
+        } catch (notificationError) {
+          console.error(
+            'Error queueing assessment assignment notification:',
+            notificationError
+          );
+        }
+      }
 
       toast.success('Assessment created successfully');
 
@@ -278,7 +357,15 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     events: '*',
     table: 'employees',
     enabled: !!clientId,
-    onPayload: fetchFormData,
+    onPayload: fetchEmployees,
+  });
+
+  useRealTimeSubHook({
+    channelName: `assessment-${clientId}`,
+    events: '*',
+    table: 'assessments',
+    enabled: !!clientId,
+    onPayload: fetchExistingAssessments,
   });
 
   if (!clientId) {
@@ -317,7 +404,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     );
   }
 
-  if (formDataLoading) {
+  if (employeesLoading) {
     return (
       <div className="space-y-6">        
         <Loader text="Loading..." />

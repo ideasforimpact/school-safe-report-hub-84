@@ -27,54 +27,117 @@ export interface EditIncidentData {
   created_by: string;
   assigned_to: string;
   peopleInvolved: any[];
-  documents: any[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 export const fetchIncidentForEdit = async (incidentId: string, clientId: string): Promise<EditIncidentData | null> => {
-  const { data, error } = await supabase.functions.invoke('fetch-incidents', {
-    body: { operation: 'get_incident_detail', incidentId, clientId }
-  });
+  try {
+    console.log('=== EDIT INCIDENT SERVICE ===');
+    console.log('fetchIncidentForEdit - Starting with params:', { incidentId, clientId });
 
-  if (error) throw new Error(`Failed to fetch incident: ${error.message}`);
-  if (!data?.success || !data?.incident) return null;
+    // Fetch incident with optimized query
+    const { data: incident, error } = await supabase
+      .from('incidents')
+      .select(`
+        id,
+        ticket_id,
+        description,
+        date,
+        people_involved,
+        created_at,
+        updated_at,
+        type_id,
+        category_id,
+        subcategory_id,
+        location_id,
+        facility_id,
+        priority_id,
+        status_id,
+        assigned_to,
+        created_by
+      `)
+      .eq('id', incidentId)
+      .eq('client_id', clientId)
+      .single();
 
-  const inc = data.incident;
-  const incidentDate = new Date(inc.date);
+    if (error) {
+      console.error('fetchIncidentForEdit - Supabase error:', error);
+      throw new Error(`Failed to fetch incident: ${error.message}`);
+    }
 
-  return {
-    id: inc.id,
-    ticket_id: inc.ticket_id,
-    type: inc.type?.name || '',
-    typeId: inc.type_id || '',
-    category: inc.category?.name || '',
-    categoryId: inc.category_id || '',
-    subcategory: inc.subcategory?.name || '',
-    subcategoryId: inc.subcategory_id || '',
-    description: inc.description || '',
-    date: incidentDate.toISOString().split('T')[0],
-    time: incidentDate.toTimeString().split(' ')[0].slice(0, 5),
-    location: inc.location?.name || '',
-    locationId: inc.location_id || '',
-    facility: inc.facility?.name || '',
-    facilityId: inc.facility_id || '',
-    priority: inc.priority?.name || '',
-    priorityId: inc.priority_id || '',
-    status: inc.status?.name || '',
-    statusId: inc.status_id || '',
-    owner: inc.assigned_to
-      ? `${inc.assigned_to.first_name} ${inc.assigned_to.last_name}`
-      : '',
-    ownerId: inc.assigned_to?.id || '',
-    reportedBy: inc.created_by
-      ? `${inc.created_by.first_name} ${inc.created_by.last_name}`
-      : '',
-    created_by: inc.created_by?.id || '',
-    assigned_to: inc.assigned_to?.id || '',
-    peopleInvolved: Array.isArray(inc.people_involved) ? inc.people_involved : [],
-    documents: Array.isArray(inc.documents) ? inc.documents : [],
-    createdAt: new Date(inc.created_at),
-    updatedAt: new Date(inc.updated_at),
-  };
+    if (!incident) {
+      console.log('fetchIncidentForEdit - No incident found with ID:', incidentId);
+      return null;
+    }
+
+    // Fetch all related data in parallel for better performance
+    const [
+      reportType,
+      category,
+      subcategory,
+      location,
+      facility,
+      priority,
+      status,
+      createdEmployee,
+      assignedEmployee
+    ] = await Promise.all([
+      incident.type_id ? supabase.from('incident_report_types').select('id, name').eq('id', incident.type_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.category_id ? supabase.from('incident_categories').select('id, name').eq('id', incident.category_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.subcategory_id ? supabase.from('incident_subcategories').select('id, name').eq('id', incident.subcategory_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.location_id ? supabase.from('campuses').select('id, name').eq('id', incident.location_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.facility_id ? supabase.from('facilities').select('id, name').eq('id', incident.facility_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.priority_id ? supabase.from('incident_priorities').select('id, name').eq('id', incident.priority_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.status_id ? supabase.from('incident_status').select('id, name').eq('id', incident.status_id).maybeSingle() : Promise.resolve({ data: null }),
+      supabase.from('employees').select('first_name, last_name').eq('id', incident.created_by).maybeSingle(),
+      incident.assigned_to ? supabase.from('employees').select('first_name, last_name').eq('id', incident.assigned_to).maybeSingle() : Promise.resolve({ data: null })
+    ]);
+
+    // Parse the date to get date and time
+    const incidentDate = new Date(incident.date);
+    const dateString = incidentDate.toISOString().split('T')[0];
+    const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
+
+    // Transform the data for the edit form
+    const editData: EditIncidentData = {
+      id: incident.id,
+      ticket_id: incident.ticket_id,
+      type: reportType.data?.name || '',
+      typeId: incident.type_id || '',
+      category: category.data?.name || '',
+      categoryId: incident.category_id || '',
+      subcategory: subcategory.data?.name || '',
+      subcategoryId: incident.subcategory_id || '',
+      description: incident.description || '',
+      date: dateString,
+      time: timeString,
+      location: location.data?.name || '',
+      locationId: incident.location_id || '',
+      facility: facility.data?.name || '',
+      facilityId: incident.facility_id || '',
+      priority: priority.data?.name || '',
+      priorityId: incident.priority_id || '',
+      status: status.data?.name || '',
+      statusId: incident.status_id || '',
+      owner: assignedEmployee.data ? 
+        `${assignedEmployee.data.first_name} ${assignedEmployee.data.last_name}` : '',
+      ownerId: incident.assigned_to || '',
+      reportedBy: createdEmployee.data ? 
+        `${createdEmployee.data.first_name} ${createdEmployee.data.last_name}` : '',
+      created_by: incident.created_by || '',
+      assigned_to: incident.assigned_to || '',
+      peopleInvolved: Array.isArray(incident.people_involved) ? incident.people_involved : [],
+      createdAt: new Date(incident.created_at),
+      updatedAt: new Date(incident.updated_at)
+    };
+
+    console.log('fetchIncidentForEdit - Successfully transformed edit data');
+    console.log('=== END EDIT INCIDENT SERVICE ===');
+    return editData;
+
+  } catch (error) {
+    console.error('fetchIncidentForEdit - Service error:', error);
+    throw error;
+  }
 };

@@ -34,7 +34,8 @@ import {
 } from '@/services/auth/userManagementService';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
-import { getModuleAccessForUser } from '@/services/employee/employeeModuleService';
+import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
+import { getEmployeeModuleAccessItems, getModuleAccessForUser, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
@@ -83,7 +84,6 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
   employeeId?: string;
   employeeType?: EmployeeType; 
-  departmentId?: string;
   department?: DepartmentType;
   joiningDate?: string;
   documents?: Array<{
@@ -134,39 +134,6 @@ interface UserManagementProps {
 type DepartmentRow = {
   id: string;
   department_name: string;
-};
-
-// De-duplicate identical edge invocations (helps React StrictMode double-effect in dev).
-const employeeListInflight = new Map<string, Promise<any>>();
-const employeeListRecent = new Map<string, { at: number; value: any }>();
-const EMPLOYEE_LIST_DEDUPE_MS = 1200;
-const invokeEmployeeList = async (payload: Record<string, any>) => {
-  const key = JSON.stringify(payload);
-  const recent = employeeListRecent.get(key);
-  const now = Date.now();
-  if (recent && now - recent.at < EMPLOYEE_LIST_DEDUPE_MS) {
-    return recent.value;
-  }
-
-  const existing = employeeListInflight.get(key);
-  if (existing) {
-    return existing;
-  }
-
-  const request = supabase.functions
-    .invoke('employee-management', {
-      body: JSON.stringify(payload),
-    })
-    .then((res) => {
-      employeeListRecent.set(key, { at: Date.now(), value: res });
-      return res;
-    })
-    .finally(() => {
-      employeeListInflight.delete(key);
-    });
-
-  employeeListInflight.set(key, request);
-  return request;
 };
 
 // Main UserManagement component
@@ -223,6 +190,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   // Initialize loading to true - will be set to false after data is loaded
   const [isLoading, setIsLoading] = useState(true);
   const [employeeUsers, setEmployeeUsers] = useState<EmployeeUser[]>([]);
+  const [cpdDomains, setCpdDomains] = useState<{ id: string; name: string }[]>([]);
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -234,10 +202,6 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const clientId = state.employeeData?.clientId || user?.clientId;
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [departmentOptions, setDepartmentOptions] = useState<DepartmentRow[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
   // Log the clientId for debugging
   useEffect(() => {
@@ -245,30 +209,29 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     console.log("UserManagement - Current user data:", user);
     console.log("UserManagement - ClientId being used:", clientId);
   }, [employeeData, user, clientId]);
-  useEffect(() => {
-    if (!employeeUsers.length) {
-      setDepartmentOptions([]);
-      return;
+  const fetchDepartments = async () => {
+    if (!clientId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('employee_departments' as any)
+        .select('id, department_name')
+        .order('department_name', { ascending: true });
+      
+      if (error) throw error;
+      
+      setDepartmentOptions(data as any);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      toast.error('Failed to load departments');
     }
+  };
 
-    const seen = new Set<string>();
-    const nextOptions: DepartmentRow[] = [];
-
-    employeeUsers.forEach((employee) => {
-      const rawDepartment = (employee.department || '').trim();
-      const rawDepartmentId = (employee.departmentId || '').trim();
-      if (!rawDepartment) return;
-      const key = rawDepartmentId || rawDepartment.toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      nextOptions.push({
-        id: rawDepartmentId || rawDepartment,
-        department_name: rawDepartment,
-      });
-    });
-
-    setDepartmentOptions(nextOptions.sort((a, b) => a.department_name.localeCompare(b.department_name)));
-  }, [employeeUsers]);
+  useEffect(() => {
+    if (clientId) {
+      fetchDepartments();
+    }
+  }, [clientId]);
   // Default form data for the user forms - Using only moduleAccessPayload
   const [formData, setFormData] = useState<{
     firstName: string;
@@ -360,30 +323,62 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     }
   }, [clientId]);
 
-  // Debounce search so we don't request the API on every keypress.
+  // Fetch employees from Supabase and map them to User format
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery.trim());
-    }, 300);
+    // Only fetch if we have a clientId
+    if (clientId) {
+      fetchEmployeesList();
+    }
+  }, [clientId]);
 
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [searchQuery]);
+  // Filter users based on search and filters
+  const filteredUsers = React.useMemo(() => {
+    try {
+      const normalizeToDate = (value?: string) => {
+        if (!value) return '';
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return '';
+        return date.toISOString().split('T')[0];
+      };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery, statusFilter, departmentFilter, joiningDateFrom, joiningDateTo]);
+      return employeeUsers.filter(user => {
+        // Search filter
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch = 
+          user.firstName?.toLowerCase().includes(searchLower) ||
+          user.lastName?.toLowerCase().includes(searchLower) ||
+          user.email?.toLowerCase().includes(searchLower) ||
+          user.employeeId?.toLowerCase().includes(searchLower) ||
+          `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchLower);
 
-  // Fetch employees from Supabase with server-side filters and pagination
-  useEffect(() => {
-    if (!clientId) return;
-    const ac = new AbortController();
-    fetchEmployeesList(currentPage, ac.signal);
-    return () => ac.abort();
-  }, [clientId, currentPage, debouncedSearchQuery, statusFilter, departmentFilter, joiningDateFrom, joiningDateTo]);
+        // Status filter
+        const matchesStatus = 
+          statusFilter === 'all' || 
+          (statusFilter === 'active' && user.isActive) ||
+          (statusFilter === 'inactive' && !user.isActive);
 
-  const fetchEmployeesList = async (page: number = 1, signal?: AbortSignal) => {
+        const selectedDept = departmentOptions.find(
+          d => d.id === departmentFilter
+        );
+        
+        const matchesDepartment =
+          departmentFilter === 'all' ||
+          user.department === selectedDept?.department_name;
+
+        const normalizedJoiningDate = normalizeToDate(user.joiningDate);
+        const matchesJoiningDateFrom = !joiningDateFrom || (normalizedJoiningDate !== '' && normalizedJoiningDate >= joiningDateFrom);
+        const matchesJoiningDateTo = !joiningDateTo || (normalizedJoiningDate !== '' && normalizedJoiningDate <= joiningDateTo);
+        const matchesJoiningDate = matchesJoiningDateFrom && matchesJoiningDateTo;
+
+        return matchesSearch && matchesStatus && matchesDepartment && matchesJoiningDate;
+      });
+    } catch (error) {
+      console.error('Error filtering users:', error);
+      return employeeUsers; // Return all users if filtering fails
+    }
+  }, [employeeUsers, searchQuery, statusFilter, departmentFilter, joiningDateFrom, joiningDateTo]);
+
+  const fetchEmployeesList = async () => {
     // Add clientId restriction check
     if (!clientId) {
       console.warn("Cannot fetch employees: No clientId available");
@@ -394,47 +389,66 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
     try {
       setIsLoading(true);
-      const { data: paginatedRes, error: paginatedError } = await invokeEmployeeList({
-        operation: 'list',
-        clientId,
-        page,
-        pageSize,
-        filters: {
-          search: debouncedSearchQuery,
-          status: statusFilter as 'all' | 'active' | 'inactive',
-          departmentId: departmentFilter,
-          joiningDateFrom,
-          joiningDateTo,
-        },
+      // Fetch CPD domains for tabs and cpd_entries for attaching to users
+      const [employeeData, domainsRes, entriesRes] = await Promise.all([
+        getAllEmployeesFromApi(clientId),
+        supabase.from('cpd_domain').select('id, name').eq('active', true).order('name'),
+        supabase
+          .from('cpd_entries')
+          .select('id, employee_id, title, domain_id, hour, captured_date, category, cpd_learning')
+          .eq('client_id', clientId)
+          .eq('active', true),
+      ]);
+
+      const domainsList = (domainsRes.data ?? []) as { id: string; name: string }[];
+      if (domainsList.length) {
+        setCpdDomains(domainsList);
+      } else {
+        setCpdDomains([]);
+      }
+
+      const domainNameById: Record<string, string> = {};
+      domainsList.forEach((d) => {
+        domainNameById[d.id] = d.name;
       });
 
-      if (paginatedError) {
-        throw paginatedError;
-      }
-
-      if (signal?.aborted) {
-        return;
-      }
-
-      const employeeData = (paginatedRes?.employees || []) as any[];
-      setTotalUsers(Number(paginatedRes?.total || 0));
+      const allCpdEntries = (entriesRes.data ?? []).map((row: any) => ({
+        id: row.id,
+        title: row.title ?? '',
+        domain_id: row.domain_id ?? '',
+        domain_name: domainNameById[row.domain_id] ?? '',
+        hour: row.hour ?? null,
+        captured_date: row.captured_date ?? null,
+        category: row.category ?? null,
+        cpd_learning: row.cpd_learning ?? null,
+        employee_id: row.employee_id,
+      }));
 
       console.log(employeeData, "employeeData124");
 
       if (employeeData && employeeData.length > 0) {
-        const processedUsers = employeeData.map((employee) => {
+        // Process each employee to get their module access items and CPD entries
+        const processedUsers = await Promise.all(employeeData.map(async employee => {
+          const moduleAccessItems = await getModuleAccessForUser({
+            id: employee.id,
+            isSuperAdmin: employee.isSuperAdmin,
+            clientId: employee.clientId
+          });
+          const cpd_entries = allCpdEntries
+            .filter((e: any) => e.employee_id === employee.id)
+            .map(({ employee_id: _, ...rest }: any) => rest);
           return {
             id: employee.id,
-            firstName: employee.first_name,
-            lastName: employee.last_name,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
             email: employee.email,
-            phone: employee.phone,
-            designation: employee.designation,
-            employeeId: employee.employee_id,
-            employeeType: employee.employee_type?.type_name as any,
-            departmentId: employee.department?.id,
-            department: (employee.department?.department_name || employee.department) as any,
-            joiningDate: employee.joining_date,
+            phone: (employee as any).phone,
+            designation: (employee as any).designation,
+            documents: (employee as any).profileDocuments || [],
+            employeeId: employee.employeeId,
+            employeeType: employee.employeeType as any,
+            department: employee.department as any,
+            joiningDate: employee.joiningDate,
             isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
@@ -446,7 +460,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             cpd_entries,
             role: 'user' as const
           };
-        });
+        }));
 
         setEmployeeUsers(processedUsers);
         console.log("Fetched employees:", processedUsers);
@@ -455,16 +469,11 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         setEmployeeUsers([]);
       }
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
-      }
       console.error("Error fetching employees:", error);
       toast.error("Failed to fetch employee data");
       setEmployeeUsers([]);
     } finally {
-      if (!signal?.aborted) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
   };
 
@@ -991,7 +1000,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => fetchEmployeesList(currentPage)}
+            onClick={fetchEmployeesList}
             disabled={isLoading}
             title="Refresh employee list"
           >
@@ -1089,7 +1098,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           {/* User count after search and filters */}
           <div className="mb-6">
             <p className="text-sm text-gray-600">
-              Showing {employeeUsers.length} of {totalUsers} users
+              Showing {filteredUsers.length} of {employeeUsers.length} users
             </p>
           </div>
           
@@ -1097,27 +1106,17 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             <Loader text="Loading employees..." />
           ) : (
             <div>
-              {employeeUsers && employeeUsers.length > 0 ? (
+              {filteredUsers && filteredUsers.length > 0 ? (
                 <UserList 
-                  users={employeeUsers}
-                  onEditClick={async (user) => {
+                  users={filteredUsers}
+                  onEditClick={(user) => {
+                    if (isReadOnlySwitchedContext) {
+                      return;
+                    }
                     // Use latest user from list by id so we always show fresh data (e.g. after a save)
                     const latestUser = employeeUsers.find((u: any) => u.id === user.id) ?? user;
                     const cpdValue = (latestUser as any).is_cpd_involved ?? (latestUser as any).isCpdInvolved ?? false;
                     setCurrentUser(latestUser);
-                    let moduleAccessPayload = latestUser.moduleAccessPayload || [];
-                    if (!moduleAccessPayload.length) {
-                      try {
-                        moduleAccessPayload = await getModuleAccessForUser({
-                          id: latestUser.id,
-                          isSuperAdmin: latestUser.isSuperAdmin,
-                          clientId: latestUser.clientId
-                        });
-                      } catch (error) {
-                        console.error("Failed to load module access for edit:", error);
-                        toast.error("Failed to load module permissions");
-                      }
-                    }
 
                     // Format joiningDate to YYYY-MM-DD format for date input
                     let formattedJoiningDate = latestUser.joiningDate || '';
@@ -1154,7 +1153,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       department: latestUser.department,
                       joiningDate: formattedJoiningDate,
                       clientId: latestUser.clientId || clientId,
-                      moduleAccessPayload,
+                      moduleAccessPayload: latestUser.moduleAccessPayload || [],
                       is_cpd_involved: cpdValue,
                       personalDetails: latestUser.personalDetails || {
                         residenceAddress: '',
@@ -1204,16 +1203,10 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                   hasAdminAccess={hasUserManagementAdminAccess}
                   canEditUsers={!isReadOnlySwitchedContext}
                   onRefresh={refreshEmployeesList}
-                  currentPage={currentPage}
-                  totalItems={totalUsers}
-                  itemsPerPage={pageSize}
-                  onPageChange={setCurrentPage}
                 />
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  {searchQuery || statusFilter !== 'all' || departmentFilter !== 'all' || joiningDateFrom || joiningDateTo
-                    ? 'No users found matching your filters.'
-                    : 'No users found.'}
+                  {searchQuery || statusFilter !== 'all' ? 'No users found matching your filters.' : 'No users found.'}
                 </div>
               )}
             </div>

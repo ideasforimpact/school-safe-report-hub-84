@@ -70,21 +70,22 @@ export function NewConsultationDialog({
     return matches ? matches.length : 0;
   };
   useEffect(() => {
-    if (!open || !clientId) return;
+    if (!open) return;
     let cancelled = false;
     setLoadingOptions(true);
     const load = async () => {
-      const { data, error } = await supabase.functions.invoke('fetch-consultation-modes', {
-        method: 'POST',
-        body: { clientId },
-      });
+      const { data, error } = await (supabase as any)
+        .from('consultation_mode')
+        .select('id, name')
+        .eq('active', true)
+        .order('name');
       if (cancelled) return;
       setLoadingOptions(false);
-      if (error || data?.error) {
+      if (error) {
         toast.error('Failed to load consultation modes');
         return;
       }
-      const list: { id: string; name: string }[] = Array.isArray(data?.data) ? data.data : [];
+      const list: { id: string; name: string }[] = Array.isArray(data) ? data : [];
       setModeOptions(list);
       if (list.length > 0) {
         const inPerson = list.find((r) => r.name === 'In-person');
@@ -93,7 +94,7 @@ export function NewConsultationDialog({
     };
     load();
     return () => { cancelled = true; };
-  }, [open, clientId]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

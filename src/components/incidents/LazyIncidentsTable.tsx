@@ -54,12 +54,31 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   const navigate = useNavigate();
   const { checkPermissions } = useIncidentPermissions();
   const { user } = useAuth();
+  const [policyTitles, setPolicyTitles] = React.useState<string[]>([]);
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiPayload, setAiPayload] = React.useState<any | null>(null);
   const { state } = useEmployeeStore();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
     
   const currentUser = getCurrentUser(state);
+  
+  React.useEffect(() => {
+    const loadPolicyDocs = async () => {
+      try {
+        if (!user?.clientId) return;
+        // Use edge function for client resources (returns both organisational/global in our setup)
+        const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
+          body: { action: 'fetch_resources', data: { client_id: user.clientId } }
+        });
+        if (error) return;
+        const titles = (data?.resources || []).map((r: any) => r?.title).filter(Boolean);
+        setPolicyTitles(titles);
+      } catch (_) {
+        // no-op; keep empty
+      }
+    };
+    loadPolicyDocs();
+  }, [user?.clientId]);
 
   const handleRowClick = (incidentId: string) => {
     navigate(`/incident/${incidentId}`);
@@ -119,21 +138,9 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
     return text.length > 10 ? `${text.slice(0, 10)}...` : text;
   };
 
-  const logIncidentForAi = async (e: React.MouseEvent, incident: IncidentRecord) => {
+  const logIncidentForAi = (e: React.MouseEvent, incident: IncidentRecord) => {
     e.stopPropagation();
-    let policyDocs: string[] = [];
-    try {
-      if (user?.clientId) {
-        const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
-          body: { action: 'fetch_resources', data: { client_id: user.clientId } }
-        });
-        if (!error) {
-          policyDocs = (data?.resources || []).map((r: any) => r?.title).filter(Boolean);
-        }
-      }
-    } catch (_) {
-      // no-op; proceed without policy docs
-    }
+    const policyDocs = policyTitles;
     const payload: any = {
       id: incident.id,
       category: incident.category,

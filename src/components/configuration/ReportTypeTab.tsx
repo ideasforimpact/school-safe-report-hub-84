@@ -1,5 +1,5 @@
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil, Trash } from 'lucide-react';
 import { EditDialog } from './EditDialog';
@@ -15,8 +15,11 @@ import { Badge } from '@/components/ui/badge';
 import { StatusSwitch } from '@/components/ui/status-switch';
 import { toast } from 'sonner';
 import { reportTypeService } from '@/services/incident/reportTypeService';
+import { useReportTypes } from '@/hooks/useReportTypes';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 // Validation function for report type names (no special characters, max 25 chars)
@@ -42,11 +45,6 @@ interface ReportTypeTabProps {
 }
 
 export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
-  reportTypes,
-  addReportType,
-  updateReportType,
-  deleteReportType,
-  toggleReportTypeStatus,
   canCreate = true,
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -81,31 +79,113 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     error: null,
   });
   
+  // Get client ID from auth context
   const { employeeData } = useAuth();
-  const loading = false;
+  
+  // Use the hook to get report types with RLS - no manual client validation needed
+  const { reportTypes, loading, fetchReportTypes } = useReportTypes();
+  const [reportTypeReferences, setReportTypeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
+
+  // Pre-load reference info so we can disable delete button for linked report types
+  useEffect(() => {
+    const clientId = employeeData?.clientId;
+    if (!clientId || reportTypes.length === 0) {
+      setReportTypeReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          reportTypes.map(async (type) => {
+            const refInfo = await incidentReferenceService.checkReportTypeReferences(type.id, clientId);
+            return { id: type.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setReportTypeReferences(map);
+      } catch (error) {
+        console.error('Error preloading report type reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [reportTypes, employeeData]);
 
   const handleAddReportType = async () => {
-    if (!newTypeName.trim()) { setError('Name is required'); return; }
-    if (!isValidReportTypeName(newTypeName.trim())) { setError('Name must be alphanumeric with spaces only, maximum 25 characters'); return; }
+    if (!newTypeName.trim()) {
+      setError('Name is required');
+      return;
+    }
+
+    if (!isValidReportTypeName(newTypeName.trim())) {
+      setError('Name must be alphanumeric with spaces only, maximum 25 characters');
+      return;
+    }
+
     try {
-      setError(null); setIsSaving(true);
-      await addReportType(newTypeName.trim(), newTypeDescription.trim());
-      setNewTypeName(''); setNewTypeDescription(''); setIsAddDialogOpen(false);
+      setError(null);
+      setIsSaving(true);
+      // Pass client ID from auth context
+      await reportTypeService.addReportType(
+        newTypeName.trim(), 
+        newTypeDescription.trim(), 
+        employeeData?.clientId
+      );
+      setNewTypeName('');
+      setNewTypeDescription('');
+      setIsAddDialogOpen(false);
+      // Refresh data immediately
+      await fetchReportTypes();
+      toast.success('Report type added successfully');
     } catch (error: any) {
+      console.error('Error adding report type:', error);
       setError(error.message || 'Failed to add report type');
-    } finally { setIsSaving(false); }
+      // Don't close the dialog when there's an error - keep it open so user can see the error message
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEditReportType = async () => {
-    if (!selectedType || !editTypeName.trim()) { setError('Name is required'); return; }
-    if (!isValidReportTypeName(editTypeName.trim())) { setError('Name must be alphanumeric with spaces only, maximum 25 characters'); return; }
+    if (!selectedType || !editTypeName.trim()) {
+      setError('Name is required');
+      return;
+    }
+
+    if (!isValidReportTypeName(editTypeName.trim())) {
+      setError('Name must be alphanumeric with spaces only, maximum 25 characters');
+      return;
+    }
+
     try {
-      setError(null); setIsSaving(true);
-      await updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
-      setIsEditDialogOpen(false); setSelectedType(null);
+      setError(null);
+      setIsSaving(true);
+      await reportTypeService.updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
+      setIsEditDialogOpen(false);
+      setSelectedType(null);
+      // Refresh data immediately
+      await fetchReportTypes();
+      toast.success('Report type updated successfully');
     } catch (error: any) {
+      console.error('Error updating report type:', error);
       setError(error.message || 'Failed to update report type');
-    } finally { setIsSaving(false); }
+      // Don't close the dialog when there's an error - keep it open so user can see the error message
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEditClick = (type: ReportType) => {
@@ -115,52 +195,92 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     setIsEditDialogOpen(true);
   };
 
-  const handleToggleStatus = (type: ReportType) => {
+  const handleToggleStatus = async (type: ReportType) => {
+    // Check if report type is linked to incidents - prevent deactivation if linked
+    const refInfo = reportTypeReferences[type.id];
+    if (refInfo?.hasReferences && type.is_active) {
+      const message = refInfo?.message?.replace('Cannot delete', 'Cannot deactivate') ||
+        `This report type is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deactivated.`;
+      toast.error(message);
+      return;
+    }
+
     const newStatus = !type.is_active;
     const action = newStatus ? 'activate' as const : 'deactivate' as const;
+    
     setConfirmationDialog({
       open: true,
       title: `${action === 'activate' ? 'Activate' : 'Deactivate'} Report Type`,
-      description: `Please confirm that you want to ${action} this report type.`,
-      itemName: type.name, action,
+      description: `Please confirm that you want to ${action} this report type. This action will immediately ${action} the report type and may affect existing incidents.`,
+      itemName: type.name,
+      action,
       onConfirm: async () => {
         try {
           setConfirmationDialog(prev => ({ ...prev, isLoading: true, error: null }));
-          await toggleReportTypeStatus(type.id, newStatus);
+          await reportTypeService.toggleReportTypeStatus(type.id, newStatus);
+          // Refresh data immediately
+          await fetchReportTypes();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success(`Report type ${newStatus ? 'activated' : 'deactivated'} successfully`);
         } catch (error: any) {
-          setConfirmationDialog(prev => ({ ...prev, error: error?.message || 'Failed', isLoading: false }));
+          console.error('Error toggling report type status:', error);
+          const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} report type`;
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
         }
       },
-      error: null, isLoading: false,
+      error: null,
+      isLoading: false,
     });
   };
 
-  const handleDeleteReportType = (id: string) => {
-    const typeName = reportTypes.find(t => t.id === id)?.name || 'this report type';
+  const handleDeleteReportType = async (id: string) => {
+    // Find the report type to get its name for the confirmation message
+    const reportType = reportTypes.find(type => type.id === id);
+    const typeName = reportType?.name || 'this report type';
+    
     setConfirmationDialog({
       open: true,
       title: 'Delete Report Type',
-      description: 'This action cannot be recovered.',
-      itemName: typeName, action: 'delete',
+      description: 'Please confirm that you want to proceed with this deletion. This action will immediately remove the report type and cannot be recovered.',
+      itemName: typeName,
+      action: 'delete',
       onConfirm: async () => {
         try {
           setConfirmationDialog(prev => ({ ...prev, isLoading: true, error: null }));
-          await deleteReportType(id);
+          await reportTypeService.deleteReportType(id);
+          // Refresh data immediately
+          await fetchReportTypes();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success('Report type deleted successfully');
         } catch (error: any) {
-          setConfirmationDialog(prev => ({ ...prev, error: error?.message || 'Failed to delete', isLoading: false }));
+          console.error('Error deleting report type:', error);
+          const errorMessage = error?.message || 'Failed to delete report type';
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
         }
       },
-      error: null, isLoading: false,
+      error: null,
+      isLoading: false,
     });
   };
 
+  // Filter report types based on status
   const filteredReportTypes = reportTypes.filter(type => {
     if (statusFilter === 'all') return true;
     if (statusFilter === 'active') return type.is_active;
     if (statusFilter === 'inactive') return !type.is_active;
     return true;
+  });
+
+  const refreshReportTypes = useCallback(() => {
+    fetchReportTypes();
+  }, [fetchReportTypes]);
+
+  useRealTimeSubHook({
+    channelName: `incident-report-types-${employeeData?.clientId}`,
+    table: 'incident_report_types',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: refreshReportTypes,
   });
 
 
@@ -241,14 +361,52 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                 <TableCell title={type.description || '-'}>{type.description || '-'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {canCreate && (
-                    <StatusSwitch
+                    {canCreate && (() => {
+                      const refInfo = reportTypeReferences[type.id];
+                      const isLinked = refInfo?.hasReferences;
+
+                      if (isLinked) {
+                        const message =
+                          refInfo?.message?.replace('Cannot delete', 'Cannot deactivate') ||
+                          `This report type is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deactivated.`;
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <StatusSwitch 
+                                    variant="status"
+                                    checked={type.is_active} 
+                                    disabled={true}
+                                    aria-label={`${type.is_active ? 'Deactivate' : 'Activate'} ${type.name}`}
+                                  />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="left" 
+                                align="center" 
+                                sideOffset={8} 
+                                className="max-w-xs whitespace-normal text-left"
+                              >
+                                <p className="text-xs leading-snug text-left">
+                                  {message}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      }
+
+                      return (
+                    <StatusSwitch 
                       variant="status"
-                      checked={type.is_active}
+                      checked={type.is_active} 
                       onCheckedChange={() => handleToggleStatus(type)}
                       aria-label={`${type.is_active ? 'Deactivate' : 'Activate'} ${type.name}`}
                     />
-                    )}
+                      );
+                    })()}
                     <Badge variant={type.is_active ? "success" : "destructive"}>
                       {type.is_active ? "Active" : "Inactive"}
                     </Badge>
@@ -265,15 +423,58 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                       <Pencil className="h-4 w-4" />
                       <span className="sr-only">Edit</span>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteReportType(type.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash className="h-4 w-4" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
+                    {(() => {
+                      const refInfo = reportTypeReferences[type.id];
+                      const isLinked = refInfo?.hasReferences;
+
+                      if (isLinked) {
+                        const message =
+                          refInfo?.message ||
+                          `This report type is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    aria-disabled="true"
+                                    className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                    <span className="sr-only">Delete</span>
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="left" 
+                                align="center" 
+                                sideOffset={8} 
+                                className="max-w-xs whitespace-normal text-left"
+                              >
+                                <p className="text-xs leading-snug text-left">
+                                  {message}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      }
+
+                      return (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleDeleteReportType(type.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash className="h-4 w-4" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      );
+                    })()}
                   </div>
                   )}
                 </TableCell>

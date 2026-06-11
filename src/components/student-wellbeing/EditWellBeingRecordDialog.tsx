@@ -116,21 +116,22 @@ export function EditWellBeingRecordDialog({
   }, [open, record]);
  
   useEffect(() => {
-    if (!open || !clientId) return;
+    if (!open) return;
     let cancelled = false;
     setLoadingOptions(true);
     const load = async () => {
-      const { data, error } = await supabase.functions.invoke('fetch-general-concerns', {
-        method: 'POST',
-        body: { clientId },
-      });
+      const { data, error } = await (supabase as any)
+        .from('general_concern')
+        .select('id, name')
+        .eq('active', true)
+        .order('name');
       if (cancelled) return;
       setLoadingOptions(false);
-      if (error || data?.error) {
+      if (error) {
         toast.error('Failed to load concern types');
         return;
       }
-      const list: { id: string; name: string }[] = Array.isArray(data?.data) ? data.data : [];
+      const list: { id: string; name: string }[] = Array.isArray(data) ? data : [];
       setGeneralConcernOptions(list);
       if (list.length > 0 && record && !record.type_of_concern_id) {
         const general = list.find((r) => r.name === 'General Concern');
@@ -139,8 +140,8 @@ export function EditWellBeingRecordDialog({
     };
     load();
     return () => { cancelled = true; };
-  }, [open, clientId]);
-
+  }, [open, record]);
+ 
   const validate = (): boolean => {
     const next: Record<string, string> = {};
     if (!student) next.student = 'Please select a student';

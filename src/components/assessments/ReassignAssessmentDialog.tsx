@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -39,7 +39,6 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchingEmployees, setFetchingEmployees] = useState(false);
-  const lastFetchRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
 
   // Fetch employees when dialog opens
   useEffect(() => {
@@ -50,17 +49,16 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
 
   const fetchEmployees = async () => {
     if (!clientId) return;
-    const now = Date.now();
-    const key = `${open}:${clientId}`;
-    if (lastFetchRef.current.key === key && now - lastFetchRef.current.time < 2000) return;
-    lastFetchRef.current = { key, time: now };
 
     try {
       setFetchingEmployees(true);
-      const { data, error } = await supabase.functions.invoke('list-assessments', {
-        body: { client_id: clientId },
-        headers: { path: 'employees' },
-      });
+      const { data: employeesData, error } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, email')
+        .eq('client_id', clientId)
+        .eq('status', true)
+        .not('email', 'is', null) 
+        .order('first_name');
 
       if (error) {
         console.error('Error fetching employees:', error);
@@ -68,7 +66,10 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
         return;
       }
 
-      setEmployees((data?.employees || []) as Employee[]);
+      const employeesWithEmail = (employeesData || []).filter(
+        (employee) => typeof employee.email === 'string' && employee.email.trim() !== ''
+      );
+      setEmployees(employeesWithEmail);
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to fetch employees');
@@ -91,21 +92,13 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
     try {
       setLoading(true);
 
-      const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
-
-      const { error } = await supabase.functions.invoke('reassign-assessment', {
-        body: {
-          assessment_id: assessmentId,
-          client_id: clientId,
+      const { error } = await supabase
+        .from('assessments')
+        .update({ 
           assigned_to: selectedEmployeeId,
-          assignee: selectedEmployee ? {
-            id: selectedEmployee.id,
-            first_name: selectedEmployee.first_name,
-            last_name: selectedEmployee.last_name,
-            email: selectedEmployee.email,
-          } : undefined,
-        },
-      });
+          updated_at: new Date().toISOString()
+        })
+        .eq('assessment_id', assessmentId);
 
       if (error) {
         console.error('Error reassigning assessment:', error);
@@ -113,8 +106,9 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
         return;
       }
 
+      const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
       toast.success(`Assessment reassigned to ${selectedEmployee?.first_name} ${selectedEmployee?.last_name}`);
-
+      
       onReassignSuccess();
       onOpenChange(false);
       setSelectedEmployeeId('');

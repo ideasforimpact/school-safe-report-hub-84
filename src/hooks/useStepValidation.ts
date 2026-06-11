@@ -1,18 +1,16 @@
 
 import { useMemo } from 'react';
 import { ClientFormData } from './useClientManagement';
-import {
-  isValidEmail,
-  isValidClientName,
-  isValidContactPerson,
-  isValidClientFormPhone,
-} from '@/services/employee/utils/employeeValidationUtils';
+import { isValidEmail } from '@/services/employee/utils/employeeValidationUtils';
+import { isValidClientName, isValidContactPerson, isValidPhone } from '@/components/backoffice/tabs/BasicInfoTab';
 
 export const useStepValidation = (formData: ClientFormData) => {
-  const hasValidClientName = isValidClientName(formData.name);
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const hasValidClientName =isValidClientName(formData.name);
   const hasValidContactPerson =isValidContactPerson(formData.contactPerson);
 
-  const hasValidPhone = isValidClientFormPhone(formData.phone);
+  const hasValidPhone =isValidPhone(formData.phone);
   const validateStep1 = useMemo(() => {
   const hasRequired =
     !!formData.email &&
@@ -23,8 +21,9 @@ export const useStepValidation = (formData: ClientFormData) => {
     !!formData.institutionType;
 
     const hasValidSuperAdminEmail =
-      isValidEmail(formData.superAdminEmail) &&
-      formData.superAdminEmailExists === false;
+    isValidEmail(formData.superAdminEmail) &&
+    formData.superAdminEmailExists === false && 
+    isValidClientName; 
 
   const hasValidHeadOfficeMapping =
     formData.isHeadOffice !== true ||

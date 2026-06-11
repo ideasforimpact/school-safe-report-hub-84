@@ -1,53 +1,25 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchIncidentWithRelationsOptimized } from '@/services/incident/optimizedIncidentDetailService';
 import { mapIncidentToFormData, IncidentDetail } from '@/services/incident/incidentDetailService';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/auth/useAuth';
-
-// Module-level in-flight dedup: prevents concurrent fetches for the same incident+client
-const detailInflight = new Map<string, Promise<void>>();
 
 export const useIncidentDetail = (incidentId?: string) => {
-  const { employeeData } = useAuth();
   const [incident, setIncident] = useState<IncidentDetail | null>(null);
-  const [contributingFactors, setContributingFactors] = useState<Array<{ id: string; name: string; weight: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadIncident = useCallback(async (id: string, forceRefresh = false) => {
-    if (!employeeData?.clientId) return;
-
-    const key = `${id}_${employeeData.clientId}`;
-
-    // On forced refresh (reload), clear any stale in-flight so we fetch fresh
-    if (forceRefresh) detailInflight.delete(key);
-
-    // If already in-flight for the same key, skip — state will be set by the active request
-    if (detailInflight.has(key)) return;
-
+  const loadIncident = useCallback(async (id: string) => {
     setIsLoading(true);
     setError(null);
+    // Clear previous incident while fetching to avoid stale detail data across client switches.
     setIncident(null);
 
-    let resolveDone!: () => void;
-    const done = new Promise<void>(r => { resolveDone = r; });
-    detailInflight.set(key, done);
-
     try {
-      const { data: resData, error: invokeError } = await supabase.functions.invoke('fetch-incidents', {
-        body: {
-          operation: 'get_incident_detail',
-          incidentId: id,
-          clientId: employeeData.clientId
-        }
-      });
-
-      if (invokeError) throw invokeError;
-
-      if (resData?.success && resData?.incident) {
-        setIncident(resData.incident);
-        setContributingFactors(resData.contributingFactors || []);
+      const incidentData = await fetchIncidentWithRelationsOptimized(id);
+      
+      if (incidentData) {
+        setIncident(incidentData);
       } else {
         setIncident(null);
         setError('Incident not found');
@@ -57,7 +29,7 @@ export const useIncidentDetail = (incidentId?: string) => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load incident';
       setIncident(null);
       setError(errorMessage);
-
+      
       if (errorMessage.includes('timeout')) {
         toast.error('Request timed out. Please try again or contact support if the issue persists.');
       } else {
@@ -65,10 +37,8 @@ export const useIncidentDetail = (incidentId?: string) => {
       }
     } finally {
       setIsLoading(false);
-      detailInflight.delete(key);
-      resolveDone();
     }
-  }, [employeeData?.clientId]);
+  }, []);
 
   useEffect(() => {
     if (incidentId) {
@@ -87,10 +57,9 @@ export const useIncidentDetail = (incidentId?: string) => {
 
   return {
     incident,
-    contributingFactors,
     isLoading,
     error,
     getFormData,
-    reload: () => incidentId && loadIncident(incidentId, true)
+    reload: () => incidentId && loadIncident(incidentId)
   };
 };

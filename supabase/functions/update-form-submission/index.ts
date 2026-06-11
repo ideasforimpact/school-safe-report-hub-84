@@ -26,15 +26,15 @@ serve(async (req) => {
       }
     );
 
-    const { submission_id, comments, status, acknowledged_by_name, acknowledged_at } = await req.json();
-
+    const { submission_id, comments, status } = await req.json();
+    
     if (!submission_id) {
       return new Response(
-        JSON.stringify({
+        JSON.stringify({ 
           error: 'submission_id is required',
           code: 'MISSING_SUBMISSION_ID'
         }),
-        {
+        { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
@@ -47,10 +47,13 @@ serve(async (req) => {
       updated_at: new Date().toISOString()
     };
 
-    if (comments !== undefined) updateData.comments = comments;
-    if (status !== undefined) updateData.status = status;
-    if (acknowledged_by_name !== undefined) updateData.acknowledged_by_name = acknowledged_by_name;
-    if (acknowledged_at !== undefined) updateData.acknowledged_at = acknowledged_at;
+    if (comments !== undefined) {
+      updateData.comments = comments;
+    }
+
+    if (status !== undefined) {
+      updateData.status = status;
+    }
 
     const { data, error } = await supabaseClient
       .from('form_submissions')

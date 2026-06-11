@@ -14,8 +14,12 @@ import { Badge } from '@/components/ui/badge';
 import { StatusSwitch } from '@/components/ui/status-switch';
 import { EditDialog } from '@/components/configuration/EditDialog';
 import { toast } from 'sonner';
+import { priorityService } from '@/services/incident/priorityService';
+import { usePriorities } from '@/hooks/usePriorities';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 // Validation function for priority names (no special characters, max 25 chars)
@@ -43,11 +47,6 @@ interface PriorityTabProps {
 }
 
 export const PriorityTab: React.FC<PriorityTabProps> = ({
-  priorities,
-  addPriority,
-  updatePriority,
-  deletePriority,
-  togglePriorityStatus,
   canCreate = true,
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -86,32 +85,123 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     error: null,
   });
   
+  // Get client ID from auth context
   const { employeeData } = useAuth();
-  const loading = false;
+  
+  // Use the hook to get priorities with RLS - no manual client validation needed
+  const { priorities, loading, refetch } = usePriorities();
+  const [priorityReferences, setPriorityReferences] = useState<Record<string, IncidentReferenceCheck>>({});
+
+  // Pre-load reference info so we can disable delete button for linked priorities
+  useEffect(() => {
+    const clientId = employeeData?.clientId;
+    if (!clientId || priorities.length === 0) {
+      setPriorityReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          priorities.map(async (priority) => {
+            const refInfo = await incidentReferenceService.checkPriorityReferences(priority.id, clientId);
+            return { id: priority.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setPriorityReferences(map);
+      } catch (error) {
+        console.error('Error preloading priority reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [priorities, employeeData]);
 
   const handleAddPriority = async () => {
-    if (!newPriorityName.trim()) { setError('Priority name cannot be empty'); return; }
-    if (!isValidPriorityName(newPriorityName.trim())) { setError('Priority name must be alphanumeric with spaces only, maximum 25 characters'); return; }
+    if (!newPriorityName.trim()) {
+      setError('Priority name cannot be empty');
+      return;
+    }
+
+    if (!isValidPriorityName(newPriorityName.trim())) {
+      setError('Priority name must be alphanumeric with spaces only, maximum 25 characters');
+      return;
+    }
+
     try {
-      setError(null); setIsSaving(true);
-      await addPriority(newPriorityName.trim(), newPriorityDescription.trim(), newPriorityColor, parseInt(newPriorityWeight) || 0);
-      setNewPriorityName(''); setNewPriorityDescription(''); setNewPriorityColor('#10B981'); setNewPriorityWeight('0');
+      setError(null);
+      setIsSaving(true);
+      // Pass client ID from auth context
+      await priorityService.addPriority(
+        newPriorityName.trim(), 
+        newPriorityDescription.trim(), 
+        newPriorityColor, 
+        parseInt(newPriorityWeight) || 0,
+        employeeData?.clientId
+      );
+      setNewPriorityName('');
+      setNewPriorityDescription('');
+      setNewPriorityColor('#10B981');
+      setNewPriorityWeight('0');
       setIsAddDialogOpen(false);
+      // Refresh data immediately
+      await refetch();
+      toast.success('Priority added successfully');
     } catch (error: any) {
+      console.error('Error adding priority:', error);
       setError(error.message || 'Failed to add priority');
-    } finally { setIsSaving(false); }
+      // Don't close the dialog when there's an error - keep it open so user can see the error message
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEditPriority = async () => {
-    if (!selectedPriority || !editPriorityName.trim()) { setError('Priority name cannot be empty'); return; }
-    if (!isValidPriorityName(editPriorityName.trim())) { setError('Priority name must be alphanumeric with spaces only, maximum 25 characters'); return; }
+    if (!selectedPriority || !editPriorityName.trim()) {
+      setError('Priority name cannot be empty');
+      return;
+    }
+
+    if (!isValidPriorityName(editPriorityName.trim())) {
+      setError('Priority name must be alphanumeric with spaces only, maximum 25 characters');
+      return;
+    }
+
     try {
-      setError(null); setIsSaving(true);
-      await updatePriority(selectedPriority.id, editPriorityName.trim(), editPriorityDescription.trim(), editPriorityColor, parseInt(editPriorityWeight) || 0);
-      setIsEditDialogOpen(false); setSelectedPriority(null);
+      setError(null);
+      setIsSaving(true);
+      await priorityService.updatePriority(
+        selectedPriority.id,
+        editPriorityName.trim(), 
+        editPriorityDescription.trim(), 
+        editPriorityColor, 
+        parseInt(editPriorityWeight) || 0
+      );
+      setIsEditDialogOpen(false);
+      setSelectedPriority(null);
+      // Refresh data immediately
+      await refetch();
+      toast.success('Priority updated successfully');
     } catch (error: any) {
+      console.error('Error updating priority:', error);
       setError(error.message || 'Failed to update priority');
-    } finally { setIsSaving(false); }
+      // Don't close the dialog when there's an error - keep it open so user can see the error message
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEditClick = (priority: PriorityItem) => {
@@ -123,39 +213,69 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     setIsEditDialogOpen(true);
   };
 
-  const handleToggleStatus = (priority: PriorityItem) => {
+  const handleToggleStatus = async (priority: PriorityItem) => {
+    // Check if priority is linked to incidents - prevent deactivation if linked
+    const refInfo = priorityReferences[priority.id];
+    if (refInfo?.hasReferences && priority.is_active) {
+      const message = refInfo?.message?.replace('Cannot delete', 'Cannot deactivate') ||
+        `This priority is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deactivated.`;
+      toast.error(message);
+      return;
+    }
+
     const newStatus = !priority.is_active;
     const action = newStatus ? 'activate' as const : 'deactivate' as const;
+    
     setConfirmationDialog({
       open: true,
       title: `${action === 'activate' ? 'Activate' : 'Deactivate'} Priority`,
-      description: `Please confirm that you want to ${action} this priority.`,
-      itemName: priority.name, action, isLoading: false, error: null,
+      description: `Please confirm that you want to ${action} this priority. This action will immediately ${action} the priority and may affect existing incidents.`,
+      itemName: priority.name,
+      action,
+      isLoading: false,
+      error: null,
       onConfirm: async () => {
         try {
           setConfirmationDialog(prev => ({ ...prev, isLoading: true, error: null }));
-          await togglePriorityStatus(priority.id, newStatus);
+          await priorityService.togglePriorityStatus(priority.id, newStatus);
+          // Refresh data immediately
+          await refetch();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success(`Priority ${newStatus ? 'activated' : 'deactivated'} successfully`);
         } catch (error: any) {
-          setConfirmationDialog(prev => ({ ...prev, error: error?.message || 'Failed', isLoading: false }));
+          console.error('Error toggling priority status:', error);
+          const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} priority`;
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
         }
       },
     });
   };
 
-  const handleDeletePriority = (id: string) => {
-    const priorityName = priorities.find(p => p.id === id)?.name || 'this priority';
+  const handleDeletePriority = async (id: string) => {
+    // Find the priority to get its name for the confirmation message
+    const priority = priorities.find(p => p.id === id);
+    const priorityName = priority?.name || 'this priority';
+    
     setConfirmationDialog({
-      open: true, title: 'Delete Priority',
-      description: 'This action cannot be recovered.',
-      itemName: priorityName, action: 'delete', isLoading: false, error: null,
+      open: true,
+      title: 'Delete Priority',
+      description: 'Please confirm that you want to proceed with this deletion. This action will immediately remove the priority and cannot be recovered.',
+      itemName: priorityName,
+      action: 'delete',
+      isLoading: false,
+      error: null,
       onConfirm: async () => {
         try {
           setConfirmationDialog(prev => ({ ...prev, isLoading: true, error: null }));
-          await deletePriority(id);
+          await priorityService.deletePriority(id);
+          // Refresh data immediately
+          await refetch();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success('Priority deleted successfully');
         } catch (error: any) {
-          setConfirmationDialog(prev => ({ ...prev, error: error?.message || 'Failed to delete', isLoading: false }));
+          console.error('Error deleting priority:', error);
+          const errorMessage = error?.message || 'Failed to delete priority';
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
         }
       },
     });
@@ -180,12 +300,16 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     return true;
   });
 
+  const refreshPriorities = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
   useRealTimeSubHook({
     channelName: `incident-priorities-${employeeData?.clientId}`,
     table: 'incident_priorities',
     events: '*',
     enabled: !!employeeData?.clientId,
-    onPayload: () => {},
+    onPayload: refreshPriorities,
   });
 
   return (
@@ -270,14 +394,52 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
                 <TableCell>{priority.weight || '-'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {canCreate && (
-                    <StatusSwitch
+                    {canCreate && (() => {
+                      const refInfo = priorityReferences[priority.id];
+                      const isLinked = refInfo?.hasReferences;
+
+                      if (isLinked) {
+                        const message =
+                          refInfo?.message?.replace('Cannot delete', 'Cannot deactivate') ||
+                          `This priority is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deactivated.`;
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <StatusSwitch 
+                                    variant="status"
+                                    checked={priority.is_active} 
+                                    disabled={true}
+                                    aria-label={`${priority.is_active ? 'Deactivate' : 'Activate'} ${priority.name}`}
+                                  />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="left" 
+                                align="center" 
+                                sideOffset={8} 
+                                className="max-w-xs whitespace-normal text-left"
+                              >
+                                <p className="text-xs leading-snug text-left">
+                                  {message}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      }
+
+                      return (
+                    <StatusSwitch 
                       variant="status"
-                      checked={priority.is_active}
+                      checked={priority.is_active} 
                       onCheckedChange={() => handleToggleStatus(priority)}
                       aria-label={`${priority.is_active ? 'Deactivate' : 'Activate'} ${priority.name}`}
                     />
-                    )}
+                      );
+                    })()}
                     <Badge variant={priority.is_active ? "success" : "destructive"}>
                       {priority.is_active ? "Active" : "Inactive"}
                     </Badge>
@@ -289,15 +451,58 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
                     <Edit className="h-4 w-4" />
                     <span className="sr-only">Edit</span>
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeletePriority(priority.id)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete</span>
-                  </Button>
+                  {(() => {
+                    const refInfo = priorityReferences[priority.id];
+                    const isLinked = refInfo?.hasReferences;
+
+                    if (isLinked) {
+                      const message =
+                        refInfo?.message ||
+                        `This priority is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
+
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  aria-disabled="true"
+                                  className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Delete</span>
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent 
+                              side="left" 
+                              align="center" 
+                              sideOffset={8} 
+                              className="max-w-xs whitespace-normal text-left"
+                            >
+                              <p className="text-xs leading-snug text-left">
+                                {message}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    }
+
+                    return (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDeletePriority(priority.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    );
+                  })()}
                 </TableCell>
                 )}
               </TableRow>

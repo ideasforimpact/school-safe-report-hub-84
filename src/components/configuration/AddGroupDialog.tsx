@@ -231,6 +231,28 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
     try {
       setSubmitting(true);
 
+      // Check for duplicate group name (case-insensitive, within same client)
+      const trimmedName = name.trim();
+      const { data: existingGroups, error: checkError } = await supabase
+        .from('groups' as any)
+        .select('id, name')
+        .eq('client_id', clientId)
+        .ilike('name', trimmedName);
+
+      if (checkError) {
+        console.error('Error checking for duplicate group:', checkError);
+      } else if (existingGroups && existingGroups.length > 0) {
+        // If editing, allow if it's the same group
+        if (editingGroup && existingGroups && existingGroups.some((g: any) => g.id === editingGroup.id)) {
+          // Same group, allow update
+        } else {
+          // Duplicate found
+          toast.error(`A group with the name "${trimmedName}" already exists`);
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const payload: any = {
         action: editingGroup ? 'update' : 'create',
         client_id: clientId,

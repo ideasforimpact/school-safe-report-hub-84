@@ -26,7 +26,6 @@ interface PaginatedResponse<T> {
   hasMore: boolean;
   currentPage: number;
   totalPages: number;
-  config?: any; // New field for consolidated config data
 }
 
 class IncidentDataService {
@@ -212,17 +211,13 @@ class IncidentDataService {
       const allIncidents = this.incidentCache.get(cacheKey)!;
       
       if (returnAllData) {
-        // Paginate from cache using the requested page
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedData = allIncidents.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(allIncidents.length / pageSize);
+        // Return ALL incidents without pagination for client-side handling
         return {
-          data: paginatedData,
+          data: allIncidents,
           totalCount: allIncidents.length,
-          hasMore: page < totalPages,
-          currentPage: page,
-          totalPages
+          hasMore: false,
+          currentPage: 1,
+          totalPages: 1
         };
       } else {
         // Apply client-side pagination (for backward compatibility)
@@ -245,18 +240,14 @@ class IncidentDataService {
     if (this.isLoading) {
       console.log('⚠️ Request already in progress, returning cached or empty data');
       const cachedData = this.incidentCache.get(cacheKey) || [];
-
+      
       if (returnAllData) {
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedData = cachedData.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(cachedData.length / pageSize);
         return {
-          data: paginatedData,
+          data: cachedData,
           totalCount: cachedData.length,
-          hasMore: page < totalPages,
-          currentPage: page,
-          totalPages
+          hasMore: false,
+          currentPage: 1,
+          totalPages: 1
         };
       } else {
         const startIndex = (page - 1) * pageSize;
@@ -277,35 +268,153 @@ class IncidentDataService {
     this.isLoading = true;
 
     try {
-      console.log('🚀 Invoking fetch-incidents edge function...');
-      const { data, error } = await supabase.functions.invoke('fetch-incidents', {
-        body: {
-          clientId,
-          employeeId: employeeData.id,
-          isSuperAdmin: employeeData.isSuperAdmin === true || hasIncidentAdmin === true,
-          page,
-          pageSize,
-          search: filters.search || '',
-          category: filters.category || '',
-          subcategory: filters.subcategory || '',
-          status: filters.status || '',
-          priority: filters.priority || '',
-          location: filters.location || '',
-          dateFrom: filters.dateFrom || '',
-          dateTo: filters.dateTo || ''
-        },
-      });
+      console.log('🚀 Making server request for ALL incidents with filters and role-based access...');
+      
+      // Perform parallel ID lookups for filters
+      const [statusId, categoryId, subcategoryId, priorityId, locationId, facilityId] = await Promise.all([
+        (filters.status && filters.status !== 'Reopen') ? this.getStatusId(clientId, filters.status) : Promise.resolve(null),
+        filters.category ? this.getCategoryId(clientId, filters.category) : Promise.resolve(null),
+        filters.subcategory ? this.getSubcategoryId(clientId, filters.subcategory) : Promise.resolve(null),
+        filters.priority ? this.getPriorityId(clientId, filters.priority) : Promise.resolve(null),
+        filters.location ? this.getLocationId(clientId, filters.location) : Promise.resolve(null),
+        filters.facility ? this.getFacilityId(clientId, filters.facility) : Promise.resolve(null)
+      ]);
 
-      if (error) {
-        console.error('❌ Edge function error:', error);
-        throw new Error(`Failed to fetch incidents from edge function: ${error.message}`);
+      console.log('🔍 Filter ID lookups completed:', {
+        statusId: statusId || 'none',
+        categoryId: categoryId || 'none',
+        subcategoryId: subcategoryId || 'none',
+        priorityId: priorityId || 'none',
+        locationId: locationId || 'none',
+        facilityId: facilityId || 'none'
+      });
+      
+      let query = supabase
+        .from('incidents')
+        .select(`
+          id,
+          ticket_id,
+          description,
+          root_cause_analysis,
+          learning_points,
+          action_taken,
+          people_involved,
+          date,
+          created_at,
+          updated_at,
+          reopen,
+          recommended_action,
+          created_by,
+          assigned_to,
+          incident_report_types!type_id(id, name),
+          incident_categories!category_id(id, name),
+          incident_subcategories!subcategory_id(id, name),
+          campuses!location_id(id, name),
+          facilities!facility_id(id, name),
+          incident_priorities!priority_id(id, name),
+          incident_status!status_id(id, name),
+          created_by_employee:employees!created_by(id, first_name, last_name),
+          assigned_employee:employees!assigned_to(id, first_name, last_name)
+        `)
+        .eq('client_id', clientId);
+
+      // Apply role-based filtering with improved logic
+      console.log('🔒 Applying role-based filtering:', { 
+        employeeData, 
+        hasIncidentAdmin,
+        isSuperAdmin: employeeData.isSuperAdmin 
+      });
+      
+      const isSuperAdmin = employeeData.isSuperAdmin === true;
+      
+      if (isSuperAdmin) {
+        // Super admin can see all incidents for the client
+        console.log('   - Super admin: can see all incidents for this client');
+      } else if (hasIncidentAdmin) {
+        // Incident admin can see all incidents for the client
+        console.log('   - Incident admin: can see all incidents for this client');
+      } else {
+        // Regular users can only see incidents they created or are assigned to
+        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
+        console.log(`   - Regular user: applied filter for employee ${employeeData.id} (created_by OR assigned_to)`);
       }
 
-      const incidents = data?.incidents || [];
-      const totalCount = data?.totalCount || 0;
-      console.log(`✅ Edge function returned ${incidents.length} incidents (Total matching: ${totalCount})`);
+      // Apply server-side filters using foreign key IDs
+      if (filters.search && filters.search.trim()) {
+        query = query.or(`ticket_id.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        console.log(`   - Applied search filter: ${filters.search}`);
+      }
 
-      const transformedIncidents: IncidentRecord[] = incidents.map((inc: any) => ({
+      if (filters.status === 'Reopen') {
+        query = query.eq('reopen', 1);
+        console.log('   - Applied reopen filter: reopen = 1');
+      } else if (statusId) {
+        query = query.eq('status_id', statusId);
+        console.log(`   - Applied status filter: ${filters.status} (ID: ${statusId})`);
+      } else if (filters.status) {
+        console.warn(`   - Status "${filters.status}" not found, skipping status filter`);
+      }
+
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+        console.log(`   - Applied category filter: ${filters.category} (ID: ${categoryId})`);
+      } else if (filters.category) {
+        console.warn(`   - Category "${filters.category}" not found, skipping category filter`);
+      }
+
+      if (subcategoryId) {
+        query = query.eq('subcategory_id', subcategoryId);
+        console.log(`   - Applied subcategory filter: ${filters.subcategory} (ID: ${subcategoryId})`);
+      } else if (filters.subcategory) {
+        console.warn(`   - Subcategory "${filters.subcategory}" not found, skipping subcategory filter`);
+      }
+
+      if (priorityId) {
+        query = query.eq('priority_id', priorityId);
+        console.log(`   - Applied priority filter: ${filters.priority} (ID: ${priorityId})`);
+      } else if (filters.priority) {
+        console.warn(`   - Priority "${filters.priority}" not found, skipping priority filter`);
+      }
+
+      if (locationId) {
+        query = query.eq('location_id', locationId);
+        console.log(`   - Applied location filter: ${filters.location} (ID: ${locationId})`);
+      } else if (filters.location) {
+        console.warn(`   - Location "${filters.location}" not found, skipping location filter`);
+      }
+
+      if (facilityId) {
+        query = query.eq('facility_id', facilityId);
+        console.log(`   - Applied facility filter: ${filters.facility} (ID: ${facilityId})`);
+      } else if (filters.facility) {
+        console.warn(`   - Facility "${filters.facility}" not found, skipping facility filter`);
+      }
+
+      if (filters.dateFrom) {
+        query = query.gte('date', filters.dateFrom);
+        console.log(`   - Applied date from filter: ${filters.dateFrom}`);
+      }
+
+      if (filters.dateTo) {
+        query = query.lte('date', filters.dateTo);
+        console.log(`   - Applied date to filter: ${filters.dateTo}`);
+      }
+
+      // Order by created_at but NO PAGINATION - fetch ALL records
+      query = query.order('created_at', { ascending: false });
+
+      console.log(`📊 Server query: fetching ALL incidents matching filters`);
+
+      const { data: incidents, error } = await query;
+
+      if (error) {
+        console.error('❌ Database query error:', error);
+        throw new Error(`Failed to fetch incidents: ${error.message}`);
+      }
+
+      console.log(`✅ Server returned ${incidents?.length || 0} incidents (ALL matching records)`);
+
+      const transformedIncidents: IncidentRecord[] = (incidents || []).map((inc: any) => ({
         id: inc.id,
         ticket_id: inc.ticket_id,
         type: inc.incident_report_types?.name || 'Unknown',
@@ -334,8 +443,6 @@ class IncidentDataService {
         recommended_action: inc.recommended_action || null
       }));
 
-      const isSuperAdmin = employeeData.isSuperAdmin === true;
-
       // Cache ALL the results
       this.incidentCache.set(cacheKey, transformedIncidents);
       console.log(`💾 Cached ${transformedIncidents.length} incidents with key: ${cacheKey}`);
@@ -344,29 +451,40 @@ class IncidentDataService {
         // Return ALL incidents without pagination for client-side handling
         const response: PaginatedResponse<IncidentRecord> = {
           data: transformedIncidents,
-          totalCount: totalCount,
-          hasMore: totalCount > (page * pageSize),
-          currentPage: page,
-          totalPages: Math.ceil(totalCount / pageSize),
-          config: data.config // Include consolidated config data
+          totalCount: transformedIncidents.length,
+          hasMore: false,
+          currentPage: 1,
+          totalPages: 1
         };
 
-        console.log(`📋 Returning incidents and config for page ${page}`);
+        console.log(`📋 Returning ALL ${transformedIncidents.length} incidents for client-side pagination:`);
+        console.log(`   - Total records: ${transformedIncidents.length}`);
+        console.log(`   - User access level: ${isSuperAdmin ? 'Super Admin' : hasIncidentAdmin ? 'Incident Admin' : 'Regular User'}`);
+        
         return response;
       } else {
         // Apply client-side pagination (for backward compatibility)
-        const totalPages = Math.ceil(totalCount / pageSize);
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedData = transformedIncidents.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(transformedIncidents.length / pageSize);
         const hasMore = page < totalPages;
 
         const response: PaginatedResponse<IncidentRecord> = {
-          data: transformedIncidents,
-          totalCount: totalCount,
+          data: paginatedData,
+          totalCount: transformedIncidents.length,
           hasMore,
           currentPage: page,
-          totalPages,
-          config: data.config // Include consolidated config data
+          totalPages
         };
 
+        console.log(`📋 Client-side pagination result with role-based access and filters:`);
+        console.log(`   - Page ${page}/${totalPages}`);
+        console.log(`   - Records on this page: ${paginatedData.length}`);
+        console.log(`   - Total records cached: ${transformedIncidents.length}`);
+        console.log(`   - Has more: ${hasMore}`);
+        console.log(`   - User access level: ${isSuperAdmin ? 'Super Admin' : hasIncidentAdmin ? 'Incident Admin' : 'Regular User'}`);
+        
         return response;
       }
 

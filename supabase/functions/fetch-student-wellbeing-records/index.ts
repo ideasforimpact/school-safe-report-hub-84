@@ -8,8 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const PAGE_SIZE = 10;
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -23,17 +21,8 @@ serve(async (req) => {
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const clientId = body.clientId ?? body.client_id;
+    const employeeId = body.employeeId ?? body.employee_id;
     const academicYear = body.academicYear ?? body.academic_year ?? null;
-
-    // Pagination
-    const page = Math.max(1, parseInt(String(body.page ?? '1'), 10) || 1);
-    const exportAll = body.exportAll === true;
-
-    // Filters (applied server-side)
-    const search = (body.search ?? '').trim();
-    const statusFilter = body.status ?? 'all';
-    const dateFrom = body.dateFrom ?? null;
-    const dateTo = body.dateTo ?? null;
 
     if (!clientId) {
       return new Response(
@@ -102,9 +91,6 @@ serve(async (req) => {
 
     if (createdFrom) query = query.gte('created_at', createdFrom);
     if (createdTo) query = query.lte('created_at', createdTo);
-    if (statusFilter && statusFilter !== 'all') query = query.eq('status', statusFilter);
-    if (dateFrom) query = query.gte('date_of_observation', dateFrom);
-    if (dateTo) query = query.lte('date_of_observation', dateTo);
 
     const { data: records, error } = await query.order('date_of_observation', { ascending: false });
 
@@ -239,20 +225,6 @@ serve(async (req) => {
       };
     });
 
-    // Apply search filter in-memory (covers joined fields: student name, class, concern)
-    const filtered = search
-      ? list.filter((r: any) => {
-          const q = search.toLowerCase();
-          return (
-            (r.student_display_id ?? '').toLowerCase().includes(q) ||
-            (r.student_name ?? '').toLowerCase().includes(q) ||
-            (r.class ?? '').toLowerCase().includes(q) ||
-            (r.concern ?? '').toLowerCase().includes(q)
-          );
-        })
-      : list;
-
-    // Summary is always computed from the full list (before search/pagination)
     const uniqueStudentIds = new Set(
       (list as any[]).map((x) => x.student_id ?? x.student_display_id)
     );
@@ -260,33 +232,20 @@ serve(async (req) => {
     const underObservationCount = (list as any[]).filter((x) => x.status === 'under_observation').length;
     const closedCount = (list as any[]).filter((x) => x.status === 'closed').length;
 
-    // Server-side pagination applied after search filter
-    const totalCount = filtered.length;
-    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-    const pageRecords = exportAll
-      ? filtered
-      : filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
     return new Response(
       JSON.stringify({
         success: true,
-        records: pageRecords,
+        records: list,
         summary: {
           studentsCount: uniqueStudentIds.size,
           openCases: openCount,
           underObservation: underObservationCount,
           closed: closedCount,
         },
-        pagination: {
-          page: exportAll ? 1 : page,
-          pageSize: exportAll ? totalCount : PAGE_SIZE,
-          totalCount,
-          totalPages: exportAll ? 1 : totalPages,
-        },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
-  } catch (err: any) {
+  } catch (err) {
     console.error('fetch-student-wellbeing-records error:', err);
     return new Response(
       JSON.stringify({ error: err?.message ?? 'An unexpected error occurred' }),
