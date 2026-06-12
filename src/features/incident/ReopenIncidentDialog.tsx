@@ -12,6 +12,8 @@ import {
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { REOPEN_REASON_MAX_LENGTH } from '@/components/constants';
+import { DemoActionButton } from '@/components/incidents/DemoActionButton';
+import { getNextReopenScenario } from '@/demo_client/incident/auxiliaryDemo';
 
 interface ReopenIncidentDialogProps {
   open: boolean;
@@ -28,14 +30,32 @@ const ReopenIncidentDialog: React.FC<ReopenIncidentDialogProps> = ({
   onReopenReasonChange,
   onConfirm
 }) => {
+  // Demo Setup: cycle through three pre-canned reopen reasons. Calls
+  // the same `onReopenReasonChange` callback the textarea uses, so the
+  // existing length / disabled-state validation keeps working.
+  const handleDemoReopenApply = () => {
+    const text = getNextReopenScenario();
+    if (text) onReopenReasonChange(text);
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reopen Incident</AlertDialogTitle>
-          <AlertDialogDescription>
-            Please provide a reason for reopening this incident. This action will change the incident status back to Open and will be logged in the audit trail.
-          </AlertDialogDescription>
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1">
+              <AlertDialogTitle>Reopen Incident</AlertDialogTitle>
+              <AlertDialogDescription>
+                Please provide a reason for reopening this incident. This action will change the incident status back to Open and will be logged in the audit trail.
+              </AlertDialogDescription>
+            </div>
+            {/* Renders only when VITE_IS_DEMO_SETUP=true. Picks the
+                next reopen-reason from auxiliaryScenarios.json. */}
+            <DemoActionButton
+              onActivate={handleDemoReopenApply}
+              label="Fill demo reopen reason"
+            />
+          </div>
         </AlertDialogHeader>
         
         <div>

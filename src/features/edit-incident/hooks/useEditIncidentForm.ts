@@ -196,6 +196,11 @@ export const useEditIncidentForm = () => {
     getLocations,
     getFacilities,
     getUsers,
-    getCategoriesForType
+    getCategoriesForType,
+    // Exposed for the Demo Setup feature so DemoIncidentButton can
+    // bulk-apply a pre-canned scenario via setFormData(partial). Safe
+    // because React setState's functional form handles partial merging.
+    setFormData,
+    categories,
   };
 };
