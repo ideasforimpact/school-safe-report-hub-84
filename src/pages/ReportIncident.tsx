@@ -24,6 +24,8 @@ import IncidentCreationOverlay from '@/components/incident/IncidentCreationOverl
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 import { ArrowLeft } from 'lucide-react';
 import Loader from '@/components/common/Loader';
+import { DemoIncidentButton } from '@/components/incidents/DemoIncidentButton';
+import { resolveScenarioForReport } from '@/demo_client/incident/demoScenarios';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -707,20 +709,43 @@ const ReportIncident = () => {
         {/* Header section */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="flex items-center -ml-4 mb-4"
               onClick={() => navigate(`/incidents`)}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Incident Details
             </Button>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Report New Incident
-            </h1>
-            <p className="text-gray-600 text-sm mt-1">
-              Document safety incidents, near misses, or unsafe conditions
-            </p>
+            {/* Title row + demo-fill icon. Icon is rendered only when
+                VITE_IS_DEMO_SETUP=true (component returns null otherwise),
+                so the layout stays unchanged in production. */}
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  Report New Incident
+                </h1>
+                <p className="text-gray-600 text-sm mt-1">
+                  Document safety incidents, near misses, or unsafe conditions
+                </p>
+              </div>
+              <DemoIncidentButton
+                onApply={({ scenario, index }) => {
+                  const partial = resolveScenarioForReport(
+                    scenario,
+                    {
+                      reportTypes,
+                      categories: formCategories,
+                      subcategories,
+                      priorities,
+                    },
+                    employeeState.employeeData?.id || authEmployeeData?.id || '',
+                    index,
+                  );
+                  setFormData(partial);
+                }}
+              />
+            </div>
           </div>
         </div>
 

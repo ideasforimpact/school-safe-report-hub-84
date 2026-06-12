@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Q3 Fire Safety Drill",
+    "description": "Quarterly fire-safety drill compliance check across primary and secondary blocks. Confirms evacuation routes, mustering points, and the wing-wise headcount procedure.",
+    "templateName": "Fire Safety"
+  },
+  {
+    "name": "Cafeteria Hygiene Review",
+    "description": "Monthly food-handling and cafeteria hygiene assessment covering staff hand-wash compliance, ingredient storage temperatures, and allergen-labeling adherence.",
+    "templateName": "Food Safety"
+  },
+  {
+    "name": "Transport Pre-Trip Audit",
+    "description": "Pre-trip transport-safety audit for the inter-school tournament. Confirms vehicle condition, driver license validity, first-aid kit completeness, and emergency contacts.",
+    "templateName": "Transport Safety"
+  }
+]

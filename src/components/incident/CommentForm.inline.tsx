@@ -7,6 +7,8 @@ import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
 import { Paperclip, Send, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import DragDropFileUpload from '../file/DragDropFileUpload';
+import { DemoActionButton } from '@/components/incidents/DemoActionButton';
+import { getNextCommentScenario } from '@/demo_client/incident/auxiliaryDemo';
 
 interface InlineCommentFormProps {
   incidentId: string;
@@ -85,10 +87,25 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
     }
   };
 
+  // Demo Setup: cycle through three pre-canned comment texts. Calls
+  // the same setCommentText the textarea uses, so existing length
+  // validation and Save-button-disabled state keep working.
+  const handleDemoCommentApply = () => {
+    const text = getNextCommentScenario();
+    if (text) setCommentText(text);
+  };
+
   return (
     <div className="bg-white rounded-md border shadow-sm p-4">
-      <h3 className="font-medium text-lg mb-3">Add Comment <span className="text-red-500">*</span></h3>
-      
+      <div className="flex justify-between items-start mb-3 gap-2">
+        <h3 className="font-medium text-lg">Add Comment <span className="text-red-500">*</span></h3>
+        {/* Renders only when VITE_IS_DEMO_SETUP=true. */}
+        <DemoActionButton
+          onActivate={handleDemoCommentApply}
+          label="Fill demo comment"
+        />
+      </div>
+
       <div className="space-y-4">
         <div className="flex flex-col space-y-2">
           <TextareaWithVoice

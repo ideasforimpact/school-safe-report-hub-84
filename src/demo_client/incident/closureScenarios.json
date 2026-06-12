@@ -1,0 +1,23 @@
+[
+  {
+    "rootCause": "Wet patch from a slow ceiling leak above the cafeteria entrance was not surfaced in the morning safety walk-through. Duty checklist did not include the transition zone, so the hazard stayed uncovered until lunch.",
+    "learningPoints": "Add high-traffic transition zones to the pre-lunch safety walk-through. Deploy wet-floor signage on first sign of moisture, not after the leak source is confirmed.",
+    "actionTaken": "Area cordoned off with caution tape; wet-floor signs deployed; housekeeping cleaned the surface; maintenance raised a ticket for the leak above the false ceiling. Duty supervisor briefed staff.",
+    "contributingFactorPicks": 2,
+    "factorDescriptionTemplate": "Identified in post-incident review of the cafeteria-entrance slip near-miss."
+  },
+  {
+    "rootCause": "Basketball court was damp from overnight humidity when the morning PE session began. Surface-readiness check was not done before the high-intensity sprint drill started.",
+    "learningPoints": "PE on outdoor / semi-outdoor surfaces must include a documented surface-readiness check by the lead instructor before high-intensity drills. Owner: morning shift teacher.",
+    "actionTaken": "Nurse cleaned and dressed the knee abrasion. Session moved to the indoor multi-purpose hall. PE teachers debriefed on procedure; daily PE log template updated with a surface-readiness signature.",
+    "contributingFactorPicks": 2,
+    "factorDescriptionTemplate": "Captured during the morning PE incident review; surface conditions and instructor preparation."
+  },
+  {
+    "rootCause": "Loose handrail bracket on the second-floor staircase landing was not flagged in the routine facilities-walk inspection. Supervisor's after-school check caught it only by chance.",
+    "learningPoints": "Monthly facilities checks will use a quantitative wobble test on handrails rather than visual review. Safety-critical fixtures get a 24-hour SLA regardless of severity.",
+    "actionTaken": "Area barricaded with caution tape; alternate route opened. Facilities ticket raised with 24-hour SLA; handrail re-anchored the next morning. Inspection checklist updated; full stair audit scheduled.",
+    "contributingFactorPicks": 1,
+    "factorDescriptionTemplate": "Captured during the handrail inspection review; inspection cadence and SLA enforcement."
+  }
+]

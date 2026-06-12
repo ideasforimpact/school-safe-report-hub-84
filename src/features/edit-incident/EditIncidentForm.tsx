@@ -1,12 +1,30 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import IncidentDetailsSection from './IncidentDetailsSection';
 import { useEditIncidentForm } from './hooks/useEditIncidentForm';
+import {
+  resolveScenarioForEdit,
+  type NextScenarioResult,
+} from '@/demo_client/incident/demoScenarios';
 
-const EditIncidentForm = () => {
+interface EditIncidentFormProps {
+  /** Demo Setup pipe: when the header's demo icon is clicked, the page
+   *  parent stashes the chosen scenario here. This component watches
+   *  the prop in a useEffect, applies the partial form patch, then
+   *  calls onDemoConsumed so the parent clears the slot (one apply
+   *  per click). When VITE_IS_DEMO_SETUP is off the header doesn't
+   *  render the button, so this prop stays null. */
+  pendingDemo?: NextScenarioResult | null;
+  onDemoConsumed?: () => void;
+}
+
+const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
+  pendingDemo,
+  onDemoConsumed,
+}) => {
   const {
     formData,
     image,
@@ -24,8 +42,29 @@ const EditIncidentForm = () => {
     getLocations,
     getFacilities,
     getUsers,
-    getCategoriesForType
+    getCategoriesForType,
+    setFormData,
+    categories,
   } = useEditIncidentForm();
+
+  // Watch the demo-fill pipe from the page. When a scenario lands here
+  // from the header, apply it via setFormData (the Edit form's name-
+  // based shape: type / subcategory / priority enum) then signal
+  // consumption upward.
+  useEffect(() => {
+    if (!pendingDemo) return;
+    const partial = resolveScenarioForEdit(
+      pendingDemo.scenario,
+      { categories },
+      pendingDemo.index,
+    );
+    setFormData(prev => ({ ...prev, ...partial }));
+    onDemoConsumed?.();
+    // We intentionally depend only on `pendingDemo` so the effect fires
+    // exactly once per header click. The other refs are stable from
+    // the hook for the lifetime of this component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDemo]);
 
   return (
     <form onSubmit={handleSubmit}>

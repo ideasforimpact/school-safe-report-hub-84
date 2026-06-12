@@ -20,6 +20,11 @@ import { useAuth } from '@/contexts/auth';
 import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import Loader from '@/components/common/Loader';
+import { DemoActionButton } from '@/components/incidents/DemoActionButton';
+import {
+  getNextAssessmentScenario,
+  resolveScenarioForAssessment,
+} from '@/demo_client/assessment/assessmentDemo';
 
 interface EmployeeDepartment {
   id: string;
@@ -168,6 +173,19 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   const selectedEmployeeDisplay = selectedEmployee
     ? `${selectedEmployee.first_name ?? ''} ${selectedEmployee.last_name ?? ''} (${selectedEmployee.email ?? ''})`.trim()
     : '';
+
+  // Demo Setup: fill name + description + templateId from one of three
+  // pre-canned scenarios. assignedTo and targetCompletionDate are left
+  // untouched so the user picks them explicitly. Cycles per click.
+  const handleDemoAssessmentApply = () => {
+    const { scenario, index } = getNextAssessmentScenario();
+    const partial = resolveScenarioForAssessment(scenario, templates, index);
+    setFormData(prev => ({ ...prev, ...partial }));
+    // Trigger the same name-validation path the user typing would
+    // trigger, so the form's existing duplicate / format checks
+    // re-evaluate against the demo-filled value.
+    setNameError(null);
+  };
 
   // Validation function
   const isValidAssessmentName = (value: string) => {
@@ -415,17 +433,27 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCancel}
-            className="mr-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          Create Assessment
+        <CardTitle className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancel}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            Create Assessment
+          </div>
+          {/* Demo Setup icon — renders only when VITE_IS_DEMO_SETUP=true.
+              Cycles through src/demo_client/assessment/scenarios.json
+              and fills name / description / templateId. assignedTo and
+              targetCompletionDate are intentionally not touched. */}
+          <DemoActionButton
+            onActivate={handleDemoAssessmentApply}
+            label="Fill demo assessment data"
+          />
         </CardTitle>
       </CardHeader>
 
