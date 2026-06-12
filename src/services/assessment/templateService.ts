@@ -102,7 +102,7 @@ async function convertFilesToBase64(questions: AssessmentQuestion[]): Promise<an
 
 export const templateService = {
   // Get all templates for a client
-  getTemplates: async (clientId: string, clientTypeKey?: string): Promise<AssessmentTemplate[]> => {
+  getTemplates: async (clientId: string, clientTypeId?: string): Promise<AssessmentTemplate[]> => {
     try {
       let query = supabase
         .from('assessment_templates')
@@ -122,8 +122,8 @@ export const templateService = {
           )
         `)
         .eq('client_id', clientId);
-      if (clientTypeKey) {
-        query = query.eq('client_type_key', clientTypeKey);
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
       }
       const { data, error } = await query.order('created_at', { ascending: false });
 

@@ -1565,6 +1565,7 @@ export type Database = {
           assigned_to: string | null
           category_id: string | null
           client_id: string | null
+          client_type_id: string | null
           closure_attachments: Json
           comments: Json | null
           contributing_factor: Json | null
@@ -1591,6 +1592,7 @@ export type Database = {
           assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
+          client_type_id?: string | null
           closure_attachments?: Json
           comments?: Json | null
           contributing_factor?: Json | null
@@ -1617,6 +1619,7 @@ export type Database = {
           assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
+          client_type_id?: string | null
           closure_attachments?: Json
           comments?: Json | null
           contributing_factor?: Json | null

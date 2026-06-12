@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1";
 
@@ -8,11 +7,8 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: corsHeaders,
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -21,70 +17,63 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    const { action, name, id, campusId, clientId } = await req.json();
-    console.log(`Facility management: Action=${action}, ID=${id}, Name=${name}, CampusID=${campusId}, ClientID=${clientId}`);
+    const { action, name, id, campusId, clientId, clientTypeId } = await req.json();
 
     switch (action) {
-      case 'create':
-        const createResult = await supabaseClient
+      case 'list': {
+        let query = supabaseClient.from('facilities').select('*').eq('client_id', clientId);
+        if (clientTypeId) query = query.eq('client_type_id', clientTypeId);
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return new Response(
+          JSON.stringify({ facilities: data }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'create': {
+        const { data, error } = await supabaseClient
           .from('facilities')
-          .insert({
-            name,
-            client_id: clientId,
-            campus_id: campusId,
-          })
+          .insert({ name, client_id: clientId, campus_id: campusId, client_type_id: clientTypeId || null })
           .select('*')
           .single();
 
-        if (createResult.error) throw createResult.error;
+        if (error) throw error;
         return new Response(
-          JSON.stringify({ facility: createResult.data }),
+          JSON.stringify({ facility: data }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
 
-      case 'update':
-        const updateResult = await supabaseClient
+      case 'update': {
+        const { data, error } = await supabaseClient
           .from('facilities')
           .update({ name, campus_id: campusId })
           .eq('id', id)
           .select('*')
           .single();
 
-        if (updateResult.error) throw updateResult.error;
+        if (error) throw error;
         return new Response(
-          JSON.stringify({ facility: updateResult.data }),
+          JSON.stringify({ facility: data }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
 
-      case 'delete':
-        const deleteResult = await supabaseClient
-          .from('facilities')
-          .delete()
-          .eq('id', id);
-
-        if (deleteResult.error) throw deleteResult.error;
+      case 'delete': {
+        const { error } = await supabaseClient.from('facilities').delete().eq('id', id);
+        if (error) throw error;
         return new Response(
           JSON.stringify({ success: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
-
-      case 'list':
-        const listResult = await supabaseClient
-          .from('facilities')
-          .select('*')
-          .eq('client_id', clientId);
-
-        if (listResult.error) throw listResult.error;
-        return new Response(
-          JSON.stringify({ facilities: listResult.data }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      }
 
       default:
         throw new Error('Invalid action');
     }
   } catch (error) {
-    console.error("Facility management error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

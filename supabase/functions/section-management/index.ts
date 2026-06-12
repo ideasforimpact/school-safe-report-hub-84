@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
@@ -9,32 +8,23 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Create a Supabase client with the Admin key
-  const supabaseClient = createClient(
-    getSupabaseUrl(),
-    getSupabaseServiceRoleKey()
-  );
+  const supabaseClient = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
 
   try {
-    const { action, id, name, gradeId, campusId, clientId } = await req.json();
-    console.log(`Section management: Action=${action}, ID=${id}, Name=${name}, GradeID=${gradeId}, CampusID=${campusId}, ClientID=${clientId}`);
+    const { action, id, name, gradeId, campusId, clientId, clientTypeId } = await req.json();
 
-    if (!clientId) {
-      throw new Error("Client ID is required for all operations");
-    }
+    if (!clientId) throw new Error("Client ID is required for all operations");
 
     switch (action) {
       case 'list': {
-        const { data, error } = await supabaseClient
-          .from('sections')
-          .select('*')
-          .eq('client_id', clientId);
+        let query = supabaseClient.from('sections').select('*').eq('client_id', clientId);
+        if (clientTypeId) query = query.eq('client_type_id', clientTypeId);
 
+        const { data, error } = await query;
         if (error) throw error;
         return new Response(
           JSON.stringify({ sections: data }),
@@ -43,15 +33,9 @@ serve(async (req) => {
       }
 
       case 'create': {
-        // Include campus_id in the insert operation
         const { data, error } = await supabaseClient
           .from('sections')
-          .insert({
-            name,
-            grade_id: gradeId,
-            campus_id: campusId,
-            client_id: clientId
-          })
+          .insert({ name, grade_id: gradeId, campus_id: campusId, client_id: clientId, client_type_id: clientTypeId || null })
           .select()
           .single();
 
@@ -63,33 +47,20 @@ serve(async (req) => {
       }
 
       case 'update': {
-        // Verify ownership before update
-        const { data: existingSection, error: verifyError } = await supabaseClient
-          .from('sections')
-          .select('id')
-          .eq('id', id)
-          .eq('client_id', clientId)
-          .single();
-          
-        if (verifyError || !existingSection) {
+        const { data: existing, error: verifyError } = await supabaseClient
+          .from('sections').select('id').eq('id', id).eq('client_id', clientId).single();
+
+        if (verifyError || !existing) {
           return new Response(
             JSON.stringify({ error: 'Section not found or access denied' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
           );
         }
 
-        // Include campus_id in the update operation
         const { data, error } = await supabaseClient
           .from('sections')
-          .update({
-            name,
-            grade_id: gradeId,
-            campus_id: campusId
-          })
-          .eq('id', id)
-          .eq('client_id', clientId)
-          .select()
-          .single();
+          .update({ name, grade_id: gradeId, campus_id: campusId })
+          .eq('id', id).eq('client_id', clientId).select().single();
 
         if (error) throw error;
         return new Response(
@@ -99,15 +70,10 @@ serve(async (req) => {
       }
 
       case 'delete': {
-        // Verify ownership before delete
-        const { data: existingSection, error: verifyError } = await supabaseClient
-          .from('sections')
-          .select('id')
-          .eq('id', id)
-          .eq('client_id', clientId)
-          .single();
-          
-        if (verifyError || !existingSection) {
+        const { data: existing, error: verifyError } = await supabaseClient
+          .from('sections').select('id').eq('id', id).eq('client_id', clientId).single();
+
+        if (verifyError || !existing) {
           return new Response(
             JSON.stringify({ error: 'Section not found or access denied' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
@@ -115,10 +81,7 @@ serve(async (req) => {
         }
 
         const { error } = await supabaseClient
-          .from('sections')
-          .delete()
-          .eq('id', id)
-          .eq('client_id', clientId);
+          .from('sections').delete().eq('id', id).eq('client_id', clientId);
 
         if (error) throw error;
         return new Response(
@@ -131,7 +94,6 @@ serve(async (req) => {
         throw new Error(`Unsupported action: ${action}`);
     }
   } catch (error) {
-    console.error(`Error in section-management function: ${error.message}`);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

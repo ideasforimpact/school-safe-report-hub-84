@@ -39,7 +39,7 @@ export const contributingFactorService = {
   },
 
   // Get contributing factors - always requiring clientId
-  getContributingFactors: async (clientId: string, clientTypeKey?: string) => {
+  getContributingFactors: async (clientId: string, clientTypeId?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -50,8 +50,8 @@ export const contributingFactorService = {
         .select('id, name, description, weight, client_id')
         .eq('client_id', clientId);
 
-      if (clientTypeKey) {
-        query = query.eq('client_type_key', clientTypeKey);
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
       }
 
       const { data: factors, error } = await query.order('name');

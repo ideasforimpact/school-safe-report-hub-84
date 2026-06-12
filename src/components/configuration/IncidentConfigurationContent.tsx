@@ -36,7 +36,7 @@ const IncidentConfigurationContent = () => {
   const [loading, setLoading] = useState(true);
   const { employeeData, user } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  const clientTypeKey = employeeData?.clientType?.key || (user as any)?.clientType?.key;
+  const clientTypeId = employeeData?.clientType?.id || (user as any)?.clientType?.id;
 
   // Use the existing hook for categories and subcategories
   const {
@@ -54,10 +54,10 @@ const IncidentConfigurationContent = () => {
 
   // Fetch contributing factors
   useEffect(() => {
-    if (!employeeData?.clientId || !clientTypeKey) return;
+    if (!employeeData?.clientId || !clientTypeId) return;
     async function fetchContributingFactors() {
       try {
-        const factors = await contributingFactorService.getContributingFactors(employeeData!.clientId, clientTypeKey);
+        const factors = await contributingFactorService.getContributingFactors(employeeData!.clientId, clientTypeId);
         setContributingFactors(factors);
       } catch (error) {
         console.error('Exception fetching contributing factors:', error);
@@ -67,14 +67,14 @@ const IncidentConfigurationContent = () => {
       }
     }
     fetchContributingFactors();
-  }, [employeeData?.clientId, clientTypeKey]);
+  }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch report types
   useEffect(() => {
-    if (!clientTypeKey) return;
+    if (!clientTypeId) return;
     async function fetchReportTypes() {
       try {
-        const data = await reportTypeService.getReportTypes(false, clientTypeKey);
+        const data = await reportTypeService.getReportTypes(false, clientTypeId);
         setReportTypes(data as ReportType[]);
       } catch (error) {
         console.error('Exception fetching report types:', error);
@@ -83,14 +83,14 @@ const IncidentConfigurationContent = () => {
     }
 
     fetchReportTypes();
-  }, [clientTypeKey]);
+  }, [clientTypeId]);
 
   // Fetch priorities
   useEffect(() => {
-    if (!clientTypeKey) return;
+    if (!clientTypeId) return;
     async function fetchPriorities() {
       try {
-        const data = await priorityService.getPriorities(false, clientTypeKey);
+        const data = await priorityService.getPriorities(false, clientTypeId);
         setPriorities(data as PriorityItem[]);
       } catch (error) {
         console.error('Exception fetching priorities:', error);
@@ -99,7 +99,7 @@ const IncidentConfigurationContent = () => {
     }
 
     fetchPriorities();
-  }, [clientTypeKey]);
+  }, [clientTypeId]);
 
   // Handle contributing factors operations
   const handleAddContributingFactor = async (name: string, description: string, weight: string) => {

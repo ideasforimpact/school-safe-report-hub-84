@@ -114,20 +114,25 @@ serve(async (req) => {
     for (const typeKey of ['school', 'work', 'institute']) {
       const templates = TEMPLATES_BY_TYPE[typeKey];
 
+      // Resolve client_type_id once per type loop
+      const { data: clientTypeRow } = await supabase
+        .from('client_type').select('id').eq('key', typeKey).single();
+      const clientTypeId: string | null = clientTypeRow?.id || null;
+
       // ── Contributing Factors ──────────────────────────────────────────────
       for (const factor of templates.contributing_factors) {
         const name = factor.name?.trim();
         if (!name) continue;
         const { data: existing } = await supabase
           .from('contributing_factors').select('id')
-          .eq('client_id', clientId).eq('name', name).eq('client_type_key', typeKey);
+          .eq('client_id', clientId).eq('name', name).eq('client_type_id', clientTypeId);
         if (existing && existing.length > 0) {
           tableLogs.contributing_factors.already_existing_ids.push(existing[0].id);
           continue;
         }
         const { data, error } = await supabase
           .from('contributing_factors')
-          .insert({ name, description: factor.description ?? null, weight: null, client_id: clientId, client_type_key: typeKey })
+          .insert({ name, description: factor.description ?? null, weight: null, client_id: clientId, client_type_id: clientTypeId })
           .select('id').single();
         if (error) { tableLogs.contributing_factors.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
         else if (data?.id) tableLogs.contributing_factors.inserted_ids.push(data.id);
@@ -138,14 +143,14 @@ serve(async (req) => {
         if (!name) continue;
         const { data: existing } = await supabase
           .from('incident_report_types').select('id')
-          .eq('client_id', clientId).eq('name', name).eq('client_type_key', typeKey);
+          .eq('client_id', clientId).eq('name', name).eq('client_type_id', clientTypeId);
         if (existing && existing.length > 0) {
           tableLogs.report_types.already_existing_ids.push(existing[0].id);
           continue;
         }
         const { data, error } = await supabase
           .from('incident_report_types')
-          .insert({ name, description: rt.description ?? null, is_active: rt.is_active ?? true, client_id: clientId, client_type_key: typeKey })
+          .insert({ name, description: rt.description ?? null, is_active: rt.is_active ?? true, client_id: clientId, client_type_id: clientTypeId })
           .select('id').single();
         if (error) { tableLogs.report_types.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
         else if (data?.id) tableLogs.report_types.inserted_ids.push(data.id);
@@ -156,14 +161,14 @@ serve(async (req) => {
         if (!name) continue;
         const { data: existing } = await supabase
           .from('incident_priorities').select('id')
-          .eq('client_id', clientId).eq('name', name).eq('client_type_key', typeKey);
+          .eq('client_id', clientId).eq('name', name).eq('client_type_id', clientTypeId);
         if (existing && existing.length > 0) {
           tableLogs.priorities.already_existing_ids.push(existing[0].id);
           continue;
         }
         const { data, error } = await supabase
           .from('incident_priorities')
-          .insert({ name, description: pr.description ?? null, color: pr.color ?? null, weight: pr.weight ?? null, is_active: pr.is_active ?? true, client_id: clientId, client_type_key: typeKey })
+          .insert({ name, description: pr.description ?? null, color: pr.color ?? null, weight: pr.weight ?? null, is_active: pr.is_active ?? true, client_id: clientId, client_type_id: clientTypeId })
           .select('id').single();
         if (error) { tableLogs.priorities.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
         else if (data?.id) tableLogs.priorities.inserted_ids.push(data.id);
@@ -174,7 +179,7 @@ serve(async (req) => {
         if (!catName) continue;
         const { data: existCat } = await supabase
           .from('incident_categories').select('id')
-          .eq('client_id', clientId).eq('name', catName).eq('client_type_key', typeKey);
+          .eq('client_id', clientId).eq('name', catName).eq('client_type_id', clientTypeId);
         let categoryId: string | null = null;
         if (existCat && existCat.length > 0) {
           categoryId = existCat[0].id;
@@ -182,7 +187,7 @@ serve(async (req) => {
         } else {
           const { data: insertedCat, error: catError } = await supabase
             .from('incident_categories')
-            .insert({ name: catName, description: cat.description ?? null, client_id: clientId, client_type_key: typeKey })
+            .insert({ name: catName, description: cat.description ?? null, client_id: clientId, client_type_id: clientTypeId })
             .select('id').single();
           if (catError || !insertedCat?.id) {
             tableLogs.categories.errors.push(catError?.message || 'Unknown category insert error');
@@ -206,7 +211,7 @@ serve(async (req) => {
             }
             const { data: insertedSub, error: subError } = await supabase
               .from('incident_subcategories')
-              .insert({ name: subName, description: sub.description ?? null, category_id: categoryId, client_id: clientId, client_type_key: typeKey })
+              .insert({ name: subName, description: sub.description ?? null, category_id: categoryId, client_id: clientId, client_type_id: clientTypeId })
               .select('id').single();
             if (subError) { tableLogs.sub_categories.errors.push(subError.message); responseStatus = 'failed'; responseCode = 207; }
             else if (insertedSub?.id) tableLogs.sub_categories.inserted_ids.push(insertedSub.id);
@@ -227,14 +232,14 @@ serve(async (req) => {
         if (!title) continue;
         const { data: existForm } = await supabase
           .from('custom_forms').select('id')
-          .eq('client_id', clientId).eq('title', title).eq('client_type_key', typeKey);
+          .eq('client_id', clientId).eq('title', title).eq('client_type_id', clientTypeId);
         if (existForm && existForm.length > 0) {
           tableLogs.custom_forms.already_existing_ids.push(existForm[0].id);
           continue;
         }
         const { data, error } = await supabase
           .from('custom_forms')
-          .insert({ client_id: clientId, title, description: form.description ?? null, is_active: form.is_active ?? true, fields: form.fields, client_logo: (form as any).client_logo ?? clientLogo ?? null, client_type_key: typeKey })
+          .insert({ client_id: clientId, title, description: form.description ?? null, is_active: form.is_active ?? true, fields: form.fields, client_logo: (form as any).client_logo ?? clientLogo ?? null, client_type_id: clientTypeId })
           .select('id').single();
         if (error) { tableLogs.custom_forms.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
         else if (data?.id) tableLogs.custom_forms.inserted_ids.push(data.id);
@@ -253,7 +258,7 @@ serve(async (req) => {
         if (!title) continue;
         const { data: existTemplate } = await supabase
           .from('assessment_templates').select('id')
-          .eq('client_id', clientId).eq('title', title).eq('client_type_key', typeKey);
+          .eq('client_id', clientId).eq('title', title).eq('client_type_id', clientTypeId);
         if (existTemplate && existTemplate.length > 0) {
           tableLogs.assessment_templates.already_existing_ids.push(existTemplate[0].id);
           continue;
@@ -274,17 +279,13 @@ serve(async (req) => {
         }));
         const { data, error } = await supabase
           .from('assessment_templates')
-          .insert({ client_id: clientId, title, description: template.description ?? null, category_id: categoryId, questions: questionsWithIds, is_active: template.is_active ?? true, created_by: superAdminId, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), client_type_key: typeKey })
+          .insert({ client_id: clientId, title, description: template.description ?? null, category_id: categoryId, questions: questionsWithIds, is_active: template.is_active ?? true, created_by: superAdminId, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), client_type_id: clientTypeId })
           .select('id').single();
         if (error) { tableLogs.assessment_templates.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
         else if (data?.id) tableLogs.assessment_templates.inserted_ids.push(data.id);
       }
 
       // ── Edu Resources (global table, keyed by client_type_id) ─────────────
-      const { data: clientTypeData } = await supabase
-        .from('client_type').select('id').eq('key', typeKey).single();
-      const clientTypeId: string | null = clientTypeData?.id || null;
-
       if (clientTypeId) {
         let uploadedById: string | null = null;
         try {

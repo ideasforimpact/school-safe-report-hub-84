@@ -17,6 +17,7 @@ import GroupConfigurationContent from '@/components/configuration/GroupConfigura
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useClientIntegration } from '@/hooks/useClientIntegration';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { useLang } from '@/hooks/useLang';
 
 const SettingsPage = () => {
   const [searchParams] = useSearchParams();
@@ -67,12 +68,11 @@ const SettingsPage = () => {
     setClientType(detectedClientType);
   }, [employeeData, user]);
 
+  const lang = useLang();
   const defaultTab = searchParams.get('tab') === 'form' ? 'form' : 'incident';
 
-  // Determine if educational tabs should be shown (for schools and similar educational institutions)
-  const showEducationalTabs = clientType === 'school' || clientType === 'college' || clientType === 'university' || clientType === 'educational';
-
-  console.log('SettingsPage - showEducationalTabs:', showEducationalTabs, 'clientType:', clientType);
+  // Show structure tabs for all client types
+  const showEducationalTabs = clientType === 'school' || clientType === 'college' || clientType === 'university' || clientType === 'educational' || clientType === 'institute' || clientType === 'work';
 
   return (
     <Layout>
@@ -112,18 +112,20 @@ const SettingsPage = () => {
               </TabsTrigger>
               {showEducationalTabs && (
                 <>
-                  <TabsTrigger 
-                    value="student" 
-                    className="flex items-center gap-2"
-                    disabled={isClientLinked}
-                    title={isClientLinked ? "Student Management is disabled when client integration is linked" : ""}
-                  >
-                    <GraduationCap className="h-4 w-4" />
-                    <span>Student Management</span>
-                  </TabsTrigger>
+                  {clientType !== 'work' && (
+                    <TabsTrigger
+                      value="student"
+                      className="flex items-center gap-2"
+                      disabled={isClientLinked}
+                      title={isClientLinked ? "Student Management is disabled when client integration is linked" : ""}
+                    >
+                      <GraduationCap className="h-4 w-4" />
+                      <span>Student Management</span>
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="educational" className="flex items-center gap-2">
                     <Building className="h-4 w-4" />
-                    <span>Educational Structure</span>
+                    <span>{lang.structure.pageTitle}</span>
                   </TabsTrigger>
                 </>
               )}
@@ -191,23 +193,25 @@ const SettingsPage = () => {
             
             {showEducationalTabs && (
               <>
-                <TabsContent value="student" className="p-0">
-                  <Card className="w-full">
-                    <CardHeader>
-                      <CardTitle>Student Management</CardTitle>
-                      <CardDescription>Manage students in your institution</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <StudentManagement embedded={true} />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                {clientType !== 'work' && (
+                  <TabsContent value="student" className="p-0">
+                    <Card className="w-full">
+                      <CardHeader>
+                        <CardTitle>Student Management</CardTitle>
+                        <CardDescription>Manage students in your institution</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <StudentManagement embedded={true} />
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                )}
                 
                 <TabsContent value="educational" className="p-0">
                   <Card className="w-full">
                     <CardHeader>
-                      <CardTitle>Educational Structure Configuration</CardTitle>
-                      <CardDescription>Manage campuses, classes, sections, and facilities</CardDescription>
+                      <CardTitle>{lang.structure.pageTitle} Configuration</CardTitle>
+                      <CardDescription>{lang.structure.pageDescription}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <EducationalStructureConfig 

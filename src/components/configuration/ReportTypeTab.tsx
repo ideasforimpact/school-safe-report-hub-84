@@ -81,9 +81,9 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   
   // Get client ID and type from auth context
   const { employeeData, user } = useAuth();
-  const clientTypeKey = employeeData?.clientType?.key || (user as any)?.clientType?.key;
+  const clientTypeId = employeeData?.clientType?.id || (user as any)?.clientType?.id;
   // Use the hook to get report types filtered by client type
-  const { reportTypes, loading, fetchReportTypes } = useReportTypes(clientTypeKey);
+  const { reportTypes, loading, fetchReportTypes } = useReportTypes(clientTypeId);
   const [reportTypeReferences, setReportTypeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
 
   // Pre-load reference info so we can disable delete button for linked report types

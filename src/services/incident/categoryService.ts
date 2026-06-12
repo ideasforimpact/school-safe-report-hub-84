@@ -73,7 +73,7 @@ export const categoryService = {
   },
 
   // Categories
-  getCategories: async (clientId?: string, clientTypeKey?: string) => {
+  getCategories: async (clientId?: string, clientTypeId?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -84,8 +84,8 @@ export const categoryService = {
         .eq('client_id', clientId)
         .order('name');
 
-      if (clientTypeKey) {
-        query = query.eq('client_type_key', clientTypeKey);
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
       }
 
       const { data: categories, error } = await query;
@@ -224,7 +224,7 @@ export const categoryService = {
   },
 
   // Subcategories - Updated to include client_id validation
-  getSubcategories: async (categoryId?: string, clientId?: string, clientTypeKey?: string) => {
+  getSubcategories: async (categoryId?: string, clientId?: string, clientTypeId?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -239,8 +239,8 @@ export const categoryService = {
         query = query.eq('category_id', categoryId);
       }
 
-      if (clientTypeKey) {
-        query = query.eq('client_type_key', clientTypeKey);
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
       }
       const { data: subcategories, error } = await query.order('name');
 

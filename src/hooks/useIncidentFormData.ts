@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ConfigItem } from '@/contexts/types';
 import { useAuth } from '@/contexts/auth/useAuth';
 
 export interface IncidentFormData {
@@ -14,119 +13,111 @@ export interface IncidentFormData {
   priorities: { id: string; name: string; color: string | null }[];
 }
 
+// Module-level cache keyed by `clientId::clientTypeId`
+let configCache: { [key: string]: { version: string; formData: IncidentFormData; employees: any[]; statuses: any[]; students: any[] } } = {};
+let fetchInflight: { [key: string]: Promise<void> } = {};
+const CACHE_VERSION = 'v6';
+
+export function clearIncidentFormDataCache(clientId?: string) {
+  if (clientId) {
+    Object.keys(configCache).forEach(k => { if (k.startsWith(clientId)) delete configCache[k]; });
+  } else {
+    configCache = {};
+  }
+}
+
 export function useIncidentFormData() {
   const { employeeData } = useAuth();
-  const [formData, setFormData] = useState<IncidentFormData>({
-    reportTypes: [],
-    categories: [],
-    subcategories: [],
-    locations: [],
-    facilities: [],
-    priorities: []
+  const clientId = employeeData?.clientId;
+  const clientTypeId = employeeData?.clientType?.id;
+  const cacheKey = clientId && clientTypeId ? `${clientId}::${clientTypeId}` : clientId || '';
+
+  const [formData, setFormData] = useState<IncidentFormData>(() => {
+    return configCache[cacheKey]?.formData || {
+      reportTypes: [], categories: [], subcategories: [],
+      locations: [], facilities: [], priorities: []
+    };
   });
-  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<any[]>(() => configCache[cacheKey]?.employees || []);
+  const [statuses, setStatuses] = useState<any[]>(() => configCache[cacheKey]?.statuses || []);
+  const [students, setStudents] = useState<any[]>(() => configCache[cacheKey]?.students || []);
+  const [loading, setLoading] = useState(!configCache[cacheKey]);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
-    async function fetchData() {
-      const clientTypeKey = employeeData?.clientType?.key;
-      if (!employeeData?.clientId || !clientTypeKey) {
-        console.log('No client ID or type available for fetching incident form data');
+    if (!clientId) { setLoading(false); return; }
+
+    // Hit cache
+    if (configCache[cacheKey]?.version === CACHE_VERSION) {
+      const cached = configCache[cacheKey];
+      setFormData(cached.formData);
+      setEmployees(cached.employees);
+      setStatuses(cached.statuses);
+      setStudents(cached.students);
+      setLoading(false);
+      return;
+    }
+
+    // Piggyback on in-flight request
+    if (fetchInflight[cacheKey]) {
+      fetchInflight[cacheKey].then(() => {
+        const cached = configCache[cacheKey];
+        if (cached) {
+          setFormData(cached.formData);
+          setEmployees(cached.employees);
+          setStatuses(cached.statuses);
+          setStudents(cached.students);
+        }
         setLoading(false);
-        return;
-      }
+      });
+      return;
+    }
 
-      setLoading(true);
+    setLoading(true);
+
+    const doFetch = async () => {
       try {
-        console.log('Fetching incident form data for client:', employeeData.clientId, 'type:', clientTypeKey);
-
-        // Fetch report types filtered by client type
-        let reportTypesQuery = supabase
-          .from('incident_report_types')
-          .select('id, name, description')
-          .eq('is_active', true);
-        if (clientTypeKey) reportTypesQuery = reportTypesQuery.eq('client_type_key', clientTypeKey);
-        const { data: reportTypes, error: reportTypesError } = await reportTypesQuery;
-        if (reportTypesError) throw reportTypesError;
-        // Fetch categories filtered by client_id and client type
-        let categoriesQuery = supabase
-          .from('incident_categories')
-          .select('id, name, description')
-          .eq('is_active', true)
-          .eq('client_id', employeeData.clientId);
-        if (clientTypeKey) categoriesQuery = categoriesQuery.eq('client_type_key', clientTypeKey);
-        const { data: categories, error: categoriesError } = await categoriesQuery;
-        if (categoriesError) throw categoriesError;
-
-        // Fetch subcategories filtered by client_id and client type
-        let subcategoriesQuery = supabase
-          .from('incident_subcategories')
-          .select('id, name, category_id')
-          .eq('is_active', true)
-          .eq('client_id', employeeData.clientId);
-        if (clientTypeKey) subcategoriesQuery = subcategoriesQuery.eq('client_type_key', clientTypeKey);
-        const { data: subcategories, error: subcategoriesError } = await subcategoriesQuery;
-        if (subcategoriesError) throw subcategoriesError;
-        
-        // Fetch locations (campuses) filtered by client_id
-        const { data: locations, error: locationsError } = await supabase
-          .from('campuses')
-          .select('id, name')
-          .eq('client_id', employeeData.clientId);
-          
-        if (locationsError) throw locationsError;
-        
-        // Fetch facilities filtered by client_id
-        const { data: facilities, error: facilitiesError } = await supabase
-          .from('facilities')
-          .select('id, name, campus_id')
-          .eq('client_id', employeeData.clientId);
-          
-        if (facilitiesError) throw facilitiesError;
-        
-        // Fetch priorities filtered by client type
-        let prioritiesQuery = supabase
-          .from('incident_priorities')
-          .select('id, name, color, weight')
-          .eq('is_active', true)
-          .order('weight', { ascending: true });
-        if (clientTypeKey) prioritiesQuery = prioritiesQuery.eq('client_type_key', clientTypeKey);
-        const { data: priorities, error: prioritiesError } = await prioritiesQuery;
-          
-        if (prioritiesError) throw prioritiesError;
-        
-        setFormData({
-          reportTypes: reportTypes || [],
-          categories: categories || [],
-          subcategories: subcategories || [],
-          locations: locations || [],
-          facilities: facilities || [],
-          priorities: priorities || []
+        const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+          body: { operation: 'get_config', clientId, clientTypeId: clientTypeId || null }
         });
 
-        console.log('Successfully fetched incident form data:', {
-          reportTypes: reportTypes?.length || 0,
-          categories: categories?.length || 0,
-          subcategories: subcategories?.length || 0,
-          locations: locations?.length || 0,
-          facilities: facilities?.length || 0,
-          priorities: priorities?.length || 0
-        });
+        if (error) throw error;
+        if (!data?.success) throw new Error('Failed to fetch incident form data');
+
+        const d = data.data;
+        const newFormData: IncidentFormData = {
+          reportTypes: d.reportTypes || [],
+          categories: d.categories || [],
+          subcategories: d.subcategories || [],
+          locations: d.locations || [],
+          facilities: d.facilities || [],
+          priorities: d.priorities || [],
+        };
+
+        configCache[cacheKey] = {
+          version: CACHE_VERSION,
+          formData: newFormData,
+          employees: d.employees || [],
+          statuses: d.statuses || [],
+          students: d.students || [],
+        };
+
+        setFormData(newFormData);
+        setEmployees(d.employees || []);
+        setStatuses(d.statuses || []);
+        setStudents(d.students || []);
       } catch (err: any) {
-        console.error("Error fetching form data:", err);
+        console.error('Error fetching incident form data:', err);
         setError(err.message);
-        toast.error("Failed to load data from database");
+        toast.error('Failed to load incident form data');
       } finally {
         setLoading(false);
+        delete fetchInflight[cacheKey];
       }
-    }
-    
-    fetchData();
-  }, [employeeData?.clientId, employeeData?.clientType?.key]);
-  
-  return {
-    formData,
-    loading,
-    error
-  };
+    };
+
+    fetchInflight[cacheKey] = doFetch();
+  }, [clientId, clientTypeId]);
+
+  return { formData, employees, statuses, students, loading, error };
 }

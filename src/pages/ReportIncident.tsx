@@ -292,6 +292,7 @@ const ReportIncident = () => {
         created_by: employeeId,
         assigned_to: formData.owner || null,
         client_id: clientId,
+        client_type_id: authEmployeeData?.client?.client_type_id || authEmployeeData?.clientType?.id || null,
         status_id: statusData?.id || null
       };
       

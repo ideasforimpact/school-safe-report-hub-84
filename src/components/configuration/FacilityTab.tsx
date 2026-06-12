@@ -26,6 +26,7 @@ import { ConfigItem, CampusItem } from '@/contexts/types';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/auth/useAuth';
+import { useLang } from '@/hooks/useLang';
 
 interface FacilityItem extends ConfigItem {
   campusId: string;
@@ -61,6 +62,7 @@ export const FacilityTab = ({
   canCreate = true,
 }: FacilityTabProps) => {
   const { employeeData } = useAuth();
+  const { structure: s } = useLang();
   const [newFacility, setNewFacility] = useState('');
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
   const [editingFacility, setEditingFacility] = useState<FacilityItem | null>(null);
@@ -132,22 +134,22 @@ export const FacilityTab = ({
     const facilityName = newFacility.trim();
     
     if (!facilityName) {
-      toast.error("Facility name cannot be empty");
+      toast.error(`${s.facility} name cannot be empty`);
       return;
     }
     
     if (!isValidFacilityName(facilityName)) {
-      toast.error("Facility name can be up to 50 characters");
+      toast.error(`${s.facility} name can be up to 50 characters`);
       return;
     }
     
     if (!selectedCampusId) {
-      toast.error("Please select a campus for this facility");
+      toast.error(`Please select a ${s.level1.toLowerCase()} for this ${s.facility.toLowerCase()}`);
       return;
     }
     
     if (isDuplicateFacilityName(facilityName, selectedCampusId)) {
-      toast.error("A facility with this name already exists in the selected campus");
+      toast.error(`A ${s.facility.toLowerCase()} with this name already exists in the selected ${s.level1.toLowerCase()}`);
       return;
     }
     
@@ -195,23 +197,23 @@ export const FacilityTab = ({
     const facilityName = updatedName.trim();
     
     if (!facilityName) {
-      toast.error("Facility name cannot be empty");
+      toast.error(`${s.facility} name cannot be empty`);
       return;
     }
     
     if (!isValidFacilityName(facilityName)) {
-      toast.error("Facility name can be up to 50 characters");
+      toast.error(`${s.facility} name can be up to 50 characters`);
       return;
     }
     
     if (editingFacility) {
       if (!editingFacility.campusId) {
-        toast.error("Please select a campus for this facility");
+        toast.error(`Please select a ${s.level1.toLowerCase()} for this ${s.facility.toLowerCase()}`);
         return;
       }
       
       if (isDuplicateFacilityName(facilityName, editingFacility.campusId, editingFacility.id)) {
-        toast.error("A facility with this name already exists in the selected campus");
+        toast.error(`A ${s.facility.toLowerCase()} with this name already exists in the selected ${s.level1.toLowerCase()}`);
         return;
       }
       
@@ -279,21 +281,21 @@ export const FacilityTab = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>School Facilities</CardTitle>
-        <CardDescription>Manage facilities for your institution</CardDescription>
+        <CardTitle>{s.facilityPlural}</CardTitle>
+        <CardDescription>Manage {s.facilityPlural.toLowerCase()} for your organisation</CardDescription>
       </CardHeader>
       <CardContent>
         {canCreate && (
         <form onSubmit={handleFacilityAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
-            <Label htmlFor="campus-select" className="mb-2 block">Campus</Label>
+            <Label htmlFor="campus-select" className="mb-2 block">{s.level1}</Label>
             <Select value={selectedCampusId} onValueChange={setSelectedCampusId}>
               <SelectTrigger id="campus-select" className="w-full">
-                <SelectValue placeholder="Select a Campus" />
+                <SelectValue placeholder={`Select a ${s.level1}`} />
               </SelectTrigger>
               <SelectContent>
                 {campuses.length === 0 ? (
-                  <SelectItem value="no-campuses" disabled>No campuses available</SelectItem>
+                  <SelectItem value="no-campuses" disabled>{`No ${s.level1Plural.toLowerCase()} available`}</SelectItem>
                 ) : (
                   campuses.map((campus) => (
                     <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>
@@ -303,20 +305,20 @@ export const FacilityTab = ({
             </Select>
           </div>
           <div className="flex-1">
-            <Label htmlFor="facility-input" className="mb-2 block">Facility Name</Label>
+            <Label htmlFor="facility-input" className="mb-2 block">{s.facility} Name</Label>
             <Input
               id="facility-input"
-              placeholder="New facility name (e.g., Laboratory)"
+              placeholder={`New ${s.facility.toLowerCase()} name`}
               value={newFacility}
               onChange={(e) => setNewFacility(e.target.value)}
               maxLength={50}
               className={newFacility && !isValidFacilityName(newFacility) ? 'border-red-500' : ''}
             />
             {newFacility && !isValidFacilityName(newFacility) && (
-              <p className="text-xs text-red-500 mt-1">Facility name can only contain letters, numbers, and spaces (max 20 characters)</p>
+              <p className="text-xs text-red-500 mt-1">{s.facility} name can only contain letters, numbers, and spaces (max 20 characters)</p>
             )}
             {newFacility && selectedCampusId && isDuplicateFacilityName(newFacility, selectedCampusId) && (
-              <p className="text-xs text-red-500 mt-1">A facility with this name already exists in the selected campus</p>
+              <p className="text-xs text-red-500 mt-1">A {s.facility.toLowerCase()} with this name already exists in the selected {s.level1.toLowerCase()}</p>
             )}
           </div>
           <div className="self-end">
@@ -331,7 +333,7 @@ export const FacilityTab = ({
                 </>
               ) : (
                 <>
-                  <Plus className="mr-2 h-4 w-4" /> Add Facility
+                  <Plus className="mr-2 h-4 w-4" /> Add {s.facility}
                 </>
               )}
             </Button>
@@ -344,7 +346,7 @@ export const FacilityTab = ({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search facilities..."
+              placeholder={`Search ${s.facilityPlural.toLowerCase()}...`}
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               className="pl-10 pr-10"
@@ -362,10 +364,10 @@ export const FacilityTab = ({
           <div className="w-48">
             <Select value={filterCampusId} onValueChange={setFilterCampusId}>
               <SelectTrigger>
-                <SelectValue placeholder="Filter by campus" />
+                <SelectValue placeholder={`Filter by ${s.level1.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All campuses</SelectItem>
+                <SelectItem value="">{`All ${s.level1Plural.toLowerCase()}`}</SelectItem>
                 {campuses.map((campus) => (
                   <SelectItem key={campus.id} value={campus.id}>
                     {campus.name}
@@ -392,8 +394,8 @@ export const FacilityTab = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Facility Name</TableHead>
-              <TableHead>Campus</TableHead>
+              <TableHead>{s.facility} Name</TableHead>
+              <TableHead>{s.level1}</TableHead>
               {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -403,7 +405,7 @@ export const FacilityTab = ({
                 <TableCell colSpan={canCreate ? 3 : 2} className="text-center py-4">
                   <div className="flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    <span>Loading facilities...</span>
+                    <span>Loading {s.facilityPlural.toLowerCase()}...</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -411,8 +413,8 @@ export const FacilityTab = ({
               <TableRow>
                 <TableCell colSpan={canCreate ? 3 : 2} className="text-center py-4 text-muted-foreground">
                   {facilities.length === 0 
-                    ? "No facilities available. Add your first facility above."
-                    : "No facilities match your search criteria."
+                    ? `No ${s.facilityPlural.toLowerCase()} available. Add your first ${s.facility.toLowerCase()} above.`
+                    : `No ${s.facilityPlural.toLowerCase()} match your search criteria.`
                   }
                 </TableCell>
               </TableRow>
@@ -581,9 +583,9 @@ export const FacilityTab = ({
         {/* Edit Dialog */}
         {editingFacility && canCreate && (
           <EditDialog
-            title="Edit Facility"
+            title={`Edit ${s.facility}`}
             description="Update the facility details below"
-            fieldLabel="Facility name"
+            fieldLabel={`${s.facility} name`}
             value={editingFacility.name}
             open={isEditDialogOpen && canCreate}
             onOpenChange={setIsEditDialogOpen}
@@ -594,7 +596,7 @@ export const FacilityTab = ({
             onClose={handleEditClose}
             maxLength={20}
             validationFunction={isValidFacilityName}
-            validationMessage="Facility name can only contain letters, numbers, and spaces (max 20 characters)"
+            validationMessage={`${s.facility} name can only contain letters, numbers, and spaces (max 20 characters)`}
             isRequired={true}
             extraFields={[
               {

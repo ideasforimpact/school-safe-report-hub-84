@@ -40,7 +40,7 @@ export const priorityService = {
   },
 
   // Get priorities filtered by client type key
-  getPriorities: async (activeOnly: boolean = false, clientTypeKey?: string) => {
+  getPriorities: async (activeOnly: boolean = false, clientTypeId?: string) => {
     try {
       let query = supabase
         .from('incident_priorities')
@@ -50,8 +50,8 @@ export const priorityService = {
         query = query.eq('is_active', true);
       }
 
-      if (clientTypeKey) {
-        query = query.eq('client_type_key', clientTypeKey);
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
       }
       const { data, error } = await query.order('weight');
       

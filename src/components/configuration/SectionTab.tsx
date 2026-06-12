@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/auth/useAuth';
+import { useLang } from '@/hooks/useLang';
 import {
   Select,
   SelectContent,
@@ -50,6 +51,7 @@ export const SectionTab = ({
   canCreate = true,
 }: SectionTabProps) => {
   const { employeeData } = useAuth();
+  const { structure: s } = useLang();
   const [newSection, setNewSection] = useState('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
@@ -136,27 +138,27 @@ export const SectionTab = ({
     const sectionName = newSection.trim();
     
     if (!sectionName) {
-      toast.error("Section name cannot be empty");
+      toast.error(`${s.level3} name cannot be empty`);
       return;
     }
     
     if (!isValidSectionName(sectionName)) {
-      toast.error("Section name can be up to 15 characters");
+      toast.error(`${s.level3} name can be up to 15 characters`);
       return;
     }
     
     if (!selectedClassId) {
-      toast.error("Please select a grade for this section");
+      toast.error(`Please select a ${s.level2.toLowerCase()} for this ${s.level3.toLowerCase()}`);
       return;
     }
 
     if (!selectedCampusId) {
-      toast.error("Please select a campus for this section");
+      toast.error(`Please select a ${s.level1.toLowerCase()} for this ${s.level3.toLowerCase()}`);
       return;
     }
     
     if (isDuplicateSectionName(sectionName, selectedClassId)) {
-      toast.error("A section with this name already exists in the selected grade");
+      toast.error(`A ${s.level3.toLowerCase()} with this name already exists in the selected ${s.level2.toLowerCase()}`);
       return;
     }
     
@@ -203,28 +205,28 @@ export const SectionTab = ({
     const sectionName = updatedName.trim();
     
     if (!sectionName) {
-      toast.error("Section name cannot be empty");
+      toast.error(`${s.level3} name cannot be empty`);
       return;
     }
     
     if (!isValidSectionName(sectionName)) {
-      toast.error("Section name can be up to 15 characters");
+      toast.error(`${s.level3} name can be up to 15 characters`);
       return;
     }
     
     if (editingSection) {
       if (!editingSection.classId) {
-        toast.error("Please select a grade for this section");
+        toast.error(`Please select a ${s.level2.toLowerCase()} for this ${s.level3.toLowerCase()}`);
         return;
       }
 
       if (!editingSection.campusId) {
-        toast.error("Please select a campus for this section");
+        toast.error(`Please select a ${s.level1.toLowerCase()} for this ${s.level3.toLowerCase()}`);
         return;
       }
       
       if (isDuplicateSectionName(sectionName, editingSection.classId, editingSection.id)) {
-        toast.error("A section with this name already exists in the selected grade");
+        toast.error(`A ${s.level3.toLowerCase()} with this name already exists in the selected ${s.level2.toLowerCase()}`);
         return;
       }
       
@@ -329,21 +331,21 @@ export const SectionTab = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Section Management</CardTitle>
-        <CardDescription>Add, edit, or remove sections for each grade</CardDescription>
+        <CardTitle>{s.level3} Management</CardTitle>
+        <CardDescription>Add, edit, or remove {s.level3Plural.toLowerCase()} for each {s.level2.toLowerCase()}</CardDescription>
       </CardHeader>
       <CardContent>
         {canCreate && (
         <form onSubmit={handleSectionAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
-            <Label htmlFor="campus-select" className="mb-2 block">Campus</Label>
+            <Label htmlFor="campus-select" className="mb-2 block">{s.level1}</Label>
             <Select value={selectedCampusId} onValueChange={setSelectedCampusId}>
               <SelectTrigger id="campus-select" className="w-full">
-                <SelectValue placeholder="Select a Campus" />
+                <SelectValue placeholder={`Select a ${s.level1}`} />
               </SelectTrigger>
               <SelectContent>
                 {campuses.length === 0 ? (
-                  <SelectItem value="no-campuses" disabled>No campuses available</SelectItem>
+                  <SelectItem value="no-campuses" disabled>{`No ${s.level1Plural.toLowerCase()} available`}</SelectItem>
                 ) : (
                   campuses.map((campus) => (
                     <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>
@@ -354,21 +356,21 @@ export const SectionTab = ({
           </div>
           
           <div className="flex-1">
-            <Label htmlFor="grade-select" className="mb-2 block">Grade</Label>
+            <Label htmlFor="grade-select" className="mb-2 block">{s.level2}</Label>
             <Select 
               value={selectedClassId} 
               onValueChange={setSelectedClassId}
               disabled={!selectedCampusId}
             >
               <SelectTrigger id="grade-select" className="w-full">
-                <SelectValue placeholder={!selectedCampusId ? "Select a campus first" : "Select a Grade"} />
+                <SelectValue placeholder={!selectedCampusId ? `Select a ${s.level1.toLowerCase()} first` : `Select a ${s.level2}`} />
               </SelectTrigger>
               <SelectContent>
                 {filteredClasses.length === 0 ? (
                   <SelectItem value="no-grades" disabled>
                     {!selectedCampusId 
-                      ? "Select a campus first" 
-                      : "No grades available for this campus"}
+                      ? `Select a ${s.level1.toLowerCase()} first`
+                      : `No ${s.level2Plural.toLowerCase()} available for this ${s.level1.toLowerCase()}`}
                   </SelectItem>
                 ) : (
                   filteredClasses.map((cls) => (
@@ -380,20 +382,20 @@ export const SectionTab = ({
           </div>
           
           <div className="flex-1">
-            <Label htmlFor="section-input" className="mb-2 block">Section Name</Label>
+            <Label htmlFor="section-input" className="mb-2 block">{s.level3} Name</Label>
             <Input
               id="section-input"
-              placeholder="New section name (e.g., Section A)"
+              placeholder={`New ${s.level3.toLowerCase()} name`}
               value={newSection}
               onChange={(e) => setNewSection(e.target.value)}
               maxLength={15}
               className={newSection && !isValidSectionName(newSection) ? 'border-red-500' : ''}
             />
             {newSection && !isValidSectionName(newSection) && (
-              <p className="text-xs text-red-500 mt-1">Section name can be up to 15 characters</p>
+              <p className="text-xs text-red-500 mt-1">{s.level3} name can be up to 15 characters</p>
             )}
             {newSection && selectedClassId && isDuplicateSectionName(newSection, selectedClassId) && (
-              <p className="text-xs text-red-500 mt-1">A section with this name already exists in the selected grade</p>
+              <p className="text-xs text-red-500 mt-1">A {s.level3.toLowerCase()} with this name already exists in the selected {s.level2.toLowerCase()}</p>
             )}
           </div>
           
@@ -409,7 +411,7 @@ export const SectionTab = ({
                 </>
               ) : (
                 <>
-                  <Plus className="mr-2 h-4 w-4" /> Add Section
+                  <Plus className="mr-2 h-4 w-4" /> Add {s.level3}
                 </>
               )}
             </Button>
@@ -422,7 +424,7 @@ export const SectionTab = ({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search sections..."
+              placeholder={`Search ${s.level3Plural.toLowerCase()}...`}
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               className="pl-10 pr-10"
@@ -446,10 +448,10 @@ export const SectionTab = ({
               }
             }}>
               <SelectTrigger>
-                <SelectValue placeholder="Filter by campus" />
+                <SelectValue placeholder={`Filter by ${s.level1.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All campuses</SelectItem>
+                <SelectItem value="">{`All ${s.level1Plural.toLowerCase()}`}</SelectItem>
                 {campuses.map((campus) => (
                   <SelectItem key={campus.id} value={campus.id}>
                     {campus.name}
@@ -465,10 +467,10 @@ export const SectionTab = ({
               disabled={!filterCampusId && availableClassesForFilter.length > 10}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Filter by grade" />
+                <SelectValue placeholder={`Filter by ${s.level2.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All grades</SelectItem>
+                <SelectItem value="">{`All ${s.level2Plural.toLowerCase()}`}</SelectItem>
                 {availableClassesForFilter.map((classItem) => (
                   <SelectItem key={classItem.id} value={classItem.id}>
                     {classItem.name}
@@ -488,16 +490,16 @@ export const SectionTab = ({
         {/* Results Info */}
         {(searchFilter || filterCampusId || filterClassId) && (
           <div className="mb-4 text-sm text-muted-foreground">
-            Showing {filteredSections.length} of {sections.length} sections
+            Showing {filteredSections.length} of {sections.length} {s.level3Plural.toLowerCase()}
           </div>
         )}
         
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Section Name</TableHead>
-              <TableHead>Grade</TableHead>
-              <TableHead>Campus</TableHead>
+              <TableHead>{s.level3} Name</TableHead>
+              <TableHead>{s.level2}</TableHead>
+              <TableHead>{s.level1}</TableHead>
               {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -505,15 +507,15 @@ export const SectionTab = ({
             {loading ? (
               <TableRow>
                 <TableCell colSpan={canCreate ? 4 : 3} className="text-center py-4">                  
-                  <Loader text="Loading sections..." />                  
+                  <Loader text={`Loading ${s.level3Plural.toLowerCase()}...`} />                  
                 </TableCell>
               </TableRow>
             ) : filteredSections.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={canCreate ? 4 : 3} className="text-center py-4 text-muted-foreground">
                   {sections.length === 0 
-                    ? "No sections available. Add your first section above."
-                    : "No sections match your search criteria."
+                    ? `No ${s.level3Plural.toLowerCase()} available. Add your first ${s.level3.toLowerCase()} above.`
+                    : `No ${s.level3Plural.toLowerCase()} match your search criteria.`
                   }
                 </TableCell>
               </TableRow>
@@ -657,9 +659,9 @@ export const SectionTab = ({
         {/* Edit Dialog */}
         {editingSection && canCreate && (
           <EditDialog
-            title="Edit Section"
-            description="Update the section details below"
-            fieldLabel="Section name"
+            title={`Edit ${s.level3}`}
+            description={`Update the ${s.level3.toLowerCase()} details below`}
+            fieldLabel={`${s.level3} name`}
             value={editingSection.name}
             open={isEditDialogOpen && canCreate}
             onOpenChange={setIsEditDialogOpen}
@@ -670,19 +672,19 @@ export const SectionTab = ({
             onClose={handleEditClose}
             maxLength={15}
             validationFunction={isValidSectionName}
-            validationMessage="Section name can be up to 15 characters"
+            validationMessage={`${s.level3} name can be up to 15 characters`}
             isRequired={true}
             extraFields={[
               {
                 type: "select",
-                label: "Campus",
+                label: s.level1,
                 options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
                 value: editingSection.campusId,
                 onChange: handleCampusChange
               },
               {
                 type: "select",
-                label: "Grade",
+                label: s.level2,
                 options: editingSection.campusId 
                   ? classes
                       .filter(cls => cls.campusId === editingSection.campusId)

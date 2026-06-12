@@ -10,7 +10,8 @@ import { useRealTimeSubHook } from './useRealTimeSubHook';
 export function useEducationalConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('campuses');
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
+  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? null;
   
   // Local states
   const [loading, setLoading] = useState(false);
@@ -27,15 +28,15 @@ export function useEducationalConfigurationManagement() {
     }
   }, [searchParams]);
 
-  // Fetch data from Supabase when employeeData changes
+  // Fetch data from Supabase when client or type changes
   useEffect(() => {
-    if (employeeData?.clientId) {
+    if (employeeData?.clientId && clientTypeId) {
       fetchCampuses();
       fetchClasses();
       fetchSections();
       fetchFacilities();
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch campuses
   const fetchCampuses = useCallback(async () => {
@@ -44,7 +45,7 @@ export function useEducationalConfigurationManagement() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { clientId: employeeData.clientId, action: 'list' }
+        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
       });
 
       if (error) throw error;
@@ -68,7 +69,7 @@ export function useEducationalConfigurationManagement() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { clientId: employeeData.clientId, action: 'list' }
+        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
       });
 
       if (error) throw error;
@@ -93,7 +94,7 @@ export function useEducationalConfigurationManagement() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { clientId: employeeData.clientId, action: 'list' }
+        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
       });
 
       if (error) throw error;
@@ -119,7 +120,7 @@ export function useEducationalConfigurationManagement() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { clientId: employeeData.clientId, action: 'list' }
+        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
       });
 
       if (error) throw error;
@@ -147,7 +148,7 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { name, clientId: employeeData.clientId, action: 'create' }
+        body: { name, clientId: employeeData.clientId, clientTypeId, action: 'create' }
       });
 
       if (error) throw error;
@@ -241,7 +242,7 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { name, campusId, clientId: employeeData.clientId, action: 'create' }
+        body: { name, campusId, clientId: employeeData.clientId, clientTypeId, action: 'create' }
       });
 
       if (error) throw error;
@@ -334,7 +335,8 @@ export function useEducationalConfigurationManagement() {
           name, 
           gradeId: classId, 
           campusId: campusId, 
-          clientId: employeeData.clientId, 
+          clientId: employeeData.clientId,
+          clientTypeId,
           action: 'create' 
         }
       });
@@ -427,7 +429,7 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { name, campusId, clientId: employeeData.clientId, action: 'create' }
+        body: { name, campusId, clientId: employeeData.clientId, clientTypeId, action: 'create' }
       });
 
       if (error) throw error;
