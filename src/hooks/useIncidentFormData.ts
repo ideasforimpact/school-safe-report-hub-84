@@ -13,8 +13,18 @@ export interface IncidentFormData {
   facilities: { id: string; name: string; campus_id: string }[];
   priorities: { id: string; name: string; color: string | null }[];
 }
-let configCache: { [clientId: string]: any } = {};
+export let configCache: { [clientId: string]: any } = {};
 let fetchInflight: { [clientId: string]: Promise<void> } = {};
+// Version bump — forces a re-fetch after the priorities client_id filter fix
+const CACHE_VERSION = 'v3';
+
+export function clearIncidentFormDataCache(clientId?: string) {
+  if (clientId) {
+    delete configCache[clientId];
+  } else {
+    configCache = {};
+  }
+}
 
 export function useIncidentFormData() {
   const { employeeData } = useAuth();
@@ -52,7 +62,7 @@ export function useIncidentFormData() {
     }
 
     // Already cached — apply immediately without a network call
-    if (configCache[clientId]) {
+    if (configCache[clientId]?.version === CACHE_VERSION) {
       const cached = configCache[clientId];
       setFormData(cached.formData);
       setEmployees(cached.employees);
@@ -119,6 +129,7 @@ export function useIncidentFormData() {
           };
 
           configCache[clientId] = {
+            version: CACHE_VERSION,
             formData: newFormData,
             employees: data.employees || [],
             statuses: data.statuses || [],

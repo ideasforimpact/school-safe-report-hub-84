@@ -199,79 +199,26 @@ class IncidentDataService {
       };
     }
     
-    // Create cache key including filters and user-specific data (no page info)
+    // Create cache key including filters, user, and page
     const filterKey = JSON.stringify(filters);
     const userKey = `${employeeData.id}_${employeeData.isSuperAdmin}_${hasIncidentAdmin}`;
-    const cacheKey = `${clientId}_${userKey}_${filterKey}`;
+    const cacheKey = `${clientId}_${userKey}_${filterKey}_p${page}_ps${pageSize}`;
     
     console.log(`   - Cache key: ${cacheKey}`);
     
     // Return cached data if available and not forcing refresh
     if (!forceRefresh && this.incidentCache.has(cacheKey)) {
-      console.log(`✅ Returning cached data with ${returnAllData ? 'NO' : 'client-side'} pagination`);
-      const allIncidents = this.incidentCache.get(cacheKey)!;
-      
-      if (returnAllData) {
-        // Paginate from cache using the requested page
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedData = allIncidents.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(allIncidents.length / pageSize);
-        return {
-          data: paginatedData,
-          totalCount: allIncidents.length,
-          hasMore: page < totalPages,
-          currentPage: page,
-          totalPages
-        };
-      } else {
-        // Apply client-side pagination (for backward compatibility)
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedData = allIncidents.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(allIncidents.length / pageSize);
-        
-        return {
-          data: paginatedData,
-          totalCount: allIncidents.length,
-          hasMore: page < totalPages,
-          currentPage: page,
-          totalPages
-        };
-      }
+      console.log(`✅ Returning cached data for page ${page}`);
+      const cached = this.incidentCache.get(cacheKey)!;
+      return cached as PaginatedResponse<IncidentRecord>;
     }
 
     // Prevent multiple simultaneous requests
     if (this.isLoading) {
       console.log('⚠️ Request already in progress, returning cached or empty data');
-      const cachedData = this.incidentCache.get(cacheKey) || [];
-
-      if (returnAllData) {
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedData = cachedData.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(cachedData.length / pageSize);
-        return {
-          data: paginatedData,
-          totalCount: cachedData.length,
-          hasMore: page < totalPages,
-          currentPage: page,
-          totalPages
-        };
-      } else {
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedData = cachedData.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(cachedData.length / pageSize);
-        
-        return {
-          data: paginatedData,
-          totalCount: cachedData.length,
-          hasMore: page < totalPages,
-          currentPage: page,
-          totalPages
-        };
-      }
+      const cached = this.incidentCache.get(cacheKey);
+      if (cached) return cached as PaginatedResponse<IncidentRecord>;
+      return { data: [], totalCount: 0, hasMore: false, currentPage: page, totalPages: 0 };
     }
 
     this.isLoading = true;
@@ -334,41 +281,21 @@ class IncidentDataService {
         recommended_action: inc.recommended_action || null
       }));
 
-      const isSuperAdmin = employeeData.isSuperAdmin === true;
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const response: PaginatedResponse<IncidentRecord> = {
+        data: transformedIncidents,
+        totalCount,
+        hasMore: page < totalPages,
+        currentPage: page,
+        totalPages,
+        config: data.config,
+      };
 
-      // Cache ALL the results
-      this.incidentCache.set(cacheKey, transformedIncidents);
-      console.log(`💾 Cached ${transformedIncidents.length} incidents with key: ${cacheKey}`);
+      // Cache the full response object keyed by page
+      this.incidentCache.set(cacheKey, response as any);
+      console.log(`💾 Cached page ${page} with ${transformedIncidents.length} incidents`);
 
-      if (returnAllData) {
-        // Return ALL incidents without pagination for client-side handling
-        const response: PaginatedResponse<IncidentRecord> = {
-          data: transformedIncidents,
-          totalCount: totalCount,
-          hasMore: totalCount > (page * pageSize),
-          currentPage: page,
-          totalPages: Math.ceil(totalCount / pageSize),
-          config: data.config // Include consolidated config data
-        };
-
-        console.log(`📋 Returning incidents and config for page ${page}`);
-        return response;
-      } else {
-        // Apply client-side pagination (for backward compatibility)
-        const totalPages = Math.ceil(totalCount / pageSize);
-        const hasMore = page < totalPages;
-
-        const response: PaginatedResponse<IncidentRecord> = {
-          data: transformedIncidents,
-          totalCount: totalCount,
-          hasMore,
-          currentPage: page,
-          totalPages,
-          config: data.config // Include consolidated config data
-        };
-
-        return response;
-      }
+      return response;
 
     } catch (error) {
       console.error('❌ Error in incidentDataService.fetchIncidentsForClientWithFilters:', error);
@@ -421,52 +348,18 @@ class IncidentDataService {
         return { total: 0, open: 0, inProgress: 0, closed: 0 };
       }
 
-      let query = supabase
-        .from('incidents')
-        .select(`
-          id,
-          created_by,
-          assigned_to,
-          incident_status!status_id(name)
-        `)
-        .eq('client_id', clientId);
-
-      // Apply same improved filtering logic for stats
       const isSuperAdmin = employeeData.isSuperAdmin === true;
-      
-      if (isSuperAdmin) {
-        // Super admin can see all incidents
-        console.log('Stats: Super admin access - all incidents');
-      } else if (hasIncidentAdmin) {
-        // Incident admin can see all incidents for the client
-        console.log('Stats: Incident admin access - all incidents');
-      } else {
-        // Regular users can only see incidents they created or are assigned to
-        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-        console.log('Stats: Regular user access - filtered incidents');
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      const stats = {
-        total: data?.length || 0,
-        open: 0,
-        inProgress: 0,
-        closed: 0
-      };
-
-      data?.forEach((incident: any) => {
-        const status = incident.incident_status?.name;
-        if (status === 'Open') stats.open++;
-        else if (status === 'In Progress') stats.inProgress++;
-        else if (status === 'Closed') stats.closed++;
+      const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+        body: {
+          operation: 'get_stats',
+          clientId,
+          employeeId: employeeData.id,
+          isSuperAdmin,
+          hasIncidentAdmin: !!hasIncidentAdmin,
+        },
       });
-
-      return stats;
+      if (error) throw error;
+      return data?.data ?? { total: 0, open: 0, inProgress: 0, closed: 0 };
     } catch (error) {
       console.error('Error fetching incident stats:', error);
       return { total: 0, open: 0, inProgress: 0, closed: 0 };
