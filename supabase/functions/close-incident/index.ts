@@ -2,6 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts'
+import { getActiveClient } from '../_shared/getActiveClient.ts'
 
 import {
   parseClosureAttachments,
@@ -258,16 +259,16 @@ Deno.serve(async (req) => {
 
     console.log('Closing incident with payload:', requestBody)
 
-    const { data: employee, error: employeeError } = await supabase
-      .from('employees')
-      .select('id, client_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (employeeError || !employee) {
-      console.error('Error fetching employee data:', employeeError)
+    // Feature 3: resolve the caller's active employees row from JWT
+    // app_metadata. The legacy .eq('user_id').single() throws PGRST116
+    // for multi-client users (one user_id → N employees rows).
+    const { client_id: activeClientId, employee_id: activeEmployeeId } =
+      await getActiveClient(supabase, user)
+    if (!activeClientId || !activeEmployeeId) {
+      console.error('Active employee not found for user', user.id)
       throw new Error('Employee not found')
     }
+    const employee = { id: activeEmployeeId, client_id: activeClientId }
 
     const { canClose, incident } = await checkClosePermissions(
       requestBody.incident_id,

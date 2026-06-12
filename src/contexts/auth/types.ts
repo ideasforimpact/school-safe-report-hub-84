@@ -8,6 +8,31 @@ export type LogoutReason =
   | 'user_logout'
   | null;
 
+// Lightweight row shape used by the multi-client picker. Mirrors the columns
+// returned by the get_employees_by_email_for_auth RPC. Kept loose (string
+// instead of uuid) because it's only consumed by UI code that displays it.
+export interface ClientChoiceRow {
+  id: string;
+  email: string;
+  client_id: string;
+  user_id: string | null;
+  status: boolean;
+  first_name: string;
+  last_name: string;
+  employee_id: string;
+  is_super_admin: boolean;
+  // Feature 2: distinguishes the primary super admin (false) from the up-to-two
+  // secondary super admins (true) on the same client. Always false when
+  // is_super_admin is false. Surfaced so the picker dialog and any
+  // downstream code can categorize without an extra query.
+  is_secondary_super_admin?: boolean;
+  department?: string | null;
+  employee_type?: string | null;
+  client_name?: string | null;
+  client_logo?: string | null;
+  client_active?: boolean | null;
+}
+
 // Update the AuthContextType to include the employeeData property
 export interface AuthContextType {
   user: User | null;
@@ -27,6 +52,14 @@ export interface AuthContextType {
   employeeData: EmployeeData | null;
   setUser: (user: User | null) => void;
   isProcessingAuth: boolean; // Add processing state
+  // Multi-client picker: when a Google/Azure SSO login resolves to >1 active
+  // employees row for the same email, the auth flow pauses and exposes the
+  // candidate rows here. The dialog reads pendingClientChoices, then calls
+  // confirmClientChoice (to resume with the selected row) or
+  // cancelClientChoice (to abort and sign out).
+  pendingClientChoices: ClientChoiceRow[] | null;
+  confirmClientChoice: (row: ClientChoiceRow) => Promise<void>;
+  cancelClientChoice: () => Promise<void>;
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';

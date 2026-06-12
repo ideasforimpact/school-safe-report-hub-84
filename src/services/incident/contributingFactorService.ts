@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { incidentReferenceService } from "./incidentReferenceService";
+import { getActiveClientId } from "@/services/auth/getActiveClientId";
 
 export interface ContributingFactorItem {
   id: string;
@@ -154,24 +155,13 @@ export const contributingFactorService = {
     try {
       let finalClientId = clientId;
 
-      // If clientId not provided, get it from current user's employee record
+      // If clientId not provided, get it from JWT app_metadata (Feature 3).
       if (!finalClientId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
+        const resolved = await getActiveClientId();
+        if (!resolved) {
+          throw new Error('Active client not found');
         }
-
-        const { data: employee, error: employeeError } = await supabase
-          .from('employees')
-          .select('client_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (employeeError || !employee) {
-          throw new Error('Employee record not found');
-        }
-
-        finalClientId = employee.client_id;
+        finalClientId = resolved;
       }
 
       if (!finalClientId) {

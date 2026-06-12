@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { incidentReferenceService } from "./incidentReferenceService";
+import { getActiveClientId } from "@/services/auth/getActiveClientId";
 
 export interface PriorityItem {
   id: string;
@@ -74,26 +75,14 @@ export const priorityService = {
 
       let finalClientId = clientId;
 
-      // If clientId not provided, get it from current user's employee record
+      // If clientId not provided, get it from the JWT app_metadata
+      // (Feature 3 stamps the picked client on every login).
       if (!finalClientId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
+        const resolved = await getActiveClientId();
+        if (!resolved) {
+          throw new Error('Active client not found');
         }
-
-        console.log(user.id,"userData");
-        
-        const { data: employee, error: employeeError } = await supabase
-          .from('employees')
-          .select('client_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (employeeError || !employee) {
-          throw new Error('Employee record not found');
-        }
-
-        finalClientId = employee.client_id;
+        finalClientId = resolved;
       }
 
       // Check for duplicate
@@ -136,24 +125,14 @@ export const priorityService = {
         throw new Error('Priority name cannot be empty');
       }
 
-      // Get client_id for duplicate check
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data: employee, error: employeeError } = await supabase
-        .from('employees')
-        .select('client_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (employeeError || !employee) {
-        throw new Error('Employee record not found');
+      // Get client_id for duplicate check (Feature 3: JWT app_metadata).
+      const clientId = await getActiveClientId();
+      if (!clientId) {
+        throw new Error('Active client not found');
       }
 
       // Check for duplicate (excluding current record)
-      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, employee.client_id, id);
+      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, clientId, id);
       if (isDuplicate) {
         throw new Error('A priority with this name already exists');
       }
@@ -191,24 +170,14 @@ export const priorityService = {
   // Delete priority - RLS handles client validation automatically
   deletePriority: async (id: string) => {
     try {
-      // Get client_id for reference check
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data: employee, error: employeeError } = await supabase
-        .from('employees')
-        .select('client_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (employeeError || !employee) {
-        throw new Error('Employee record not found');
+      // Get client_id for reference check (Feature 3: JWT app_metadata).
+      const clientId = await getActiveClientId();
+      if (!clientId) {
+        throw new Error('Active client not found');
       }
 
       // Check if priority is referenced by incidents
-      const referenceCheck = await incidentReferenceService.checkPriorityReferences(id, employee.client_id);
+      const referenceCheck = await incidentReferenceService.checkPriorityReferences(id, clientId);
       
       if (referenceCheck.hasReferences) {
         throw new Error(referenceCheck.message);
@@ -236,24 +205,14 @@ export const priorityService = {
     try {
       // If deactivating, check if priority is referenced by incidents
       if (!isActive) {
-        // Get client_id for reference check
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
-
-        const { data: employee, error: employeeError } = await supabase
-          .from('employees')
-          .select('client_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (employeeError || !employee) {
-          throw new Error('Employee record not found');
+        // Get client_id for reference check (Feature 3: JWT app_metadata).
+        const clientId = await getActiveClientId();
+        if (!clientId) {
+          throw new Error('Active client not found');
         }
 
         // Check if priority is referenced by incidents
-        const referenceCheck = await incidentReferenceService.checkPriorityReferences(id, employee.client_id);
+        const referenceCheck = await incidentReferenceService.checkPriorityReferences(id, clientId);
         
         if (referenceCheck.hasReferences) {
           // Replace "delete" with "deactivate" in the error message

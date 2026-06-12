@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { getActiveClientId } from '@/services/auth/getActiveClientId';
 
 export interface AuditLogEntry {
   id: string;
@@ -93,12 +94,15 @@ const getUserName = async (userId: string): Promise<string> => {
   try {
     console.log('Looking up user name for user_id:', userId);
     
-    // First try to look up by user_id (for newer entries)
+    // First try to look up by user_id (for newer entries). Multi-client
+    // users have N rows with the same user_id — for display purposes any
+    // of them yields the same name, so .limit(1).maybeSingle() is fine.
     const { data: employee, error } = await supabase
       .from('employees')
       .select('first_name, last_name')
       .eq('user_id', userId)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (employee && !error) {
       const fullName = `${employee.first_name} ${employee.last_name}`;
@@ -470,25 +474,17 @@ export const logAuditEntry = async (
   changes?: any[]
 ): Promise<string | null> => {
   try {
-    // Get client_id from the current user's employee record
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    const { data: employee, error: employeeError } = await supabase
-      .from('employees')
-      .select('client_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (employeeError || !employee) {
-      throw new Error('Employee not found');
+    // Get client_id from JWT app_metadata (Feature 3). The audit log row
+    // must be tagged with the user's ACTIVE client — not whichever
+    // employees row their auth.uid() happens to match first.
+    const clientId = await getActiveClientId();
+    if (!clientId) {
+      throw new Error('Active client not found');
     }
 
     const { data, error } = await supabase.rpc('insert_incident_audit_log', {
       p_incident_id: incidentId,
-      p_client_id: employee.client_id,
+      p_client_id: clientId,
       p_field_changed: fieldChanged,
       p_changed_by: changedBy,
       p_old_value: oldValue || null,

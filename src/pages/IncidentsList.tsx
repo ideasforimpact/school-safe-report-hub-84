@@ -148,16 +148,32 @@ const IncidentsList = () => {
       setHasFetched(false);
       console.log(`🔄 Fetching ALL incidents with filters (EAGER LOADING):`, serverFilters);
 
-      // Get client ID
+      // Get client ID. Priority order:
+      //   1. Redux employeeData.clientId (set by Feature 3's auth flow)
+      //   2. JWT app_metadata.client_id (authoritative source post-login)
+      //   3. DB fallback by (email, client_id) — but scoped to the JWT's
+      //      client_id when present, so multi-client users (whose email
+      //      maps to N rows) get a deterministic row instead of a random
+      //      first match.
       let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
 
+      if (!clientId) {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const jwtClientId = (
+          currentSession?.user?.app_metadata as Record<string, unknown> | undefined
+        )?.client_id as string | undefined;
+        if (jwtClientId) {
+          clientId = jwtClientId;
+        }
+      }
+
       if (!clientId && user?.email) {
-        const { data: empData, error } = await supabase
+        const { data: empData } = await supabase
           .from('employees')
           .select('client_id')
           .eq('email', user.email.toLowerCase())
           .maybeSingle();
-          
+
         if (empData) {
           clientId = empData.client_id;
         }

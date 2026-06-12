@@ -19,6 +19,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { buildClientLogoUrl } from '@/lib/utils';
 import { checkSuperAdminEmailExists } from '@/services/employee/employeeValidationService';
 import { toast } from 'sonner';
+import SecondarySuperAdminEmailList, { MAX_SECONDARY_SUPER_ADMINS } from './SecondarySuperAdminEmailList';
+import { Plus } from 'lucide-react';
 
 interface ClientType {
   id: string;
@@ -37,6 +39,12 @@ interface BasicInfoTabProps {
     logo: string;
     institutionType: InstitutionType;
     superAdminEmail?: string;
+    // Feature 2: optional because the add-view path doesn't ever populate it.
+    secondarySuperAdminEmails?: string[];
+    // Feature 2 bug 1 follow-up: surfaced here so adding a secondary super
+    // admin can auto-keep this list in sync (the user shouldn't have to
+    // remember to update both lists).
+    superAdminAllowedDomains?: string[];
     website?: string;
     clientTypeId?: string;
     aiIncidentRecommendedActionsEnabled?: boolean;
@@ -477,19 +485,73 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
       <RequiredFieldLabel>
         <label htmlFor="superAdminEmail">Super Admin Email</label>
       </RequiredFieldLabel>
-      <Input
-        id="superAdminEmail"
-        type="email"
-        value={formData.superAdminEmail || ''}
-        onChange={(e) => {
-          setFormData({ ...formData, superAdminEmail: e.target.value });
-          setEmailTouched(true);
-        }}
-        placeholder="Enter super admin email"
-        inputMode="email"
-        required
-        className={emailExists ? 'border-red-500' : ''}
-      />
+
+      {/* Primary super admin email + inline "+" button to add a secondary
+          right next to it. The + button is gated by isEdit and the env
+          flag, and disappears once the cap (2 secondaries) is reached.
+
+          Autofill defense: Chrome IGNORES autoComplete="off" on
+          type="email" fields and silently cross-fills every matching
+          email input in the same form when the user picks an autofill
+          suggestion — that's why typing/picking in a secondary was also
+          changing the primary. The defense below combines four signals
+          that, together, defeat Chrome + LastPass + 1Password +
+          Bitwarden cross-fill:
+            - type="text" + inputMode="email" → keeps the mobile email
+              keyboard but stops Chrome from classifying the field as an
+              autofillable email input.
+            - autoComplete="off" → handled by browsers that respect it.
+            - data-form-type="other" → tells Chrome's heuristics this is
+              not a standard contact form field.
+            - data-{1p,lp,bw}-ignore → opt-out hints respected by the
+              named password managers. */}
+      <div className="flex gap-2 items-start">
+        <Input
+          id="superAdminEmail"
+          name="superAdminEmail"
+          type="text"
+          inputMode="email"
+          autoComplete="off"
+          data-form-type="other"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-bwignore="true"
+          value={formData.superAdminEmail || ''}
+          onChange={(e) => {
+            setFormData({ ...formData, superAdminEmail: e.target.value });
+            setEmailTouched(true);
+          }}
+          placeholder="Enter super admin email"
+          required
+          className={`flex-1 ${emailExists ? 'border-red-500' : ''}`}
+        />
+        {(() => {
+          const multiEnabled = import.meta.env.VITE_IS_MULTI_SUPER_ADMIN === 'true';
+          const secondaries = formData.secondarySuperAdminEmails || [];
+          if (!isEdit || !multiEnabled) return null;
+          if (secondaries.length >= MAX_SECONDARY_SUPER_ADMINS) return null;
+          return (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              onClick={() => {
+                // Append an empty secondary row. The auto-domain-sync runs
+                // below in handleSecondaryChange when the user types.
+                setFormData({
+                  ...formData,
+                  secondarySuperAdminEmails: [...secondaries, ''],
+                });
+              }}
+              aria-label="Add another super admin"
+              title="Add another super admin"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          );
+        })()}
+      </div>
 
       {/* Inline status messages */}
       {checkingEmail && (
@@ -525,8 +587,49 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
             Super admin email is required
           </p>
         )}
+
+        {/* Feature 2: secondary super admins (edit view only). The header
+            and "+" button now live above (inline with the primary input).
+            This component renders only the input rows.
+
+            onChange wrapper auto-adds each secondary email's domain to the
+            superAdminAllowedDomains list (capped at 3) so the two lists
+            stay in sync without the user having to manage them separately.
+            Cap behavior: if adding would exceed the domain cap, the
+            secondary email is still saved but the domain is skipped (the
+            user can clean up the Authentication tab manually). */}
+        <SecondarySuperAdminEmailList
+          emails={formData.secondarySuperAdminEmails || []}
+          onChange={(emails) => {
+            const MAX_SUPER_ADMIN_DOMAINS = 3;
+            const currentDomains = formData.superAdminAllowedDomains || [];
+            const nextDomains = [...currentDomains];
+            for (const email of emails) {
+              const trimmed = (email || '').trim();
+              if (!trimmed || !isValidEmail(trimmed)) continue;
+              const domain = trimmed.split('@')[1]?.toLowerCase();
+              if (!domain) continue;
+              const already = nextDomains.some(
+                d => d.toLowerCase() === domain
+              );
+              if (already) continue;
+              if (nextDomains.length >= MAX_SUPER_ADMIN_DOMAINS) {
+                // Silently skip — admin can add manually if needed.
+                continue;
+              }
+              nextDomains.push(domain);
+            }
+            const domainsChanged = nextDomains.length !== currentDomains.length;
+            setFormData({
+              ...formData,
+              secondarySuperAdminEmails: emails,
+              ...(domainsChanged ? { superAdminAllowedDomains: nextDomains } : {}),
+            });
+          }}
+          isEdit={isEdit}
+        />
     </div>
-      
+
       <div className="space-y-2">
         <RequiredFieldLabel>
           <label htmlFor="contactPerson">Contact Person</label>
