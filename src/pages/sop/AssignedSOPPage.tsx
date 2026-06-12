@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import {
   Select,
   SelectContent,
@@ -19,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Search, Users, Eye, Clock3, FileText, X } from 'lucide-react';
+import { ArrowLeft, Users, Eye, Clock3, FileText, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -108,7 +109,6 @@ const AssignedSOPPage = () => {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDirectFetchRef = useRef<number>(0);
   const currentPageRef = useRef(1);
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep ref in sync
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
@@ -208,19 +208,15 @@ const AssignedSOPPage = () => {
     }
   }, [resolvedClientId, employeeData?.id, PAGE_SIZE]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Filter change — debounce 400ms, reset to page 1
+  // Filter change — reset to page 1 and fetch (search debounce handled by DebouncedSearchInput)
   useEffect(() => {
     const hasFilters = searchTerm.trim() || statusFilter !== 'all' || categoryFilter !== 'all';
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    setCurrentPage(1);
     if (!hasFilters) {
-      setCurrentPage(1);
       fetchAssignedSOPs();
       return;
     }
-    searchDebounceRef.current = setTimeout(() => {
-      setCurrentPage(1);
-      fetchFilteredAssignedSOPs(searchTerm, statusFilter, categoryFilter, 1);
-    }, 400);
+    fetchFilteredAssignedSOPs(searchTerm, statusFilter, categoryFilter, 1);
   }, [searchTerm, statusFilter, categoryFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Page change — re-fetch keeping current filters
@@ -366,15 +362,13 @@ const AssignedSOPPage = () => {
           {/* Filters Section */}
           <div className="mb-6 flex flex-wrap items-center gap-4">
             {/* Search Box */}
-            <div className="relative w-[250px]">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search by name, description, category..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <DebouncedSearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search by name, description, category..."
+              className="w-[250px]"
+              triggerOnEnter
+            />
 
             {/* Category Filter */}
             <div className="w-[180px]">
@@ -419,15 +413,6 @@ const AssignedSOPPage = () => {
               </Button>
             )}
           </div>
-
-          {/* Results Count */}
-          {!loading && (
-            <div className="mb-4">
-              <p className="text-sm text-gray-600">
-                Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalCount)}–{Math.min(currentPage * PAGE_SIZE, totalCount)} of {totalCount} SOPs
-              </p>
-            </div>
-          )}
 
           {loading ? (
             <Loader text= "Loading assigned SOPs..." />
@@ -520,54 +505,14 @@ const AssignedSOPPage = () => {
                 </TableBody>
               </Table>
 
-              {/* Pagination */}
-              {totalCount > PAGE_SIZE && (
-                <div className="flex items-center justify-between px-2 pt-4 border-t border-gray-100">
-                  <p className="text-sm text-gray-500">
-                    Page {currentPage} of {Math.ceil(totalCount / PAGE_SIZE)}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                      className="px-2 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-                    >«</button>
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-                    >Previous</button>
-                    {Array.from({ length: Math.ceil(totalCount / PAGE_SIZE) }, (_, i) => i + 1)
-                      .filter((p) => p === 1 || p === Math.ceil(totalCount / PAGE_SIZE) || Math.abs(p - currentPage) <= 1)
-                      .reduce<(number | '...')[]>((acc, p, i, arr) => {
-                        if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...');
-                        acc.push(p);
-                        return acc;
-                      }, [])
-                      .map((p, i) =>
-                        p === '...' ? (
-                          <span key={`e-${i}`} className="px-2 py-1 text-sm text-gray-400">…</span>
-                        ) : (
-                          <button
-                            key={p}
-                            onClick={() => setCurrentPage(p as number)}
-                            className={`px-3 py-1 text-sm rounded border ${currentPage === p ? 'bg-primary text-white border-primary' : 'border-gray-200 hover:bg-gray-50'}`}
-                          >{p}</button>
-                        )
-                      )}
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(Math.ceil(totalCount / PAGE_SIZE), p + 1))}
-                      disabled={currentPage === Math.ceil(totalCount / PAGE_SIZE)}
-                      className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-                    >Next</button>
-                    <button
-                      onClick={() => setCurrentPage(Math.ceil(totalCount / PAGE_SIZE))}
-                      disabled={currentPage === Math.ceil(totalCount / PAGE_SIZE)}
-                      className="px-2 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
-                    >»</button>
-                  </div>
-                </div>
-              )}
+              <TablePaginationBar
+                currentPage={currentPage}
+                totalPages={Math.ceil(totalCount / PAGE_SIZE)}
+                totalCount={totalCount}
+                pageSize={PAGE_SIZE}
+                itemLabel="SOPs"
+                onPageChange={setCurrentPage}
+              />
             </div>
             </TooltipProvider>
           )}

@@ -6,14 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious 
-} from '@/components/ui/pagination';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIncidentPermissions } from '@/utils/incidentPermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -410,74 +403,16 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
         </Table>
       </div>
       
-      {/* Pagination - Always show when pagination data exists and handlers are provided */}
+      {/* Pagination */}
       {pagination && onPageChange && (
-        <div className="py-4 border-t">
-          {/* Page info - Always show current page context */}
-          <div className="flex items-center justify-between px-6 mb-3">
-            <div className="text-sm text-gray-600">
-              Page {pagination.currentPage} of {pagination.totalPages}
-            </div>
-            {pagination.totalPages === 1 && (
-              <div className="text-sm text-gray-500">
-                {pagination.totalCount === pagination.pageSize ? 
-                  `All ${pagination.totalCount} records displayed` : 
-                  `Showing all ${pagination.totalCount} records on 1 page`
-                }
-              </div>
-            )}
-          </div>
-          
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                {pagination.currentPage === 1 ? (
-                  <PaginationPrevious 
-                    aria-disabled="true"
-                    className="pointer-events-none opacity-50"
-                  />
-                ) : (
-                  <PaginationPrevious 
-                    onClick={() => onPageChange(Math.max(pagination.currentPage - 1, 1))}
-                    className="cursor-pointer"
-                  />
-                )}
-              </PaginationItem>
-              
-              {getPageNumbers().map((pageNum, index) => 
-                pageNum === -1 ? (
-                  <PaginationItem key={`ellipsis-${index}`}>
-                    <span className="flex h-10 w-10 items-center justify-center">...</span>
-                  </PaginationItem>
-                ) : (
-                  <PaginationItem key={pageNum}>
-                    <PaginationLink
-                      isActive={pagination.currentPage === pageNum}
-                      onClick={() => onPageChange(pageNum)}
-                      className="cursor-pointer"
-                    >
-                      {pageNum}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              )}
-              
-              <PaginationItem>
-                {pagination.currentPage === pagination.totalPages ? (
-                  <PaginationNext 
-                    aria-disabled="true" 
-                    className="pointer-events-none opacity-50"
-                  />
-                ) : (
-                  <PaginationNext 
-                    onClick={() => onPageChange(Math.min(pagination.currentPage + 1, pagination.totalPages))}
-                    className="cursor-pointer"
-                  />
-                )}
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+        <TablePaginationBar
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          totalCount={pagination.totalCount}
+          pageSize={pagination.pageSize}
+          itemLabel="incidents"
+          onPageChange={onPageChange}
+        />
       )}
       
       {/* Loading indicator for page changes */}

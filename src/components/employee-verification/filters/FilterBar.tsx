@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import SearchFilter from '@/components/incidents/filters/SearchFilter';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import DocumentStatusFilter from './DocumentStatusFilter';
 import EmployeeDocumentTypeFilter from './EmployeeDocumentTypeFilter';
 import DepartmentFilter from './DepartmentFilter';
@@ -64,13 +64,13 @@ const FilterBar: React.FC<FilterBarProps> = ({
   return (
     <div className="space-y-4 mb-6">
       <div className="flex flex-wrap gap-4 items-center">
-        <div className="w-[400px]">
-          <SearchFilter
-            value={searchTerm}
-            onChange={onSearchChange}
-            placeholder="Search by name, email, employee ID"
-          />
-        </div>
+        <DebouncedSearchInput
+          value={searchTerm}
+          onChange={onSearchChange}
+          placeholder="Search by name, email, employee ID"
+          className="w-[400px]"
+          triggerOnEnter
+        />
 
         <EmployeeDocumentTypeFilter
           value={documentTypeFilter}

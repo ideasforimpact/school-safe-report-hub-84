@@ -7,7 +7,7 @@ import { useSortedIncidents } from '@/hooks/useSortedIncidents';
 import { usePagination } from '@/hooks/usePagination';
 import { IncidentTableHeader } from './table/IncidentTableHeader';
 import { IncidentTableRow } from './table/IncidentTableRow';
-import { TablePagination } from './table/TablePagination';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 
 interface IncidentsTableProps {
   incidents: Incident[];
@@ -70,7 +70,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
         </Table>
       </div>
       
-      <TablePagination 
+      <TablePaginationBar
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}

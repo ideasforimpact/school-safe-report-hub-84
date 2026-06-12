@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, Users, FolderOpen, Plus, Search, MessageSquare, Pencil, Trash2, MoreVertical, Zap, Calendar, X, Eye, Download, History } from 'lucide-react';
+import { Heart, Users, FolderOpen, Plus, MessageSquare, Pencil, Trash2, MoreVertical, Zap, Calendar, X, Eye, Download, History } from 'lucide-react';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { DateRange } from 'react-day-picker';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import {
   Table,
   TableBody,
@@ -44,15 +44,7 @@ import {
   type StudentWellbeingSummary,
   type PaginationInfo,
 } from '@/services/student-wellbeing/studentWellbeingService';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { NewWellBeingRecordDialog } from '@/components/student-wellbeing/NewWellBeingRecordDialog';
@@ -167,7 +159,6 @@ const StudentWellBeingPage = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -193,11 +184,6 @@ const StudentWellBeingPage = () => {
   const [auditDialogOpen, setAuditDialogOpen] = useState(false);
   const [recordForAudit, setRecordForAudit] = useState<StudentWellbeingRecord | null>(null);
   
-  // Debounce the search input: wait 400ms after the user stops typing before firing
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   // Derive ISO date strings for date_of_observation filtering
   const formatDateParam = (d: Date): string => {
@@ -272,7 +258,7 @@ const StudentWellBeingPage = () => {
   const filteredRecords = records;
 
   const activeFilterCount = [
-    searchQuery,
+    debouncedSearch,
     statusFilter !== 'all' ? statusFilter : '',
     dateRange?.from || dateRange?.to ? 'date' : '',
     academicYearFilter !== getCurrentAcademicYear() ? academicYearFilter : '',
@@ -283,7 +269,7 @@ const StudentWellBeingPage = () => {
   }).length;
 
   const handleClearFilters = () => {
-    setSearchQuery('');
+    setDebouncedSearch('');
     setStatusFilter('all');
     setDateRange(undefined);
     setAcademicYearFilter(getCurrentAcademicYear());
@@ -466,15 +452,13 @@ const StudentWellBeingPage = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <h2 className="text-lg font-semibold mb-4">Records</h2>
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            <div className="relative flex-1 min-w-[200px] max-w-[320px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search Student, Grade/Section, or Concern..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-10 border border-input rounded-md bg-background"
-              />
-            </div>
+            <DebouncedSearchInput
+              value={debouncedSearch}
+              onChange={setDebouncedSearch}
+              placeholder="Search Student, Grade/Section, or Concern..."
+              className="flex-1 min-w-[200px] max-w-[320px]"
+              triggerOnEnter
+            />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px] h-10 border border-input rounded-md bg-background">
                 <SelectValue placeholder="All status" />
@@ -506,7 +490,7 @@ const StudentWellBeingPage = () => {
                 ))}
               </SelectContent>
             </Select>
-             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to || academicYearFilter !== getCurrentAcademicYear()) && (
+             {(debouncedSearch || statusFilter !== 'all' || dateRange?.from || dateRange?.to || academicYearFilter !== getCurrentAcademicYear()) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -712,65 +696,14 @@ const StudentWellBeingPage = () => {
             </div>
 
             {/* Pagination */}
-            {pagination.totalCount > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Showing {Math.min((pagination.page - 1) * pagination.pageSize + 1, pagination.totalCount)}–{Math.min(pagination.page * pagination.pageSize, pagination.totalCount)} of {pagination.totalCount} records
-                </p>
-                <Pagination className="w-auto mx-0">
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }}
-                        className={currentPage <= 1 ? 'pointer-events-none opacity-50' : ''}
-                        aria-disabled={currentPage <= 1}
-                      />
-                    </PaginationItem>
-
-                    {(() => {
-                      const pages: (number | 'ellipsis')[] = [];
-                      const total = pagination.totalPages;
-                      if (total <= 7) {
-                        for (let i = 1; i <= total; i++) pages.push(i);
-                      } else if (currentPage <= 4) {
-                        pages.push(1, 2, 3, 4, 5, 'ellipsis', total);
-                      } else if (currentPage >= total - 3) {
-                        pages.push(1, 'ellipsis', total - 4, total - 3, total - 2, total - 1, total);
-                      } else {
-                        pages.push(1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', total);
-                      }
-                      return pages.map((p, idx) =>
-                        p === 'ellipsis' ? (
-                          <PaginationItem key={`ellipsis-${idx}`}>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        ) : (
-                          <PaginationItem key={p}>
-                            <PaginationLink
-                              href="#"
-                              isActive={p === currentPage}
-                              onClick={(e) => { e.preventDefault(); setCurrentPage(p as number); }}
-                            >
-                              {p}
-                            </PaginationLink>
-                          </PaginationItem>
-                        )
-                      );
-                    })()}
-
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => { e.preventDefault(); if (currentPage < pagination.totalPages) setCurrentPage(currentPage + 1); }}
-                        className={currentPage >= pagination.totalPages ? 'pointer-events-none opacity-50' : ''}
-                        aria-disabled={currentPage >= pagination.totalPages}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            )}
+            <TablePaginationBar
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              totalCount={pagination.totalCount}
+              pageSize={pagination.pageSize}
+              itemLabel="records"
+              onPageChange={setCurrentPage}
+            />
             </>
           )}
 

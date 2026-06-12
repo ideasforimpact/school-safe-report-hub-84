@@ -4,7 +4,7 @@ import { Table, TableBody } from '@/components/ui/table';
 import { Incident } from '@/contexts/IncidentContext';
 import { IncidentTableHeader, SortField } from './IncidentTableHeader';
 import { IncidentTableRow } from './IncidentTableRow';
-import { TablePagination } from './TablePagination';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 
 interface TableContainerProps {
   incidents: Incident[];
@@ -54,13 +54,11 @@ export const TableContainer: React.FC<TableContainerProps> = ({
         </Table>
       </div>
       
-      {totalPages > 1 && (
-        <TablePagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-      )}
+      <TablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };
