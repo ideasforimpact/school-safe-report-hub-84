@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -35,6 +35,17 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
   statusOptions,
   priorityOptions
 }) => {
+  const [searchInput, setSearchInput] = useState(filters.search || '');
+
+  // Sync local input if parent clears filters
+  useEffect(() => {
+    setSearchInput(filters.search || '');
+  }, [filters.search]);
+
+  const commitSearch = () => {
+    onFilterChange('search', searchInput);
+  };
+
   return (
     <div className="space-y-4">
       {/* Search Bar - Full Width */}
@@ -43,9 +54,10 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Search tickets..."
-            value={filters.search || ''}
-            onChange={(e) => onFilterChange('search', e.target.value)}
+            placeholder="Search tickets... (press Enter to search)"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitSearch(); }}
             className="pl-10"
           />
         </div>

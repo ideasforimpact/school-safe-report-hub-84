@@ -74,6 +74,8 @@ const IncidentsList = () => {
   const [searchParams] = useSearchParams();
 
   const initFetchKeyRef = useRef<string | null>(null);
+  const statsFetchedForClientRef = useRef<string | null>(null);
+  const pageSizeRef = useRef<number>(10);
   // Tracks when the most recent intentional fetch completed so realtime events
   // arriving immediately after don't trigger a redundant second fetch.
   const lastFetchCompletedAtRef = useRef<number>(Date.now());
@@ -100,6 +102,8 @@ const IncidentsList = () => {
     const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
     const employeeDataForStats = employeeState.employeeData || authEmployeeData;
     if (!clientId || !employeeDataForStats) return;
+    if (statsFetchedForClientRef.current === clientId) return;
+    statsFetchedForClientRef.current = clientId;
 
     incidentDataService.getIncidentStats(clientId, employeeDataForStats, hasIncidentAdmin).then(stats => {
       setGlobalStats({ total: stats.total, open: stats.open, closed: stats.closed });
@@ -190,11 +194,11 @@ const IncidentsList = () => {
         forceRefresh,
         employeeDataForFiltering,
         hasIncidentAdmin,
-        { page, pageSize: pagination.pageSize },
+        { page, pageSize: pageSizeRef.current },
         serverFilters,
         true // We still use returnAllData = true logic but it's now server-side paginated
       );
-      
+
       if (response.config) {
         setConfig(response.config);
       }
@@ -203,14 +207,14 @@ const IncidentsList = () => {
 
       setOriginalIncidents(response.data);
       setAllIncidents(response.data);
-      
+
       // Update pagination state from server response
       setPagination({
         currentPage: response.currentPage,
         totalPages: response.totalPages,
         totalCount: response.totalCount,
         hasMore: response.hasMore,
-        pageSize: pagination.pageSize
+        pageSize: pageSizeRef.current
       });
       
       setDisplayedIncidents(response.data);
@@ -224,14 +228,12 @@ const IncidentsList = () => {
       lastFetchCompletedAtRef.current = Date.now();
     }
   }, [
-    employeeState.employeeData?.clientId, 
-    authEmployeeData?.clientId, 
+    employeeState.employeeData?.clientId,
+    authEmployeeData?.clientId,
     employeeState.employeeData?.id,
     authEmployeeData?.id,
-    user?.email, 
-    hasIncidentAdmin, 
-    pagination.pageSize,
-    searchParams
+    user?.email,
+    hasIncidentAdmin,
   ]);
 
   // Handle filter changes (triggers server request)
@@ -266,6 +268,7 @@ const IncidentsList = () => {
   }, [pagination.totalPages, loading, filters, fetchIncidents]);
 
   const changePageSize = useCallback((newPageSize: number) => {
+    pageSizeRef.current = newPageSize;
     setPagination(prev => ({ ...prev, pageSize: newPageSize }));
     fetchIncidents(filters, false, 1);
   }, [filters, fetchIncidents]);

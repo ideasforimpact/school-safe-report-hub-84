@@ -62,6 +62,35 @@ serve(async (req) => {
       );
     }
 
+    if (operation === 'get_stats') {
+      const { hasIncidentAdmin } = body;
+      let query = supabaseClient
+        .from('incidents')
+        .select('id, created_by, assigned_to, incident_status!status_id(name)')
+        .eq('client_id', clientId);
+
+      if (!isSuperAdmin && !hasIncidentAdmin) {
+        query = query.or(`created_by.eq.${employeeId},assigned_to.eq.${employeeId}`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const stats = { total: 0, open: 0, inProgress: 0, closed: 0 };
+      for (const inc of data ?? []) {
+        stats.total++;
+        const status = (inc as any).incident_status?.name;
+        if (status === 'Open') stats.open++;
+        else if (status === 'In Progress') stats.inProgress++;
+        else if (status === 'Closed') stats.closed++;
+      }
+
+      return new Response(JSON.stringify({ success: true, data: stats }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (operation === 'get_config') {
       console.log(`Fetching incident form configuration for client: ${clientId}`);
 
@@ -77,12 +106,12 @@ serve(async (req) => {
         employeesRes,
         studentsRes
       ] = await Promise.all([
-        supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true),
+        supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
         supabaseClient.from('incident_categories').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
         supabaseClient.from('incident_subcategories').select('id, name, category_id').eq('is_active', true).eq('client_id', clientId),
         supabaseClient.from('campuses').select('id, name').eq('client_id', clientId),
         supabaseClient.from('facilities').select('id, name, campus_id').eq('client_id', clientId),
-        supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).order('weight', { ascending: true }),
+        supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).eq('client_id', clientId).order('weight', { ascending: true }),
         supabaseClient.from('incident_status').select('id, name'),
         supabaseClient.from('employees').select('id, first_name, last_name, email').eq('client_id', clientId).eq('status', true).not('email', 'is', null).neq('email', ''),
         supabaseClient.from('students').select('*, grade_info:grades!students_grade_id_fkey(id,name), section_info:sections!students_section_id_fkey(id,name), campus_info:campuses!students_campus_id_fkey(id,name)').eq('client_id', clientId).order('created_at', { ascending: false })
@@ -245,12 +274,12 @@ serve(async (req) => {
           .range(from, to);
       })(),
       // Fetch config data
-      supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true),
+      supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
       supabaseClient.from('incident_categories').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
       supabaseClient.from('incident_subcategories').select('id, name, category_id').eq('is_active', true).eq('client_id', clientId),
       supabaseClient.from('campuses').select('id, name').eq('client_id', clientId),
       supabaseClient.from('facilities').select('id, name, campus_id').eq('client_id', clientId),
-      supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).order('weight', { ascending: true }),
+      supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).eq('client_id', clientId).order('weight', { ascending: true }),
       supabaseClient.from('incident_status').select('id, name'),
       supabaseClient.from('employees').select('id, first_name, last_name, email').eq('client_id', clientId).eq('status', true).not('email', 'is', null).neq('email', ''),
       supabaseClient.from('students').select('*, grade_info:grades!students_grade_id_fkey(id,name), section_info:sections!students_section_id_fkey(id,name), campus_info:campuses!students_campus_id_fkey(id,name)').eq('client_id', clientId).order('created_at', { ascending: false })
