@@ -25,9 +25,19 @@ import { DESCRIPTION_MAX_LENGTH } from '../constants';
 import Loader from '../common/Loader';
 import { Sparkles, X, Loader2, ChevronRight } from 'lucide-react';
 import { useIncidentCategorySuggestion } from '@/hooks/useIncidentCategorySuggestion';
+import {
+  resolveScenarioForReport,
+  type NextScenarioResult,
+} from '@/demo_client/incident/demoScenarios';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
+  /** Demo Setup pipe: the page header (src/pages/EditIncidentPage.tsx)
+   *  hosts the demo icon; when clicked it stashes the chosen scenario
+   *  here and the form picks it up via a useEffect. When
+   *  VITE_IS_DEMO_SETUP is off the page won't pass anything. */
+  pendingDemo?: NextScenarioResult | null;
+  onDemoConsumed?: () => void;
 }
 
 interface UserBasicInfo {
@@ -37,7 +47,11 @@ interface UserBasicInfo {
   name: string;
 }
 
-const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => {
+const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
+  incidentData,
+  pendingDemo,
+  onDemoConsumed,
+}) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, employeeData } = useAuth();
@@ -97,6 +111,29 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
   }));
 
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>(incidentData.peopleInvolved || []);
+
+  // Demo Setup: when the page header dispatches a scenario, apply it
+  // here via setFormData. The edit form uses the same *Id-based shape
+  // as Report Incident so we reuse the report resolver. Location,
+  // Facility, and Owner are intentionally not touched (per spec).
+  useEffect(() => {
+    if (!pendingDemo) return;
+    const reportTypes = configData?.reportTypes || [];
+    const categories = configData?.categories || [];
+    const subcategories = configData?.subcategories || [];
+    const priorities = configData?.priorities || [];
+    const partial = resolveScenarioForReport(
+      pendingDemo.scenario,
+      { reportTypes, categories, subcategories, priorities },
+      employeeData?.id || '',
+      pendingDemo.index,
+    );
+    setFormData(prev => ({ ...prev, ...partial }));
+    onDemoConsumed?.();
+    // Fire once per click; configData / setFormData are stable from the
+    // hooks for the lifetime of this component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDemo]);
 
   // Log form data changes
   useEffect(() => {

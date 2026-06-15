@@ -1,0 +1,29 @@
+[
+  {
+    "categoryName": "Health & Medical",
+    "subcategoryName": "Injury during sports / PE",
+    "reportTypeName": "Actual Incident",
+    "priorityName": "Medium",
+    "dateOffsetDays": 0,
+    "time": "10:30",
+    "description": "During the morning PE class a Grade 6 student lost balance while running on the basketball court and grazed their right knee. The school nurse cleaned and dressed the wound on site; no further medical attention was required. The student returned to class within ten minutes. The PE teacher debriefed the class about safe running form and surface conditions. Parents have been informed via the standard incident notification."
+  },
+  {
+    "categoryName": "Safety & Security",
+    "subcategoryName": "Slip, trip, or fall injury",
+    "reportTypeName": "Near Miss",
+    "priorityName": "High",
+    "dateOffsetDays": -1,
+    "time": "13:15",
+    "description": "A wet patch was identified near the cafeteria entrance during the lunch break and a student narrowly avoided slipping after stepping in it. A duty staff member immediately cordoned off the area, placed a wet-floor signboard, and called housekeeping. The student was unharmed. Maintenance has been informed and the leak source above the false ceiling will be investigated this afternoon. CCTV review confirmed no fall occurred."
+  },
+  {
+    "categoryName": "Health & Medical",
+    "subcategoryName": "Injury during sports / PE",
+    "reportTypeName": "Hazard",
+    "priorityName": "Low",
+    "dateOffsetDays": -3,
+    "time": "16:45",
+    "description": "An after-school supervisor noticed a loose handrail at the top of the secondary-staircase landing while students were leaving for the day. The handrail bracket appears to have worked loose from the wall over time, exposing the screws. The area was barricaded with caution tape and signage; an alternate route was made available to descending students. Facilities has been raised a ticket; expected repair within 24 hours. No injuries."
+  }
+]

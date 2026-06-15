@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -9,12 +9,19 @@ import EditIncidentForm from '@/components/edit-incident/EditIncidentForm';
 import { useEditIncidentData } from '@/hooks/useEditIncidentData';
 import Loader from '@/components/common/Loader';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { DemoIncidentButton } from '@/components/incidents/DemoIncidentButton';
+import type { NextScenarioResult } from '@/demo_client/incident/demoScenarios';
 
 const EditIncidentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { incidentData, isLoading, error } = useEditIncidentData(id);
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+
+  // Demo Setup pipe: header hosts the icon, form consumes the scenario.
+  // null = no pending click. Set by the demo button → consumed by the
+  // form's useEffect → cleared back to null via onDemoConsumed.
+  const [pendingDemo, setPendingDemo] = useState<NextScenarioResult | null>(null);
 
   // Add comprehensive logging for debugging
   console.log('=== EDIT INCIDENT PAGE DEBUG ===');
@@ -125,27 +132,39 @@ const EditIncidentPage = () => {
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
-        {/* Back button */}
+        {/* Back button + page header. Demo icon sits top-right of the
+            title row, matching the Report Incident layout. The icon
+            returns null when VITE_IS_DEMO_SETUP is unset, so the
+            layout is identical to before in production. */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="flex items-center -ml-4 mb-4"
               onClick={() => navigate(`/incidents`)}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Incident Details
             </Button>
-            
-            <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
-            <p className="text-gray-600 text-sm mt-1">
-              Document safety incidents, near misses, or unsafe conditions
-            </p>
+
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
+                <p className="text-gray-600 text-sm mt-1">
+                  Document safety incidents, near misses, or unsafe conditions
+                </p>
+              </div>
+              <DemoIncidentButton onApply={setPendingDemo} />
+            </div>
           </div>
         </div>
 
         <div className="w-full py-6">
-          <EditIncidentForm incidentData={incidentData} />
+          <EditIncidentForm
+            incidentData={incidentData}
+            pendingDemo={pendingDemo}
+            onDemoConsumed={() => setPendingDemo(null)}
+          />
         </div>
       </div>
     </Layout>
