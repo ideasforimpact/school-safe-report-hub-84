@@ -12,23 +12,34 @@ interface UserRoleBadgeProps {
   department?: string;
 }
 
-const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({ 
-  isSaasOwner, 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Persists across re-mounts and the brief department=undefined window during
+// route transitions so the badge never drops back to no label.
+let _lastResolvedLabel = '';
+
+const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
+  isSaasOwner,
   isAdmin,
   isSuperAdmin = false,
-  department 
+  department,
 }) => {
-  const { employeeDepartments } = useEmployeeDepartments();
+  const { employeeDepartments, loading } = useEmployeeDepartments();
 
-  const departmentLabel = employeeDepartmentName(
-    department,
-    employeeDepartments
-  );
+  const isUuid = !!department && UUID_RE.test(department.trim());
 
-  // Log values for debugging
-  console.log("UserRoleBadge Props:", { isSaasOwner, isAdmin, isSuperAdmin, department });
-  
-  // If user is logged in through backoffice, they are a SaaS Owner
+  const resolved = isUuid
+    ? loading
+      ? ''
+      : employeeDepartmentName(department, employeeDepartments)
+    : (department?.trim() || '');
+
+  if (resolved && resolved !== 'Not Specified') {
+    _lastResolvedLabel = resolved;
+  }
+
+  const departmentLabel = _lastResolvedLabel;
+
   if (isSaasOwner) {
     return (
       <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1">
@@ -37,7 +48,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
       </Badge>
     );
   }
-  
+
   // If user is logged in as employee and is a super admin
   if (isSuperAdmin) {
     return (
@@ -47,7 +58,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
       </Badge>
     );
   }
-  
+
   // If user is a regular admin
   if (isAdmin) {
     return (
@@ -57,7 +68,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
       </Badge>
     );
   }
-  
+
   // If we have a department but user is not any type of admin
   if (department) {
     return (
@@ -67,7 +78,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
       </Badge>
     );
   }
-  
+
   // Default case - regular user with no department
   return (
     <Badge variant="default" className="bg-gray-500 hover:bg-gray-600 flex items-center gap-1">
