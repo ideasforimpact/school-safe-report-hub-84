@@ -136,7 +136,7 @@ const AppRoutes = () => {
           <BackofficeEmployeeVerificationPage />
         </RouteGuard>
       } />
-      <Route path="/backoffice/employee-verification/employee/:employeeId" element={
+      <Route path="/backoffice/verification/employee/:employeeId" element={
         <RouteGuard requireAuth={true} isBackoffice={true}>
           <BackofficeEmployeeDocumentsPage />
         </RouteGuard>

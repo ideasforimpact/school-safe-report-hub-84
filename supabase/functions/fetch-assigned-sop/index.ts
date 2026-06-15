@@ -10,6 +10,11 @@ const corsHeaders = {
 interface FetchAssignedSOPRequest {
   client_id: string;
   employee_id: string;
+  search?: string | null;
+  status?: string | null;      // 'all' | 'signed-off' | 'in-progress'
+  category_id?: string | null; // uuid or 'all'
+  page?: number;
+  limit?: number;
 }
 
 serve(async (req) => {
@@ -38,7 +43,9 @@ serve(async (req) => {
 
     // Parse request body
     const requestData: FetchAssignedSOPRequest = await req.json()
-    const { client_id, employee_id } = requestData
+    const { client_id, employee_id, search, status, category_id: filterCategoryId, page = 1, limit = 10 } = requestData
+    const pageNum = Math.max(1, page)
+    const pageSize = Math.min(Math.max(1, limit), 100)
 
     // Validate required fields
     if (!client_id || !employee_id) {
@@ -74,17 +81,9 @@ serve(async (req) => {
     const groupIds = (employeeGroups || []).map((g: any) => g.group_id);
     
     if (groupIds.length === 0) {
-      // Employee is not a member of any groups, return empty array
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          data: [],
-          message: 'No assigned SOPs found - employee is not a member of any groups' 
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ success: true, data: [], pagination: { page: 1, limit: pageSize, total: 0, total_pages: 0 }, message: 'No assigned SOPs found' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -134,8 +133,56 @@ serve(async (req) => {
       }
     });
 
-    const uniqueSops = Array.from(uniqueSopMap.values());
+    let uniqueSops = Array.from(uniqueSopMap.values());
+
+    // Apply search filter (title or description)
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      uniqueSops = uniqueSops.filter((s: any) =>
+        (s.title && s.title.toLowerCase().includes(q)) ||
+        (s.description && s.description.toLowerCase().includes(q))
+      );
+    }
+
+    // Apply status filter (needs signoff data — deferred, applied after signoff fetch below)
+
+    // Apply category filter
+    if (filterCategoryId && filterCategoryId !== 'all') {
+      uniqueSops = uniqueSops.filter((s: any) => s.category_id === filterCategoryId);
+    }
+
+    const totalFiltered = uniqueSops.length;
+    const totalPages = Math.ceil(totalFiltered / pageSize);
+
+    // Status filter (signed-off / in-progress) — needs signoff data, so fetch all signoffs first
+    if (status && status !== 'all') {
+      const { data: allSignoffs } = await supabaseClient
+        .from('sop_signoff_request')
+        .select('sop_id')
+        .eq('employee_id', employee_id)
+        .eq('client_id', client_id)
+        .in('sop_id', uniqueSops.map((s: any) => s.id))
+        .not('completed_date', 'is', null);
+      const completedIds = new Set((allSignoffs || []).map((s: any) => s.sop_id));
+      if (status === 'signed-off') {
+        uniqueSops = uniqueSops.filter((s: any) => completedIds.has(s.id));
+      } else if (status === 'in-progress') {
+        uniqueSops = uniqueSops.filter((s: any) => !completedIds.has(s.id));
+      }
+    }
+
+    // Paginate the deduplicated+filtered list
+    const from = (pageNum - 1) * pageSize;
+    uniqueSops = uniqueSops.slice(from, from + pageSize);
+
     const uniqueSopIds = uniqueSops.map((sop: any) => sop.id);
+
+    if (uniqueSopIds.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, data: [], pagination: { page: pageNum, limit: pageSize, total: totalFiltered, total_pages: totalPages } }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Extract category IDs and fetch category names
     const categoryIds = [...new Set(uniqueSops.map((sop: any) => sop.category_id).filter(Boolean))];
@@ -332,15 +379,13 @@ serve(async (req) => {
       });
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         data: formattedSOPs,
-        message: 'Assigned SOPs fetched successfully' 
+        pagination: { page: pageNum, limit: pageSize, total: totalFiltered, total_pages: totalPages },
+        message: 'Assigned SOPs fetched successfully'
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {

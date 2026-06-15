@@ -1,9 +1,10 @@
 import { notificationService } from './notificationService';
-import { 
+import {
   NotificationData,
-  NotificationType 
+  NotificationType
 } from '@/types/notification';
 import { EmployeeData } from '@/contexts/auth/types';
+import { formatEmployeeName } from './formatHelpers';
 
 // Define the Employee interface based on the database structure
 interface Employee {
@@ -45,8 +46,10 @@ export class AssessmentNotificationService {
     currentEmployeeData?: any
   ): Promise<boolean> {
     try {
-      // Validate required employee data
-      if (!assignedEmployee?.id || !assignedEmployee?.email || !assignedEmployee?.first_name || !assignedEmployee?.last_name) {
+      // Validate required employee data — only id + email are required for delivery.
+      // first_name / last_name may legitimately be empty for shared / single-name accounts
+      // (this guard was previously rejecting them, causing emails to silently disappear).
+      if (!assignedEmployee?.id || !assignedEmployee?.email) {
         console.error('Invalid assigned employee data:', assignedEmployee);
         return false;
       }
@@ -57,16 +60,18 @@ export class AssessmentNotificationService {
         return false;
       }
 
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+
       const notificationData: NotificationData = {
         module: 'assessment',
         type: 'assessment_assigned' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: assessment.client_id,
         priority: 'medium',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
           created_by: assessment.created_by,
@@ -121,21 +126,24 @@ export class AssessmentNotificationService {
         return false;
       }
 
+      const recipientDisplayName = formatEmployeeName(createdByEmployee);
+      const actorDisplayName = formatEmployeeName(submittedBy);
+
       const notificationData: NotificationData = {
         module: 'assessment',
         type: 'assessment_submitted' as NotificationType,
         recipientId: createdByEmployee.id,
         recipientEmail: createdByEmployee.email,
-        recipientName: `${createdByEmployee.first_name} ${createdByEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: assessment.client_id,
         priority: 'medium',
         variables: {
-          User_Name: `${createdByEmployee.first_name} ${createdByEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
           created_by: assessment.created_by,
           assigned_to: assessment.assigned_to,
-          Submitted_By: `${submittedBy.first_name} ${submittedBy.last_name}`,
+          Submitted_By: actorDisplayName,
           Submitted_Date: new Date().toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -175,21 +183,24 @@ export class AssessmentNotificationService {
         return false;
       }
 
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+      const actorDisplayName = formatEmployeeName(completedBy);
+
       const notificationData: NotificationData = {
         module: 'assessment',
         type: 'assessment_completed' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: assessment.client_id,
         priority: 'medium',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
           created_by: assessment.created_by,
           assigned_to: assessment.assigned_to,
-          Completed_By: `${completedBy.first_name} ${completedBy.last_name}`,
+          Completed_By: actorDisplayName,
           Completed_Date: new Date().toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -230,21 +241,24 @@ export class AssessmentNotificationService {
         return false;
       }
 
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+      const actorDisplayName = formatEmployeeName(requestedBy);
+
       const notificationData: NotificationData = {
         module: 'assessment',
         type: 'assessment_rework_required' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: assessment.client_id,
         priority: 'high',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
           created_by: assessment.created_by,
           assigned_to: assessment.assigned_to,
-          Requested_By: `${requestedBy.first_name} ${requestedBy.last_name}`,
+          Requested_By: actorDisplayName,
           Rework_Reason: reworkReason,
           Assessment_URL: `${this.getBaseUrl()}/assessments`
         },
@@ -272,16 +286,18 @@ export class AssessmentNotificationService {
     currentEmployeeData?: any
   ): Promise<boolean> {
     try {
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+
       const notificationData: NotificationData = {
         module: 'assessment',
         type: 'assessment_due_5_days' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: assessment.client_id,
         priority: 'medium',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
           created_by: assessment.created_by,
@@ -318,16 +334,18 @@ export class AssessmentNotificationService {
     currentEmployeeData?: any
   ): Promise<boolean> {
     try {
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+
       const notificationData: NotificationData = {
         module: 'assessment',
         type: 'assessment_overdue' as NotificationType,
         recipientId: assignedEmployee.id,
         recipientEmail: assignedEmployee.email,
-        recipientName: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+        recipientName: recipientDisplayName,
         clientId: assessment.client_id,
         priority: 'high',
         variables: {
-          User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
+          User_Name: recipientDisplayName,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
           created_by: assessment.created_by,

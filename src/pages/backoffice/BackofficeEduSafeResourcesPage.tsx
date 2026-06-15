@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Search, FileText, Download, Edit, Trash, Upload, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Eye, Download, Edit, Trash, Upload, X, Loader2, FileText } from 'lucide-react';
+import ResourcePreviewDialog from '@/components/edusafe/ResourcePreviewDialog';
+import { EduSafeProvider } from '@/contexts/edusafe/EduSafeContext';
+import { EduSafeResource } from '@/types/eduSafeTypes';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -48,6 +51,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentResource, setCurrentResource] = useState<BackofficeEduSafeResource | null>(null);
+  const [previewResource, setPreviewResource] = useState<EduSafeResource | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -293,28 +297,28 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       toast.error('No document available to view');
       return;
     }
-    
-    try {
-      const documentUrl = resource.document_url;
-      let urlToOpen: string;
-
-      // Check if it's a relative storage path (starts with edusafe-resources/ or /edusafe-resources/)
-      if (documentUrl.startsWith('edusafe-resources/') || documentUrl.startsWith('/edusafe-resources/')) {
-        // Prepend the Supabase storage base URL
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
-        const normalizedBase = base.replace(/\/$/, '');
-        const normalizedPath = documentUrl.startsWith('/') ? documentUrl : `/${documentUrl}`;
-        urlToOpen = `${normalizedBase}${normalizedPath}`;
-      } else {
-        // It's already a full URL, use it directly
-        urlToOpen = documentUrl;
-      }
-
-      window.open(urlToOpen, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      console.error('[BackofficeEduSafeResourcesPage] Error opening document:', error);
-      toast.error('Failed to open document');
-    }
+    const eduSafeResource: EduSafeResource = {
+      id: resource.id,
+      title: resource.title,
+      description: resource.description || '',
+      category: resource.category as any,
+      tags: Array.isArray(resource.tags) ? resource.tags : [],
+      uploadDate: resource.created_at,
+      uploaderId: resource.uploaded_by || '',
+      uploaderName: 'EduSafe Team',
+      ownerType: 'saas',
+      clientId: resource.client_type_id,
+      resourceType: 'Global Resource',
+      document_url: resource.document_url,
+      file: {
+        id: `file-${resource.id}`,
+        name: resource.document_url.split('/').pop() || resource.title,
+        type: 'application/pdf',
+        size: (resource as any).file_size || 0,
+        base64: resource.document_url,
+      },
+    };
+    setPreviewResource(eduSafeResource);
   };
 
   const handleDownloadResource = async (resource: BackofficeEduSafeResource) => {
@@ -496,13 +500,13 @@ useRealTimeSubHook({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleViewResource(resource)}
                               title="View document"
                             >
-                              <FileText className="h-4 w-4" />
+                              <Eye className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
@@ -971,6 +975,13 @@ useRealTimeSubHook({
           </DialogContent>
         </Dialog>
       )}
+      <EduSafeProvider>
+        <ResourcePreviewDialog
+          resource={previewResource}
+          open={!!previewResource}
+          onOpenChange={(open) => { if (!open) setPreviewResource(null); }}
+        />
+      </EduSafeProvider>
       </div>
     </Layout>
   );

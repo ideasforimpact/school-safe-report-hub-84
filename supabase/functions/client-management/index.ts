@@ -1215,6 +1215,42 @@ serve(async (req) => {
   }
 })
 
+// Copies Child Audit master templates from backoffice_* tables into the per-client
+// child_audit_* tables, stamped with the new client's id. Idempotent via upsert
+// ignoreDuplicates. Check types are inserted first to satisfy the FK on look_up.
+// NOTE: the call site in handleCreateClient is intentionally commented out — new
+// clients get their template via the explicit "Sync" flow on /backoffice/child-audit
+// (sync-child-audit-template edge function), not automatically on client create.
+async function seedChildAuditForClient(clientId: string) {
+  const { data: checkTypes, error: ctErr } = await supabase
+    .from('backoffice_child_audit_check_type')
+    .select('type, key, alt_definition, active, attachements, order')
+    .eq('active', true);
+  if (ctErr) throw ctErr;
+
+  if (checkTypes && checkTypes.length > 0) {
+    const ctRows = checkTypes.map((r: Record<string, unknown>) => ({ ...r, client_id: clientId }));
+    const { error } = await supabase
+      .from('child_audit_check_type')
+      .upsert(ctRows, { onConflict: 'client_id,key', ignoreDuplicates: true });
+    if (error) throw error;
+  }
+
+  const { data: lookups, error: luErr } = await supabase
+    .from('backoffice_child_audit_look_up')
+    .select('item_group, type, label, active, definition')
+    .eq('active', true);
+  if (luErr) throw luErr;
+
+  if (lookups && lookups.length > 0) {
+    const luRows = lookups.map((r: Record<string, unknown>) => ({ ...r, client_id: clientId }));
+    const { error } = await supabase
+      .from('child_audit_look_up')
+      .upsert(luRows, { onConflict: 'client_id,type,item_group,label', ignoreDuplicates: true });
+    if (error) throw error;
+  }
+}
+
 async function handleCreateClient(clientData: any) {
   console.log('Creating client with data:', {
     ...clientData,
@@ -1285,6 +1321,18 @@ async function handleCreateClient(clientData: any) {
     }
     
     console.log('Client record inserted successfully:', insertedClient.id);
+
+    // Child Audit auto-seed on client create — intentionally disabled.
+    // SaaS admins seed new clients on-demand via /backoffice/child-audit
+    // (sync-child-audit-template edge function). Uncomment to opt back in.
+    // try {
+    //   await seedChildAuditForClient(clientId);
+    //   console.log('Child Audit templates seeded for client:', clientId);
+    // } catch (seedErr) {
+    //   console.error('Error seeding Child Audit templates for client:', seedErr);
+    //   await rollbackClientCreation(clientId);
+    //   throw new Error(`Failed to seed Child Audit templates: ${seedErr.message}`);
+    // }
 
     if (isHeadOffice || mappedClientIds.length > 0) {
       try {

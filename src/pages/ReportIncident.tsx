@@ -49,7 +49,7 @@ const ReportIncident = () => {
   const { incident: existingIncident, isLoading: isLoadingIncident, error: incidentError, getFormData } = useIncidentDetail(incidentId);
   
   // Add validation hook
-  const { errors, validateForm } = useIncidentFormValidation();
+  const { errors, validateForm, setErrors } = useIncidentFormValidation();
   
   const {
     formData,
@@ -57,6 +57,7 @@ const ReportIncident = () => {
     peopleInvolved,
     handleChange: formHandleChange,
     handleSelectChange: formHandleSelectChange,
+    handleMultiSelectChange,
     handleDateTimeChange: formHandleDateTimeChange,
     handlePersonChange,
     addPerson,
@@ -530,6 +531,17 @@ const ReportIncident = () => {
   const handleSelectChange = (name: string, value: string) => {
     formHandleSelectChange(name, value);
   };
+
+  const handlePersonChangeWithClear = (index: number, field: string, value: string, additionalFields?: Record<string, string>) => {
+    handlePersonChange(index, field as any, value, additionalFields);
+    if (value && value.trim() !== '') {
+      setErrors(prev => {
+        const updated = { ...prev };
+        delete updated[`peopleInvolved.${index}.${field}`];
+        return updated;
+      });
+    }
+  };
   
   const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
     if (date) {
@@ -625,7 +637,10 @@ const ReportIncident = () => {
                 <IncidentDetailsForm
                   formData={safeFormData}
                   onChange={handleChange}
-                  onSelectChange={handleSelectChange} 
+                  onSelectChange={handleSelectChange}
+                  onApplySuggestion={(categoryId, subcategoryId) =>
+                    handleMultiSelectChange({ categoryId, subcategoryId: subcategoryId ?? '' })
+                  }
                   onDateTimeChange={handleDateTimeChange}
                   supportingFiles={supportingFiles}
                   onFilesChange={handleFilesChange}
@@ -635,7 +650,7 @@ const ReportIncident = () => {
 
                 <PeopleInvolvedSection
                   peopleInvolved={peopleInvolved}
-                  onPersonChange={handlePersonChange}
+                  onPersonChange={handlePersonChangeWithClear}
                   onAddPerson={addPerson}
                   onRemovePerson={removePerson}
                   students={configStudents}

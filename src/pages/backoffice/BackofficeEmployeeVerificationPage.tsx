@@ -236,7 +236,7 @@ const BackofficeEmployeeVerificationPage = () => {
   }, [employees, searchTerm, selectedStatus, dateRange, clientNameMap]);
 
   const handleViewDocuments = (employeeId: string, clientId: string) => {
-    navigate(`/backoffice/employee-verification/employee/${employeeId}?clientId=${clientId}`);
+    navigate(`/backoffice/verification/employee/${employeeId}?clientId=${clientId}`);
   };
 
   if (loading) {

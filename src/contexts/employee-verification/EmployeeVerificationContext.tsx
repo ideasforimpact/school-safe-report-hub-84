@@ -1,10 +1,10 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { 
+import {
   EmployeeVerificationContextType,
-  Employee, 
-  DocumentType, 
+  Employee,
+  DocumentType,
   DocumentStatus,
   VerificationDocument
 } from './types';
@@ -15,6 +15,10 @@ import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useLocation } from 'react-router-dom';
 
 const EmployeeVerificationContext = createContext<EmployeeVerificationContextType | undefined>(undefined);
+
+// Module-level guards — survive context remounts so reference data is fetched only once per app session
+let docRefDataInflight: Promise<void> | null = null;
+let docRefDataFetched = false;
 
 export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isVerifying, setIsVerifying] = useState(false);
@@ -31,20 +35,26 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     location.pathname.startsWith('/backoffice-employee-verification');
 
   // Use the employee management hook
-  const { 
-    employees, 
+  const {
+    employees,
+    isLoading: isEmployeeLoading,
     addEmployee,
     updateEmployee,
     deleteEmployee,
     getEmployee,
-    fetchEmployees
+    fetchEmployees,
+    currentPage,
+    totalPages,
+    totalCount,
+    pageSize,
+    totalEmployeesCount,
+    verifiedEmployeesCount,
   } = useEmployeeManagement();
 
   // Update employee status based on document verifications
   const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean) => {
     try {
       await updateEmployee(employeeId, { status });
-      return Promise.resolve();
     } catch (error) {
       console.error('Error updating employee status:', error);
       throw error;
@@ -52,8 +62,8 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   }, [updateEmployee]);
 
   // Use the document management hook
-  const { 
-    documents, 
+  const {
+    documents,
     addDocument,
     verifyDocument,
     deleteDocument,
@@ -62,125 +72,74 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     isLoading: isDocumentLoading
   } = useDocumentManagement(updateEmployeeStatus);
 
-  // Fetch document types from the database with cache control
-  const fetchDocumentTypes = useCallback(async () => {
-    // Check if we've fetched document types in the last minute
-    const now = Date.now();
-    if (lastFetchTime.documentTypes && now - lastFetchTime.documentTypes < 60000) {
-      console.log('Skipping document types fetch - recently fetched');
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      console.log('🔍 Fetching document types from database...');
-      const { data, error } = await supabase
-        .from('employee_document_type')
-        .select('*')
-        .order('name', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching document types:', error);
-        // Clear cache on error so we can retry
-        setLastFetchTime(prev => ({ ...prev, documentTypes: 0 }));
-        return;
-      }
-      
-      console.log('📊 Raw document types from DB:', data);
-      
-      // Map database fields to our DocumentType interface
-      const mappedDocumentTypes: DocumentType[] = data.map(type => ({
-        id: type.id,
-        name: type.name,
-        description: type.description || '',
-        createdAt: type.created_at,
-        updatedAt: type.updated_at
-      }));
-      
-      console.log('📋 Mapped document types:', mappedDocumentTypes);
-      
-      if (mappedDocumentTypes.length > 0) {
-        setDocumentTypes(mappedDocumentTypes);
-        setLastFetchTime(prev => ({ ...prev, documentTypes: now }));
-        console.log('✅ Document types set successfully');
-      } else {
-        console.warn('⚠️ No document types found in database, clearing cache to allow retry');
-        // Clear cache if no data found so we can retry
-        setLastFetchTime(prev => ({ ...prev, documentTypes: 0 }));
-      }
-    } catch (err) {
-      console.error('Failed to fetch document types:', err);
-      // Clear cache on error so we can retry
-      setLastFetchTime(prev => ({ ...prev, documentTypes: 0 }));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [lastFetchTime]);
+  // Combined call — fetches documentTypes + documentStatuses in one request.
+  // Uses module-level guards so the fetch survives context remounts and fires only once per session.
+  const fetchDocumentReferenceData = useCallback(async () => {
+    // Already fetched this session — return immediately
+    if (docRefDataFetched) return;
+    // Attach to the in-flight request if one is already running
+    if (docRefDataInflight) return docRefDataInflight;
 
-  // Fetch document statuses from the database with cache control
-  const fetchDocumentStatuses = useCallback(async () => {
-    // Check if we've fetched document statuses in the last minute
-    const now = Date.now();
-    if (lastFetchTime.documentStatuses && now - lastFetchTime.documentStatuses < 60000) {
-      console.log('Skipping document statuses fetch - recently fetched');
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('document_status')
-        .select('*')
-        .order('name', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching document statuses:', error);
-        return;
-      }
-      
-      // Map database fields to our DocumentStatus interface
-      const mappedDocumentStatuses: DocumentStatus[] = data.map(status => ({
-        id: status.id,
-        name: status.name,
-        description: status.description || '',
-        createdAt: status.created_at,
-        updatedAt: status.updated_at
-      }));
-      
-      setDocumentStatuses(mappedDocumentStatuses.length > 0 ? mappedDocumentStatuses : initialDocumentStatuses);
-      setLastFetchTime(prev => ({ ...prev, documentStatuses: now }));
-    } catch (err) {
-      console.error('Failed to fetch document statuses:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [lastFetchTime]);
+    docRefDataInflight = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('employee-documents', {
+          body: { action: 'getDocumentReferenceData' },
+        });
+        if (error) throw error;
 
-  // Verify employee (this is the original function from the context)
+        const mappedTypes: DocumentType[] = (data?.documentTypes || []).map((type: any) => ({
+          id: type.id,
+          name: type.name,
+          description: type.description || '',
+          createdAt: type.created_at,
+          updatedAt: type.updated_at,
+        }));
+        if (mappedTypes.length > 0) setDocumentTypes(mappedTypes);
+
+        const mappedStatuses: DocumentStatus[] = (data?.documentStatuses || []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description || '',
+          createdAt: s.created_at,
+          updatedAt: s.updated_at,
+        }));
+        setDocumentStatuses(mappedStatuses.length > 0 ? mappedStatuses : initialDocumentStatuses);
+        docRefDataFetched = true;
+      } catch (err) {
+        console.error('Failed to fetch document reference data:', err);
+      } finally {
+        docRefDataInflight = null;
+      }
+    })();
+    return docRefDataInflight;
+  }, []);
+
+  // Aliases kept for backward compatibility with existing callers
+  const fetchDocumentTypes = fetchDocumentReferenceData;
+  const fetchDocumentStatuses = fetchDocumentReferenceData;
+
   const verifyEmployee = async (employeeId: string): Promise<boolean> => {
     setIsVerifying(true);
     setVerificationError(null);
-    
+
     try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .single();
-      
+      const { data, error } = await supabase.functions.invoke('employee-management', {
+        body: { operation: 'find_by_employee_id', employeeId },
+      });
+
       if (error) {
         console.error('Error verifying employee:', error.message);
         setVerificationError('Could not verify employee ID. Please try again.');
         toast.error('Employee verification failed');
         return false;
       }
-      
-      if (!data) {
+
+      if (!data?.found) {
         setVerificationError('Employee not found with the provided ID.');
         toast.error('Employee not found');
         return false;
       }
-      
+
       toast.success('Employee verified successfully');
       return true;
     } catch (error) {
@@ -199,7 +158,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     verifyEmployee,
     isVerifying,
     verificationError,
-    
+
     // Employee management
     employees,
     addEmployee,
@@ -207,54 +166,42 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     deleteEmployee,
     getEmployee,
     fetchEmployees,
-    
-    // Document management
+
+    currentPage,
+    totalPages,
+    totalCount,
+    pageSize,
+    totalEmployeesCount,
+    verifiedEmployeesCount,
+
     documents,
     addDocument,
     verifyDocument,
     deleteDocument,
     getEmployeeDocuments,
     fetchEmployeeDocuments,
-    
+
     // Document types and statuses
     documentTypes,
     documentStatuses,
     fetchDocumentTypes,
     fetchDocumentStatuses,
-    
-    // Loading state
-    isLoading: isLoading || isDocumentLoading
+
+    isLoading: isLoading || isEmployeeLoading || isDocumentLoading,
   }), [
-    verifyEmployee, isVerifying, verificationError,
+    isVerifying, verificationError,
     employees, addEmployee, updateEmployee, deleteEmployee, getEmployee, fetchEmployees,
+    currentPage, totalPages, totalCount, pageSize, totalEmployeesCount, verifiedEmployeesCount,
     documents, addDocument, verifyDocument, deleteDocument, getEmployeeDocuments, fetchEmployeeDocuments,
     documentTypes, documentStatuses, fetchDocumentTypes, fetchDocumentStatuses,
-    isLoading, isDocumentLoading
+    isLoading, isEmployeeLoading, isDocumentLoading,
   ]);
 
-  // Fetch initial data when the context mounts, but only once
+  // Fetch initial reference data when entering the employee verification route — single combined call
   useEffect(() => {
-    if (isUsersRoute || !isEmployeeVerificationRoute) {
-      return;
-    }
-    fetchDocumentTypes();
-    fetchDocumentStatuses();
-  }, [isUsersRoute, isEmployeeVerificationRoute, fetchDocumentTypes, fetchDocumentStatuses]);
-  const handleEmployeeDocumentsRealtime = useCallback(
-    (payload: any) => {
-      const employeeId = payload.new?.employee_id || payload.old?.employee_id;
-      if (!employeeId) return;
-      fetchEmployeeDocuments(employeeId);
-    },
-    [fetchEmployeeDocuments]
-  );
-  useRealTimeSubHook({
-  channelName: 'employee-documents-realtime',
-  table: 'employee_documents',
-  events: "*",
-  enabled: true,
-  onPayload:handleEmployeeDocumentsRealtime,
-});
+    if (isUsersRoute || !isEmployeeVerificationRoute) return;
+    fetchDocumentReferenceData();
+  }, [isUsersRoute, isEmployeeVerificationRoute, fetchDocumentReferenceData]);
 
   return (
     <EmployeeVerificationContext.Provider value={contextValue}>

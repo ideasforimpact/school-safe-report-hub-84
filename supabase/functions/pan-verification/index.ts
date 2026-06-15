@@ -195,7 +195,11 @@ serve(async (req) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`
           },
-          body: JSON.stringify({ id_number: documentNumber })
+         body: JSON.stringify({
+            id_number: documentNumber,
+            get_address: true,
+            get_contact: true
+          })
         });
         
         const data = await response.json();

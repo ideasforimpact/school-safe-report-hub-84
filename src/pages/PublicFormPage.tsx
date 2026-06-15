@@ -186,9 +186,9 @@ const PublicFormPage = () => {
 
       // Extract grievance details from form responses
       const responses = submission.responses || {};
-      const grievanceTitle = responses.title || responses.heading || responses.grievance_title || 'Grievance Submission';
+      const grievanceTitle =  responses.subject || 'Grievance Submission';
       const grievanceDescription = responses.description || responses.details || responses.grievance_description || 'No description provided';
-      const submitterName = submission.submitter_name || responses.name || 'Anonymous';
+      const submitterName = clientName || submission.submitter_name || responses.name || 'Anonymous';
 
       // Create notification data following same pattern as assessments/incidents
       const notificationData = {
@@ -200,6 +200,7 @@ const PublicFormPage = () => {
         clientId: form.client_id,
         priority: 'medium' as const,
         variables: {
+          User_Name: submitterName,
           Grievance_ID: submission.id,
           Grievance_Title: grievanceTitle,
           Grievance_Description: grievanceDescription,

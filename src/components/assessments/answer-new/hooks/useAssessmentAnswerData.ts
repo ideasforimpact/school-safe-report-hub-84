@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
+
+const fetchInflight = new Map<string, Promise<void>>();
 
 interface Answer {
   questionId: string;
@@ -23,7 +25,7 @@ interface Question {
 export const useAssessmentAnswerData = (assessmentId?: string) => {
   const { user, employeeData } = useAuth();
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [assessment, setAssessment] = useState(null);
@@ -31,121 +33,63 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+
   const clientId = employeeData?.clientId || user?.clientId;
+  const lastFetchKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const fetchAssessmentData = async () => {
-      if (!assessmentId || !clientId) {
-        setError('Assessment ID or client context is missing');
-        setLoading(false);
-        return;
-      }
+    if (!assessmentId || !clientId) {
+      setError('Assessment ID or client context is missing');
+      setLoading(false);
+      return;
+    }
 
+    const fetchKey = `${assessmentId}:${clientId}`;
+
+    // Skip if already fetched or a fetch is already in-flight for this key
+    if (lastFetchKeyRef.current === fetchKey) return;
+    if (fetchInflight.has(fetchKey)) return;
+
+    lastFetchKeyRef.current = fetchKey;
+
+    const fetchAssessmentData = async () => {
       try {
         setLoading(true);
-        
-        console.log('Fetching assessment with ID:', assessmentId, 'and clientId:', clientId);
-        
-        // First, try to fetch assessment by assessment_id (integer)
+
         const assessmentIdNum = parseInt(assessmentId);
-        if (isNaN(assessmentIdNum)) {
-          throw new Error('Invalid assessment ID format');
-        }
+        if (isNaN(assessmentIdNum)) throw new Error('Invalid assessment ID format');
 
-        const { data: assessmentData, error: assessmentError } = await supabase
-          .from('assessments')
-          .select('*')
-          .eq('assessment_id', assessmentIdNum)
-          .eq('client_id', clientId)
-          .maybeSingle();
+        const { data: responseData, error: fnError } = await supabase
+        .functions.invoke('list-assessments', {
+          body: { assessment_id: assessmentIdNum, 
+          client_id: clientId },
+          headers: { path: 'get' },
+        });
 
-        if (assessmentError) {
-          console.error('Assessment fetch error:', assessmentError);
-          throw new Error('Failed to fetch assessment data');
-        }
+        if (fnError) throw new Error('Failed to fetch assessment data');
 
-        if (!assessmentData) {
-          console.log(`Assessment with ID ${assessmentId} not found for client ${clientId}`);
-          throw new Error('Assessment not found or access denied');
-        }
+        const assessmentData = responseData?.assessment;
+        if (!assessmentData) throw new Error('Assessment not found or access denied');
 
-        console.log('Fetched assessment data:', assessmentData);
         setAssessment(assessmentData);
 
-        // Fetch template using the template_id from the assessment
-        if (assessmentData.template_id) {
-          console.log('Fetching template with ID:', assessmentData.template_id);
-          
-          const { data: templateData, error: templateError } = await supabase
-            .from('assessment_templates')
-            .select('*')
-            .eq('id', assessmentData.template_id)
-            .maybeSingle();
-
-          if (templateError) {
-            console.error('Template fetch error:', templateError);
-            throw new Error(`Failed to fetch assessment template: ${templateError.message}`);
-          }
-
-          // Determine which template data to use
-          let finalTemplateData = templateData || null;
-          
-          if (!finalTemplateData) {
-            console.log(`Template with ID ${assessmentData.template_id} not found`);
-            // Try to fetch without client_id filter as a fallback
-            const { data: fallbackTemplateData, error: fallbackError } = await supabase
-              .from('assessment_templates')
-              .select('*')
-              .eq('id', assessmentData.template_id)
-              .maybeSingle();
-              
-            if (fallbackError || !fallbackTemplateData) {
-              throw new Error('Assessment template not found');
-            }
-            
-            console.log('Found template using fallback method:', fallbackTemplateData);
-            finalTemplateData = fallbackTemplateData;
-          } else {
-            console.log('Fetched template data:', finalTemplateData);
-          }
-          
-          // Parse questions from JSONB and process them
-          const currentTemplate = finalTemplateData || null;
+        if (assessmentData.template) {
+          const currentTemplate = assessmentData.template;
           if (currentTemplate) {
             const rawQuestions = Array.isArray(currentTemplate.questions) 
               ? (currentTemplate.questions as unknown as Question[])
               : [];
               
-            console.log('Raw questions from database:', rawQuestions);
-            
-            // Ensure all questions have an id - generate one if missing
             const questions = rawQuestions.map((question: Question, index: number) => {
-              // If question doesn't have an id, generate one based on index
-              // This ensures each question has a unique identifier
               if (!question.id) {
-                console.warn(`Question at index ${index} is missing an id. Generating one...`, question);
-                return {
-                  ...question,
-                  id: `question_${index}_${Date.now()}`
-                };
+                return { ...question, id: `question_${index}_${Date.now()}` };
               }
               return question;
             });
-              
-            console.log('Processed questions with IDs:', questions.map(q => ({ id: q.id, text: q.text?.substring(0, 50) })));
-            
-            // CRITICAL: Update template state with processed questions that have IDs
-            const templateWithProcessedQuestions = {
-              ...currentTemplate,
-              questions: questions
-            };
-            setTemplate(templateWithProcessedQuestions);
-            console.log('Set template with processed questions:', templateWithProcessedQuestions);
-            
-            // Load existing answers if they exist
+
+            setTemplate({ ...currentTemplate, questions });
+
             let existingAnswers: any[] = [];
-            
             if (assessmentData.answers) {
               if (Array.isArray(assessmentData.answers)) {
                 existingAnswers = assessmentData.answers;
@@ -153,44 +97,25 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
                 existingAnswers = Object.values(assessmentData.answers);
               }
             }
-            
-            console.log('Existing answers from database:', existingAnswers);
-            
-            // Initialize answers array - ensure each question has a corresponding answer entry
+
             const initialAnswers = questions.map((question: Question, index: number) => {
-              // First try to find by questionId
-              let existingAnswer = existingAnswers.find((ans: any) => 
+              let existingAnswer = existingAnswers.find((ans: any) =>
                 ans && typeof ans === 'object' && ans.questionId === question.id
               );
-              
-              // If not found and questionId was undefined in existing answer, try to match by index
-              // This handles legacy data where questionId might be undefined
               if (!existingAnswer && existingAnswers[index]) {
                 const answerByIndex = existingAnswers[index];
                 if (answerByIndex && typeof answerByIndex === 'object') {
-                  console.log(`Found answer by index ${index} for question ${question.id}`);
                   existingAnswer = answerByIndex;
                 }
               }
-              
-              console.log(`Question ${question.id} (index ${index}) existing answer:`, existingAnswer);
-              
-              // CRITICAL: Always use question.id (which we've ensured exists) as questionId
               return {
-                questionId: question.id, // This should never be undefined now
+                questionId: question.id,
                 answer: existingAnswer?.answer !== undefined ? existingAnswer.answer : undefined,
                 comment: existingAnswer?.comment || '',
                 attachments: existingAnswer?.attachments || []
               };
             });
-              
-            // Validate that all answers have a questionId
-            const invalidAnswers = initialAnswers.filter(a => !a.questionId);
-            if (invalidAnswers.length > 0) {
-              console.error('ERROR: Some answers have undefined questionId!', invalidAnswers);
-            }
-            
-            console.log('Initialized answers with existing data:', initialAnswers.map(a => ({ questionId: a.questionId, answer: a.answer })));
+
             setAnswers(initialAnswers);
           }
         } else {
@@ -205,7 +130,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       }
     };
 
-    fetchAssessmentData();
+    const p = fetchAssessmentData().finally(() => fetchInflight.delete(fetchKey));
+    fetchInflight.set(fetchKey, p);
   }, [assessmentId, clientId]);
 
   const handleAnswerChange = (questionId: string, field: string, value: any) => {
@@ -215,20 +141,13 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       return;
     }
     
-    console.log(`[useAssessmentAnswerData] Updating answer for question ${questionId}, field ${field}:`, value);
-    setAnswers(prev => {
-      const updated = prev.map(answer => {
-        // CRITICAL: Only match if both questionIds are defined and equal
-        // This prevents matching answers with undefined questionIds
-        if (answer.questionId && questionId && answer.questionId === questionId) {
-          console.log(`[useAssessmentAnswerData] Found matching answer for questionId ${questionId}, updating ${field} to:`, value);
-          return { ...answer, [field]: value };
-        }
-        return answer;
-      });
-      console.log(`[useAssessmentAnswerData] Updated answers array:`, updated.map(a => ({ questionId: a.questionId, answer: a.answer })));
-      return updated;
-    });
+    setAnswers(prev =>
+      prev.map(answer =>
+        answer.questionId && answer.questionId === questionId
+          ? { ...answer, [field]: value }
+          : answer
+      )
+    );
   };
 
   const calculateProgress = () => {
@@ -271,7 +190,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
           }
 
           try {
-            console.log(`[Draft] Uploading attachments for question ${answer.questionId}:`, answer.attachments);
+
             const uploadedAttachments = await questionFileService.uploadAnswerAttachments(
               answer.attachments,
               clientId,
@@ -294,26 +213,23 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         })
       );
 
-      console.log('[Draft] Saving draft with answers:', answersWithUploadedAttachments);
 
       const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
-      
-      const { data, error: updateError } = await supabase
-        .from('assessments')
-        .update({ 
+
+      const { error: updateError } = await supabase.functions.invoke('save-assessment-draft/save-draft', {
+        body: {
+          assessment_id: parseInt(assessmentId),
+          client_id: clientId,
           status: currentStatus,
-          answers: answersWithUploadedAttachments as any
-        })
-        .eq('assessment_id', parseInt(assessmentId))
-        .eq('client_id', clientId)
-        .select();
+          answers: answersWithUploadedAttachments,
+        },
+      });
 
       if (updateError) {
         console.error('Draft save error:', updateError);
         throw new Error(`Failed to save draft: ${updateError.message}`);
       }
 
-      console.log('[Draft] Draft saved successfully:', data);
       setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersWithUploadedAttachments } : null);
       toast.success('Assessment saved as draft successfully!');
       navigate('/assessments');
@@ -368,7 +284,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
           }
 
           try {
-            console.log(`Uploading attachments for question ${answer.questionId}:`, answer.attachments);
+
             const uploadedAttachments = await questionFileService.uploadAnswerAttachments(
               answer.attachments,
               clientId,
@@ -396,60 +312,30 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       const yesAnswers = answers.filter(a => a.answer === true).length;
       const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
 
-      console.log('Submitting assessment with answers:', answersWithUploadedAttachments);
-
-      const { error: updateError } = await supabase
-        .from('assessments')
-        .update({ 
-          status: 'Submitted',
-          score: score,
-          answers: answersWithUploadedAttachments as any
-        })
-        .eq('assessment_id', parseInt(assessmentId!))
-        .eq('client_id', clientId);
+      const { error: updateError } = await supabase.functions.invoke('save-assessment-draft/submit-assessment', {
+        body: {
+          assessment_id: parseInt(assessmentId!),
+          client_id: clientId,
+          score,
+          answers: answersWithUploadedAttachments,
+          performed_by: {
+            id: employeeData?.id || '',
+            first_name: employeeData?.firstName || '',
+            last_name: employeeData?.lastName || '',
+            email: employeeData?.email || '',
+          },
+          assessment_info: {
+            id: (assessment as any).id,
+            name: (assessment as any).name,
+            created_by: (assessment as any).created_by,
+            assigned_to: (assessment as any).assigned_to,
+          },
+        },
+      });
 
       if (updateError) {
         console.error('Submit error:', updateError);
         throw updateError;
-      }
-
-      // Send notification to assessment creator (not self if self-submitted)
-      try {
-        // Get assessment details with creator info
-        const { data: fullAssessment, error: assessmentError } = await supabase
-          .from('assessments')
-          .select('id, name, created_by, assigned_to, client_id')
-          .eq('assessment_id', parseInt(assessmentId!))
-          .single();
-
-        if (assessmentError) {
-          console.error('Error fetching assessment details:', assessmentError);
-        } else if (fullAssessment && fullAssessment.created_by !== employeeData?.id) {
-          // Get submitter details (current user)
-          const submitter = {
-            id: employeeData?.id || '',
-            first_name: employeeData?.firstName || '',
-            last_name: employeeData?.lastName || '',
-            email: employeeData?.email || ''
-          };
-
-          const notificationResult = await assessmentNotificationService.queueAssessmentSubmittedNotification(
-            {
-              id: fullAssessment.id,
-              title: fullAssessment.name,
-              created_by: fullAssessment.created_by,
-              assigned_to: fullAssessment.assigned_to,
-              client_id: fullAssessment.client_id
-            },
-            submitter,
-            employeeData
-          );
-          
-          console.log('Assessment submission notification queued:', notificationResult);
-        }
-      } catch (notificationError) {
-        console.error('Error queueing assessment submission notification:', notificationError);
-        // Don't fail the submission if notification fails
       }
 
       toast.success('Assessment submitted successfully!', {

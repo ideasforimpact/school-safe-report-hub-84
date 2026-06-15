@@ -26,15 +26,33 @@ export const normalizeApiData = (
         age: data.age,
       };
 
-    case "pan":
+    case "pan": {
+      const panAddress = data.address
+        ? [
+            data.address.line_1,
+            data.address.line_2,
+            data.address.street_name,
+            data.address.city,
+            data.address.state,
+            data.address.zip,
+            data.address.country,
+          ]
+            .filter(Boolean)
+            .join(", ")
+        : "";
+
       return {
         name: data.full_name,
-        fatherName: data.full_name_split?.[0],
+        fatherName: data.full_name_split?.[0] || "-",
         dob: data.dob,
         gender: data.gender,
         panNumber: data.pan_number,
-        
+        address:
+          data.personal_info?.address ||
+          panAddress ||
+          "-",
       };
+    }
 
     case "aadhar":
       return {

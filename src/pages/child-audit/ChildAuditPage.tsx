@@ -390,7 +390,8 @@ const ChildAuditPage = () => {
   const [auditDateSort, setAuditDateSort] = useState<'asc' | 'desc'>('desc');
   const [auditTypeSort, setAuditTypeSort] = useState<'asc' | 'desc'>('asc');
   const [downloading, setDownloading] = useState(false);
-  
+  const [sortBy, setSortBy] = useState<'date' | 'type'>('date');
+
   const EMPTY_INITIAL_FILES = useMemo<FileItem[]>(() => [], []);
 
   const parseWhereOptions = useCallback((definition?: string | null): string[] => {
@@ -922,13 +923,16 @@ const diagnostics = {
 
   const auditTimelineGroups = useMemo(() => {
     const sortedRows = [...records].sort((a, b) => {
-      const dateDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      if (dateDiff !== 0) return auditDateSort === 'asc' ? dateDiff : -dateDiff;
+      if (sortBy === 'date') {
+        const dateDiff =
+          new Date(a.created_at).getTime() -
+          new Date(b.created_at).getTime();
+        return auditDateSort === 'asc' ? dateDiff : -dateDiff;
+      }
       const typeA = checkTypeById.get(a.check_type_id ?? '')?.label ?? '';
       const typeB = checkTypeById.get(b.check_type_id ?? '')?.label ?? '';
       const typeDiff = typeA.localeCompare(typeB);
-      if (typeDiff !== 0) return auditTypeSort === 'asc' ? typeDiff : -typeDiff;
-      return 0;
+      return auditTypeSort === 'asc' ? typeDiff : -typeDiff;
     });
 
     const grouped = new Map<string, ChildAuditRecord[]>();
@@ -944,7 +948,7 @@ const diagnostics = {
       title: toAuditDateHeader(dayRows[0].created_at),
       rows: dayRows,
     }));
-  }, [records, auditDateSort, auditTypeSort, checkTypeById]);
+  }, [records, auditDateSort, auditTypeSort, sortBy, checkTypeById]);
 
   const toggleItem = (items: string[], id: string) =>
     items.includes(id) ? items.filter((value) => value !== id) : [...items, id];
@@ -1611,7 +1615,10 @@ const diagnostics = {
                           variant="outline"
                           size="sm"
                           className="h-8"
-                          onClick={() => setAuditDateSort((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                          onClick={() => {
+                            setSortBy('date');
+                            setAuditDateSort((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                          }}
                         >
                           Date {auditDateSort === 'asc' ? '↑' : '↓'}
                         </Button>
@@ -1620,7 +1627,10 @@ const diagnostics = {
                           variant="outline"
                           size="sm"
                           className="h-8"
-                          onClick={() => setAuditTypeSort((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                          onClick={() => {
+                            setSortBy('type');
+                            setAuditTypeSort((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                          }}
                         >
                           Type {auditTypeSort === 'asc' ? '↑' : '↓'}
                         </Button>

@@ -6,39 +6,26 @@ import { capitalizeClientName } from '@/utils/clientNameUtils';
 interface AuthLoadingOverlayProps {
   isVisible: boolean;
 }
-const AUTH_CLIENT_NAME_KEY = 'clientName';
+
 
 const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
   const { user, employeeData } = useAuth();
 
-  const [displayName, setDisplayName] = useState<string>(() => {
-    try {
-      return (sessionStorage.getItem(AUTH_CLIENT_NAME_KEY) || '').trim();
-    } catch {
-      return '';
-    }
-  });
+  const [displayName, setDisplayName] = useState<string>('');
 
   const clientLogo = user?.client?.logo || employeeData?.client?.logo;
 
   useEffect(() => {
-    const trySetFromRuntime = () => {
-      const raw = user?.client?.name ?? employeeData?.client?.name;
-      
-      if (raw) {
-        const cap = capitalizeClientName(raw);
-        if (cap && cap !== displayName) {
-          setDisplayName(cap);
-          try { sessionStorage.setItem(AUTH_CLIENT_NAME_KEY, cap); } catch {}
-        }
-        return true;
-      }
-      return false;
-    };
-    if (trySetFromRuntime()) return;
+    const raw = user?.client?.name ?? employeeData?.client?.name;
+
+    if (raw) {
+      setDisplayName(capitalizeClientName(raw));
+    } else {
+      setDisplayName('');
+    }
   }, [user?.client?.name, employeeData?.client?.name]);
 
-  if (!isVisible) return null;
+  if (!isVisible || !displayName) return null;
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-primary-50 via-white to-blue-50 z-[9999] overflow-hidden">

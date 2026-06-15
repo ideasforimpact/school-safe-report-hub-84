@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
 import FilterBar from '@/components/employee-verification/filters/FilterBar';
@@ -9,20 +9,29 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import Loader from "@/components/common/Loader";
+import type { EmployeeListFilters } from '@/contexts/employee-verification/types';
 
 const EmployeeVerificationPage = () => {
-  const { fetchEmployees, employees } = useEmployeeVerification();
+  const {
+    fetchEmployees,
+    employees,
+    totalEmployeesCount,
+    verifiedEmployeesCount,
+    isLoading,
+  } = useEmployeeVerification();
+
   const [searchParams] = useSearchParams();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const realtimeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all'); // stores department UUID or 'all'
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   
+
   // Filter employees based on all criteria
   // Helper function to get overall status based on priority logic
   const getOverallStatus = (employee) => {
@@ -46,123 +55,44 @@ const EmployeeVerificationPage = () => {
     }
   };
 
-  const departments = useMemo(() => {
-    const uniqueDepartments = new Set(
-      employees
-        .map((emp) => emp.department)
-        .filter(Boolean)
-    );
+  // Keep a stable ref of current filters for realtime handler
+  const currentFiltersRef = useRef<EmployeeListFilters>({});
 
-    return Array.from(uniqueDepartments);
-  }, [employees]);
+  const buildFilters = useCallback((
+    search: string,
+    deptId: string,
+    docType: string,
+    docStatus: string
+  ): EmployeeListFilters => ({
+    search: search || '',
+    departmentId: deptId !== 'all' ? deptId : undefined,
+    documentTypeId: docType !== 'all' ? docType : undefined,
+    documentStatus: docStatus !== 'all' ? docStatus : undefined,
+  }), []);
 
-  const filteredEmployees = useMemo(() => {
-    return employees.filter((employee) => {
-      const documents = employee.documents || [];
+  const doFetch = useCallback((filters: EmployeeListFilters, page: number) => {
+    currentFiltersRef.current = filters;
+    fetchEmployees(filters, page);
+  }, [fetchEmployees]);
 
-      if (documentTypeFilter !== 'all' && documents.length === 0) {
-        return false;
-      }
+  // Initial load and filter changes — reset to page 1
+  // Search fires only on Enter (via DebouncedSearchInput); dropdowns apply immediately
+  useEffect(() => {
+    const filters = buildFilters(searchTerm, departmentFilter, documentTypeFilter, documentStatusFilter);
+    doFetch(filters, 1);
+  }, [searchTerm, departmentFilter, documentTypeFilter, documentStatusFilter, buildFilters, doFetch]);
 
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        const matchesSearch = 
-          employee.name.toLowerCase().includes(searchLower) ||
-          employee.email.toLowerCase().includes(searchLower) ||
-          employee.employeeId.toLowerCase().includes(searchLower) ||
-          (employee.address && employee.address.toLowerCase().includes(searchLower));
-        
-        if (!matchesSearch) return false;
-      }
-
-      if (departmentFilter !== 'all') {
-        if (employee.department !== departmentFilter) {
-          return false;
-        }
-      }
-
-      if (documentTypeFilter !== 'all') {
-        const matchingDoc = documents.find((doc) => {
-          if (doc.documentTypeId !== documentTypeFilter) return false;
-
-          if (documentStatusFilter === 'all') return true;
-
-          if (documentStatusFilter === 'verified') {
-            return ['verified', 'completed'].includes(doc.verificationStatus);
-          }
-
-          if (documentStatusFilter === 'pending') {
-            return ['pending', 'in-progress'].includes(doc.verificationStatus);
-          }
-
-          if (documentStatusFilter === 'failed') {
-            return ['failed', 'rejected'].includes(doc.verificationStatus);
-          }
-
-          return false;
-        });
-
-        if (!matchingDoc) return false;
-      }
-
-      if (documentTypeFilter === 'all' && documentStatusFilter !== 'all') {
-        const overallStatus = getOverallStatus(employee);
-        if (overallStatus !== documentStatusFilter) return false;
-      }
-
-      return true;
-    });
-  }, [employees, searchTerm, documentStatusFilter, documentTypeFilter, departmentFilter]);
-
-  // Parse URL parameters and set initial filters
+  // Parse URL filter param on mount
   useEffect(() => {
     const filterParam = searchParams.get('filter');
-    if (filterParam) {
-      console.log('🔍 Employee Verification - URL filter parameter found:', filterParam);
-      
-      // Map filter parameter to document status filter
-      let initialStatus = '';
-      switch (filterParam) {
-        case 'verified':
-          initialStatus = 'verified';
-          break;
-        case 'pending':
-          initialStatus = 'pending';
-          break;
-        case 'failed':
-          initialStatus = 'failed';
-          break;
-        default:
-          initialStatus = '';
-      }
-      
-      if (initialStatus) {
-        console.log('🎯 Setting initial document status filter to:', initialStatus);
-        setDocumentStatusFilter(initialStatus);
-      }
+    if (filterParam && ['verified', 'pending', 'failed'].includes(filterParam)) {
+      setDocumentStatusFilter(filterParam);
     }
   }, [searchParams]);
 
-  // Fetch employees when component mounts
-  useEffect(() => {
-    const loadEmployees = async () => {
-      setLoading(true);
-      await fetchEmployees();
-      setLoading(false);
-    };
-
-    loadEmployees();
-  }, [fetchEmployees]);  
-  
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    setLoading(true);
-
-  await Promise.all([
-    fetchEmployees(),
-    new Promise((resolve) => setTimeout(resolve, 500))
-  ]);
-    setLoading(false);
+    await fetchEmployees(currentFiltersRef.current);
     setIsRefreshing(false);
   };
 
@@ -172,28 +102,18 @@ const EmployeeVerificationPage = () => {
     setDocumentTypeFilter('all');
     setDepartmentFilter('all');
   };
-  const employeeAnalyticsStats = useMemo(() => {
-    const totalEmployees = employees.length;
 
-    const verifiedEmployees = employees.filter(
-      (employee) => getOverallStatus(employee) === 'verified'
-    ).length;
-
-    return {
-      totalEmployees,
-      verifiedEmployees,
-    };
-  }, [employees]);
-
+  const lastPageRefetchRef = useRef<number>(0);
+  const PAGE_REFETCH_COOLDOWN_MS = 3000;
 
   const handleEmployeesRealtime = useCallback(() => {
-    if (realtimeTimeoutRef.current) {
-      clearTimeout(realtimeTimeoutRef.current);
-    }
-
+    if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
     realtimeTimeoutRef.current = setTimeout(() => {
-      fetchEmployees();
-    }, 300);
+      const now = Date.now();
+      if (now - lastPageRefetchRef.current < PAGE_REFETCH_COOLDOWN_MS) return;
+      lastPageRefetchRef.current = now;
+      fetchEmployees(currentFiltersRef.current);
+    }, 800);
   }, [fetchEmployees]);
 
 
@@ -247,16 +167,12 @@ const EmployeeVerificationPage = () => {
             <div className="flex gap-80">
               <div className='ms-16 '>
                 <p className="text-sm text-gray-500">Total Employees</p>
-                <p className="text-3xl font-semibold text-gray-900">
-                  {employeeAnalyticsStats.totalEmployees}
-                </p>
+                <p className="text-3xl font-semibold text-gray-900">{totalEmployeesCount}</p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500">Verified Employees</p>
-                <p className="text-3xl font-semibold text-green-600">
-                  {employeeAnalyticsStats.verifiedEmployees}
-                </p>
+                <p className="text-3xl font-semibold text-green-600">{verifiedEmployeesCount}</p>
               </div>
             </div>
 
@@ -265,7 +181,7 @@ const EmployeeVerificationPage = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <h2 className="text-lg font-medium mb-4 text-left">Employees</h2>
-          
+
           <FilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
@@ -276,15 +192,12 @@ const EmployeeVerificationPage = () => {
             onClearFilters={handleClearFilters}
             departmentFilter={departmentFilter}
             onDepartmentChange={setDepartmentFilter}
-            departments={departments}
-            resultCount={filteredEmployees.length}
-            totalCount={employees.length}
           />
-          
-          {loading ? (
+
+          {isLoading ? (
             <Loader text="Loading employees..." />
           ) : (
-            <EmployeesList employees={filteredEmployees} />
+            <EmployeesList employees={employees} />
           )}
         </div>
       </div>

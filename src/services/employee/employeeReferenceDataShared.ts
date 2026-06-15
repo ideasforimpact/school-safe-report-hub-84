@@ -14,59 +14,49 @@ export interface EmployeeTypeOption {
   updated_at?: string;
 }
 
-/**
- * Single in-flight promise per resource so React 18 Strict Mode (double effect run)
- * does not duplicate identical REST calls.
- */
-let departmentsInflight: Promise<EmployeeDepartmentOption[]> | null = null;
-let typesInflight: Promise<EmployeeTypeOption[]> | null = null;
-let departmentsRecent: { at: number; value: EmployeeDepartmentOption[] } | null = null;
-let typesRecent: { at: number; value: EmployeeTypeOption[] } | null = null;
-const SHARED_DEDUPE_MS = 1200;
+interface ReferenceData {
+  departments: EmployeeDepartmentOption[];
+  employeeTypes: EmployeeTypeOption[];
+}
 
-export function fetchEmployeeDepartmentsShared(): Promise<EmployeeDepartmentOption[]> {
-  const now = Date.now();
-  if (departmentsRecent && now - departmentsRecent.at < SHARED_DEDUPE_MS) {
-    return Promise.resolve(departmentsRecent.value);
+// Single module-level promise — fetched ONCE per app session.
+// Departments and employee types are static reference data: no need to re-fetch
+// after a successful load. All callers (FilterBar, useEmployeeTypes, etc.) share
+// the same in-flight request and cached result.
+let referenceDataInflight: Promise<ReferenceData> | null = null;
+let referenceDataCache: ReferenceData | null = null; // permanent once set
+
+function fetchEmployeeReferenceDataShared(): Promise<ReferenceData> {
+  // Return immediately if already fetched
+  if (referenceDataCache) {
+    return Promise.resolve(referenceDataCache);
   }
 
-  if (!departmentsInflight) {
-    departmentsInflight = (async () => {
+  // Attach to in-flight request if one is already running
+  if (!referenceDataInflight) {
+    referenceDataInflight = (async () => {
       const { data, error } = await supabase.functions.invoke('employee-management', {
-        body: JSON.stringify({
-          operation: 'list_departments',
-        }),
+        body: { operation: 'get_reference_data' },
       });
       if (error) throw error;
-      const departments = ((data?.departments as EmployeeDepartmentOption[]) || []);
-      departmentsRecent = { at: Date.now(), value: departments };
-      return departments;
+      referenceDataCache = {
+        departments: (data?.departments as EmployeeDepartmentOption[]) || [],
+        employeeTypes: (data?.employeeTypes as EmployeeTypeOption[]) || [],
+      };
+      return referenceDataCache;
     })().finally(() => {
-      departmentsInflight = null;
+      referenceDataInflight = null;
     });
   }
-  return departmentsInflight;
+  return referenceDataInflight;
+}
+
+// Both functions share the same underlying combined call.
+// Whichever fires first fetches both; the second gets the cached/in-flight result.
+export function fetchEmployeeDepartmentsShared(): Promise<EmployeeDepartmentOption[]> {
+  return fetchEmployeeReferenceDataShared().then(r => r.departments);
 }
 
 export function fetchEmployeeTypesShared(): Promise<EmployeeTypeOption[]> {
-  const now = Date.now();
-  if (typesRecent && now - typesRecent.at < SHARED_DEDUPE_MS) {
-    return Promise.resolve(typesRecent.value);
-  }
-
-  if (!typesInflight) {
-    typesInflight = (async () => {
-      const { data, error } = await supabase
-        .from('employee_type')
-        .select('*')
-        .order('type_name', { ascending: true });
-      if (error) throw error;
-      const types = (data || []) as EmployeeTypeOption[];
-      typesRecent = { at: Date.now(), value: types };
-      return types;
-    })().finally(() => {
-      typesInflight = null;
-    });
-  }
-  return typesInflight;
+  return fetchEmployeeReferenceDataShared().then(r => r.employeeTypes);
 }

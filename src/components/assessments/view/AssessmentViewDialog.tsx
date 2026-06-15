@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink, CheckCircle, AlertTriangle, RotateCcw, Clock } from 'lucide-react';
+import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, CheckCircle, RotateCcw, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
@@ -81,8 +81,8 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
   const [completionComments, setCompletionComments] = useState('');
   const [reworkComments, setReworkComments] = useState('');
   const { user, employeeData } = useAuth();
-  const { hasAssessmentAdmin, isSuperAdmin } = useAssessmentAccess();
   const clientId = employeeData?.clientId || user?.clientId;
+  const lastFetchRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
 
   useEffect(() => {
     if (open && assessmentId && clientId) {
@@ -91,42 +91,26 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
   }, [open, assessmentId, clientId]);
 
   const fetchAssessmentDetails = async () => {
+    const now = Date.now();
+    const key = `${assessmentId}:${clientId}`;
+    if (lastFetchRef.current.key === key && now - lastFetchRef.current.time < 2000) return;
+    lastFetchRef.current = { key, time: now };
     try {
       setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('assessments')
-        .select(`
-          id,
-          assessment_id,
-          name,
-          status,
-          target_completion_date,
-          created_at,
-          score,
-          answers,
-          completed_on,
-          closure_comments,
-          rework_comments,
-          created_by,
-          assigned_to,
-          creator:employees!assessments_created_by_fkey(first_name, last_name),
-          assignee:employees!assessments_assigned_to_fkey(first_name, last_name),
-          completed_by_employee:employees!assessments_completed_by_fkey(first_name, last_name),
-          template:assessment_templates(title, description, questions)
-        `)
-        .eq('assessment_id', assessmentId)
-        .eq('client_id', clientId)
-        .single();
+
+      const { data: responseData, error } = await supabase
+      .functions.invoke('list-assessments', {
+        body: { assessment_id: assessmentId, client_id: clientId },
+        headers: { path: 'get' },
+      });
 
       if (error) throw error;
 
-      // Debug: Log raw answers data
-      console.log('[AssessmentViewDialog] Raw answers from database:', data.answers);
-      console.log('[AssessmentViewDialog] Raw questions from template:', data.template?.questions);
+      const data = responseData?.assessment;
+      if (!data) throw new Error('Assessment not found');
 
-        // Process answers - handle both array and object formats
-        let processedAnswers: Answer[] = [];
+      // Process answers - handle both array and object formats
+      let processedAnswers: Answer[] = [];
         if (data.answers) {
           if (Array.isArray(data.answers)) {
             processedAnswers = (data.answers as unknown as Answer[]) || [];
@@ -208,15 +192,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
         } : undefined
       };
 
-      // Debug: Log question IDs from template
-      if (formattedAssessment.template?.questions) {
-        console.log('[AssessmentViewDialog] Template question IDs (after processing):', formattedAssessment.template.questions.map(q => ({
-          id: q.id,
-          idType: typeof q.id,
-          text: q.text?.substring(0, 50)
-        })));
-      }
-
       setAssessment(formattedAssessment);
     } catch (error) {
       console.error('Error fetching assessment details:', error);
@@ -239,70 +214,45 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
 
     try {
       setCompleting(true);
-      
+
+      const completedOn = new Date().toISOString();
       const { error } = await supabase
-        .from('assessments')
-        .update({ 
-          status: 'Completed',
+      .functions.invoke('save-assessment-draft/complete-assessment', {
+        body: {
+          id: assessment.id,
+          client_id: clientId,
           completed_by: employeeData.id,
-          completed_on: new Date().toISOString(),
+          completed_on: completedOn,
           closure_comments: completionComments.trim() || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', assessment.id)
-        .eq('client_id', clientId);
+          performed_by: {
+            id: employeeData.id,
+            first_name: employeeData.firstName || '',
+            last_name: employeeData.lastName || '',
+            email: employeeData.email || '',
+          },
+          assessment_info: {
+            name: assessment.name,
+            assigned_to: assessment.assigned_to,
+            created_by: assessment.created_by,
+          },
+        },
+      });
 
       if (error) throw error;
 
-      // Send notification to assigned person (not self if self-completed)
-      console.log(assessment.assigned_to && assessment.assigned_to !== employeeData?.id,"checking assesigned",assessment);
-      
-      if (assessment.assigned_to && assessment.assigned_to !== employeeData?.id) {
-        try {
-          // Get completer details (current user)
-          const completer = {
-            id: employeeData?.id || '',
-            first_name: employeeData?.firstName || '',
-            last_name: employeeData?.lastName || '',
-            email: employeeData?.email || ''
-          };
-
-          const notificationResult = await assessmentNotificationService.queueAssessmentCompletedNotification(
-            {
-              id: assessment.id,
-              title: assessment.name,
-              assigned_to: assessment.assigned_to,
-              created_by: assessment.created_by,
-              client_id: clientId
-            },
-            completer,
-            employeeData
-          );
-          
-          console.log('Assessment completion notification queued:', notificationResult);
-        } catch (notificationError) {
-          console.error('Error queueing assessment completion notification:', notificationError);
-          // Don't fail the completion if notification fails
-        }
-      }
-
-      setAssessment(prev => prev ? { 
-        ...prev, 
+      setAssessment(prev => prev ? {
+        ...prev,
         status: 'Completed',
         completed_by_name: `${employeeData.firstName} ${employeeData.lastName}`,
-        completed_on: new Date().toISOString(),
-        closure_comments: completionComments.trim() || null
+        completed_on: completedOn,
+        closure_comments: completionComments.trim() || null,
       } : null);
-      
+
       toast.success('Assessment completed successfully');
       setShowConfirmDialog(false);
       setCompletionComments('');
-      
       onOpenChange(false);
-      
-      if (onAssessmentUpdated) {
-        onAssessmentUpdated();
-      }
+      if (onAssessmentUpdated) onAssessmentUpdated();
     } catch (error) {
       console.error('Error completing assessment:', error);
       toast.error('Failed to complete assessment. Please try again.');
@@ -319,67 +269,40 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
 
     try {
       setReworking(true);
-      
+
       const { error } = await supabase
-        .from('assessments')
-        .update({ 
-          status: 'Draft',
+      .functions.invoke('save-assessment-draft/rework-assessment', {
+        body: {
+          id: assessment.id,
+          client_id: clientId,
           rework_comments: reworkComments.trim() || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', assessment.id)
-        .eq('client_id', clientId);
+          performed_by: {
+            id: employeeData.id,
+            first_name: employeeData.firstName || '',
+            last_name: employeeData.lastName || '',
+            email: employeeData.email || '',
+          },
+          assessment_info: {
+            name: assessment.name,
+            assigned_to: assessment.assigned_to,
+            created_by: assessment.created_by,
+          },
+        },
+      });
 
       if (error) throw error;
 
-      console.log(assessment.assigned_to && assessment.assigned_to !== employeeData?.id,"checking assesigned",assessment);
-
-      // Send notification to assigned person (not self if self-requested)
-      if (assessment.assigned_to && assessment.assigned_to !== employeeData?.id) {
-        try {
-          // Get requester details (current user)
-          const requester = {
-            id: employeeData?.id || '',
-            first_name: employeeData?.firstName || '',
-            last_name: employeeData?.lastName || '',
-            email: employeeData?.email || ''
-          };
-
-          const notificationResult = await assessmentNotificationService.queueAssessmentReworkRequiredNotification(
-            {
-              id: assessment.id,
-              title: assessment.name,
-              assigned_to: assessment.assigned_to,
-              created_by: assessment.created_by,
-              client_id: clientId
-            },
-            requester,
-            reworkComments.trim() || 'Please rework this assessment',
-            employeeData
-          );
-          
-          console.log('Assessment rework notification queued:', notificationResult);
-        } catch (notificationError) {
-          console.error('Error queueing assessment rework notification:', notificationError);
-          // Don't fail the rework request if notification fails
-        }
-      }
-
-      setAssessment(prev => prev ? { 
-        ...prev, 
+      setAssessment(prev => prev ? {
+        ...prev,
         status: 'Draft',
-        rework_comments: reworkComments.trim() || null
+        rework_comments: reworkComments.trim() || null,
       } : null);
-      
+
       toast.success(`Assessment has been reworked and status changed to Draft${reworkComments ? ' with comments' : ''}`);
       setShowReworkDialog(false);
       setReworkComments('');
-      
       onOpenChange(false);
-      
-      if (onAssessmentUpdated) {
-        onAssessmentUpdated();
-      }
+      if (onAssessmentUpdated) onAssessmentUpdated();
     } catch (error) {
       console.error('Error reworking assessment:', error);
       toast.error('Failed to rework assessment. Please try again.');
@@ -990,14 +913,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                                 </div>
                                 <div className="space-y-1.5">
                                   {answer.attachments.map((attachment, idx) => {
-                                    console.log(`[AssessmentViewDialog] Rendering attachment ${idx}:`, {
-                                      name: attachment.name,
-                                      hasUrl: !!attachment.url,
-                                      hasPath: !!attachment.path,
-                                      hasBase64: !!attachment.base64,
-                                      url: attachment.url?.substring(0, 100)
-                                    });
-                                    
                                     return (
                                       <div key={idx} className="flex items-center gap-2 p-2 bg-purple-50 rounded border border-purple-200">
                                         <FileText className="h-4 w-4 text-purple-600 flex-shrink-0" />

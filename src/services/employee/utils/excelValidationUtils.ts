@@ -1,7 +1,16 @@
 
 import { RawEmployeeData } from '../types/importTypes';
 import { checkBulkEmployeeIdDuplicates,checkBulkEmployeeEmailDuplicates } from '../employeeValidationService';
-import { EMPLOYEE_DESIGNATION_CONSTANTS, EMPLOYEE_ID_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_NAME_CONSTANTS } from '@/constant/employeeConstant';
+import {
+  EMPLOYEE_DESIGNATION_CONSTANTS,
+  EMPLOYEE_ID_CONSTANTS,
+  EMPLOYEE_LAST_NAME_CONSTANTS,
+  EMPLOYEE_NAME_CONSTANTS,
+  EMPLOYEE_PERSONAL_INFO_CONSTANTS,
+  STAFF_ID_CONSTANTS,
+  BIOMETRIC_USER_ID_CONSTANTS,
+  EXPERIENCE_CONSTANTS,
+} from '@/constant/employeeConstant';
 
 /**
  * Required fields that must be present in the Excel file
@@ -118,11 +127,242 @@ export const isValidEmployeeId = (employeeId: string): boolean => {
   const trimmed = employeeId.trim();
   if (!trimmed) return false;
 
-  const min = EMPLOYEE_ID_CONSTANTS.MIN_LENGTH; 
-  const max = EMPLOYEE_ID_CONSTANTS.MAX_LENGTH; 
+  const min = EMPLOYEE_ID_CONSTANTS.MIN_LENGTH;
+  const max = EMPLOYEE_ID_CONSTANTS.MAX_LENGTH;
   const employeeIdRegex = new RegExp(`^[A-Za-z0-9]{${min},${max}}$`);
 
   return employeeIdRegex.test(trimmed);
+};
+
+export const EMPLOYEE_EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+export const EMPLOYEE_PHONE_REGEX = /^[6-9]\d{9}$/;
+export const RESIDENCE_ADDRESS_MAX_LENGTH = 500;
+export const ALLOWED_GENDER = ['male', 'female', 'other'] as const;
+
+export type PersonalDetailsFields = {
+  middleName?: string;
+  fatherName?: string;
+  staffId?: string;
+  experience?: string;
+  qualification?: string;
+  gender?: string;
+  dob?: string;
+  religion?: string;
+  nationality?: string;
+  bloodGroup?: string;
+  residenceAddress?: string;
+};
+
+export type ProfessionalOtherDetailsFields = {
+  aadharNo?: string;
+  panNo?: string;
+  esiNo?: string;
+  pfNo?: string;
+  exitDate?: string;
+  biometricUserId?: string;
+};
+
+const isValidLettersAndSpaces = (value: string): boolean => /^[a-zA-Z\s]+$/.test(value);
+
+const validateOptionalNameLikeField = (value: string, label: string): string => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '';
+  if (trimmed.length < EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH) {
+    return `${label} must be at least ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH} characters`;
+  }
+  if (trimmed.length > EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH) {
+    return `${label} cannot exceed ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH} characters`;
+  }
+  if (!isValidLettersAndSpaces(trimmed)) {
+    return `${label} can only contain letters and spaces`;
+  }
+  return '';
+};
+
+const isParseableDate = (value: string): boolean => {
+  const d = new Date(value);
+  return !isNaN(d.getTime());
+};
+
+const isDateNotInFuture = (value: string): boolean => {
+  if (!isParseableDate(value)) return false;
+  const date = new Date(value);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  return date <= today;
+};
+
+export const isValidEmployeeEmail = (email: string): boolean =>
+  EMPLOYEE_EMAIL_REGEX.test(email.trim());
+
+export const isValidEmployeePhone = (phone: string): boolean =>
+  EMPLOYEE_PHONE_REGEX.test(phone.trim());
+
+export const getResidenceAddressError = (address?: string): string => {
+  const trimmed = (address || '').trim();
+  if (!trimmed) return '';
+  if (trimmed.length > RESIDENCE_ADDRESS_MAX_LENGTH) {
+    return `Address cannot exceed ${RESIDENCE_ADDRESS_MAX_LENGTH} characters`;
+  }
+  return '';
+};
+
+export const getPersonalDetailsFieldErrors = (
+  personalDetails: PersonalDetailsFields = {}
+): Record<string, string> => {
+  const experience = (personalDetails.experience || '').trim();
+  const qualification = (personalDetails.qualification || '').trim();
+  const bloodGroup = (personalDetails.bloodGroup || '').trim();
+  const gender = (personalDetails.gender || '').trim().toLowerCase();
+  const dob = (personalDetails.dob || '').trim();
+
+  let experienceError = '';
+  if (experience) {
+    if (
+      experience.length < EXPERIENCE_CONSTANTS.MIN_LENGTH ||
+      experience.length > EXPERIENCE_CONSTANTS.MAX_LENGTH
+    ) {
+      experienceError = `Experience must be between ${EXPERIENCE_CONSTANTS.MIN_LENGTH} and ${EXPERIENCE_CONSTANTS.MAX_LENGTH} characters`;
+    } else if (!/^\d+$/.test(experience)) {
+      experienceError = 'Experience must contain numbers only';
+    }
+  }
+
+  let qualificationError = '';
+  if (qualification) {
+    if (
+      qualification.length < EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH ||
+      qualification.length > EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH
+    ) {
+      qualificationError = `Qualification must be between ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH} characters`;
+    } else if (!/^[a-zA-Z\s.-]+$/.test(qualification)) {
+      qualificationError = 'Qualification can only contain letters, spaces, dots, and hyphens';
+    }
+  }
+
+  let dobError = '';
+  if (dob) {
+    if (!isParseableDate(dob)) {
+      dobError = 'Please enter a valid date of birth';
+    } else if (!isDateNotInFuture(dob)) {
+      dobError = 'Date of birth cannot be in the future';
+    }
+  }
+
+  let genderError = '';
+  if (gender && !ALLOWED_GENDER.includes(gender as (typeof ALLOWED_GENDER)[number])) {
+    genderError = `Gender must be one of: ${ALLOWED_GENDER.join(', ')}`;
+  }
+
+  return {
+    middleName: validateOptionalNameLikeField(personalDetails.middleName || '', 'Middle name'),
+    fatherName: validateOptionalNameLikeField(personalDetails.fatherName || '', "Father's name"),
+    experience: experienceError,
+    qualification: qualificationError,
+    religion: validateOptionalNameLikeField(personalDetails.religion || '', 'Religion'),
+    nationality: validateOptionalNameLikeField(personalDetails.nationality || '', 'Nationality'),
+    bloodGroup:
+      bloodGroup && !/^(A|A1|A2|B|AB|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test(bloodGroup)
+        ? 'Blood group must be in format A+, O-, AB+, B-'
+        : '',
+    dob: dobError,
+    gender: genderError,
+    residenceAddress: getResidenceAddressError(personalDetails.residenceAddress),
+  };
+};
+
+export const getProfessionalOtherDetailsFieldErrors = (
+  details: ProfessionalOtherDetailsFields = {}
+): Record<string, string> => {
+  const aadharNo = (details.aadharNo || '').replace(/\D/g, '');
+  const panNo = (details.panNo || '').trim().toUpperCase();
+  const esiNo = (details.esiNo || '').replace(/\D/g, '');
+  const pfNo = (details.pfNo || '').replace(/\D/g, '');
+  const biometricUserId = (details.biometricUserId || '').trim();
+  const exitDate = (details.exitDate || '').trim();
+
+  let exitDateError = '';
+  if (exitDate) {
+    if (!isParseableDate(exitDate)) {
+      exitDateError = 'Please enter a valid resigning/termination date';
+    } else if (!isDateNotInFuture(exitDate)) {
+      exitDateError = 'Resigning date cannot be in the future';
+    }
+  }
+
+  return {
+    aadharNo: aadharNo && !/^\d{12}$/.test(aadharNo) ? 'Aadhaar number must be exactly 12 digits' : '',
+    panNo: panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(panNo) ? 'PAN must be in format ABCDE1234F' : '',
+    esiNo: esiNo && !/^\d{10}$/.test(esiNo) ? 'ESI number must be exactly 10 digits' : '',
+    pfNo: pfNo && !/^\d{12}$/.test(pfNo) ? 'PF number must be exactly 12 digits' : '',
+    biometricUserId:
+      biometricUserId &&
+      (biometricUserId.length < BIOMETRIC_USER_ID_CONSTANTS.MIN_LENGTH ||
+        biometricUserId.length > BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH)
+        ? `Biometric User ID must be between ${BIOMETRIC_USER_ID_CONSTANTS.MIN_LENGTH} and ${BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH} characters`
+        : '',
+    exitDate: exitDateError,
+  };
+};
+
+export const hasFieldErrors = (errors: Record<string, string>): boolean =>
+  Object.values(errors).some(Boolean);
+
+export const mapImportRowToPersonalDetails = (
+  row: Record<string, unknown>
+): PersonalDetailsFields => ({
+  middleName: row.middleName as string | undefined,
+  fatherName: row.fatherName as string | undefined,
+  staffId: row.staffId as string | undefined,
+  experience: row.experience as string | undefined,
+  qualification: row.qualification as string | undefined,
+  gender: row.gender ? String(row.gender).trim().toLowerCase() : undefined,
+  dob: row.dob as string | undefined,
+  religion: row.religion as string | undefined,
+  nationality: row.nationality as string | undefined,
+  bloodGroup: row.bloodGroup as string | undefined,
+  residenceAddress: row.residenceAddress as string | undefined,
+});
+
+export const mapImportRowToProfessionalDetails = (
+  row: Record<string, unknown>
+): ProfessionalOtherDetailsFields => ({
+  aadharNo: row.aadharNo as string | undefined,
+  panNo: row.panNo as string | undefined,
+  esiNo: row.esiNo as string | undefined,
+  pfNo: row.pfNo as string | undefined,
+  exitDate: row.resigningOrTerminationDate as string | undefined,
+  biometricUserId: row.biometricUserId as string | undefined,
+});
+
+export const getImportRowPersonalAndProfessionalErrors = (
+  row: Record<string, unknown>
+): Record<string, string> => ({
+  ...getPersonalDetailsFieldErrors(mapImportRowToPersonalDetails(row)),
+  ...getProfessionalOtherDetailsFieldErrors(mapImportRowToProfessionalDetails(row)),
+});
+
+export const getEmployeeIdFieldErrors = (employeeId?: string): string[] => {
+  const id = (employeeId || '').trim();
+  const messages: string[] = [];
+  if (!id) {
+    messages.push('Employee ID is required');
+    return messages;
+  }
+  if (id.length < EMPLOYEE_ID_CONSTANTS.MIN_LENGTH) {
+    messages.push(`Employee ID must be at least ${EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} characters`);
+  }
+  if (id.length > EMPLOYEE_ID_CONSTANTS.MAX_LENGTH) {
+    messages.push(`Employee ID cannot exceed ${EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters`);
+  }
+  if (
+    id.length >= EMPLOYEE_ID_CONSTANTS.MIN_LENGTH &&
+    id.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH &&
+    !isValidEmployeeId(id)
+  ) {
+    messages.push('Employee ID format is invalid');
+  }
+  return messages;
 };
 
 export const validateExcelData = async (data: any[], clientId?: string): Promise<{ errors: string[]; warnings: string[] }> => {
@@ -132,7 +372,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     errors.push("No data found in the Excel file");
     return { errors, warnings };
   }
-  
+
   // Check for required headers/columns
   const requiredColumns = [
     'employeeId',
@@ -168,7 +408,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     'transport',
     'management',
   ];
-const ALLOWED_STATUS = ['active'];
+  const ALLOWED_STATUS = ['active'];
 
   // Helper for case-insensitive check
   const isAllowedModuleName = (name: string): boolean => {
@@ -180,18 +420,18 @@ const ALLOWED_STATUS = ['active'];
   const missingColumns = requiredColumns.filter(
     column => !Object.keys(firstRow).includes(column)
   );
-  
+
   if (missingColumns.length > 0) {
     missingColumns.forEach(column => {
       errors.push(`Missing required column: ${column}`);
     });
   }
   const isValidEmployeeType = (employeeType: string): boolean => {
-  if (!employeeType) return false;
+    if (!employeeType) return false;
     return ALLOWED_EMPLOYEE_TYPES.includes(employeeType.trim().toLowerCase());
   };
-   const isValidDepartment = (department: string): boolean => {
-  if (!department) return false;
+  const isValidDepartment = (department: string): boolean => {
+    if (!department) return false;
     return ALLOWED_DEPARTMENT.includes(department.trim().toLowerCase());
   };
   const isValidStatus = (status: string): boolean => {
@@ -201,12 +441,12 @@ const ALLOWED_STATUS = ['active'];
   // Check for duplicate employee IDs within the file
   const employeeIds: string[] = [];
   const emailsRaw: string[] = [];
-   data.forEach(row => {
+  data.forEach(row => {
     if (row.employeeId !== undefined && row.employeeId !== null && String(row.employeeId).trim() !== '') {
       employeeIds.push(String(row.employeeId).trim());
     }
     if (row.email !== undefined && row.email !== null && String(row.email).trim() !== '') {
-      emailsRaw.push(String(row.email).trim().toLowerCase()); 
+      emailsRaw.push(String(row.email).trim().toLowerCase());
     }
   });
   const duplicateIds = employeeIds.filter((id, index) => employeeIds.indexOf(id) !== index);
@@ -216,7 +456,7 @@ const ALLOWED_STATUS = ['active'];
       warnings.push(`Employee ID '${id}' is duplicated in the file and will be skipped`);
     });
   }
-   const duplicateEmails = emailsRaw.filter((email, index) => emailsRaw.indexOf(email) !== index);
+  const duplicateEmails = emailsRaw.filter((email, index) => emailsRaw.indexOf(email) !== index);
   if (duplicateEmails.length > 0) {
     const uniqueEmailDups = [...new Set(duplicateEmails)];
     uniqueEmailDups.forEach(email => {
@@ -228,12 +468,12 @@ const ALLOWED_STATUS = ['active'];
   if (clientId && employeeIds.length > 0) {
     try {
       const { duplicates, errors: dbErrors } = await checkBulkEmployeeIdDuplicates(employeeIds, clientId);
-      
+
       // Add database errors
       if (dbErrors.length > 0) {
         errors.push(...dbErrors);
       }
-      
+
       // Add duplicate employee ID errors
       if (duplicates.length > 0) {
         duplicates.forEach(id => {
@@ -268,17 +508,17 @@ const ALLOWED_STATUS = ['active'];
   // Validate each row
   data.forEach((row, index) => {
     const rowNum = index + 2; // +2 because Excel is 1-based and we're skipping header row
-    
+
     // Check for required fields in each row
     requiredColumns.forEach(column => {
       const value = row[column];
-      if (value === undefined || value === null || 
+      if (value === undefined || value === null ||
           (typeof value === 'string' && value.trim() === '') ||
           value === 0) {
         errors.push(`Row ${rowNum}: Missing required value for ${column}`);
       }
     });
-    
+
     // Validate email format if present
     if (row.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -289,7 +529,7 @@ const ALLOWED_STATUS = ['active'];
     if (row.firstName && !nameNotContainingNumbers(row.firstName)) {
       errors.push(`Row ${rowNum}: First Name should only contain characters`);
     }
-   if (row.firstName) {
+    if (row.firstName) {
       const firstName = String(row.firstName).trim();
 
       if (!firstName) {
@@ -434,7 +674,7 @@ const ALLOWED_STATUS = ['active'];
 
     if (row.employeeType) {
       const emptyp = String(row.employeeType).trim();
-  
+
       if (!isValidEmployeeType(emptyp)) {
         errors.push(
           `Row ${rowNum}: Invalid employee type '${emptyp}'. Allowed values are: ${ALLOWED_EMPLOYEE_TYPES.join(', ')}`
@@ -443,7 +683,7 @@ const ALLOWED_STATUS = ['active'];
     }
     if (row.department) {
       const dept = String(row.department).trim();
-  
+
       if (!isValidDepartment(dept)) {
         errors.push(
           `Row ${rowNum}: Invalid department '${dept}'. Allowed values are: ${ALLOWED_DEPARTMENT.join(', ')}`
@@ -459,8 +699,15 @@ const ALLOWED_STATUS = ['active'];
         );
       }
     }
+
+    const personalAndProfessionalErrors = getImportRowPersonalAndProfessionalErrors(row);
+    Object.entries(personalAndProfessionalErrors).forEach(([, message]) => {
+      if (message) {
+        errors.push(`Row ${rowNum}: ${message}`);
+      }
+    });
   });
-  
+
   return { errors, warnings };
 };
 

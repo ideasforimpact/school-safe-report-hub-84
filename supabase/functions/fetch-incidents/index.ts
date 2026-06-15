@@ -34,7 +34,9 @@ serve(async (req) => {
       subcategory = '',
       status = '',
       priority = '',
-      location = ''
+      location = '',
+      dateFrom = '',
+      dateTo = ''
     } = body;
 
     if (!clientId) {
@@ -60,6 +62,35 @@ serve(async (req) => {
       );
     }
 
+    if (operation === 'get_stats') {
+      const { hasIncidentAdmin } = body;
+      let query = supabaseClient
+        .from('incidents')
+        .select('id, created_by, assigned_to, incident_status!status_id(name)')
+        .eq('client_id', clientId);
+
+      if (!isSuperAdmin && !hasIncidentAdmin) {
+        query = query.or(`created_by.eq.${employeeId},assigned_to.eq.${employeeId}`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const stats = { total: 0, open: 0, inProgress: 0, closed: 0 };
+      for (const inc of data ?? []) {
+        stats.total++;
+        const status = (inc as any).incident_status?.name;
+        if (status === 'Open') stats.open++;
+        else if (status === 'In Progress') stats.inProgress++;
+        else if (status === 'Closed') stats.closed++;
+      }
+
+      return new Response(JSON.stringify({ success: true, data: stats }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (operation === 'get_config') {
       console.log(`Fetching incident form configuration for client: ${clientId}`);
 
@@ -75,12 +106,12 @@ serve(async (req) => {
         employeesRes,
         studentsRes
       ] = await Promise.all([
-        supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true),
+        supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
         supabaseClient.from('incident_categories').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
         supabaseClient.from('incident_subcategories').select('id, name, category_id').eq('is_active', true).eq('client_id', clientId),
         supabaseClient.from('campuses').select('id, name').eq('client_id', clientId),
         supabaseClient.from('facilities').select('id, name, campus_id').eq('client_id', clientId),
-        supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).order('weight', { ascending: true }),
+        supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).eq('client_id', clientId).order('weight', { ascending: true }),
         supabaseClient.from('incident_status').select('id, name'),
         supabaseClient.from('employees').select('id, first_name, last_name, email').eq('client_id', clientId).eq('status', true).not('email', 'is', null).neq('email', ''),
         supabaseClient.from('students').select('*, grade_info:grades!students_grade_id_fkey(id,name), section_info:sections!students_section_id_fkey(id,name), campus_info:campuses!students_campus_id_fkey(id,name)').eq('client_id', clientId).order('created_at', { ascending: false })
@@ -151,6 +182,15 @@ serve(async (req) => {
     console.log('Employee ID:', employeeId);
     console.log('Is Super Admin:', isSuperAdmin);
 
+    // Resolve filter names to IDs before building the query
+    const [categoryIdRes, subcategoryIdRes, statusIdRes, priorityIdRes, locationIdRes] = await Promise.all([
+      category ? supabaseClient.from('incident_categories').select('id').eq('name', category).eq('client_id', clientId).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+      subcategory ? supabaseClient.from('incident_subcategories').select('id').eq('name', subcategory).eq('client_id', clientId).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+      status ? supabaseClient.from('incident_status').select('id').eq('name', status).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+      priority ? supabaseClient.from('incident_priorities').select('id').eq('name', priority).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+      location ? supabaseClient.from('campuses').select('id').eq('name', location).eq('client_id', clientId).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+
     // Fetch incidents and config data in parallel
     const [incidentsRes, reportTypesRes, categoriesRes, subcategoriesRes, locationsRes, facilitiesRes, prioritiesRes, statusRes, employeesRes, studentsRes] = await Promise.all([
       // Fetch incidents with pagination and search
@@ -197,12 +237,33 @@ serve(async (req) => {
           query = query.or(`ticket_id.ilike.%${search}%,description.ilike.%${search}%`);
         }
 
-        // Apply other filters if provided
-        if (category) query = query.eq('incident_categories.name', category);
-        if (subcategory) query = query.eq('incident_subcategories.name', subcategory);
-        if (status) query = query.eq('incident_status.name', status);
-        if (priority) query = query.eq('incident_priorities.name', priority);
-        if (location) query = query.eq('campuses.name', location);
+        // Apply filters using resolved IDs
+        if (category) {
+          const id = categoryIdRes.data?.id;
+          query = id ? query.eq('category_id', id) : query.eq('category_id', 'no-match');
+        }
+        if (subcategory) {
+          const id = subcategoryIdRes.data?.id;
+          query = id ? query.eq('subcategory_id', id) : query.eq('subcategory_id', 'no-match');
+        }
+        if (status) {
+          const id = statusIdRes.data?.id;
+          query = id ? query.eq('status_id', id) : query.eq('status_id', 'no-match');
+        }
+        if (priority) {
+          const id = priorityIdRes.data?.id;
+          query = id ? query.eq('priority_id', id) : query.eq('priority_id', 'no-match');
+        }
+        if (location) {
+          const id = locationIdRes.data?.id;
+          query = id ? query.eq('location_id', id) : query.eq('location_id', 'no-match');
+        }
+        if (dateFrom) {
+          query = query.gte('date', dateFrom);
+        }
+        if (dateTo) {
+          query = query.lte('date', dateTo);
+        }
 
         // Apply pagination
         const from = (page - 1) * pageSize;
@@ -213,12 +274,12 @@ serve(async (req) => {
           .range(from, to);
       })(),
       // Fetch config data
-      supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true),
+      supabaseClient.from('incident_report_types').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
       supabaseClient.from('incident_categories').select('id, name, description').eq('is_active', true).eq('client_id', clientId),
       supabaseClient.from('incident_subcategories').select('id, name, category_id').eq('is_active', true).eq('client_id', clientId),
       supabaseClient.from('campuses').select('id, name').eq('client_id', clientId),
       supabaseClient.from('facilities').select('id, name, campus_id').eq('client_id', clientId),
-      supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).order('weight', { ascending: true }),
+      supabaseClient.from('incident_priorities').select('id, name, color, weight').eq('is_active', true).eq('client_id', clientId).order('weight', { ascending: true }),
       supabaseClient.from('incident_status').select('id, name'),
       supabaseClient.from('employees').select('id, first_name, last_name, email').eq('client_id', clientId).eq('status', true).not('email', 'is', null).neq('email', ''),
       supabaseClient.from('students').select('*, grade_info:grades!students_grade_id_fkey(id,name), section_info:sections!students_section_id_fkey(id,name), campus_info:campuses!students_campus_id_fkey(id,name)').eq('client_id', clientId).order('created_at', { ascending: false })

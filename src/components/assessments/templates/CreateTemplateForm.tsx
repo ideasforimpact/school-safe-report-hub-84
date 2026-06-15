@@ -65,12 +65,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       setDescription(template.description);
       setIsActive(template.isActive);
 
-      const normalizedType = (template.type || '').trim();
-      const hasKnownType = normalizedType && normalizedType.toLowerCase() !== 'unknown';
-
-      if (hasKnownType) {
-        setType(normalizedType);
-      } else if (template.category_id) {
+      if (template.category_id) {
         const { data, error } = await supabase
           .from('template_categories')
           .select('name')
@@ -78,12 +73,14 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           .maybeSingle();
 
         if (!error && data?.name && isMounted) {
-          setType(data.name);
+          setType(data.name.trim());
         } else if (isMounted) {
-          setType('');
+          const fallback = (template.type || '').trim();
+          setType(fallback.toLowerCase() !== 'unknown' ? fallback : '');
         }
       } else {
-        setType('');
+        const fallback = (template.type || '').trim();
+        setType(fallback.toLowerCase() !== 'unknown' ? fallback : '');
       }
 
       const questionsWithIds = template.questions.map((q, index) => ({

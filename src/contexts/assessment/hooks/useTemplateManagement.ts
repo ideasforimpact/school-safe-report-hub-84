@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AssessmentTemplate } from '@/types/assessment';
 import { toast } from 'sonner';
 import { templateService } from '@/services/assessment/templateService';
@@ -9,35 +9,35 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const { employeeData } = useAuth();
+  const lastFetchKeyRef = useRef('');
 
-  // Load templates from Supabase
-  const loadTemplates = async () => {
+  const fetchedForClientRef = useRef<string | null>(null);
+  const loadTemplates = async (force = false) => {
+    const clientId = employeeData?.clientId;
+    if (!clientId) return;
+
+    const key = clientId;
+    if (!force && key === lastFetchKeyRef.current) return;
+    lastFetchKeyRef.current = key;
+
     try {
       setLoading(true);
-      
-      if (!employeeData?.clientId) {
-        throw new Error('Client ID not available. Please ensure you are properly authenticated.');
-      }
-      
-      const data = await templateService.getTemplates(employeeData.clientId);
-      console.log('Loaded templates:', data);
+      const data = await templateService.getTemplates(clientId);
       setTemplates(data);
     } catch (error) {
       console.error('Failed to load templates:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load templates';
-      toast.error(errorMessage);
+      lastFetchKeyRef.current = '';
+      toast.error(error instanceof Error ? error.message : 'Failed to load templates');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!enabled) {
-      return;
-    }
-    if (employeeData?.clientId) {
-      loadTemplates();
-    }
+    if (!enabled || !employeeData?.clientId) return;
+    if (fetchedForClientRef.current === employeeData.clientId) return;
+    fetchedForClientRef.current = employeeData.clientId;
+    loadTemplates();
   }, [employeeData?.clientId, enabled]);
 
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
@@ -51,7 +51,7 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
       });
       console.log('Template created with ID:', id);
       toast.success('Template created successfully');
-      await loadTemplates(); // Refresh the list
+      await loadTemplates(true);
       return id;
     } catch (error) {
       console.error('Error creating template:', error);
@@ -63,7 +63,7 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
     try {
       await templateService.updateTemplate(id, updates);
       toast.success('Template updated successfully');
-      await loadTemplates(); // Refresh the list
+      await loadTemplates(true);
     } catch (error) {
       console.error('Error updating template:', error);
       throw error;
@@ -74,7 +74,7 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
     try {
       await templateService.deleteTemplate(id);
       toast.success('Template deleted successfully');
-      await loadTemplates(); // Refresh the list
+      await loadTemplates(true);
     } catch (error) {
       console.error('Error deleting template:', error);
       toast.error('Failed to delete template');
@@ -94,6 +94,6 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
     deleteTemplate,
     getTemplateById,
     loading,
-    refreshTemplates: loadTemplates
+    refreshTemplates: () => loadTemplates(true)
   };
 };

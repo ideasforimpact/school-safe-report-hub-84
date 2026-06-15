@@ -11,6 +11,11 @@ interface FetchSOPRequest {
   client_id?: string | null;
   employee_id?: string | null;
   is_super_admin: boolean;
+  search?: string | null;
+  status?: string | null;       // 'all' | 'active' | 'inactive'
+  category_id?: string | null;  // uuid or 'all'
+  page?: number;                // 1-based, default 1
+  limit?: number;               // default 10
 }
 
 serve(async (req) => {
@@ -39,9 +44,15 @@ serve(async (req) => {
 
     // Parse request body
     const requestData: FetchSOPRequest = await req.json()
-    const { client_id, employee_id, is_super_admin } = requestData
+    const { client_id, employee_id, is_super_admin, search, status, category_id: filterCategoryId, page = 1, limit = 10 } = requestData
+    const pageNum = Math.max(1, page)
+    const pageSize = Math.min(Math.max(1, limit), 100)
+    const rangeFrom = (pageNum - 1) * pageSize
+    const rangeTo = rangeFrom + pageSize - 1
 
     let formattedSOPs: any[] = [];
+    let total = 0;
+    let totalPages = 1;
 
     if (is_super_admin) {
       // Super admin: Fetch SOPs from sop table filtered by client_id and employee_id
@@ -73,16 +84,42 @@ serve(async (req) => {
         `)
         .eq('client_id', client_id);
 
-      // Filter by employee_id if provided
-      if (employee_id && !is_super_admin) {
-        query = query.eq('employee_id', employee_id);
+      // Search filter — title or description
+      if (search && search.trim()) {
+        query = query.or(`title.ilike.%${search.trim()}%,description.ilike.%${search.trim()}%`);
       }
 
-      const { data: sopData, error: sopError } = await query.order('created_at', { ascending: false });
+      // Status filter
+      if (status && status !== 'all') {
+        query = query.eq('status', status === 'active');
+      }
+
+      // Category filter
+      if (filterCategoryId && filterCategoryId !== 'all') {
+        query = query.eq('category_id', filterCategoryId);
+      }
+
+      // Count query (same filters, no pagination) — runs in parallel with data query
+      let countQuery = supabaseClient
+        .from('sop')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', client_id);
+      if (search?.trim()) countQuery = countQuery.or(`title.ilike.%${search.trim()}%,description.ilike.%${search.trim()}%`);
+      if (status && status !== 'all') countQuery = countQuery.eq('status', status === 'active');
+      if (filterCategoryId && filterCategoryId !== 'all') countQuery = countQuery.eq('category_id', filterCategoryId);
+
+      // Paginated data query
+      const [{ data: sopData, error: sopError }, { count: totalCount }] = await Promise.all([
+        query.order('created_at', { ascending: false }).range(rangeFrom, rangeTo),
+        countQuery,
+      ]);
 
       if (sopError) {
         throw sopError;
       }
+
+      total = totalCount ?? 0;
+      totalPages = Math.ceil(total / pageSize);
 
       // Fetch category names separately
       const categoryIds = [...new Set((sopData || []).map((s: any) => s.category_id))];
@@ -145,12 +182,13 @@ serve(async (req) => {
         }
       }
 
-      // Fetch signoff request counts for each SOP (how many unique employees have signed off)
+      // Fetch signoff request counts + completed employee IDs for each SOP
       const signoffCountBySopId = new Map<string, Set<string>>();
+      const completedEmployeesBySopId = new Map<string, string[]>();
       if (sopIds.length > 0) {
         const { data: signoffData, error: signoffError } = await supabaseClient
           .from('sop_signoff_request')
-          .select('sop_id, employee_id')
+          .select('sop_id, employee_id, is_completed')
           .in('sop_id', sopIds);
 
         if (signoffError) {
@@ -163,6 +201,14 @@ serve(async (req) => {
               signoffCountBySopId.set(item.sop_id, new Set<string>());
             }
             signoffCountBySopId.get(item.sop_id)!.add(item.employee_id);
+
+            // Track employee IDs who have is_completed = true
+            if (item.is_completed && item.employee_id) {
+              if (!completedEmployeesBySopId.has(item.sop_id)) {
+                completedEmployeesBySopId.set(item.sop_id, []);
+              }
+              completedEmployeesBySopId.get(item.sop_id)!.push(item.employee_id);
+            }
           });
         }
       }
@@ -261,6 +307,7 @@ serve(async (req) => {
           assigned_employee_count: assignedEmployeeCount,
           completed_count: completedCount,
           to_be_done_count: toBeDoneCount >= 0 ? toBeDoneCount : 0,
+          completed_employee_ids: completedEmployeesBySopId.get(sop.id) || [],
           creator_name: creator
             ? `${creator.first_name ?? ''} ${creator.last_name ?? ''}`.trim()
             : null,
@@ -567,10 +614,16 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         data: formattedSOPs,
-        message: 'SOPs fetched successfully' 
+        pagination: is_super_admin ? {
+          page: pageNum,
+          limit: pageSize,
+          total: total,
+          total_pages: totalPages,
+        } : null,
+        message: 'SOPs fetched successfully'
       }),
       { 
         status: 200, 

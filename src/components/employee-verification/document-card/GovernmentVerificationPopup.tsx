@@ -18,6 +18,7 @@ import {
   Vote,
   Globe,
   Shield,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -127,11 +128,13 @@ const DOC_CONFIGS: Record<GovernmentDocumentType, DocConfig> = {
     numberFallback: "XXXXX0000X",
     showStateBadge: false,
     fields: [
-      { label: "Name", key: "name", fallback: "—", colSpan: 2 },
-      { label: "Father's Name", key: "fatherName", fallback: "—", colSpan: 2 },
-      { label: "Gender", key: "gender", fallback: "—" },
+      { label: "Name", key: "name", fallback: "—" },
       { label: "Date of Birth", key: "dob", fallback: "—" },
-      
+
+      { label: "Father's Name", key: "fatherName", fallback: "—" },
+      { label: "Gender", key: "gender", fallback: "—" },
+
+      { label: "Address", key: "address", fallback: "—", colSpan: 2 },
     ],
   },
   voter_id: {
@@ -182,12 +185,36 @@ const DOC_CONFIGS: Record<GovernmentDocumentType, DocConfig> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const isExpired = (dateStr?: string): boolean => {
-  if (!dateStr) return false;
+const getMonthDiff = (from: Date, to: Date): number =>
+  (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+
+const getLicenseStatus = (dateStr?: string) => {
+  if (!dateStr) {
+    return { isExpired: false, isExpiringSoon: false, isValid: false, monthsExpired: 0, monthsUntilExpiry: 0 };
+  }
+
   const parts = dateStr.split("/");
-  if (parts.length !== 3) return false;
+  if (parts.length !== 3) {
+    return { isExpired: false, isExpiringSoon: false, isValid: false, monthsExpired: 0, monthsUntilExpiry: 0 };
+  }
+
   const [d, m, y] = parts.map(Number);
-  return new Date(y, m - 1, d) < new Date();
+  const expiryDate = new Date(y, m - 1, d);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sixMonthsLater = new Date();
+  sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+
+  const isExpired = expiryDate < today;
+  const isExpiringSoon = expiryDate >= today && expiryDate <= sixMonthsLater;
+  const isValid = expiryDate > sixMonthsLater;
+
+  const monthsExpired = isExpired ? getMonthDiff(expiryDate, today) : 0;
+  const monthsUntilExpiry = isExpiringSoon ? getMonthDiff(today, expiryDate) : 0;
+
+  return { isExpired, isExpiringSoon, isValid, monthsExpired, monthsUntilExpiry };
 };
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -257,7 +284,13 @@ const GovernmentVerificationPopup: React.FC<GovernmentVerificationPopupProps> = 
   const state = safeData.state || "";
   const uploadedFileUrl = safeData.uploadedFileUrl;
   const fileType = safeData.fileType;
-  const expired = isExpired(summaryLeftValue);
+  const {
+    isExpired: expired,
+    isExpiringSoon,
+    isValid,
+    monthsExpired,
+    monthsUntilExpiry,
+  } = getLicenseStatus(summaryLeftValue);
   console.log({
   uploadedFileUrl,
   documentType,
@@ -427,7 +460,12 @@ console.log("isViewMode:", isViewMode);
                             size={18}
                             className="text-red-600 cursor-pointer transition-transform duration-200 hover:scale-125"
                           />
-                        ) : (
+                        ) : isExpiringSoon ? (
+                          <AlertTriangle
+                            size={18}
+                            className="text-yellow-500 cursor-pointer transition-transform duration-200 hover:scale-125"
+                          />
+                        ) : (  
                           <CheckCircle
                             size={18}
                             className="text-green-600 cursor-pointer transition-transform duration-200 hover:scale-125"
@@ -438,10 +476,22 @@ console.log("isViewMode:", isViewMode);
 
                     <TooltipContent
                       side="bottom"
-                      align="center"
-                      className={expired ? "bg-red-600 text-white" : "bg-green-600 text-white"}
+                      align="start"
+                      sideOffset={4}
+                      collisionPadding={16}
+                      className={`text-xs px-2 py-1 ${
+                        expired
+                          ? "bg-red-600 text-white"
+                          : isExpiringSoon
+                          ? "bg-yellow-500 text-white"
+                          : "bg-green-600 text-white"
+                      }`}
                     >
-                      {expired ? "Driving License Expired" : "Valid Driving License"}
+                      {expired
+                        ? `Driving License Expired${monthsExpired > 0 ? ` · ${monthsExpired} month${monthsExpired > 1 ? "s" : ""} ago` : " · less than a month ago"}`
+                        : isExpiringSoon
+                        ? `Driving License Expiring Soon${monthsUntilExpiry > 0 ? ` · ${monthsUntilExpiry} month${monthsUntilExpiry > 1 ? "s" : ""} remaining` : " · less than a month remaining"}`
+                        : "Valid Driving License"}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -485,11 +535,18 @@ console.log("isViewMode:", isViewMode);
                 className="text-xs font-semibold mt-1"
                 style={{
                   color: expired
-                    ? "#ef4444"
-                    : "#22c55e",
-                }}
-              >
-                {expired ? "Expired" : "Valid"}
+                  ? "#ef4444"
+                  : isExpiringSoon
+                  ? "#eab308"
+                  : "#22c55e",
+                                }}
+                              >
+                  {expired
+                    ? "Expired"
+                    : isExpiringSoon
+                    ? "Expiring Soon"
+                    : "Valid"
+                  }
               </p>
             )}
           </div>
@@ -539,7 +596,11 @@ console.log("isViewMode:", isViewMode);
         {/* ── Document Card ───────────────────────────── */}
         <div className="mt-1 px-5 pb-6 ">
           <div
-            className="rounded-2xl p-5 relative overflow-hidden h-[300px] "
+            className={`rounded-2xl p-5 relative overflow-hidden ${
+              documentType === "pan"
+                ? "min-h-[350px]"
+                : "min-h-[300px]"
+            }`}
             style={{ ...gradientStyles[documentType], fontFamily: "OCR-B, monospace" }}
           >
           
@@ -642,7 +703,7 @@ console.log("isViewMode:", isViewMode);
                       >
                         <FieldLabel>{field.label}</FieldLabel>
                         <FieldValue highlight={field.highlight}>
-                          {getValue(field.key, field.fallback)}
+                            {getValue(field.key, field.fallback)}
                         </FieldValue>
                       </div>
                     ))}
@@ -652,7 +713,7 @@ console.log("isViewMode:", isViewMode);
 
               {/* Document number + barcode */}
               <div
-                className="flex items-end justify-between pt-3"
+                className="flex items-end justify-between pt-3 mt-2"
                 style={{ borderTop: "1px solid rgba(255,255,255,0.15)" }}
               >
                 <div>

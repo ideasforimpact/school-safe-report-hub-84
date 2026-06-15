@@ -534,20 +534,25 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
         (personalDetails.qualification || '').trim().length > EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH)
         ? `Qualification must be between ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH} characters`
         : (personalDetails.qualification || '').trim() &&
-          !/^[a-zA-Z\s.-]+$/.test((personalDetails.qualification || '').trim())
-        ? 'Qualification can only contain letters, spaces, dots, and hyphens'
+        !/^[a-zA-Z\s.,-]+$/.test((personalDetails.qualification || '').trim())
+        ? 'Qualification can only contain letters, commas, spaces, dots, and hyphens'
         : '',
       religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
       nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
       bloodGroup:
         (personalDetails.bloodGroup || '').trim() &&
-        !/^(A|A1|A2|B|AB|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim()
+        !/^(A|A1|A2|B|AB|OH|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim()
           )
           ? 'Blood group must be in format A+, O-, AB+, B-'
           : '',
       dob:
         personalDetails.dob && new Date(personalDetails.dob) > new Date()
           ? 'Date of birth cannot be in the future'
+          : '',
+
+      residenceAddress:
+        (personalDetails.residenceAddress || '').trim().length > 500
+          ? 'Address cannot exceed 500 characters'
           : '',
     };
   };
@@ -644,26 +649,15 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
 
   const handleDocumentChange = (documentKey: string, file: File | null) => {
     if (!file) {
-      setUploadedDocuments((prev) => ({
-        ...prev,
-        [documentKey]: ''
-      }));
-
-      setUploadedDocumentFiles((prev) => {
-        const next = { ...prev };
-        delete next[documentKey];
-        return next;
-      });
-
       return;
     }
 
-    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'];
+    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg'];
 
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
     if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
-      toast.error('Only PDF, PNG, JPG, JPEG, DOC, and DOCX files are allowed');
+      toast.error('Only PDF, PNG, JPG, JPEG files are allowed');
       return;
     }
 
@@ -960,8 +954,11 @@ const canProceedToNextStep = () => {
                       })
                     }
                     placeholder="Enter residence address"
-                    className="min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className={`min-h-[90px] w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${personalDetailsErrors.residenceAddress ? 'border-red-500' : 'border-input'}`}
                   />
+                  {personalDetailsErrors.residenceAddress && (
+                    <p className="text-xs text-red-500">{personalDetailsErrors.residenceAddress}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1070,8 +1067,9 @@ const canProceedToNextStep = () => {
                 </div>
 
                   <div className="space-y-2 mt-2">
-                    <Label>Experience</Label>
+                  <Label>Experience</Label>
                     <Input
+                      type="number"
                       value={personalDetails.experience || ''}
                       onChange={(e) =>
                         setFormData({
@@ -1085,12 +1083,12 @@ const canProceedToNextStep = () => {
                       maxLength={EXPERIENCE_CONSTANTS.MAX_LENGTH}
                       placeholder="Enter Experience"
                     />
-                    {personalDetailsErrors.experience && (
-                      <p className="text-xs text-red-500">
-                        {personalDetailsErrors.experience}
-                      </p>
-                    )}
-                  </div>
+                  {personalDetailsErrors.experience && (
+                    <p className="text-xs text-red-500">
+                      {personalDetailsErrors.experience}
+                    </p>
+                  )}
+                </div>
 
                 <div className="space-y-2 mt-2">
                   <Label>Qualification</Label>
@@ -1101,7 +1099,7 @@ const canProceedToNextStep = () => {
                         ...formData,
                         personalDetails: {
                           ...personalDetails,
-                          qualification: e.target.value.replace(/[^a-zA-Z\s.-]/g, '')
+                          qualification: e.target.value.replace(/[^a-zA-Z\s.,-]/g, '')
                         }
                       })
                     }
@@ -1543,7 +1541,10 @@ const canProceedToNextStep = () => {
                           <Label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                             {document.label}
                           </Label>
-                          <div className="group flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 transition-colors hover:border-blue-400 hover:shadow-sm">
+                          <div
+                            onClick={() => openDocumentPicker(document.key)}
+                            className="group flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 transition-colors hover:border-blue-400 hover:shadow-sm"
+                          >
                             <div className="flex min-w-0 flex-1 items-center gap-2.5">
                               <FileText
                                 className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600"
@@ -1558,7 +1559,10 @@ const canProceedToNextStep = () => {
                                 {fileName && (
                                   <button
                                     type="button"
-                                    onClick={() => handleRemoveDocument(document.key)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveDocument(document.key);
+                                    }}
                                     className="text-red-500 hover:text-red-600"
                                     aria-label={`Remove ${document.label}`}
                                   >
@@ -1568,7 +1572,10 @@ const canProceedToNextStep = () => {
                               </div>
                               <button
                                 type="button"
-                                onClick={() => openDocumentPicker(document.key)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDocumentPicker(document.key);
+                                }}
                                 className="text-blue-600 hover:text-blue-700"
                                 aria-label={`Upload ${document.label}`}
                               >

@@ -61,10 +61,16 @@ export interface NotificationLog {
   id: string;
   module: NotificationModule;
   type: NotificationType;
+  /** Tenant the notification belongs to. Populated from NotificationData.clientId on insert. */
+  clientId?: string;
   recipientId: string;
   recipientEmail: string;
   subject: string;
   body: string;
+  /**
+   * 'skipped' is retained for historical rows but is no longer written by the service —
+   * skips are now stamped on the source record (incidents.is_skipped / .skipped_notifications).
+   */
   status: 'pending' | 'sent' | 'failed' | 'skipped';
   errorMessage?: string;
   sentAt?: string;

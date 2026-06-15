@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock, File, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock, File, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import GovernmentEmblemIcon from '@/components/ui/GovernmentEmblemIcon';
 import { Button } from '@/components/ui/button';
 import {
@@ -85,6 +85,26 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [selectedGovType, setSelectedGovType] =
     useState<GovernmentDocumentType>("driving_license");
   const [selectedGovData, setSelectedGovData] = useState<any>(null);
+
+  const parseDoe = (dateStr: string | undefined) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('/');
+    if (parts.length === 3 && parts[0].length <= 2) {
+      const [d, m, y] = parts.map(Number);
+      return new Date(y, m - 1, d);
+    }
+    return new Date(dateStr);
+  };
+
+  const getDrivingLicenseDoe = (doc: VerificationDocument): string | undefined => {
+    const govLog = doc.employee_docs_log?.find(log =>
+      log.response && (log.response.success === true || log.response.status_code === 200)
+    );
+    if (!govLog) return undefined;
+    const raw = govLog.response?.data;
+    const data = raw?.data?.data || raw?.data || raw;
+    return data?.doe;
+  };
 
   // Log documents for debugging
   console.log('DocumentsTable - All documents:', documents);
@@ -417,40 +437,87 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {getDocumentIcon(doc.documentTypeName || '')}
-                      <span className="capitalize">
+                      <span className="capitalize flex items-center gap-1 flex-wrap">
                         {(() => {
                           const docType = doc.documentTypeName?.toLowerCase();
                           if (docType === 'driving_license') {
-                          const doe = doc.audit?.data?.doe || doc.audit?.response?.data?.doe;
+                          const doe = getDrivingLicenseDoe(doc);
 
-                          const today = new Date();
+                         const today = new Date();
                           today.setHours(0, 0, 0, 0);
 
-                          const isValid = doe ? new Date(doe) > today : false;
+                          const expiryDate = parseDoe(doe);
+
+                          const sixMonthsLater = new Date();
+                          sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+
+                          const isExpired =
+                            expiryDate ? expiryDate < today : false;
+
+                          const isExpiringSoon =
+                            expiryDate
+                              ? expiryDate >= today && expiryDate <= sixMonthsLater
+                              : false;
+
+                          const isValid =
+                            expiryDate ? expiryDate > sixMonthsLater : false;
+
+                          const getMonthDiff = (from: Date, to: Date) =>
+                            (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+
+                          const monthsExpired = isExpired && expiryDate ? getMonthDiff(expiryDate, today) : 0;
+                          const monthsUntilExpiry = isExpiringSoon && expiryDate ? getMonthDiff(today, expiryDate) : 0;
 
                           return (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center gap-1 cursor-pointer">
-                                    {formatDocumentTypeName(doc.documentTypeName || '')}
+                                  <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                                    <span>
+                                      {formatDocumentTypeName(doc.documentTypeName || '')}
+                                    </span>
 
                                     {doe && (
-                                      isValid ? (
-                                        <CheckCircle className="h-4 w-4 text-green-600" />
-                                      ) : (
-                                        <XCircle className="h-4 w-4 text-red-600" />
-                                      )
+                                      <>
+                                        {isExpired ? (
+                                          <span className="inline-flex items-center gap-1 text-red-600 text-xs font-medium">
+                                            <XCircle className="h-4 w-4" />
+                                            Expired
+                                          </span>
+                                        ) : isExpiringSoon ? (
+                                          <span className="inline-flex items-center gap-1 text-yellow-600 text-xs font-medium">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            Expiring Soon
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
+                                            <CheckCircle className="h-4 w-4" />
+                                            Valid
+                                          </span>
+                                        )}
+                                      </>
                                     )}
                                   </span>
                                 </TooltipTrigger>
 
                                 <TooltipContent
                                   side="bottom"
-                                  align="center"
-                                  className={isValid ? "bg-green-600 text-white" : "bg-red-600 text-white"}
+                                  align="start"
+                                  sideOffset={4}
+                                  collisionPadding={16}
+                                  className={`text-xs px-2 py-1 ${
+                                    isExpired
+                                      ? "bg-red-600 text-white"
+                                      : isExpiringSoon
+                                      ? "bg-yellow-500 text-white"
+                                      : "bg-green-600 text-white"
+                                  }`}
                                 >
-                                  {isValid ? "Valid Driving License" : "Driving License Expired"}
+                                  {isExpired
+                                    ? `Driving License Expired${monthsExpired > 0 ? ` · ${monthsExpired} month${monthsExpired > 1 ? "s" : ""} ago` : " · less than a month ago"}`
+                                    : isExpiringSoon
+                                    ? `Driving License Expiring Soon${monthsUntilExpiry > 0 ? ` · ${monthsUntilExpiry} month${monthsUntilExpiry > 1 ? "s" : ""} remaining` : " · less than a month remaining"}`
+                                    : "Valid Driving License"}
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>

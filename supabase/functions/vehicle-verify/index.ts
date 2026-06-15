@@ -1259,25 +1259,44 @@ serve(async (req) => {
 
     // Get existing vehicle data first if we have a vehicleId
     let existingVerificationLog = {};
+    let savedVehicleTypeId: string | null = null;
+    let savedVehicleTypeName: string | null = null;
     
     if (vehicleId) {
       const { data: vehicleData, error } = await supabase
         .from('vehicles')
-        .select('verification_data')
+        .select('verification_data, type')
         .eq('id', vehicleId)
         .single();
 
-      if (!error && vehicleData && Array.isArray(vehicleData.verification_data)) {
-        // Find the verification_log entry
-        const logEntry = vehicleData.verification_data.find(item => item.field === 'verification_log');
-        if (logEntry && logEntry.value) {
-          existingVerificationLog = logEntry.value;
+      if (!error && vehicleData) {
+        savedVehicleTypeId = vehicleData.type || null;
+
+        if (Array.isArray(vehicleData.verification_data)) {
+          // Find the verification_log entry
+          const logEntry = vehicleData.verification_data.find(item => item.field === 'verification_log');
+          if (logEntry && logEntry.value) {
+            existingVerificationLog = logEntry.value;
+          }
         }
         
         // Note: rc_history_log is no longer stored in verification_data
         // RC history can be accessed from vehicles.current_rc_data if needed
         
         console.log("Found existing verification data with log entry");
+      }
+      if (savedVehicleTypeId) {
+        const { data: vehicleTypeData, error: vehicleTypeError } = await supabase
+          .from('vehicle_type')
+          .select('name')
+          .eq('id', savedVehicleTypeId)
+          .maybeSingle();
+
+        if (vehicleTypeError) {
+          console.error('Error fetching saved vehicle type for safety check log:', vehicleTypeError);
+        }
+
+        savedVehicleTypeName = vehicleTypeData?.name || savedVehicleTypeId;
       }
     }
     
@@ -1297,6 +1316,14 @@ serve(async (req) => {
       value: verificationStatus,
       verified: true
     });
+
+    if (savedVehicleTypeName) {
+      currentVerificationData.push({
+        field: 'vehicle_type',
+        value: savedVehicleTypeName,
+        verified: true
+      });
+    }
     
     // Create verification data from the response fields
     if (providerData.data) {
@@ -1342,13 +1369,6 @@ serve(async (req) => {
           }
 
           // Add helper display values to the verification data for the UI
-          if (makerModel) {
-            currentVerificationData.push({
-              field: 'display_type',
-              value: makerModel,
-              verified: true
-            });
-          }
           if (registrationYear) {
             currentVerificationData.push({
               field: 'display_year',

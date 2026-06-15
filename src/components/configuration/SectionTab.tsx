@@ -15,8 +15,6 @@ import { Plus, Pencil, Trash2, Loader2, Search, X } from 'lucide-react';
 import { SectionItem, ClassItem, CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
-import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/auth/useAuth';
 import {
   Select,
@@ -62,45 +60,6 @@ export const SectionTab = ({
   const [filterClassId, setFilterClassId] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const [sectionReferences, setSectionReferences] = useState<Record<string, IncidentReferenceCheck>>({});
-
-  // Pre-load reference info so we can disable delete button for linked sections
-  useEffect(() => {
-    const clientId = employeeData?.clientId || employeeData?.client_id;
-    if (!clientId || sections.length === 0) {
-      setSectionReferences({});
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchReferences = async () => {
-      try {
-        const results = await Promise.all(
-          sections.map(async (section) => {
-            const refInfo = await incidentReferenceService.checkSectionReferences(section.id, clientId);
-            return { id: section.id, refInfo };
-          })
-        );
-
-        if (isCancelled) return;
-
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
-        setSectionReferences(map);
-      } catch (error) {
-        console.error('Error preloading section reference info:', error);
-      }
-    };
-
-    fetchReferences();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [sections, employeeData]);
 
   // Validation: allow any characters, max 15 length
   const isValidSectionName = (name: string) => {
@@ -535,63 +494,19 @@ export const SectionTab = ({
                         <Pencil className="h-4 w-4" />
                       </Button>
                       
-                      {(() => {
-                        const refInfo = sectionReferences[section.id];
-                        const isLinked = refInfo?.hasReferences || false;
-                        const message = refInfo?.message || '';
-
-                        if (isLinked) {
-                          return (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon"
-                                      disabled={true}
-                                      aria-disabled="true"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                      }}
-                                      className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent 
-                                  side="left" 
-                                  align="center" 
-                                  sideOffset={8} 
-                                  className="max-w-xs whitespace-normal text-left"
-                                >
-                                  <p className="text-xs leading-snug text-left">
-                                    {message}
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          );
-                        }
-
-                        return (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleSectionDelete(section.id)}
-                            disabled={loading || isDeleting === section.id}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            {loading && isDeleting === section.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        );
-                      })()}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSectionDelete(section.id)}
+                        disabled={loading || isDeleting === section.id}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        {isDeleting === section.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
                   </TableCell>
                   )}

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText, Download, X } from 'lucide-react';
+import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText, Download, X, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
@@ -194,17 +194,17 @@ const UserList = ({
   };
 
   const valueOrNotSet = (value?: string) => {
-    if (!value || !String(value).trim()) return 'Not Set';
+    if (!value || !String(value).trim()) return '-';
     return value;
   };
 
   const openProfileStoredFile = async (bucket: string, storagePath: string) => {
     const signedUrl = await getProfileDocumentSignedUrl(bucket, storagePath);
-    if (!signedUrl) {
-      toast.error('Unable to open document');
-      return;
-    }
-    window.open(signedUrl, '_blank', 'noopener,noreferrer');
+      if (!signedUrl) {
+        toast.error('Unable to open document');
+        return;
+      }
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
   };
 
   const downloadProfileStoredFile = async (bucket: string, storagePath: string, fileName: string) => {
@@ -929,28 +929,27 @@ const UserList = ({
                               </span>
                             </div>
                             {canOpen && (
-                              <div
-                                className={`flex shrink-0 items-center gap-3 text-sm transition-opacity duration-150 ${
-                                  selectedDocument === row.id
-                                    ? "opacity-100"
-                                    : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
-                                }`}
-                              >
+                              <div className="flex shrink-0 items-center gap-3">
                                 <button
                                   type="button"
-                                  className="text-blue-400 hover:underline font-medium"
-                                  onClick={() => {
+                                  className="text-blue-600 hover:text-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     if (row.bucket && row.storagePath) {
                                       openProfileStoredFile(row.bucket, row.storagePath);
                                     }
                                   }}
+                                  
+                                  aria-label="View document"
                                 >
-                                  View
+                                  <Eye className="h-4 w-4" />
                                 </button>
+
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-1 text-gray-600 hover:underline font-medium"
-                                  onClick={() => {
+                                  className="text-gray-600 hover:text-gray-800"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     if (row.bucket && row.storagePath) {
                                       downloadProfileStoredFile(
                                         row.bucket,
@@ -959,9 +958,9 @@ const UserList = ({
                                       );
                                     }
                                   }}
+                                  aria-label="Download document"
                                 >
-                                  Download
-                                  <Download className="h-3.5 w-3.5" aria-hidden />
+                                  <Download className="h-4 w-4" />
                                 </button>
                               </div>
                             )}

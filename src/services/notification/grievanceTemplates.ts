@@ -2,7 +2,7 @@ import { NotificationTemplate, NotificationType } from '@/types/notification';
 
 export const grievanceTemplates: Partial<Record<NotificationType, Partial<NotificationTemplate>>> = {
   grievance_submitted: {
-    subject: 'Grievance Submitted – [Grievance ID: {{Grievance_ID}}]',
+    subject: 'Grievance Submitted – [{{Grievance_Title}}]',
     body: `
       <div style="max-width:640px;margin:0 auto;padding:24px;font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#1f2937;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;">
         <div style="text-align:center;background-color:#f9fafb;padding:20px;margin:-24px -24px 24px -24px;border-bottom:1px solid #e5e7eb;border-radius:8px 8px 0 0;">
@@ -13,7 +13,6 @@ export const grievanceTemplates: Partial<Record<NotificationType, Partial<Notifi
           <p style="margin:0 0 20px;font-size:16px;">Your grievance has been successfully submitted. Our team will review it and take the necessary action.</p>
           <div style="background-color:#f3f4f6;padding:16px;border-radius:6px;border-left:4px solid #6b7280;margin:20px 0;">
             <h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Details:</h3>
-            <p style="margin:6px 0;"><strong>Grievance ID:</strong> {{Grievance_ID}}</p>
             <p style="margin:6px 0;"><strong>Title:</strong> {{Grievance_Title}}</p>
             <p style="margin:6px 0;"><strong>Description:</strong> {{Grievance_Description}}</p>
             <p style="margin:6px 0;"><strong>Submitted On:</strong> {{Submitted_Date}}</p>

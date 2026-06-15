@@ -32,6 +32,8 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'fetch_resources':
         return await fetchResources(supabaseAdmin, data)
+      case 'fetch_titles':
+        return await fetchTitles(supabaseAdmin, data)
       case 'add_resource':
         return await addResource(supabaseAdmin, data)
       case 'update_resource':
@@ -84,7 +86,7 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
     // Fetch organizational resources for this client
     const { data: orgResources, error: orgError } = await supabase
       .from('edusafe_resources')
-      .select('*')
+      .select('*, clients(name)')
       .eq('client_id', client_id)
 
     if (orgError) {
@@ -110,16 +112,18 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
         tags: resource.tags || [],
         uploadDate: resource.created_at,
         uploaderId: resource.uploaded_by || '',
-        uploaderName: 'Unknown',
+        uploaderName: resource.clients?.name || clientData.name || 'Unknown',
         ownerType: 'school' as const,
         clientId: resource.client_id,
         resourceType: 'Organisational Resource' as const,
-        document_url: resource.document_url, // Add the document_url field
-        youtube_link: resource.youtube_link, // Add the youtube_link field
+        document_url: resource.document_url,
+        youtube_link: resource.youtube_link,
+        file_size: resource.file_size || null,
         file: {
           name: resource.title,
           url: resource.document_url,
-          type: 'application/pdf'
+          type: 'application/pdf',
+          size: resource.file_size || 0
         }
       })),
       ...(globalResources || []).map((resource: any) => ({
@@ -135,11 +139,13 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
         clientId: null,
         resourceType: 'Global Resource' as const,
         document_url: resource.document_url, // Add the document_url field
-        youtube_link: resource.youtube_link, // Add the youtube_link field
+        youtube_link: resource.youtube_link,
+        file_size: resource.file_size || null,
         file: {
           name: resource.title,
           url: resource.document_url,
-          type: 'application/pdf'
+          type: 'application/pdf',
+          size: resource.file_size || 0
         }
       }))
     ]
@@ -159,6 +165,44 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+}
+
+async function fetchTitles(supabase: any, { client_id }: { client_id: string }) {
+  try {
+    console.log(`Fetching existing resource titles for client: ${client_id}`)
+
+    const { data, error } = await supabase
+      .from('edusafe_resources')
+      .select('title')
+      .eq('client_id', client_id)
+
+    if (error) {
+      console.error('Error fetching titles:', error)
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch titles' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const titles = (data || []).map((r: any) => r.title.toLowerCase())
+
+    return new Response(
+      JSON.stringify({ titles }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  } catch (error) {
+    console.error('Error in fetchTitles:', error)
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch titles' }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }

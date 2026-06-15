@@ -20,6 +20,7 @@ import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
 import WizardProgress from '@/components/ui/wizard-progress';
 import { EMPLOYEE_COMPLIANCE_DOCUMENTS } from '@/constants/employeeComplianceDocuments';
+import { getProfileDocumentSignedUrl } from '@/services/employee/employeeProfileDocumentService';
 import { fileToBase64 } from '@/utils/fileToBase64';
 
 interface EditUserDialogProps {
@@ -496,14 +497,14 @@ const EditUserDialog = ({
         (personalDetails.qualification || '').trim().length > EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH)
         ? `Qualification must be between ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_PERSONAL_INFO_CONSTANTS.MAX_LENGTH} characters`
         : (personalDetails.qualification || '').trim() &&
-          !/^[a-zA-Z\s.-]+$/.test((personalDetails.qualification || '').trim())
-        ? 'Qualification can only contain letters, spaces, dots, and hyphens'
+          !/^[a-zA-Z\s.,-]+$/.test((personalDetails.qualification || '').trim())
+        ? 'Qualification can only contain letters, commas, spaces, dots, and hyphens'
         : '',
       religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
       nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
       bloodGroup:
         (personalDetails.bloodGroup || '').trim() &&
-        !/^(A|A1|A2|B|AB|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim())
+        !/^(A|A1|A2|B|AB|OH|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim())
           ? 'Blood group must be in format A+, O-, AB+, B-'
           : '',
       dob:
@@ -769,20 +770,15 @@ const EditUserDialog = ({
 
   const handleDocumentChange = (documentKey: string, file: File | null) => {
     if (!file) {
-      setUploadedDocuments((prev) => {
-        const next = { ...prev };
-        delete next[documentKey];
-        return next;
-      });
       return;
     }
 
-    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'];
+    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg'];
 
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
     if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
-      toast.error('Only PDF, PNG, JPG, JPEG, DOC, and DOCX files are allowed');
+      toast.error('Only PDF, PNG, JPG, JPEG,files are allowed');
       return;
     }
 
@@ -835,6 +831,9 @@ const EditUserDialog = ({
       delete next[documentKey];
       return next;
     });
+
+    const input = documentInputRefs.current[documentKey];
+    if (input) input.value = '';
   };
 
   const persistUserChanges = async (closeAfterSave: boolean) => {
@@ -1263,6 +1262,7 @@ const EditUserDialog = ({
                   <div className="space-y-2 mt-2">
                     <Label>Experience</Label>
                     <Input
+                      type='number'
                       value={personalDetails.experience || ''}
                       onChange={(e) =>
                         setFormData({
@@ -1292,7 +1292,7 @@ const EditUserDialog = ({
                         ...formData,
                         personalDetails: {
                           ...personalDetails,
-                          qualification: e.target.value.replace(/[^a-zA-Z\s.-]/g, '')
+                          qualification: e.target.value.replace(/[^a-zA-Z\s.,-]/g, '')
                         }
                       })
                     }
@@ -1717,7 +1717,10 @@ const EditUserDialog = ({
                           <Label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                             {document.label}
                           </Label>
-                          <div className="group flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 transition-colors hover:border-blue-400 hover:shadow-sm">
+                          <div
+                            onClick={() => openDocumentPicker(document.key)}
+                            className="group flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 transition-colors hover:border-blue-400 hover:shadow-sm"
+                          >
                             <div className="flex min-w-0 flex-1 items-center gap-2.5">
                               <FileText
                                 className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600"
@@ -1731,7 +1734,10 @@ const EditUserDialog = ({
                               {fileName && fileMeta?.bucket && fileMeta?.storagePath && (
                                 <button
                                   type="button"
-                                  onClick={() => handleViewDocument(document.key)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleViewDocument(document.key);
+                                  }}
                                   className="text-blue-600 hover:text-blue-700"
                                   aria-label={`View ${document.label}`}
                                 >
@@ -1741,7 +1747,10 @@ const EditUserDialog = ({
                               {fileName && fileMeta?.source !== 'verification' && (
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveDocument(document.key)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveDocument(document.key);
+                                  }}
                                   className="text-red-500 hover:text-red-600"
                                   aria-label={`Remove ${document.label}`}
                                 >
@@ -1750,7 +1759,10 @@ const EditUserDialog = ({
                               )}
                               <button
                                 type="button"
-                                onClick={() => openDocumentPicker(document.key)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDocumentPicker(document.key);
+                                }}
                                 className="text-blue-600 hover:text-blue-700"
                                 aria-label={`Upload ${document.label}`}
                               >

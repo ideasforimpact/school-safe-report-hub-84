@@ -16,57 +16,11 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
     queryKey: ['category-impact-analysis', employeeData?.clientId],
     queryFn: async () => {
       if (!employeeData?.clientId) return [];
-
-      // Get incidents with categories and subcategories
-      const { data: incidents } = await supabase
-        .from('incidents')
-        .select(`
-          id,
-          category_id,
-          subcategory_id,
-          incident_categories!inner(id, name),
-          incident_subcategories(id, name)
-        `)
-        .eq('client_id', employeeData.clientId);
-
-      if (!incidents) return [];
-
-      // Group by category
-      const categoryMap = new Map();
-      
-      incidents.forEach(incident => {
-        if (!incident.incident_categories) return;
-        
-        const categoryName = incident.incident_categories.name;
-        
-        if (!categoryMap.has(categoryName)) {
-          categoryMap.set(categoryName, {
-            name: categoryName,
-            value: 0,
-            subcategories: new Map()
-          });
-        }
-        
-        const category = categoryMap.get(categoryName);
-        category.value += 1;
-        
-        // Track subcategories
-        if (incident.incident_subcategories) {
-          const subName = incident.incident_subcategories.name;
-          const currentCount = category.subcategories.get(subName) || 0;
-          category.subcategories.set(subName, currentCount + 1);
-        }
+      const { data, error } = await supabase.functions.invoke('dashboard-stats', {
+        body: { action: 'category_impact', client_id: employeeData.clientId },
       });
-
-      return Array.from(categoryMap.values())
-        .map(category => ({
-          ...category,
-          subcategories: Array.from(category.subcategories.entries())
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 3) // Top 3 subcategories
-        }))
-        .sort((a, b) => b.value - a.value);
+      if (error) throw error;
+      return data?.data ?? [];
     },
     enabled: !!employeeData?.clientId,
   });

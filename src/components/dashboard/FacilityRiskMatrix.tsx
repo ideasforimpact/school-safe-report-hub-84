@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 
+
 interface FacilityRiskMatrixProps {
   loading?: boolean;
 }
@@ -16,44 +17,11 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
     queryFn: async () => {
       if (!employeeData?.clientId) return [];
 
-      // Get facilities with incident counts by priority
-      const { data: incidents } = await supabase
-        .from('incidents')
-        .select(`
-          id,
-          facility_id,
-          priority_id,
-          facilities!inner(id, name),
-          incident_priorities!inner(id, name, weight)
-        `)
-        .eq('client_id', employeeData.clientId);
-
-      if (!incidents) return [];
-
-      // Group by facility and priority
-      const facilityMap = new Map();
-      
-      incidents.forEach(incident => {
-        if (!incident.facilities || !incident.incident_priorities) return;
-        
-        const facilityName = incident.facilities.name;
-        const priorityName = incident.incident_priorities.name;
-        const priorityWeight = incident.incident_priorities.weight || 1;
-        
-        if (!facilityMap.has(facilityName)) {
-          facilityMap.set(facilityName, { Critical: 0, High: 0, Medium: 0, Low: 0, total: 0 });
-        }
-        
-        const facility = facilityMap.get(facilityName);
-        facility[priorityName] = (facility[priorityName] || 0) + 1;
-        facility.total += 1;
-        facility.riskScore = (facility.riskScore || 0) + priorityWeight;
+      const { data, error } = await supabase.functions.invoke('dashboard-stats', {
+        body: { action: 'facility_risk_matrix', client_id: employeeData.clientId },
       });
-
-      return Array.from(facilityMap.entries()).map(([name, data]) => ({
-        name,
-        ...data
-      })).sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
+      if (error) throw error;
+      return data?.data ?? [];
     },
     enabled: !!employeeData?.clientId,
   });

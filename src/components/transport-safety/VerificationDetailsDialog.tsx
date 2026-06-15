@@ -12,7 +12,11 @@ import { Button } from '@/components/ui/button';
 import { formatDate} from '@/lib/Dateformat';
 import { AlertTriangle, Circle } from 'lucide-react';
 import { Vehicle, VehicleChallans } from '@/types/transportSafety';
-import { transformVehicleData, transformApiResponseData } from '@/utils/transport-safety/documentStatusUtils';
+import {
+    getVerificationFieldLabel,
+    transformVehicleData,
+    transformApiResponseData,
+} from '@/utils/transport-safety/documentStatusUtils';
 import { Badge } from '@/components/ui/badge';
 
 interface VerificationDetailsDialogProps {
@@ -154,9 +158,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                        !fieldName.includes('client id');
             })
             .map((item) => ({
-                label: item.field
-                    .replace(/_/g, ' ')
-                    .replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                label: getVerificationFieldLabel(item.field),
                 value: item.value,
             }));
     }, [transformedData]);
