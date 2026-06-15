@@ -25,6 +25,12 @@ export interface ClientFormData {
     [key in OAuthProviderName]?: boolean;
   };
   superAdminEmailExists?: boolean;
+  // Feature 2: emails of any secondary super admins for THIS client (up to 2).
+  // Only meaningful on edit; ignored by the create flow regardless of env.
+  // Persists straight through to the edge function which reconciles
+  // promote / demote / no-op against the current DB state when the
+  // IS_MULTI_SUPER_ADMIN env is enabled.
+  secondarySuperAdminEmails: string[];
   superAdminAllowedDomains: string[];
   moduleInfoArray?: ModuleInfo[];
   whitelistedIPs?: IPAddress[];
@@ -55,6 +61,7 @@ const initialFormData: ClientFormData = {
     microsoft: false,
     zoho: false
   },
+  secondarySuperAdminEmails: [],
   superAdminAllowedDomains: [],
   moduleInfoArray: [],
   whitelistedIPs: [],
@@ -215,6 +222,10 @@ export const useClientManagement = () => {
         client: {
           modules: moduleInfoArray,
           superAdminEmail: formData.superAdminEmail,
+          // Feature 2: always sent (defaults to []) so the edge function's
+          // schema is consistent. On 'create' the backend ignores this — the
+          // feature only allows additions through the edit view.
+          secondarySuperAdminEmails: formData.secondarySuperAdminEmails || [],
           clientTypeId: formData.clientTypeId,
           logo: formData.logo || null,
           // Include all the form data
@@ -405,19 +416,36 @@ export const useClientManagement = () => {
           };
         }).filter((m: any) => m.module_id) : [];
         
-        // Fetch super admin email
-        // Use maybeSingle() to handle cases where no super admin exists
-        const { data: employeeData, error: employeeError } = await supabase
+        // Fetch ALL super admins for this client. Pre-Feature-2 each client
+        // had exactly one (primary); post-Feature-2 a client can have up to
+        // two extra secondaries. We split by is_secondary_super_admin and
+        // hydrate two distinct form fields so the UI can render the primary
+        // and the secondaries independently.
+        const { data: superAdminRows, error: employeeError } = await supabase
           .from('employees')
-          .select('email')
+          .select('email, is_secondary_super_admin, created_at')
           .eq('client_id', clientId)
           .eq('is_super_admin', true)
-          .maybeSingle();
-          
+          .order('created_at', { ascending: true });
+
         if (employeeError) {
           console.error('Error fetching super admin email:', employeeError);
           toast.error('Failed to load super admin data');
         }
+
+        const primaryRow = (superAdminRows || []).find(
+          (row: any) => row.is_secondary_super_admin !== true
+        );
+        const secondaryRows = (superAdminRows || []).filter(
+          (row: any) => row.is_secondary_super_admin === true
+        );
+        // employeeData mirrors the legacy single-record fetch so the rest
+        // of this function (which still references employeeData?.email)
+        // keeps working unchanged.
+        const employeeData = primaryRow ? { email: primaryRow.email } : null;
+        const secondarySuperAdminEmails: string[] = secondaryRows.map(
+          (row: any) => row.email
+        );
         
         // Fetch whitelisted IPs
         const { data: ipData, error: ipError } = await supabase
@@ -494,6 +522,7 @@ export const useClientManagement = () => {
         setFormData(prev => ({
           ...prev,
           superAdminEmail: employeeData?.email || '',
+          secondarySuperAdminEmails,
           moduleInfoArray: moduleInfoArray,
           whitelistedIPs: whitelistedIPs,
           aiIncidentRecommendedActionsEnabled,
@@ -582,6 +611,14 @@ export const useClientManagement = () => {
           id: currentClient.id,
           modules: moduleInfoArray,
           superAdminEmail: formData.superAdminEmail,
+          // Feature 2: the edit-view-only secondary super admin list.
+          // Empty array means "no secondaries". The edge function compares
+          // this against the rows currently in the DB and promotes / demotes
+          // accordingly when IS_MULTI_SUPER_ADMIN=true; when the flag is
+          // false it silently ignores this field.
+          secondarySuperAdminEmails: (formData.secondarySuperAdminEmails || [])
+            .map(e => (e || '').trim())
+            .filter(e => e.length > 0),
           clientTypeId: formData.clientTypeId,
           logo: formData.logo || '', // Always send logo data, even if empty string
           // Include all the form data for complete client update

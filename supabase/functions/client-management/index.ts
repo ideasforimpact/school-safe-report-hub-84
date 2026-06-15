@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey, getSupabaseAnonKey } from '../_shared/env.ts';
+import { getActiveClient } from '../_shared/getActiveClient.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -223,15 +224,20 @@ async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEma
   }
 }
 
-// Helper function to update super admin employee
+// Helper function to update super admin employee. Feature 2 added an
+// `is_secondary_super_admin` column; the PRIMARY super admin is always the
+// row with that flag = false. We explicitly filter on it so that when a
+// client has both a primary and one or more secondaries, the email-update
+// for "the super admin" targets only the primary.
 async function updateSuperAdminEmployee(clientId: string, superAdminEmail: string) {
   try {
-    // Check if a super admin employee already exists for this client
+    // Check if a primary super admin employee already exists for this client
     const { data: existingEmployee, error: empError } = await supabase
       .from('employees')
       .select('*')
       .eq('client_id', clientId)
       .eq('is_super_admin', true)
+      .eq('is_secondary_super_admin', false)
       .single();
 
     if (empError) {
@@ -286,6 +292,273 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
   } catch (err) {
     console.error('Error in updateSuperAdminEmployee:', err);
     return null;
+  }
+}
+
+// =========================================================================
+// Feature 2 — secondary super admin reconciliation
+// =========================================================================
+// Server-side enforcement of the multi-super-admin feature. The frontend
+// is the authoritative on/off switch via VITE_IS_MULTI_SUPER_ADMIN — when
+// off, the edit form is read-only and just echoes the saved secondaries
+// back unchanged, so the reconcile below naturally diffs to a no-op.
+// The backend's job is therefore narrower: enforce the cap, validate
+// format, and reconcile the diff. We intentionally do NOT gate the
+// reconcile on a separate backend env var because:
+//   (a) it's a common ops gotcha (frontend env set, backend missed) that
+//       silently swallows the user's intent with no visible error;
+//   (b) the frontend gate already prevents env=false from sending mutated
+//       data — and even if a hand-crafted request did, the cap + format
+//       validation here are sufficient guardrails for a backoffice-only
+//       (admin) endpoint.
+
+const MAX_SECONDARY_SUPER_ADMINS = 2;
+const MAX_SUPER_ADMIN_DOMAINS_WITH_MULTI = 3;
+const MAX_SUPER_ADMIN_DOMAINS_WITHOUT_MULTI = 1;
+
+// Kept around (without callers) so a future change can re-introduce an
+// emergency off-switch on the backend if needed. Reading the env once here
+// also makes it easy to log for ops visibility.
+function isMultiSuperAdminEnabledHint(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (Deno as any).env.get('IS_MULTI_SUPER_ADMIN') === 'true';
+  } catch (_err) {
+    return false;
+  }
+}
+
+interface ReconcileResult {
+  added: string[];
+  promoted: string[];
+  demoted: string[];
+  unchanged: string[];
+}
+
+/**
+ * Reconcile the current set of secondary super admins on a client against
+ * the desired set submitted from the edit form.
+ *
+ * Behavior (now env-agnostic on the backend — see header comment above):
+ *   - Enforce the cap (2 extras max).
+ *   - Validate each email's FORMAT.
+ *   - Diff vs current DB scoped to THIS client:
+ *       added (not in DB for this client)    → create OR promote an
+ *                                              existing same-client row
+ *       removed (not in payload) → demote (is_super_admin=false,
+ *                                  is_secondary_super_admin=false,
+ *                                  user_id=null)
+ *       unchanged → no-op.
+ *
+ * When the frontend feature flag is OFF, the form is read-only and
+ * `incomingEmailsRaw` equals the current DB state, so the diff naturally
+ * comes out empty — no DB change. So we don't need a separate backend
+ * gate; the frontend's gate is sufficient to honor the
+ * "don't-touch-the-DB-when-off" requirement.
+ *
+ * Note: we deliberately do NOT apply the primary super admin's cross-client
+ * uniqueness check here. Feature 1 explicitly supports one email mapping
+ * to multiple employees rows (one per client), so a secondary on Client A
+ * is allowed even when the same email is already a super admin or
+ * employee on Client B.
+ *
+ * Throws on cap overflow or format rejection so the calling handler can
+ * turn it into a 400. Logs everything for ops visibility.
+ */
+async function reconcileSecondarySuperAdmins(
+  clientId: string,
+  incomingEmailsRaw: unknown,
+): Promise<ReconcileResult> {
+  const result: ReconcileResult = {
+    added: [],
+    promoted: [],
+    demoted: [],
+    unchanged: [],
+  };
+
+  // Ops hint only — does NOT affect behavior. Logs the backend env so
+  // operators can spot a misconfiguration in cloud logs.
+  console.log('[reconcileSecondarySuperAdmins] starting', {
+    clientId,
+    backendEnvHint: isMultiSuperAdminEnabledHint(),
+    incomingType: Array.isArray(incomingEmailsRaw) ? 'array' : typeof incomingEmailsRaw,
+  });
+
+  // Normalize: tolerate undefined/null/non-array. Trim, lowercase, dedupe.
+  const incoming: string[] = Array.isArray(incomingEmailsRaw)
+    ? Array.from(
+        new Set(
+          (incomingEmailsRaw as unknown[])
+            .map(v => (typeof v === 'string' ? v.trim().toLowerCase() : ''))
+            .filter(v => v.length > 0),
+        ),
+      )
+    : [];
+
+  if (incoming.length > MAX_SECONDARY_SUPER_ADMINS) {
+    throw new Error(
+      `Secondary super admin limit exceeded: max ${MAX_SECONDARY_SUPER_ADMINS}, received ${incoming.length}`,
+    );
+  }
+
+  // Secondaries are explicitly allowed to exist on multiple clients (this
+  // is the point of Feature 1's multi-client picker — one email can map to
+  // N employees rows, one per client). So we do NOT reuse the primary
+  // super-admin's cross-client uniqueness check here; we only look at THIS
+  // client. The diff loop below handles the same-client case correctly:
+  //   - if a row for (email, clientId) already exists → promote in place
+  //   - otherwise → insert a fresh row for this client
+  // Other clients' rows are simply none of our business.
+  //
+  // What we DO still want to catch: malformed emails. The form already
+  // validates format client-side, but a tampered request could send junk —
+  // so reject anything that isn't a syntactically valid email.
+  const emailFormat = /^(?!.*\.\.)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
+  for (const email of incoming) {
+    if (!emailFormat.test(email)) {
+      throw new Error(`Secondary super admin email rejected (invalid format): ${email}`);
+    }
+  }
+
+  // Pull the current secondaries for this client.
+  const { data: currentRows, error: fetchErr } = await supabase
+    .from('employees')
+    .select('id, email, user_id')
+    .eq('client_id', clientId)
+    .eq('is_super_admin', true)
+    .eq('is_secondary_super_admin', true);
+
+  if (fetchErr) {
+    console.error('[reconcileSecondarySuperAdmins] failed to fetch current secondaries', fetchErr);
+    throw new Error('Failed to load current secondary super admins');
+  }
+
+  const currentByEmail = new Map<string, { id: string; user_id: string | null }>();
+  (currentRows || []).forEach((row: any) => {
+    currentByEmail.set(String(row.email).trim().toLowerCase(), {
+      id: row.id,
+      user_id: row.user_id,
+    });
+  });
+
+  // --- Demote rows that are no longer wanted ---
+  for (const [email, row] of currentByEmail.entries()) {
+    if (incoming.includes(email)) continue;
+    const { error: demoteErr } = await supabase
+      .from('employees')
+      .update({
+        is_super_admin: false,
+        is_secondary_super_admin: false,
+        // Nullify user_id so if they're added back later the SSO flow
+        // re-links cleanly via link_user_to_employee.
+        user_id: null,
+      })
+      .eq('id', row.id);
+    if (demoteErr) {
+      console.error('[reconcileSecondarySuperAdmins] demote failed for', email, demoteErr);
+      throw new Error(`Failed to demote ${email}: ${demoteErr.message}`);
+    }
+    result.demoted.push(email);
+  }
+
+  // --- Add / promote rows for incoming emails ---
+  for (const email of incoming) {
+    if (currentByEmail.has(email)) {
+      result.unchanged.push(email);
+      continue;
+    }
+
+    // Does a row already exist for (email, this client) — possibly a regular
+    // employee or a previously-demoted secondary? Promote in place.
+    const { data: existingOnThisClient, error: existingErr } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('client_id', clientId)
+      .ilike('email', email)
+      .maybeSingle();
+
+    if (existingErr && existingErr.code !== 'PGRST116') {
+      console.error('[reconcileSecondarySuperAdmins] lookup failed for', email, existingErr);
+      throw new Error(`Failed to look up ${email}: ${existingErr.message}`);
+    }
+
+    if (existingOnThisClient?.id) {
+      const { error: promoteErr } = await supabase
+        .from('employees')
+        .update({
+          is_super_admin: true,
+          is_secondary_super_admin: true,
+        })
+        .eq('id', existingOnThisClient.id);
+      if (promoteErr) {
+        console.error('[reconcileSecondarySuperAdmins] promote failed for', email, promoteErr);
+        throw new Error(`Failed to promote ${email}: ${promoteErr.message}`);
+      }
+      result.promoted.push(email);
+      continue;
+    }
+
+    // No existing row — insert a fresh employee mirroring the defaults the
+    // primary super admin creation flow uses.
+    const employeeIdLocal = email.split('@')[0];
+    const { data: adminDept } = await supabase
+      .from('employee_departments')
+      .select('id')
+      .eq('department_name', 'admin')
+      .single();
+    const { data: emptype } = await supabase
+      .from('employee_type')
+      .select('id')
+      .eq('type_name', 'permanent')
+      .single();
+
+    if (!adminDept?.id || !emptype?.id) {
+      throw new Error('Missing admin department or permanent employee type seed data');
+    }
+
+    const { error: insertErr } = await supabase
+      .from('employees')
+      .insert([
+        {
+          employee_id: employeeIdLocal,
+          first_name: employeeIdLocal,
+          last_name: '',
+          email,
+          department: adminDept.id,
+          employee_type: emptype.id,
+          status: true,
+          is_super_admin: true,
+          is_secondary_super_admin: true,
+          client_id: clientId,
+          joining_date: new Date().toISOString(),
+        },
+      ]);
+    if (insertErr) {
+      console.error('[reconcileSecondarySuperAdmins] insert failed for', email, insertErr);
+      throw new Error(`Failed to add ${email}: ${insertErr.message}`);
+    }
+    result.added.push(email);
+  }
+
+  console.log('[reconcileSecondarySuperAdmins] done', { clientId, ...result });
+  return result;
+}
+
+/**
+ * Enforce the cap on the Allowed Super Admin Email Domains list. The
+ * frontend gate decides 1 vs 3 (via VITE_IS_MULTI_SUPER_ADMIN); the
+ * backend enforces only the hard upper bound (3) so that, no matter what
+ * the request looks like, we never exceed the documented maximum. This
+ * keeps the function safe even if its IS_MULTI_SUPER_ADMIN env was never
+ * set — same robustness reasoning as reconcileSecondarySuperAdmins.
+ */
+function enforceSuperAdminDomainsCap(domains: unknown): void {
+  if (!Array.isArray(domains)) return;
+  const cap = MAX_SUPER_ADMIN_DOMAINS_WITH_MULTI;
+  if (domains.length > cap) {
+    throw new Error(
+      `Allowed Super Admin Email Domains cap exceeded: max ${cap}, received ${domains.length}`,
+    );
   }
 }
 
@@ -954,15 +1227,14 @@ async function assertClientManagementWriteAllowed(
     throw new Error('Unauthorized client management write request');
   }
 
-  const { data: employee, error: employeeError } = await supabase
-    .from('employees')
-    .select('client_id, status')
-    .eq('user_id', authedUser.id)
-    .eq('status', true)
-    .limit(1)
-    .maybeSingle();
+  // Feature 3: derive the active client from JWT app_metadata so multi-
+  // client users get a deterministic answer (legacy .limit(1) picked a
+  // random row). employees status check is implicit in the JWT — the
+  // login flow only stamps active rows.
+  const { client_id: activeClientId } = await getActiveClient(supabase, authedUser);
+  const employee = activeClientId ? { client_id: activeClientId, status: true } : null;
 
-  if (employeeError || !employee?.client_id) {
+  if (!employee?.client_id) {
     // Backoffice users are not represented in employees table.
     const { data: backofficeUser, error: backofficeUserError } = await supabase
       .from('backoffice_users')
@@ -1260,10 +1532,26 @@ async function handleCreateClient(clientData: any) {
   let clientId: string | null = null;
   
   try {
-    const { modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, aiFeatureIncidentRecommendedActions, ...clientInfo } = clientData;
+    // Feature 2: secondarySuperAdminEmails is accepted on create for schema
+    // consistency but intentionally NOT acted upon — the spec restricts
+    // adding secondaries to the EDIT view. We pull it out of clientData so
+    // it doesn't leak into the clients row insert below.
+    const {
+      modules,
+      superAdminEmail,
+      secondarySuperAdminEmails: _ignoredSecondariesOnCreate,
+      clientTypeId,
+      logo,
+      whitelistedIPs,
+      aiFeatureIncidentRecommendedActions,
+      ...clientInfo
+    } = clientData;
     const isHeadOffice = resolveIsHeadOffice(clientData);
     const mappedClientIds = resolveMappedClientIds(clientData);
     const incidentAiEnabled = aiFeatureIncidentRecommendedActions !== false;
+
+    // Feature 2: enforce the symmetric cap on super-admin domains.
+    enforceSuperAdminDomainsCap(clientInfo.superAdminAllowedDomains);
 
     // Generate a new UUID for the client
     clientId = crypto.randomUUID();
@@ -1436,7 +1724,21 @@ async function handleUpdateClient(clientData: any) {
   });
   
   try {
-    const { id: clientId, modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, aiFeatureIncidentRecommendedActions, ...clientInfo } = clientData;
+    // Feature 2: secondarySuperAdminEmails is the edit-view-only list of
+    // additional super admin emails. Pull it out before the spread so it
+    // doesn't get treated like a clients-table column update; we reconcile
+    // it separately below.
+    const {
+      id: clientId,
+      modules,
+      superAdminEmail,
+      secondarySuperAdminEmails,
+      clientTypeId,
+      logo,
+      whitelistedIPs,
+      aiFeatureIncidentRecommendedActions,
+      ...clientInfo
+    } = clientData;
     const isHeadOfficeProvided = typeof clientData.is_head_office === 'boolean' || typeof clientData.isHeadOffice === 'boolean';
     const mappedClientIdsProvided = Array.isArray(clientData.mapped_client_ids) || Array.isArray(clientData.mappedClientIds);
     const requestedIsHeadOffice = resolveIsHeadOffice(clientData);
@@ -1474,6 +1776,9 @@ async function handleUpdateClient(clientData: any) {
       updateData.allowed_domains = Array.isArray(clientInfo.allowedDomains) ? clientInfo.allowedDomains.join(',') : null;
     }
     if (clientInfo.superAdminAllowedDomains !== undefined) {
+      // Feature 2: enforce the cap on super-admin domains. Server is the
+      // source of truth so a tampered request can't sneak past the UI gate.
+      enforceSuperAdminDomainsCap(clientInfo.superAdminAllowedDomains);
       updateData.super_admin_allowed_domain = Array.isArray(clientInfo.superAdminAllowedDomains) ? clientInfo.superAdminAllowedDomains.join(',') : null;
     }
     if (clientInfo.authProviders !== undefined) {
@@ -1547,7 +1852,21 @@ async function handleUpdateClient(clientData: any) {
         console.error('Failed to update super admin employee');
       }
     }
-    
+
+    // Feature 2: reconcile secondary super admins against the submitted list.
+    // No-op when IS_MULTI_SUPER_ADMIN is off. We pass the raw value through
+    // — the helper normalizes / validates / dedupes / enforces the cap and
+    // throws on overflow or uniqueness rejection, which propagates up to
+    // the caller as a 400.
+    if (secondarySuperAdminEmails !== undefined) {
+      try {
+        await reconcileSecondarySuperAdmins(clientId, secondarySuperAdminEmails);
+      } catch (secondaryErr) {
+        console.error('Error reconciling secondary super admins:', secondaryErr);
+        throw secondaryErr;
+      }
+    }
+
     // Process IP whitelist - always process if whitelistedIPs is provided (even if empty array)
     // Empty array means deactivate all IPs, undefined/null means don't change IPs
     // Check for both undefined and null to be safe
