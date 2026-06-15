@@ -23,13 +23,37 @@ const EmployeeVerificationPage = () => {
   const [searchParams] = useSearchParams();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const realtimeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all'); // stores department UUID or 'all'
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  
+
+  // Filter employees based on all criteria
+  // Helper function to get overall status based on priority logic
+  const getOverallStatus = (employee) => {
+    const documents = employee.documents || [];
+    if (documents.length === 0) return 'no-documents';
+    
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress');
+    
+    // Priority-based status logic: Failed > Pending > Verified
+    // If ANY document failed → Overall status is "Failed"
+    // If no failures but ANY pending → Overall status is "Pending"  
+    // If ALL documents verified → Overall status is "Verified"
+    if (failed.length > 0) {
+      return 'failed';
+    } else if (pending.length > 0) {
+      return 'pending';
+    } else {
+      return 'verified';
+    }
+  };
 
   // Keep a stable ref of current filters for realtime handler
   const currentFiltersRef = useRef<EmployeeListFilters>({});
@@ -52,16 +76,10 @@ const EmployeeVerificationPage = () => {
   }, [fetchEmployees]);
 
   // Initial load and filter changes — reset to page 1
-  // Search is debounced; other filters apply immediately
+  // Search fires only on Enter (via DebouncedSearchInput); dropdowns apply immediately
   useEffect(() => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      const filters = buildFilters(searchTerm, departmentFilter, documentTypeFilter, documentStatusFilter);
-      doFetch(filters, 1);
-    }, searchTerm ? 350 : 0);
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    };
+    const filters = buildFilters(searchTerm, departmentFilter, documentTypeFilter, documentStatusFilter);
+    doFetch(filters, 1);
   }, [searchTerm, departmentFilter, documentTypeFilter, documentStatusFilter, buildFilters, doFetch]);
 
   // Parse URL filter param on mount
@@ -176,16 +194,6 @@ const EmployeeVerificationPage = () => {
             onDepartmentChange={setDepartmentFilter}
           />
 
-          {!isLoading && (
-            <div className="flex justify-between items-center text-sm text-muted-foreground mb-3">
-              <span>
-                Showing {employees.length} of {totalEmployeesCount} employees
-              </span>
-              {(searchTerm !== '' || departmentFilter !== 'all' || documentStatusFilter !== 'all' || documentTypeFilter !== 'all') && (
-                <span className="text-primary">Filters applied</span>
-              )}
-            </div>
-          )}
           {isLoading ? (
             <Loader text="Loading employees..." />
           ) : (

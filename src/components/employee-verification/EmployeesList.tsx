@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
 import { Employee } from '@/types/employeeVerification';
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { formatDepartment } from '@/lib/formatUtils';
 import { aggregatePersonalInfo } from './utils/personalInfoUtils';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
@@ -25,18 +25,14 @@ interface EmployeesListProps {
 }
 
 const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
-  const { isLoading, fetchEmployees, currentPage, totalPages } = useEmployeeVerification();
+  const { isLoading, fetchEmployees, currentPage, totalPages, totalEmployeesCount, pageSize } = useEmployeeVerification();
   const navigate = useNavigate();
   const realtimeDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastListRefetchRef = useRef<number>(0);
   const LIST_REFETCH_COOLDOWN_MS = 3000;
 
-  const handlePrevPage = () => {
-    if (currentPage > 1) fetchEmployees(undefined, currentPage - 1);
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) fetchEmployees(undefined, currentPage + 1);
+  const handlePageChange = (page: number) => {
+    fetchEmployees(undefined, page);
   };
 
   // Debounced realtime handler with 3s cooldown — prevents rapid successive list refetches
@@ -148,7 +144,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
             ) : (
               employees.map((employee) => {
                 const isInactive = employee.status === false;
-                
+
                 // Prepare truncated name for display with full value on hover
                 const fullName = employee.name || '';
                 const displayName =
@@ -257,39 +253,14 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-4">
-          <Pagination>
-            <PaginationContent className="flex items-center gap-3">
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={handlePrevPage}
-                  className={
-                    currentPage === 1
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                  {currentPage} of {totalPages}
-                </span>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  onClick={handleNextPage}
-                  className={
-                    currentPage === totalPages
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
+      <TablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        totalCount={totalEmployeesCount}
+        pageSize={pageSize}
+        itemLabel="employees"
+      />
     </div>
   );
 };

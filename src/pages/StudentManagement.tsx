@@ -4,8 +4,8 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useAuth } from '@/contexts/auth';
 import { Student } from '@/types/student';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PlusCircle, UserSearch, FileUp, Search, RefreshCw, X } from 'lucide-react';
+import { PlusCircle, UserSearch, FileUp, RefreshCw, X } from 'lucide-react';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import StudentsList from '@/components/students/StudentsList';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import EditStudentDialog from '@/components/students/EditStudentDialog';
@@ -38,7 +38,6 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const { students, totalStudents, deleteStudent, refreshStudents, isLoading } = useStudents();
   const { employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
@@ -53,14 +52,6 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 500); // 500ms debounce
-    
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
   
   // Fetch students with current pagination and filters
   useEffect(() => {
@@ -136,7 +127,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       
       // Refresh the students list after successful import
       console.log('Import completed, refreshing student list...');
-      await refreshStudents(currentPage, itemsPerPage, searchQuery, gradeFilter, sectionFilter, campusFilter);
+      await refreshStudents(currentPage, itemsPerPage, debouncedSearchQuery, gradeFilter, sectionFilter, campusFilter);
       
       toast.success("Students imported successfully");
       setIsImportDialogOpen(false);
@@ -158,11 +149,11 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   // Reset to first page when search or filters change (but NOT itemsPerPage)
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, gradeFilter, sectionFilter, campusFilter]);
+  }, [debouncedSearchQuery, gradeFilter, sectionFilter, campusFilter]);
 
   // Clear all filters
   const clearAllFilters = () => {
-    setSearchQuery('');
+    setDebouncedSearchQuery('');
     setGradeFilter('all');
     setSectionFilter('all');
     setCampusFilter('all');
@@ -171,7 +162,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
 
   // Get active filters count
   const activeFiltersCount = [
-    searchQuery ? 1 : 0,
+    debouncedSearchQuery ? 1 : 0,
     gradeFilter !== 'all' ? 1 : 0,
     sectionFilter !== 'all' ? 1 : 0,
     campusFilter !== 'all' ? 1 : 0,
@@ -462,17 +453,13 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
         <CardContent className="pb-4">
           <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full mb-4">
             {/* Search Bar */}
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by name, student ID, grade, section, or campus..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-10"
-                />
-              </div>
-            </div>
+            <DebouncedSearchInput
+              value={debouncedSearchQuery}
+              onChange={setDebouncedSearchQuery}
+              placeholder="Search by name, student ID, grade, section, or campus..."
+              className="flex-1 max-w-md"
+              triggerOnEnter
+            />
             
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
@@ -530,12 +517,6 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
             </div>
           </div>
           
-          {/* Student count after search and filters */}
-          <div className="mb-6">
-            <p className="text-sm text-gray-600">
-              Showing {filteredStudents.length} of {students.length} students
-            </p>
-          </div>
           
           {isLoading ? (
             <div className="flex justify-center py-8">
@@ -558,7 +539,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                 />
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  {searchQuery || gradeFilter !== 'all' || sectionFilter !== 'all' || campusFilter !== 'all' ? 'No students found matching your filters.' : 'No students found.'}
+                  {debouncedSearchQuery || gradeFilter !== 'all' || sectionFilter !== 'all' || campusFilter !== 'all' ? 'No students found matching your filters.' : 'No students found.'}
                 </div>
               )}
             </div>
