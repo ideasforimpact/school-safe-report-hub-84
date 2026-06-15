@@ -64,10 +64,10 @@ const HeaderIcons = () => {
   const isBackofficeRoute =
     location.pathname.startsWith('/backoffice') ||
     location.pathname.startsWith('/backoffice-');
-
+  const isTransportSafetyRoute = location.pathname.startsWith('/transport-safety');
   const currentModuleName = useMemo(() => getModuleNameFromPath(location.pathname), [location.pathname]);
   const isUnsupportedModule = !SUPPORTED_NOTIFICATION_MODULES.has(currentModuleName);
-  const skipNotifications = isBackofficeRoute || isBackofficeUser || isUnsupportedModule;
+  const skipNotifications = isBackofficeRoute || isBackofficeUser || isUnsupportedModule  || isTransportSafetyRoute;
   const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [loading, setLoading] = useState(false);

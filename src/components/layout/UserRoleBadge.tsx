@@ -25,11 +25,12 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
     location.pathname.startsWith('/incidents') ||
     location.pathname.startsWith('/incident/') ||
     location.pathname.startsWith('/report-incident');
+  const isTransportSafetyRoute = location.pathname.startsWith('/transport-safety');
+  const uuidLike = !!department && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(department.trim());
   const isAssessmentsRoute =
     location.pathname.startsWith('/assessments') ||
     location.pathname.startsWith('/assessment/');
-  const uuidLike = !!department && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(department.trim());
-  const needsDepartmentLookup = !isUsersRoute && !isIncidentRoute && !isAssessmentsRoute && uuidLike;
+  const needsDepartmentLookup = !isUsersRoute && !isIncidentRoute && !isAssessmentsRoute && !isTransportSafetyRoute && uuidLike;
   const { employeeDepartments, loading: departmentsLoading } = useEmployeeDepartments();
 
   const departmentLabel = departmentsLoading
