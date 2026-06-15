@@ -508,8 +508,8 @@ const EditUserDialog = ({
           ? 'Blood group must be in format A+, O-, AB+, B-'
           : '',
       dob:
-        personalDetails.dob && personalDetails.dob >= new Date().toISOString().split('T')[0]
-          ? 'Date of birth must be a past date'
+        personalDetails.dob && personalDetails.dob > new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]
+          ? 'Employee must be at least 18 years old'
           : '',
     };
   };
@@ -1344,7 +1344,7 @@ const EditUserDialog = ({
                           }
                         })
                       }
-                      max={new Date(Date.now() - 86400000).toISOString().split('T')[0]}
+                      max={new Date().toISOString().split('T')[0]}
                     />
                     {personalDetailsErrors.dob && (
                       <p className="text-xs text-red-500">{personalDetailsErrors.dob}</p>
