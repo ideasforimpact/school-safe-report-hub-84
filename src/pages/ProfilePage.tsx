@@ -13,6 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getModuleAccessForUser } from '@/services/employee/employeeModuleService';
 import Loader from '@/components/common/Loader';
+import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
+import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
+import { employeeTypeName, employeeDepartmentName } from '@/services/employeeNameHelpers';
 
 interface ClientInfo {
   name: string;
@@ -194,6 +197,9 @@ interface EmployeeDetailsProps {
 }
 
 const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, client }) => {
+  const { employeeTypes } = useEmployeeTypes();
+  const { employeeDepartments } = useEmployeeDepartments();
+
   return (
     <div className="space-y-6">
       <div>
@@ -213,11 +219,11 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, client }) =
           </div>
           <div>
             <label className="text-sm font-medium text-gray-500">Department</label>
-            <p className="mt-1 text-base">{employee.department || 'Not specified'}</p>
+            <p className="mt-1 text-base">{employeeDepartmentName(employee.department, employeeDepartments)}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-500">Employee Type</label>
-            <p className="mt-1 text-base">{employee.employeeType || 'Not specified'}</p>
+            <p className="mt-1 text-base">{employeeTypeName(employee.employeeType, employeeTypes)}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-500">Client</label>
