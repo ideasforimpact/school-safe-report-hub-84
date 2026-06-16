@@ -10,13 +10,11 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, Image, Play, Loader2 } from 'lucide-react';
+import { Download, FileText, Image, Play } from 'lucide-react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { formatFileSize } from '@/utils/fileUtils';
 import { extractYouTubeVideoId, getYouTubeEmbedUrl } from '@/utils/youtubeUtils';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
-import { supabase } from '@/integrations/supabase/client';
-import { renderAsync } from 'docx-preview';
 
 interface ResourcePreviewDialogProps {
   resource: EduSafeResource | null;
@@ -31,9 +29,6 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
 }) => {
   const { downloadResource } = useEduSafe();
   const [resolvedUrl, setResolvedUrl] = React.useState<string>('');
-  const [docxLoading, setDocxLoading] = React.useState(false);
-  const [docxError, setDocxError] = React.useState<string | null>(null);
-  const docxContainerRef = React.useRef<HTMLDivElement>(null);
 
   const handleDownload = () => {
     if (resource) downloadResource(resource);
@@ -101,60 +96,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
   const isPdf = fileType === 'pdf';
   const isOffice = fileType === 'office';
 
-  // Render DOCX via docx-preview when the dialog opens for an office file
-  React.useEffect(() => {
-    if (!open || !isOffice || !resource.document_url) return;
-
-    setDocxLoading(true);
-    setDocxError(null);
-
-    // Extract the storage file path regardless of whether document_url is a full
-    // Supabase URL or a relative path like "edusafe-resources/client/file.docx"
-    const extractFilePath = (url: string): string | null => {
-      // Full Supabase URL
-      try {
-        const urlObj = new URL(url);
-        const match = urlObj.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/edusafe-resources\/(.+)/);
-        if (match?.[1]) return decodeURIComponent(match[1].split('?')[0]);
-      } catch {
-        // Not a valid absolute URL — treat as relative path
-      }
-      // Relative path: "edusafe-resources/..." or "/edusafe-resources/..."
-      const relMatch = url.replace(/^\//, '').match(/^edusafe-resources\/(.+)/);
-      if (relMatch?.[1]) return decodeURIComponent(relMatch[1].split('?')[0]);
-      return null;
-    };
-
-    const filePath = extractFilePath(resource.document_url);
-
-    const getBlob = async (): Promise<Blob> => {
-      if (filePath) {
-        const { data, error } = await supabase.storage.from('edusafe-resources').download(filePath);
-        if (!error && data) return data;
-      }
-      const res = await fetch(resource.document_url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.blob();
-    };
-
-    getBlob()
-      .then(async blob => {
-        if (docxContainerRef.current) {
-          docxContainerRef.current.innerHTML = '';
-          await renderAsync(blob, docxContainerRef.current, null, {
-            inWrapper: false,
-            ignoreWidth: true,
-          });
-        }
-      })
-      .catch(err => {
-        console.error('docx-preview error:', err);
-        setDocxError('Could not render document. Try downloading it instead.');
-      })
-      .finally(() => setDocxLoading(false));
-  }, [open, isOffice, resource?.document_url]);
-
-  // All hooks are above this line — safe to bail out for null resource
+// All hooks are above this line — safe to bail out for null resource
   if (!resource) return null;
 
   // Check if this is a YouTube resource
@@ -239,27 +181,13 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
                 </div>
               </div>
             ) : isOffice ? (
-              <div className="border rounded-md bg-gray-50 overflow-auto max-h-[280px]">
-                {docxLoading && (
-                  <div className="flex flex-col items-center justify-center p-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-3" />
-                    <p className="text-sm text-gray-500">Loading document…</p>
-                  </div>
-                )}
-                {docxError && (
-                  <div className="flex flex-col items-center justify-center p-12">
-                    <FileText className="h-12 w-12 text-gray-400 mb-3" />
-                    <p className="text-sm text-gray-600 mb-4">{docxError}</p>
-                    <Button variant="outline" size="sm" onClick={handleDownload}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download instead
-                    </Button>
-                  </div>
-                )}
-                <div
-                  ref={docxContainerRef}
-                  className={docxLoading || docxError ? 'hidden' : 'p-2'}
-                />
+              <div className="flex flex-col items-center justify-center border rounded-md p-12 bg-gray-50">
+                <FileText className="h-16 w-16 text-gray-400 mb-4" />
+                <p className="text-sm text-gray-600 mb-4">Preview not available for this file type.</p>
+                <Button variant="outline" size="sm" onClick={handleDownload}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center border rounded-md p-12 bg-gray-50">
@@ -319,10 +247,10 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
                     <p className="text-gray-500">File Name</p>
                     <p className='break-words'>{resource.file?.name || resource.document_url?.split('/').pop()}</p>
                   </div>
-                  <div>
+                  {/* <div>
                     <p className="text-gray-500">File Size</p>
                     <p>{formatFileSize(resource.file?.size || 0)}</p>
-                  </div>
+                  </div> */}
                   <div>
                     <p className="text-gray-500">File Type</p>
                     <p>{resource.file?.type || resource.document_url?.split('?')[0].split('.').pop()?.toUpperCase() || fileType.toUpperCase()}</p>
