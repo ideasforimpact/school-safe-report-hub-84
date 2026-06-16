@@ -144,12 +144,12 @@ export const FacilityTab = ({
     }
     
     if (!selectedCampusId) {
-      toast.error(`Please select a ${s.level1.toLowerCase()} for this ${s.facility.toLowerCase()}`);
+      toast.error(`Please select a ${s.campus.toLowerCase()} for this ${s.facility.toLowerCase()}`);
       return;
     }
     
     if (isDuplicateFacilityName(facilityName, selectedCampusId)) {
-      toast.error(`A ${s.facility.toLowerCase()} with this name already exists in the selected ${s.level1.toLowerCase()}`);
+      toast.error(`A ${s.facility.toLowerCase()} with this name already exists in the selected ${s.campus.toLowerCase()}`);
       return;
     }
     
@@ -208,12 +208,12 @@ export const FacilityTab = ({
     
     if (editingFacility) {
       if (!editingFacility.campusId) {
-        toast.error(`Please select a ${s.level1.toLowerCase()} for this ${s.facility.toLowerCase()}`);
+        toast.error(`Please select a ${s.campus.toLowerCase()} for this ${s.facility.toLowerCase()}`);
         return;
       }
       
       if (isDuplicateFacilityName(facilityName, editingFacility.campusId, editingFacility.id)) {
-        toast.error(`A ${s.facility.toLowerCase()} with this name already exists in the selected ${s.level1.toLowerCase()}`);
+        toast.error(`A ${s.facility.toLowerCase()} with this name already exists in the selected ${s.campus.toLowerCase()}`);
         return;
       }
       
@@ -288,14 +288,14 @@ export const FacilityTab = ({
         {canCreate && (
         <form onSubmit={handleFacilityAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
-            <Label htmlFor="campus-select" className="mb-2 block">{s.level1}</Label>
+            <Label htmlFor="campus-select" className="mb-2 block">{s.campus}</Label>
             <Select value={selectedCampusId} onValueChange={setSelectedCampusId}>
               <SelectTrigger id="campus-select" className="w-full">
-                <SelectValue placeholder={`Select a ${s.level1}`} />
+                <SelectValue placeholder={`Select a ${s.campus}`} />
               </SelectTrigger>
               <SelectContent>
                 {campuses.length === 0 ? (
-                  <SelectItem value="no-campuses" disabled>{`No ${s.level1Plural.toLowerCase()} available`}</SelectItem>
+                  <SelectItem value="no-campuses" disabled>{`No ${s.campusPlural.toLowerCase()} available`}</SelectItem>
                 ) : (
                   campuses.map((campus) => (
                     <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>
@@ -318,7 +318,7 @@ export const FacilityTab = ({
               <p className="text-xs text-red-500 mt-1">{s.facility} name can only contain letters, numbers, and spaces (max 20 characters)</p>
             )}
             {newFacility && selectedCampusId && isDuplicateFacilityName(newFacility, selectedCampusId) && (
-              <p className="text-xs text-red-500 mt-1">A {s.facility.toLowerCase()} with this name already exists in the selected {s.level1.toLowerCase()}</p>
+              <p className="text-xs text-red-500 mt-1">A {s.facility.toLowerCase()} with this name already exists in the selected {s.campus.toLowerCase()}</p>
             )}
           </div>
           <div className="self-end">
@@ -364,10 +364,10 @@ export const FacilityTab = ({
           <div className="w-48">
             <Select value={filterCampusId} onValueChange={setFilterCampusId}>
               <SelectTrigger>
-                <SelectValue placeholder={`Filter by ${s.level1.toLowerCase()}`} />
+                <SelectValue placeholder={`Filter by ${s.campus.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{`All ${s.level1Plural.toLowerCase()}`}</SelectItem>
+                <SelectItem value="">{`All ${s.campusPlural.toLowerCase()}`}</SelectItem>
                 {campuses.map((campus) => (
                   <SelectItem key={campus.id} value={campus.id}>
                     {campus.name}
@@ -395,7 +395,7 @@ export const FacilityTab = ({
           <TableHeader>
             <TableRow>
               <TableHead>{s.facility} Name</TableHead>
-              <TableHead>{s.level1}</TableHead>
+              <TableHead>{s.campus}</TableHead>
               {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>

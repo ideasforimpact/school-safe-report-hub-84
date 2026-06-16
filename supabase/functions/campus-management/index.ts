@@ -66,7 +66,7 @@ serve(async (req) => {
 
         const { data: campus, error } = await supabase
           .from('campuses')
-          .insert({ name, client_id: clientId, client_type_id: clientTypeId || null })
+          .insert({ name, client_id: clientId, client_type_id: clientTypeId })
           .select()
           .single();
 

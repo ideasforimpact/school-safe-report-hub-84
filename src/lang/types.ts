@@ -97,12 +97,12 @@ export interface ClientLang {
   structure: {
     pageTitle: string;
     pageDescription: string;
-    level1: string;           // e.g. Campus / Site / Office
-    level1Plural: string;
-    level2: string;           // e.g. Grade / Department / Department
-    level2Plural: string;
-    level3: string;           // e.g. Section / Batch / Team
-    level3Plural: string;
+    campus: string;           // e.g. Campus / Site / Office
+    campusPlural: string;
+    grade: string;            // e.g. Grade / Department / Department
+    gradePlural: string;
+    section: string;          // e.g. Section / Batch / Team
+    sectionPlural: string;
     facility: string;
     facilityPlural: string;
   };

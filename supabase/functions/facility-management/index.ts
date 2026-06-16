@@ -35,7 +35,7 @@ serve(async (req) => {
       case 'create': {
         const { data, error } = await supabaseClient
           .from('facilities')
-          .insert({ name, client_id: clientId, campus_id: campusId, client_type_id: clientTypeId || null })
+          .insert({ name, client_id: clientId, campus_id: campusId, client_type_id: clientTypeId })
           .select('*')
           .single();
 

@@ -121,17 +121,17 @@ export const CampusTab = ({
     const campusName = newCampus.trim();
     
     if (!campusName) {
-      toast.error(`${s.level1} name cannot be empty`);
+      toast.error(`${s.campus} name cannot be empty`);
       return;
     }
     
     if (!isValidCampusName(campusName)) {
-      toast.error(`${s.level1} name can be up to 50 characters`);
+      toast.error(`${s.campus} name can be up to 50 characters`);
       return;
     }
     
     if (isDuplicateCampusName(campusName)) {
-      toast.error(`A ${s.level1.toLowerCase()} with this name already exists`);
+      toast.error(`A ${s.campus.toLowerCase()} with this name already exists`);
       return;
     }
     
@@ -174,17 +174,17 @@ export const CampusTab = ({
     const campusName = updatedName.trim();
     
     if (!campusName) {
-      toast.error(`${s.level1} name cannot be empty`);
+      toast.error(`${s.campus} name cannot be empty`);
       return;
     }
     
     if (!isValidCampusName(campusName)) {
-      toast.error(`${s.level1} name can be up to 50 characters`);
+      toast.error(`${s.campus} name can be up to 50 characters`);
       return;
     }
     
     if (isDuplicateCampusName(campusName, editingCampus?.id)) {
-      toast.error(`A ${s.level1.toLowerCase()} with this name already exists`);
+      toast.error(`A ${s.campus.toLowerCase()} with this name already exists`);
       return;
     }
     
@@ -229,8 +229,8 @@ export const CampusTab = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{s.level1} Management</CardTitle>
-        <CardDescription>Add, edit, or remove {s.level1Plural.toLowerCase()}</CardDescription>
+        <CardTitle>{s.campus} Management</CardTitle>
+        <CardDescription>Add, edit, or remove {s.campusPlural.toLowerCase()}</CardDescription>
       </CardHeader>
       <CardContent>
         {canCreate && (
@@ -238,17 +238,17 @@ export const CampusTab = ({
           <div className="flex gap-4 flex-col sm:flex-row">
             <div className="flex-1">
               <Input
-                placeholder={`New ${s.level1.toLowerCase()} name`}
+                placeholder={`New ${s.campus.toLowerCase()} name`}
                 value={newCampus}
                 onChange={(e) => setNewCampus(e.target.value)}
                 maxLength={50}
                 className={newCampus && !isValidCampusName(newCampus) ? 'border-red-500' : ''}
               />
               {newCampus && !isValidCampusName(newCampus) && (
-                <p className="text-xs text-red-500 mt-1">{s.level1} name can be up to 50 characters</p>
+                <p className="text-xs text-red-500 mt-1">{s.campus} name can be up to 50 characters</p>
               )}
               {newCampus && isDuplicateCampusName(newCampus) && (
-                <p className="text-xs text-red-500 mt-1">A {s.level1.toLowerCase()} with this name already exists</p>
+                <p className="text-xs text-red-500 mt-1">A {s.campus.toLowerCase()} with this name already exists</p>
               )}
             </div>
             <Button 
@@ -275,7 +275,7 @@ export const CampusTab = ({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={`Search ${s.level1Plural.toLowerCase()}...`}
+              placeholder={`Search ${s.campusPlural.toLowerCase()}...`}
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               className="pl-10 pr-10"
@@ -302,7 +302,7 @@ export const CampusTab = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{s.level1} Name</TableHead>
+              <TableHead>{s.campus} Name</TableHead>
               {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -310,15 +310,15 @@ export const CampusTab = ({
             {loading ? (
               <TableRow>
                 <TableCell colSpan={canCreate ? 2 : 1} className="text-center py-4">
-                  <Loader text={`Loading ${s.level1Plural.toLowerCase()}...`} />
+                  <Loader text={`Loading ${s.campusPlural.toLowerCase()}...`} />
                 </TableCell>
               </TableRow>
             ) : filteredCampuses.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={canCreate ? 2 : 1} className="text-center py-4 text-muted-foreground">
                   {campuses.length === 0 
-                    ? `No ${s.level1Plural.toLowerCase()} available. Add your first ${s.level1.toLowerCase()} above.`
-                    : `No ${s.level1Plural.toLowerCase()} match your search criteria.`
+                    ? `No ${s.campusPlural.toLowerCase()} available. Add your first ${s.campus.toLowerCase()} above.`
+                    : `No ${s.campusPlural.toLowerCase()} match your search criteria.`
                   }
                 </TableCell>
               </TableRow>
@@ -459,7 +459,7 @@ export const CampusTab = ({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Campus</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete the {s.level1.toLowerCase()} &ldquo;{campusToDelete?.name}&rdquo;? 
+                Are you sure you want to delete the {s.campus.toLowerCase()} &ldquo;{campusToDelete?.name}&rdquo;? 
                 This action cannot be undone. If this campus is linked to any incidents, 
                 classes, or facilities, deletion will be prevented.
               </AlertDialogDescription>
@@ -484,9 +484,9 @@ export const CampusTab = ({
         {/* Edit Dialog */}
         {editingCampus && canCreate && (
           <EditDialog
-            title={`Edit ${s.level1}`}
-            description={`Update the ${s.level1.toLowerCase()} name below`}
-            fieldLabel={`${s.level1} name`}
+            title={`Edit ${s.campus}`}
+            description={`Update the ${s.campus.toLowerCase()} name below`}
+            fieldLabel={`${s.campus} name`}
             value={editingCampus.name}
             open={isEditDialogOpen && canCreate}
             onOpenChange={setIsEditDialogOpen}
@@ -495,7 +495,7 @@ export const CampusTab = ({
             onClose={handleEditClose}
             maxLength={20}
             validationFunction={isValidCampusName}
-            validationMessage={`${s.level1} name can only contain letters, numbers, and spaces (max 20 characters)`}
+            validationMessage={`${s.campus} name can only contain letters, numbers, and spaces (max 20 characters)`}
             isRequired={true}
           />
         )}

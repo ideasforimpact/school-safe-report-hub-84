@@ -243,7 +243,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     if (isReadOnly) return;
     if (!selectedDocumentId) return;
     const verifierId = employeeData?.id;
-    const clientId = employeeData?.clientId || null;
+    const clientId = employeeData?.clientId;
 
     if (!verifierId) {
       toast({
@@ -294,7 +294,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     if (isReadOnly) return;
     if (!selectedDocumentId) return;
     const verifierId = employeeData?.id;
-    const clientId = employeeData?.clientId || null;
+    const clientId = employeeData?.clientId;
 
     if (!verifierId) {
       toast({

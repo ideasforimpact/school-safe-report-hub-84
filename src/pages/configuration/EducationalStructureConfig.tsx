@@ -77,7 +77,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
   // Custom handler for tab changes with validation
   const handleTabChange = (value: string) => {
     if (value !== 'campuses' && !hasCampuses) {
-      toast.error(`Please add at least one ${s.level1.toLowerCase()} first before accessing this tab`);
+      toast.error(`Please add at least one ${s.campus.toLowerCase()} first before accessing this tab`);
       return;
     }
     setCurrentTab(value);
@@ -89,7 +89,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
       <TabsList className="mb-4">
         <TabsTrigger value="campuses" className="flex items-center gap-2">
           <Building className="h-4 w-4" />
-          <span>{s.level1Plural}</span>
+          <span>{s.campusPlural}</span>
         </TabsTrigger>
         {!isWork && (
           <TabsTrigger
@@ -98,7 +98,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
             disabled={!hasCampuses}
           >
             <GraduationCap className="h-4 w-4" />
-            <span>{s.level2Plural}</span>
+            <span>{s.gradePlural}</span>
           </TabsTrigger>
         )}
         {!isWork && (
@@ -108,7 +108,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
             disabled={!hasCampuses}
           >
             <Users className="h-4 w-4" />
-            <span>{s.level3Plural}</span>
+            <span>{s.sectionPlural}</span>
           </TabsTrigger>
         )}
         <TabsTrigger

@@ -157,7 +157,7 @@ serve(async (req) => {
       facility_id: facilityId || null,
       priority_id: priorityId || null,
       assigned_to: assignedTo || null,
-      client_type_id: clientTypeId || null
+      client_type_id: clientTypeId
     };
 
     console.log('Inserting incident with single query');

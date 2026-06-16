@@ -78,7 +78,7 @@ export function useIncidentFormData() {
     const doFetch = async () => {
       try {
         const { data, error } = await supabase.functions.invoke('fetch-incidents', {
-          body: { operation: 'get_config', clientId, clientTypeId: clientTypeId || null }
+          body: { operation: 'get_config', clientId, clientTypeId: clientTypeId }
         });
 
         if (error) throw error;

@@ -1301,7 +1301,7 @@ async function handleCreateClient(clientData: any) {
       allowed_domains: Array.isArray(clientInfo.allowedDomains) ? clientInfo.allowedDomains.join(',') : null,
       super_admin_allowed_domain: Array.isArray(clientInfo.superAdminAllowedDomains) ? clientInfo.superAdminAllowedDomains.join(',') : null,
       auth_providers: clientInfo.authProviders ? JSON.stringify(clientInfo.authProviders) : null,
-      client_type_id: clientTypeId || null,
+      client_type_id: clientTypeId,
       client_logo: clientLogoUrl, // Store path: client-logos/{clientId}/logo.{ext}
       logo: clientLogoUrl, // Store path: client-logos/{clientId}/logo.{ext}
       is_head_office: isHeadOffice,
