@@ -508,8 +508,8 @@ const EditUserDialog = ({
           ? 'Blood group must be in format A+, O-, AB+, B-'
           : '',
       dob:
-        personalDetails.dob && new Date(personalDetails.dob) > new Date()
-          ? 'Date of birth cannot be in the future'
+        personalDetails.dob && personalDetails.dob > new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]
+          ? 'Employee must be at least 18 years old'
           : '',
     };
   };
