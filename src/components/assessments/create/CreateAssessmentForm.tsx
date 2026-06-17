@@ -165,6 +165,18 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     fetchExistingAssessments();
   }, [fetchExistingAssessments]);
 
+  // Auto-fill "Assign To" with the logged-in user once employees are loaded,
+  // mirroring how the incident form pre-fills the "Reported By" field.
+  useEffect(() => {
+    if (employeesLoading) return;
+    if (formData.assignedTo) return;
+    const currentEmployeeId = employeeData?.id;
+    if (!currentEmployeeId) return;
+    if (employees.some(emp => emp.id === currentEmployeeId)) {
+      setFormData(prev => ({ ...prev, assignedTo: currentEmployeeId }));
+    }
+  }, [employeesLoading, employees, employeeData?.id, formData.assignedTo]);
+
   // Find the selected employee
   const selectedEmployee = employees.find(
     emp => emp.id === formData.assignedTo
