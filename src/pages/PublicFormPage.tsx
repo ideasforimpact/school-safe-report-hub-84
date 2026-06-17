@@ -184,7 +184,6 @@ const PublicFormPage = () => {
     try {
       console.log('🔔 Queueing grievance notification using notification service for submission:', submission.id);
 
-      // Extract grievance details from form responses
       const responses = submission.responses || {};
       const grievanceTitle =  responses.subject || 'Grievance Submission';
       const grievanceDescription = responses.description || responses.details || responses.grievance_description || 'No description provided';
