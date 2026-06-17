@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { toast } from 'sonner';
 import { UploadCloud } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
+import { runImportConfiguration } from '@/services/backoffice/importConfigurationService';
 
 interface ClientType { id: string; key: string; name: string }
 interface ClientRow { id: string; name: string; client_type: ClientType | null }
@@ -31,11 +32,9 @@ const BackofficeImportConfiguration = () => {
   const triggerImport = async (clientId: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('import-configuration', {
-        body: { client_id: clientId },
-      });
-      if (error) throw error;
-      if (data?.status === 'failed') {
+      const results = await runImportConfiguration(clientId);
+      const hasFailed = results.some(r => r.error || r.data?.status === 'failed');
+      if (hasFailed) {
         toast.error('Import completed with errors');
       } else {
         toast.success('Import completed — all 3 client types imported');
