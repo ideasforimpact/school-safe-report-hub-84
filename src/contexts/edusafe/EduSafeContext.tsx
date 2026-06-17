@@ -300,7 +300,8 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           title: updatedResource.title,
           description: updatedResource.description,
           category: updatedResource.category,
-          tags: updatedResource.tags
+          tags: updatedResource.tags,
+          youtube_link: updatedResource.youtube_link ?? null
         }
       });
 

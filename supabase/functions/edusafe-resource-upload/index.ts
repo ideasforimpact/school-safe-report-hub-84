@@ -316,6 +316,7 @@ async function handleUpdate(req: Request, url: URL) {
   let category: string | undefined
   let tags: string[] | undefined
   let file: File | null = null
+  let youtubeLink: string | null = null
 
   if (isFormData) {
     // Handle FormData (with file upload)
@@ -324,6 +325,7 @@ async function handleUpdate(req: Request, url: URL) {
     title = formData.get('title') as string | null || undefined
     description = formData.get('description') as string | null || undefined
     category = formData.get('category') as string | null || undefined
+    youtubeLink = formData.get('youtube_link') as string | null
     const tagsStr = formData.get('tags') as string | null
     if (tagsStr) {
       try {
@@ -332,7 +334,7 @@ async function handleUpdate(req: Request, url: URL) {
         tags = tagsStr.split(',').map(tag => tag.trim()).filter(Boolean)
       }
     }
-    
+
     // Get resourceId and clientId from FormData if not in query params
     if (!resourceId) {
       resourceId = formData.get('resource_id') as string | null
@@ -347,7 +349,8 @@ async function handleUpdate(req: Request, url: URL) {
     description = body.description
     category = body.category
     tags = body.tags
-    
+    youtubeLink = body.youtube_link ?? null
+
     // Get resourceId and clientId from body if not in query params
     if (!resourceId) {
       resourceId = body.id || body.resource_id
@@ -446,6 +449,7 @@ async function handleUpdate(req: Request, url: URL) {
   if (description !== undefined) updateData.description = description
   if (category !== undefined) updateData.category = category
   if (tags !== undefined) updateData.tags = tags
+  if (youtubeLink !== undefined) updateData.youtube_link = youtubeLink
   if (documentUrl && documentUrl !== existingResource.document_url) {
     updateData.document_url = documentUrl
     updateData.file_size = file ? file.size : null
