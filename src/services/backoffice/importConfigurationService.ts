@@ -66,21 +66,16 @@ const TEMPLATES_BY_TYPE: Record<string, {
 };
 
 export async function runImportConfiguration(clientId: string) {
-  const results: { typeKey: string; data: any; error: any }[] = [];
+  const { data, error } = await supabase.functions.invoke('import-configuration', {
+    body: {
+      client_id: clientId,
+      types: [
+        { type_key: 'school',    templates: TEMPLATES_BY_TYPE.school },
+        { type_key: 'work',      templates: TEMPLATES_BY_TYPE.work },
+        { type_key: 'institute', templates: TEMPLATES_BY_TYPE.institute },
+      ],
+    },
+  });
 
-  for (const typeKey of ['school', 'work', 'institute']) {
-    const templates = TEMPLATES_BY_TYPE[typeKey];
-
-    const { data, error } = await supabase.functions.invoke('import-configuration', {
-      body: {
-        client_id: clientId,
-        type_key: typeKey,
-        templates,
-      },
-    });
-
-    results.push({ typeKey, data, error });
-  }
-
-  return results;
+  return { data, error };
 }

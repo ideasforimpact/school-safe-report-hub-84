@@ -57,30 +57,26 @@ serve(async (req) => {
 
     // ── get_config ──────────────────────────────────────────────────────────
     if (operation === 'get_config') {
-      const typeFilter = clientTypeId
-        ? `client_type_id.eq.${clientTypeId},client_type_id.is.null`
-        : null;
-
       let reportTypesQuery = supabaseClient
         .from('incident_report_types')
         .select('id, name, description')
         .eq('client_id', clientId)
         .eq('is_active', true);
-      if (typeFilter) reportTypesQuery = reportTypesQuery.or(typeFilter);
+      if (clientTypeId) reportTypesQuery = reportTypesQuery.eq('client_type_id', clientTypeId);
 
       let categoriesQuery = supabaseClient
         .from('incident_categories')
         .select('id, name, description')
         .eq('client_id', clientId)
         .eq('is_active', true);
-      if (typeFilter) categoriesQuery = categoriesQuery.or(typeFilter);
+      if (clientTypeId) categoriesQuery = categoriesQuery.eq('client_type_id', clientTypeId);
 
       let subcategoriesQuery = supabaseClient
         .from('incident_subcategories')
         .select('id, name, category_id')
         .eq('client_id', clientId)
         .eq('is_active', true);
-      if (typeFilter) subcategoriesQuery = subcategoriesQuery.or(typeFilter);
+      if (clientTypeId) subcategoriesQuery = subcategoriesQuery.eq('client_type_id', clientTypeId);
 
       let prioritiesQuery = supabaseClient
         .from('incident_priorities')
@@ -88,7 +84,7 @@ serve(async (req) => {
         .eq('client_id', clientId)
         .eq('is_active', true)
         .order('weight', { ascending: true });
-      if (typeFilter) prioritiesQuery = prioritiesQuery.or(typeFilter);
+      if (clientTypeId) prioritiesQuery = prioritiesQuery.eq('client_type_id', clientTypeId);
 
       const [
         reportTypesRes,
@@ -106,12 +102,12 @@ serve(async (req) => {
         subcategoriesQuery,
         (() => {
           let q = supabaseClient.from('campuses').select('id, name').eq('client_id', clientId);
-          if (typeFilter) q = q.or(typeFilter);
+          if (clientTypeId) q = q.eq('client_type_id', clientTypeId);
           return q;
         })(),
         (() => {
           let q = supabaseClient.from('facilities').select('id, name, campus_id').eq('client_id', clientId);
-          if (typeFilter) q = q.or(typeFilter);
+          if (clientTypeId) q = q.eq('client_type_id', clientTypeId);
           return q;
         })(),
         prioritiesQuery,

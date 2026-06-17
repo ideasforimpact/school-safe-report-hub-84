@@ -37,8 +37,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const clientId: string = body.client_id;
-    const typeKey: string = body.type_key;
-    const templates = body.templates;
+    const types: { type_key: string; templates: any }[] = body.types;
 
     if (!clientId) {
       return new Response(
@@ -47,13 +46,14 @@ serve(async (req) => {
       );
     }
 
-    if (!typeKey || !templates) {
+    if (!types || !Array.isArray(types) || types.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'type_key and templates are required' }),
+        JSON.stringify({ error: 'types array is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    for (const { type_key: typeKey, templates } of types) {
     // Resolve client_type_id for the given type key
     const { data: clientTypeRow } = await supabase
       .from('client_type').select('id').eq('key', typeKey).single();
@@ -264,52 +264,52 @@ serve(async (req) => {
       }
     }
 
-    // ── Create "All" group (only on last type call to avoid duplicates) ───
-    if (typeKey === 'institute') {
-      try {
-        const { data: superAdminData } = await supabase
-          .from('employees').select('id').eq('client_id', clientId).eq('is_super_admin', true).single();
-        const superAdminEmployeeId: string | null = superAdminData?.id || null;
+    } // end for types loop
 
-        if (superAdminEmployeeId) {
-          const { data: allEmployees } = await supabase
-            .from('employees').select('id').eq('client_id', clientId).eq('status', true);
-          const employeeIds = (allEmployees || []).map((e: any) => e.id);
-          const { data: existingGroup, error: groupCheckError } = await supabase
-            .from('groups').select('id').eq('client_id', clientId).eq('name', 'All').single();
-          let groupId: string | null = null;
+    // ── Create "All" group ────────────────────────────────────────────────
+    try {
+      const { data: superAdminData } = await supabase
+        .from('employees').select('id').eq('client_id', clientId).eq('is_super_admin', true).single();
+      const superAdminEmployeeId: string | null = superAdminData?.id || null;
 
-          if (groupCheckError?.code === 'PGRST116') {
-            const { data: newGroup } = await supabase
-              .from('groups')
-              .insert({ name: 'All', description: 'All employees group - includes all employees in the organization', group_type: 'Employee', status: true, client_id: clientId, employee_id: superAdminEmployeeId })
-              .select('id').single();
-            groupId = newGroup?.id || null;
-          } else if (existingGroup) {
-            groupId = existingGroup.id;
-          }
+      if (superAdminEmployeeId) {
+        const { data: allEmployees } = await supabase
+          .from('employees').select('id').eq('client_id', clientId).eq('status', true);
+        const employeeIds = (allEmployees || []).map((e: any) => e.id);
+        const { data: existingGroup, error: groupCheckError } = await supabase
+          .from('groups').select('id').eq('client_id', clientId).eq('name', 'All').single();
+        let groupId: string | null = null;
 
-          if (groupId && employeeIds.length > 0) {
-            const { data: existingGE } = await supabase
-              .from('group_employees').select('employee_id').eq('group_id', groupId);
-            const existingSet = new Set((existingGE || []).map((ge: any) => ge.employee_id));
-            const toAdd = employeeIds.filter((id: string) => !existingSet.has(id));
-            if (toAdd.length > 0) {
-              await supabase.from('group_employees').insert(
-                toAdd.map((empId: string) => ({ group_id: groupId, employee_id: empId, role_id: null, client_id: clientId, created_by_employee_id: superAdminEmployeeId }))
-              );
-            }
+        if (groupCheckError?.code === 'PGRST116') {
+          const { data: newGroup } = await supabase
+            .from('groups')
+            .insert({ name: 'All', description: 'All employees group - includes all employees in the organization', group_type: 'Employee', status: true, client_id: clientId, employee_id: superAdminEmployeeId })
+            .select('id').single();
+          groupId = newGroup?.id || null;
+        } else if (existingGroup) {
+          groupId = existingGroup.id;
+        }
+
+        if (groupId && employeeIds.length > 0) {
+          const { data: existingGE } = await supabase
+            .from('group_employees').select('employee_id').eq('group_id', groupId);
+          const existingSet = new Set((existingGE || []).map((ge: any) => ge.employee_id));
+          const toAdd = employeeIds.filter((id: string) => !existingSet.has(id));
+          if (toAdd.length > 0) {
+            await supabase.from('group_employees').insert(
+              toAdd.map((empId: string) => ({ group_id: groupId, employee_id: empId, role_id: null, client_id: clientId, created_by_employee_id: superAdminEmployeeId }))
+            );
           }
         }
-      } catch (_) {}
+      }
+    } catch (_) {}
 
-      await supabase.from('configuration_import_logs').insert({
-        client_id: clientId,
-        response_status: responseStatus,
-        response_code: responseCode,
-        log: tableLogs,
-      });
-    }
+    await supabase.from('configuration_import_logs').insert({
+      client_id: clientId,
+      response_status: responseStatus,
+      response_code: responseCode,
+      log: tableLogs,
+    });
 
     return new Response(
       JSON.stringify({ status: responseStatus, code: responseCode, details: tableLogs }),

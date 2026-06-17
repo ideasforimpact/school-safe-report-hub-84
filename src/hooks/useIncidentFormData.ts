@@ -25,7 +25,7 @@ const EMPTY_FORM_DATA: IncidentFormData = {
   locations: [], facilities: [], priorities: [],
 };
 
-// Module-level cache — keyed by `clientId::clientTypeId`.
+// Module-level cache keyed by `clientId::clientTypeId`.
 // Only populated once both IDs are known.
 const configCache = new Map<string, CacheEntry>();
 const fetchInflight = new Map<string, Promise<void>>();

@@ -32,9 +32,9 @@ const BackofficeImportConfiguration = () => {
   const triggerImport = async (clientId: string) => {
     setLoading(true);
     try {
-      const results = await runImportConfiguration(clientId);
-      const hasFailed = results.some(r => r.error || r.data?.status === 'failed');
-      if (hasFailed) {
+      const { data, error } = await runImportConfiguration(clientId);
+      if (error) throw error;
+      if (data?.status === 'failed') {
         toast.error('Import completed with errors');
       } else {
         toast.success('Import completed — all 3 client types imported');
