@@ -524,7 +524,7 @@ const PublicFormPage = () => {
               placeholder={field.placeholder || 'Your email address'}
               value={formData[field.id] || ''}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
-              maxLength={25}
+              maxLength={50}
               required={isRequired}
             />
           </div>
