@@ -89,6 +89,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
   const [existingMappings, setExistingMappings] = useState<Array<{ head_office_id: string; sub_client_id: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [mappingClientsLoading, setMappingClientsLoading] = useState(true);
+  const [hasIncidents, setHasIncidents] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
@@ -105,6 +106,15 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
     fetchClientTypes();
     fetchClientsForMapping();
   }, []);
+
+  useEffect(() => {
+    if (!isEdit || !formData.id) return;
+    supabase
+      .from('incidents')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', formData.id)
+      .then(({ count }) => setHasIncidents((count ?? 0) > 0));
+  }, [isEdit, formData.id]);
   
  useEffect(() => {
   if (!formData.superAdminEmail) {
@@ -439,6 +449,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           value={formData.clientTypeId || ''}
           onValueChange={(value) => setFormData({...formData, clientTypeId: value})}
           required
+          disabled={isEdit && hasIncidents}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={loading ? "Loading..." : "Select client type"} />
@@ -451,6 +462,11 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
             ))}
           </SelectContent>
         </Select>
+        {isEdit && hasIncidents && (
+          <p className="text-xs text-muted-foreground">
+            Client type cannot be changed because incidents have already been created for this client.
+          </p>
+        )}
         {showErrors && !formData.clientTypeId && (
           <p className="text-xs text-red-600">Client type is required.</p>
         )}

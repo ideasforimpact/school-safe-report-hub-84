@@ -1,0 +1,102 @@
+[
+  {
+    "client_id": null,
+    "title": "Campus Safety Assessment",
+    "description": "Evaluates the overall safety infrastructure, emergency preparedness, and hazard management on campus to ensure a safe environment for students, faculty, and staff",
+    "category_name": "Safety",
+    "questions": [
+      {
+        "text": "Are all emergency exits clearly marked, unobstructed, and inspected regularly?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is a CCTV surveillance system installed across key campus areas and monitored actively?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are fire extinguishers placed at designated points and serviced within the last 12 months?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is there a functional anti-ragging committee with clear escalation procedures?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are laboratory safety protocols (PPE availability, chemical storage, emergency shower) in place?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": true
+      },
+      {
+        "text": "Is access control implemented at campus entry/exit points with visitor management?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Has an emergency response plan been tested through a drill in the last 12 months?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      }
+    ]
+  },
+  {
+    "client_id": null,
+    "title": "Academic Integrity Assessment",
+    "description": "Reviews the institute's policies and systems to uphold academic honesty, research ethics, and fair evaluation practices",
+    "category_name": "Academic",
+    "questions": [
+      {
+        "text": "Is there a published academic integrity and anti-plagiarism policy accessible to all students and faculty?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is plagiarism detection software used for evaluating student submissions and research papers?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is there a defined process for investigating and resolving academic misconduct complaints?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are examination procedures (invigilation, secure paper distribution, result publication) standardized and auditable?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is a research ethics committee (or equivalent) active for reviewing research involving human participants?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      }
+    ]
+  }
+]

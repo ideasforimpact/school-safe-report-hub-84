@@ -1,0 +1,404 @@
+{
+  "categories": [
+    {
+      "id": "",
+      "name": "Workplace Safety & Health",
+      "description": "Physical safety hazards, injuries, and health incidents at the workplace",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Slip, trip, or fall injury",
+          "description": "Accidents resulting from slips, trips, or falls on premises",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Equipment malfunction or misuse",
+          "description": "Incidents involving faulty or improperly used machinery or tools",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Chemical or hazardous material exposure",
+          "description": "Exposure to chemicals, fumes, or other hazardous materials",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Ergonomic injury (repetitive strain, back injury)",
+          "description": "Injuries caused by poor ergonomics or repetitive motion",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fire or explosion",
+          "description": "Fire incidents or explosions in the workplace",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Electrical hazard or shock",
+          "description": "Electrical safety incidents or electric shock",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fatigue or heat-related illness",
+          "description": "Illness caused by overwork, heat stress, or exhaustion",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Personal Protective Equipment (PPE) violation",
+          "description": "Failure to use or provide required protective equipment",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Harassment & Discrimination",
+      "description": "Incidents involving harassment, discrimination, or hostile behavior",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Sexual harassment",
+          "description": "Unwanted sexual advances, comments, or conduct",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Racial or ethnic discrimination",
+          "description": "Discriminatory behavior based on race or ethnicity",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Gender-based discrimination",
+          "description": "Unequal treatment based on gender or gender identity",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Workplace bullying or intimidation",
+          "description": "Persistent bullying, intimidation, or hostile behavior",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Verbal abuse or threatening behavior",
+          "description": "Verbal aggression or threats by colleagues or management",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Religious or caste-based discrimination",
+          "description": "Discrimination based on religion, caste, or belief",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Disability-related discrimination",
+          "description": "Unfair treatment of employees based on disability",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Employee Conduct & Misconduct",
+      "description": "Issues related to employee behavior, ethics, and policy violations",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Theft or fraud",
+          "description": "Stealing company property or committing financial fraud",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Substance abuse on premises",
+          "description": "Use of alcohol, drugs, or other substances at work",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unauthorized access or data breach",
+          "description": "Accessing restricted data or systems without authorization",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Conflict of interest",
+          "description": "Undisclosed personal interests conflicting with company interests",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Absenteeism or tardiness",
+          "description": "Excessive unplanned absences or persistent lateness",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Violation of company policy",
+          "description": "Breach of established workplace rules or code of conduct",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Misuse of company resources",
+          "description": "Unauthorized personal use of company assets or time",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Management & HR Issues",
+      "description": "Concerns related to management behavior or HR processes",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Unfair performance evaluation",
+          "description": "Biased or inaccurate performance reviews",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Wrongful termination concern",
+          "description": "Concerns about unfair or unlawful dismissal",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Favoritism or nepotism",
+          "description": "Unfair preferential treatment in promotions or assignments",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Retaliation after complaint",
+          "description": "Adverse action taken following a complaint or whistleblowing",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Pay or benefits dispute",
+          "description": "Disagreements about salary, bonuses, or entitlements",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Micromanagement or excessive monitoring",
+          "description": "Overbearing supervision that impacts employee wellbeing",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Infrastructure & Facilities",
+      "description": "Non-human incidents affecting workplace operations",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Power failure",
+          "description": "Electrical power outages or failures",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Internet or network outage",
+          "description": "Internet connectivity or network service disruptions",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "HVAC or ventilation failure",
+          "description": "Issues with air conditioning, heating, or ventilation systems",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Structural damage or unsafe premises",
+          "description": "Physical damage to the building or unsafe conditions",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Sanitation or hygiene issue",
+          "description": "Poor cleanliness or sanitation in the workplace",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Security breach",
+          "description": "Unauthorized entry or security system failure",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Emergency & Crisis Management",
+      "description": "Major or rare high-impact incidents requiring emergency response",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Natural disaster (flood, earthquake)",
+          "description": "Natural disasters affecting workplace operations",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Medical emergency",
+          "description": "Serious medical incidents requiring emergency services",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Bomb threat or suspicious package",
+          "description": "Bomb threats or discovery of suspicious objects",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Pandemic or disease outbreak",
+          "description": "Contagious disease incidents affecting staff",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Evacuation drill or lockdown",
+          "description": "Emergency drills or lockdown procedures",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Cyber & IT Security",
+      "description": "Digital and online security incidents",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Phishing or social engineering attack",
+          "description": "Attempts to deceive employees into revealing credentials or data",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Ransomware or malware attack",
+          "description": "Malicious software affecting company systems",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Data privacy or confidentiality breach",
+          "description": "Unauthorized disclosure of confidential company or client data",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unauthorized device or software use",
+          "description": "Use of unapproved devices or software on company network",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Account compromise",
+          "description": "Unauthorized access to employee or company accounts",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Positive Incident Reporting",
+      "description": "Capture commendable actions and positive workplace contributions",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Employee safety suggestion implemented",
+          "description": "A safety suggestion from an employee that was successfully implemented",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Outstanding performance or initiative",
+          "description": "Exceptional effort or proactive action beyond regular duties",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Peer support or mentoring",
+          "description": "Employees supporting or mentoring colleagues",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Successful conflict resolution",
+          "description": "Effective and professional resolution of a workplace conflict",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    }
+  ]
+}

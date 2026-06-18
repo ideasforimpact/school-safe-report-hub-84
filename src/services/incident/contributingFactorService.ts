@@ -40,17 +40,22 @@ export const contributingFactorService = {
   },
 
   // Get contributing factors - always requiring clientId
-  getContributingFactors: async (clientId: string) => {
+  getContributingFactors: async (clientId: string, clientTypeId?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
       }
 
-      const { data: factors, error } = await supabase
+      let query = supabase
         .from('contributing_factors')
         .select('id, name, description, weight, client_id')
-        .eq('client_id', clientId)
-        .order('name');
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data: factors, error } = await query.order('name');
 
       if (error) {
         throw error;

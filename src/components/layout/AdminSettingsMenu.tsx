@@ -5,9 +5,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Settings, AlertTriangle, School, Users, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientIntegration } from '@/hooks/useClientIntegration';
+import { useLang } from '@/hooks/useLang';
 
 const AdminSettingsMenu = () => {
   const navigate = useNavigate();
+  const lang = useLang();
   
   return (
     <DropdownMenu>
@@ -34,10 +36,10 @@ const AdminSettingsMenu = () => {
           <span>Incident Configuration</span>
         </DropdownMenuItem>
         
-        {/* Educational Structure */}
+        {/* Organisational Structure */}
         <DropdownMenuItem onClick={() => navigate('/educational-configuration')} className="cursor-pointer">
           <School className="h-4 w-4 mr-2" />
-          <span>Educational Structure</span>
+          <span>{lang.structure.pageTitle}</span>
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />

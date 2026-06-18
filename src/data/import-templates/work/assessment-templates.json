@@ -1,0 +1,116 @@
+[
+  {
+    "client_id": null,
+    "title": "Workplace Safety Assessment",
+    "description": "Evaluates the overall safety practices, hazard controls, and compliance posture of the workplace to protect employees and visitors",
+    "category_name": "Safety",
+    "questions": [
+      {
+        "text": "Are emergency exits clearly marked, unobstructed, and accessible at all times?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are fire extinguishers in place, regularly inspected, and staff trained on their use?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is a first aid kit available and stocked, with at least one trained first aider on site?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are all electrical panels, wiring, and equipment in safe working condition and inspected periodically?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is PPE (Personal Protective Equipment) available, maintained, and used appropriately for relevant roles?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": true
+      },
+      {
+        "text": "Has a formal risk assessment been conducted and reviewed within the last 12 months?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are incident and near-miss reports being recorded and reviewed for corrective action?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Have all employees received safety induction and role-specific safety training?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      }
+    ]
+  },
+  {
+    "client_id": null,
+    "title": "Harassment & Discrimination Prevention Assessment",
+    "description": "Assesses the organization's policies, awareness, and response mechanisms to prevent harassment and discrimination in the workplace",
+    "category_name": "HR Compliance",
+    "questions": [
+      {
+        "text": "Is there a written anti-harassment and anti-discrimination policy that all employees have acknowledged?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Has the organization provided POSH (Prevention of Sexual Harassment) or equivalent training to all staff in the past year?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is an Internal Complaints Committee (ICC) or equivalent body constituted and active?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are complaint channels (anonymous or named) accessible and clearly communicated to all employees?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are complaints addressed within defined SLAs and outcomes documented?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is there a non-retaliation policy and has it been communicated to all employees?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      }
+    ]
+  }
+]

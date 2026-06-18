@@ -1,0 +1,67 @@
+{
+  "report_types": [
+    {
+      "id": "",
+      "name": "Workplace Incident Report",
+      "description": "Standard report for any workplace accident, injury, or unsafe event",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Near Miss Report",
+      "description": "Report for events that could have caused harm but did not",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Hazard Identification Report",
+      "description": "Report identifying a potential safety hazard in the workplace",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Harassment or Discrimination Complaint",
+      "description": "Formal complaint related to harassment, bullying, or discriminatory behavior",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Grievance Report",
+      "description": "Employee grievance regarding working conditions, management, or HR matters",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Security Incident Report",
+      "description": "Report for physical or cyber security breaches or threats",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Investigation Report",
+      "description": "Detailed findings and analysis following a formal investigation",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Corrective Action Report",
+      "description": "Documentation of corrective or preventive measures taken after an incident",
+      "is_active": true,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Emergency Response Report",
+      "description": "Report documenting emergency situations and the response taken",
+      "is_active": true,
+      "client_id": ""
+    }
+  ]
+}

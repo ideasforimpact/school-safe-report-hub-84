@@ -1589,7 +1589,7 @@ async function handleCreateClient(clientData: any) {
       allowed_domains: Array.isArray(clientInfo.allowedDomains) ? clientInfo.allowedDomains.join(',') : null,
       super_admin_allowed_domain: Array.isArray(clientInfo.superAdminAllowedDomains) ? clientInfo.superAdminAllowedDomains.join(',') : null,
       auth_providers: clientInfo.authProviders ? JSON.stringify(clientInfo.authProviders) : null,
-      client_type_id: clientTypeId || null,
+      client_type_id: clientTypeId,
       client_logo: clientLogoUrl, // Store path: client-logos/{clientId}/logo.{ext}
       logo: clientLogoUrl, // Store path: client-logos/{clientId}/logo.{ext}
       is_head_office: isHeadOffice,
@@ -1790,6 +1790,21 @@ async function handleUpdateClient(clientData: any) {
     // if (clientInfo.website !== undefined) updateData.website = clientInfo.website;
     
     if (clientTypeId) {
+      // Block type change if client already has incidents
+      const { count: incidentCount, error: incidentCheckError } = await supabase
+        .from('incidents')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', clientId);
+
+      if (incidentCheckError) throw new Error(`Failed to check incidents: ${incidentCheckError.message}`);
+
+      if (incidentCount && incidentCount > 0) {
+        return new Response(
+          JSON.stringify({ error: 'CLIENT_TYPE_LOCKED', message: 'Client type cannot be changed because incidents have already been created for this client.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       updateData.client_type_id = clientTypeId;
     }
     

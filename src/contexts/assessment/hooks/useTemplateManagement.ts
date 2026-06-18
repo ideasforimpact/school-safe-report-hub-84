@@ -8,18 +8,18 @@ import { useAuth } from '@/contexts/auth';
 export const useTemplateManagement = (userId?: string) => {
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
+  const clientTypeId = employeeData?.clientType?.id || (user as any)?.clientType?.id;
 
   // Load templates from Supabase
   const loadTemplates = async () => {
     try {
       setLoading(true);
-      
-      if (!employeeData?.clientId) {
-        throw new Error('Client ID not available. Please ensure you are properly authenticated.');
+      if (!employeeData?.clientId || !clientTypeId) {
+        setLoading(false);
+        return;
       }
-      
-      const data = await templateService.getTemplates(employeeData.clientId);
+      const data = await templateService.getTemplates(employeeData.clientId, clientTypeId);
       console.log('Loaded templates:', data);
       setTemplates(data);
     } catch (error) {
@@ -32,10 +32,10 @@ export const useTemplateManagement = (userId?: string) => {
   };
 
   useEffect(() => {
-    if (employeeData?.clientId) {
+    if (employeeData?.clientId && clientTypeId) {
       loadTemplates();
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, clientTypeId]);
 
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
     try {

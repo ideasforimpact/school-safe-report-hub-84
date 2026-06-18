@@ -1,0 +1,74 @@
+{
+  "contributing_factors": [
+    {
+      "id": "",
+      "name": "Inadequate Training",
+      "description": "Insufficient job-specific or safety training provided to the employee",
+      "weight": 1,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Equipment or Tool Failure",
+      "description": "Faulty, poorly maintained, or inappropriate equipment or tools",
+      "weight": 2,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Human Error",
+      "description": "Mistake, carelessness, or failure to follow established procedures",
+      "weight": 3,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Lack of Supervision",
+      "description": "Inadequate or absent oversight during the task or incident",
+      "weight": 4,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Policy or Procedure Non-Compliance",
+      "description": "Failure to follow workplace safety rules, policies, or standard operating procedures",
+      "weight": 5,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Workplace Stress or Fatigue",
+      "description": "Physical or mental exhaustion, overwork, or high-pressure environment",
+      "weight": 6,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Poor Communication",
+      "description": "Miscommunication, delayed information, or lack of clarity between teams or individuals",
+      "weight": 7,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Environmental or Facility Hazard",
+      "description": "Unsafe physical conditions such as poor lighting, wet floors, or extreme temperatures",
+      "weight": 8,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "Organizational Culture or Management Issue",
+      "description": "Toxic culture, lack of accountability, or management failures contributing to the incident",
+      "weight": 9,
+      "client_id": ""
+    },
+    {
+      "id": "",
+      "name": "System or IT Failure",
+      "description": "Technical or software failures that contributed to the incident",
+      "weight": 10,
+      "client_id": ""
+    }
+  ]
+}

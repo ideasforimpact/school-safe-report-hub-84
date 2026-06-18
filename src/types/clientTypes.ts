@@ -80,7 +80,7 @@ export const prepareClientForDb = (client: any): Omit<ClientRecord, 'id' | 'crea
     logo: client.logo || null,
     client_logo: client.client_logo || null,
     institution_type: client.institutionType || null,
-    client_type_id: client.clientTypeId || null,
+    client_type_id: client.clientTypeId,
     allowed_domains: client.allowedDomains && client.allowedDomains.length > 0 
       ? client.allowedDomains.join(',') 
       : null,
