@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Agent, Runner, withTrace } from "https://esm.sh/@openai/agents@latest";
+import { Agent, Runner, withTrace } from "npm:@openai/agents@0.0.14";
 import { z } from "https://esm.sh/zod@3";
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from "../_shared/env.ts";
 
