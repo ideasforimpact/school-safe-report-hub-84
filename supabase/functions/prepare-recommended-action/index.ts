@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Agent, Runner, withTrace } from "https://esm.sh/@openai/agents@latest";
+// @ts-ignore — Deno ESM import; resolved at runtime by Supabase Edge Functions runtime
+import { Agent, Runner, withTrace } from "npm:@openai/agents";
 import { z } from "https://esm.sh/zod@3";
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from "../_shared/env.ts";
 
@@ -10,14 +11,12 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Input schema
 const requestSchema = z.object({
   incidentJson: z.any(),
   client_id: z.string().uuid(),
   employee_id: z.string().uuid(),
 });
 
-// Output schema
 const aiResultSchema = z.object({
   summary: z.string(),
   severity: z.enum(["low", "medium", "high", "critical"]),
@@ -91,7 +90,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate request
     const body = await req.json();
     const validatedData = requestSchema.parse(body);
     const { incidentJson, client_id, employee_id } = validatedData;
@@ -118,10 +116,9 @@ serve(async (req) => {
       );
     }
 
-    // Correct env variable name for OpenAI
+    // Validate API key exists before attempting to run the agent
     const openAiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openAiApiKey) {
-      // Debug: show missing key
       console.error("OPENAI_API_KEY is undefined or missing.");
       return new Response(
         JSON.stringify({ error: "OpenAI API key not configured" }),
@@ -129,7 +126,6 @@ serve(async (req) => {
       );
     }
 
-    // Prompt with incident data
     const instructionsWithIncident = `${SYSTEM_PROMPT}
 
     ### Incident Data to Analyze:
@@ -137,48 +133,38 @@ serve(async (req) => {
 
     Please analyze the above incident data and provide recommendations following the specified JSON format.`;
 
-    // Pass apiKey directly as required
+    // apiKey is NOT passed to Agent — @openai/agents reads OPENAI_API_KEY from env automatically
     const agent = new Agent({
       name: "School Safety Compliance Assistant",
       instructions: instructionsWithIncident,
       outputType: aiResultSchema,
-      model: "gpt-4o-mini", // update model if needed
-      apiKey: openAiApiKey, // Direct assignment
+      model: "gpt-4o-mini",
     });
 
     const runner = new Runner();
 
-    const userMessage = `Analyze the incident data provided and generate recommendations in valid JSON.`;
-
-    // Wrap runner.run with trace for monitoring
     const result = await withTrace(
       "prepare-recommended-action",
       async () => {
-        return await runner.run(agent, userMessage);
+        return await runner.run(
+          agent,
+          "Analyze the incident data provided and generate recommendations in valid JSON.",
+        );
       },
-      {
-        metadata: {
-          client_id,
-          employee_id,
-        },
-      }
+      { metadata: { client_id, employee_id } },
     );
-    const finalOutput = result.finalOutput || result.output || result;
-    let parsedResult;
 
-    // Parse JSON output robustly
-    if (typeof finalOutput === "string") {
-      try {
-        parsedResult = JSON.parse(finalOutput);
-      } catch {
-        const match = finalOutput.match(/\{[\s\S]*\}$/);
-        parsedResult = match ? JSON.parse(match[0]) : null;
-        if (!parsedResult) throw new Error("Failed to extract JSON from response");
-      }
-    } else {
-      parsedResult = finalOutput;
+    // finalOutput is the typed output when outputType (Zod schema) is set on Agent
+    const parsedResult = result.finalOutput;
+
+    if (!parsedResult) {
+      return new Response(
+        JSON.stringify({ error: "Empty AI response" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
+    // Re-validate in case the SDK returned a partially matched object
     const validatedResult = aiResultSchema.parse(parsedResult);
 
     return new Response(
@@ -192,10 +178,11 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+    console.error("prepare-recommended-action error:", error);
     return new Response(
       JSON.stringify({
-        error: error?.message || "Failed to generate AI recommendations",
-        details: error?.stack,
+        error: (error as Error)?.message || "Failed to generate AI recommendations",
+        details: (error as Error)?.stack,
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
