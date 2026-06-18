@@ -96,12 +96,12 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
         return {
           label: 'File Number',
           placeholder: 'CB1063503341321',
-          maxLength: 15,
-          pattern: /^[A-Z]{2}[0-9]{13}$/,
+          maxLength: 16,
+          pattern: /^[A-Z]{2}[0-9]{14}$/,
           format: (val: string) =>
             val.toUpperCase().replace(/[^A-Z0-9]/g, ''),
           validate: (val: string) =>
-            /^[A-Z]{2}[0-9]{13}$/.test(val)
+            /^[A-Z]{2}[0-9]{14}$/.test(val)
         };
       default:
         return {
