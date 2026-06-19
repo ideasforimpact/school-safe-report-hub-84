@@ -179,7 +179,7 @@ const IncidentDetail = () => {
     onPayload: handleRefreshIncident,
   });
  
-  if (isLoading || isFetchingIncident) {
+  if ((isLoading || isFetchingIncident) && !incident) {
     return (
       <Layout>
         <Loader text="Loading incident details..." />
