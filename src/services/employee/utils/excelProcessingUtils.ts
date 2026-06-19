@@ -3,6 +3,42 @@ import * as XLSX from 'xlsx';
 import { RawEmployeeData } from '../types/importTypes';
 
 /**
+ * Sanitize a raw cell value from Excel or CSV.
+ *
+ * Removes invisible characters that copy-paste from Word / Outlook / browsers
+ * leaves behind (zero-width chars, BOM, soft hyphen, word joiner). Converts
+ * non-breaking space and line/paragraph separators into a regular space so
+ * trimming and downstream regex checks behave as expected. Finally trims
+ * leading/trailing whitespace.
+ *
+ * Returns a string. Empty / null / undefined become ''.
+ *
+ * NOTE: This intentionally does NOT strip characters from inside the value
+ * that are valid in names/addresses (unicode letters etc.). It only removes
+ * formatting noise. Validation rules elsewhere are unchanged.
+ */
+export const sanitizeCellValue = (value: any): string => {
+  if (value === undefined || value === null) return '';
+  return String(value)
+    // Strip invisible / formatting characters that copy-paste from
+    // Word / Outlook / browsers tends to leave behind:
+    //   \u200B zero-width space
+    //   \u200C zero-width non-joiner
+    //   \u200D zero-width joiner
+    //   \u2060 word joiner
+    //   \uFEFF BOM / zero-width no-break space
+    //   \u00AD soft hyphen
+    .replace(/[\u200B\u200C\u200D\u2060\uFEFF\u00AD]/g, '')
+    // Normalize exotic whitespace into a regular space so trim() and
+    // \s-based regexes treat them like normal whitespace:
+    //   \u00A0 non-breaking space
+    //   \u2028 line separator
+    //   \u2029 paragraph separator
+    .replace(/[\u00A0\u2028\u2029]/g, ' ')
+    .trim();
+};
+
+/**
  * Safely detect CSV delimiter (comma / semicolon / tab)
  */
 const detectDelimiter = (headerLine: string): string => {
@@ -154,16 +190,16 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
             };
             const getFieldValue = (fieldNames: string[]): string => {
               for (const name of fieldNames) {
-                if (row[name] !== undefined) return String(row[name]);
-                
+                if (row[name] !== undefined) return sanitizeCellValue(row[name]);
+
                 const lowerName = name.toLowerCase();
                 for (const key of Object.keys(row)) {
-                  if (key.toLowerCase() === lowerName) return String(row[key]);
+                  if (key.toLowerCase() === lowerName) return sanitizeCellValue(row[key]);
                 }
               }
               return '';
             };
-            
+
             const findModuleField = (): string[] => {
               const knownFieldNames = [
                 'Module', 'Modules', 'module', 'modules',
@@ -173,42 +209,42 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               const foundValues: any[] = [];
               for (const key of Object.keys(row)) {
                 if (knownFieldNames.some(v => v.toLowerCase() === key.toLowerCase())) {
-                  foundValues.push(row[key]);  
+                  foundValues.push(row[key]);
                 }
               }
               if (foundValues.length === 0) return [];
 
               return foundValues
-                .flatMap(value => String(value).split(","))
-                .map(v => v.trim())
+                .flatMap(value => sanitizeCellValue(value).split(","))
+                .map(v => sanitizeCellValue(v))
                 .filter(Boolean);
             };
-            
+
             const findEmailField = (): string => {
-              const knownFieldNames = ['Email', 'email', 'EMAIL', 'EmailAddress', 'Email Address', 
+              const knownFieldNames = ['Email', 'email', 'EMAIL', 'EmailAddress', 'Email Address',
                 'email_address', 'Mail', 'E-Mail', 'e-mail', 'E Mail', 'email_id', 'Email ID'];
-              
+
               for (const name of knownFieldNames) {
                 if (row[name] !== undefined && row[name] !== '') {
-                  return String(row[name]);
+                  return sanitizeCellValue(row[name]);
                 }
               }
-              
+
               for (const key of Object.keys(row)) {
                 if ((key.toLowerCase().includes('email') || key.toLowerCase().includes('mail')) && row[key] !== '') {
                   console.log(`Found email in column: ${key} = ${row[key]}`);
-                  return String(row[key]);
+                  return sanitizeCellValue(row[key]);
                 }
               }
-              
+
               for (const key of Object.keys(row)) {
                 const value = row[key];
                 if (typeof value === 'string' && value.includes('@')) {
                   console.log(`Found email by @ symbol in column: ${key} = ${value}`);
-                  return value;
+                  return sanitizeCellValue(value);
                 }
               }
-              
+
               return '';
             };
             
@@ -379,15 +415,19 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
 
               return String(value);
             };
+            // Cell sanitization is handled by the module-scope `sanitizeCellValue`
+            // declared at the top of this file. It strips zero-width chars, BOM,
+            // soft hyphen, word joiner, and normalizes NBSP / line / paragraph
+            // separators to a regular space, then trims.
             const getFieldValue = (fieldNames: string[]): string => {
               for (const name of fieldNames) {
                 // Try direct key match
-                if (row[name] !== undefined) return String(row[name]);
-                
+                if (row[name] !== undefined) return sanitizeCellValue(row[name]);
+
                 // Try case-insensitive match
                 const lowerName = name.toLowerCase();
                 for (const key of Object.keys(row)) {
-                  if (key.toLowerCase() === lowerName) return String(row[key]);
+                  if (key.toLowerCase() === lowerName) return sanitizeCellValue(row[key]);
                 }
               }
               return '';
@@ -402,24 +442,24 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               
               for (const name of knownFieldNames) {
                 if (row[name] !== undefined && row[name] !== '') {
-                  return String(row[name]);
+                  return sanitizeCellValue(row[name]);
                 }
               }
-              
+
               // Try case-insensitive match for any field containing "email" or "mail"
               for (const key of Object.keys(row)) {
                 if ((key.toLowerCase().includes('email') || key.toLowerCase().includes('mail')) && row[key] !== '') {
                   console.log(`Found email in column: ${key} = ${row[key]}`);
-                  return String(row[key]);
+                  return sanitizeCellValue(row[key]);
                 }
               }
-              
+
               // Try any field that might be an email (contains @)
               for (const key of Object.keys(row)) {
                 const value = row[key];
                 if (typeof value === 'string' && value.includes('@')) {
                   console.log(`Found email by @ symbol in column: ${key} = ${value}`);
-                  return value;
+                  return sanitizeCellValue(value);
                 }
               }
               
@@ -439,11 +479,11 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
             }
             if (foundValues.length === 0) return [];
             return foundValues
-              .flatMap(value => String(value).split(","))
-              .map(v => v.trim())
+              .flatMap(value => sanitizeCellValue(value).split(","))
+              .map(v => sanitizeCellValue(v))
               .filter(Boolean);
           };
-            
+
             // Fix email mapping with enhanced detection
             const mappedData: RawEmployeeData = {
               employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']),
