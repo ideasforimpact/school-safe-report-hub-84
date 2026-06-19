@@ -253,7 +253,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
                   </div> */}
                   <div>
                     <p className="text-gray-500">File Type</p>
-                    <p>{resource.file?.type || resource.document_url?.split('?')[0].split('.').pop()?.toUpperCase() || fileType.toUpperCase()}</p>
+                    <p>{resource.document_url?.split('?')[0].split('.').pop()?.toUpperCase() || resource.file?.type || fileType.toUpperCase()}</p>
                   </div>
                 </>
               )}
