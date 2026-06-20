@@ -166,27 +166,34 @@ const Login = () => {
     try {
       setMicrosoftLoading(true);
       setError("");
-      
+
       const origin = window.location.origin;
-      const redirectTo = `${origin}/dashboard`;
-      
+      // Route through /callback so AuthProvider.onAuthStateChange runs validate-employee
+      // + module resolution BEFORE we land on a real page. Previously this went straight
+      // to /dashboard which raced ahead of Redux hydration.
+      const redirectTo = `${origin}/callback`;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'azure',
         options: {
           redirectTo: redirectTo,
+          // Match the Google scope shape — we only need basic identity claims; the
+          // employees-table lookup downstream is what actually authorises the user.
+          scopes: 'openid profile email',
           queryParams: {
             ts: new Date().getTime().toString()
           }
         }
       });
-      
+
       if (error) {
         console.error("Microsoft login error:", error);
         toast.error("Microsoft login failed. Please try again.");
         setError(`Microsoft authentication failed: ${error.message}`);
         setMicrosoftLoading(false);
       }
-      
+      // Successful OAuth will redirect the page; no else branch needed.
+
     } catch (err) {
       console.error("Microsoft login unexpected error:", err);
       setError("An error occurred with Microsoft login. Please try again.");
@@ -294,9 +301,9 @@ const Login = () => {
               </Button>
               
               {/* Enhanced Microsoft SSO button */}
-              {/* <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 className="w-full flex items-center gap-3 justify-center bg-slate-800/95 hover:bg-slate-800 backdrop-blur-sm border border-slate-600/40 text-white shadow-lg shadow-slate-400/15 transition-all transform hover:scale-[1.02] hover:shadow-xl hover:shadow-slate-400/25 py-6 rounded-xl"
                 onClick={handleMicrosoftLogin}
                 disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
@@ -308,7 +315,7 @@ const Login = () => {
                   <path d="M20.5 12.5H12.5V20.5H20.5V12.5Z" fill="white"/>
                 </svg>
                 <span className="text-base font-medium">{microsoftLoading ? "Connecting..." : "Sign in with Microsoft"}</span>
-              </Button> */}
+              </Button>
               
               {/* Enhanced Zoho SSO button */}
               {/* <Button 
