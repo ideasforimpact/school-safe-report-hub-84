@@ -66,7 +66,7 @@ export const reportTypeService = {
   },
 
   // Add report type - RLS handles client validation automatically
-  addReportType: async (name: string, description: string | null = null, clientId?: string) => {
+  addReportType: async (name: string, description: string | null = null, clientId?: string, clientTypeId?: string) => {
     try {
       const trimmedName = name.trim();
       if (!trimmedName) {
@@ -93,10 +93,11 @@ export const reportTypeService = {
       const { data, error } = await supabase
         .from('incident_report_types')
         .insert([
-          { 
-            name: trimmedName, 
-            description: description || null, 
-            client_id: finalClientId 
+          {
+            name: trimmedName,
+            description: description || null,
+            client_id: finalClientId,
+            client_type_id: clientTypeId || null
           }
         ])
         .select()

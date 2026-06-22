@@ -146,11 +146,12 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       setIsSaving(true);
       // Pass client ID from auth context
       await priorityService.addPriority(
-        newPriorityName.trim(), 
-        newPriorityDescription.trim(), 
-        newPriorityColor, 
+        newPriorityName.trim(),
+        newPriorityDescription.trim(),
+        newPriorityColor,
         parseInt(newPriorityWeight) || 0,
-        employeeData?.clientId
+        employeeData?.clientId,
+        clientTypeId
       );
       setNewPriorityName('');
       setNewPriorityDescription('');

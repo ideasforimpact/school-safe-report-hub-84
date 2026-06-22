@@ -60,7 +60,7 @@ export function useIncidentCategories() {
     }
 
     try {
-      await categoryService.addCategory(name, undefined, employeeData.clientId);
+      await categoryService.addCategory(name, undefined, employeeData.clientId, clientTypeId);
       
       // Refresh data from server to ensure consistency
       const [categoriesData, subcategoriesData] = await Promise.all([
@@ -183,7 +183,7 @@ export function useIncidentCategories() {
     }
 
     try {
-      await categoryService.addSubcategory(name, categoryId, undefined, employeeData.clientId);
+      await categoryService.addSubcategory(name, categoryId, undefined, employeeData.clientId, clientTypeId);
       
       // Refresh subcategories from server to ensure consistency
       const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId);
