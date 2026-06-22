@@ -70,6 +70,9 @@ const AssignSOPDialog: React.FC<AssignSOPDialogProps> = ({
           onAssigned(assignedCount);
           onOpenChange(false);
         },
+        onError: (error: Error) => {
+          toast.error(error.message || 'Failed to assign SOP');
+        },
       }
     );
   };
