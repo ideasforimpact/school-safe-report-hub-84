@@ -102,7 +102,7 @@ export const categoryService = {
     }
   },
 
-  addCategory: async (name: string, description?: string, clientId?: string) => {
+  addCategory: async (name: string, description?: string, clientId?: string, clientTypeId?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -118,11 +118,10 @@ export const categoryService = {
       if (isDuplicate) {
         throw new Error('A category with this name already exists');
       }
-      
       const { data, error } = await supabase
         .from('incident_categories')
         .insert([
-          { name: trimmedName, description: description || null, client_id: clientId, is_active: true }
+          { name: trimmedName, description: description || null, client_id: clientId, is_active: true, client_type_id: clientTypeId || null }
         ])
         .select();
 
@@ -256,7 +255,7 @@ export const categoryService = {
     }
   },
 
-  addSubcategory: async (name: string, categoryId: string, description?: string, clientId?: string) => {
+  addSubcategory: async (name: string, categoryId: string, description?: string, clientId?: string, clientTypeId?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -276,12 +275,13 @@ export const categoryService = {
       const { data, error } = await supabase
         .from('incident_subcategories')
         .insert([
-          { 
-            name: trimmedName, 
-            category_id: categoryId, 
-            description: description || null, 
+          {
+            name: trimmedName,
+            category_id: categoryId,
+            description: description || null,
             client_id: clientId,
-            is_active: true 
+            is_active: true,
+            client_type_id: clientTypeId || null
           }
         ])
         .select();

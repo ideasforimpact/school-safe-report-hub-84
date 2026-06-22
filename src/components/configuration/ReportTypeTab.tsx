@@ -140,9 +140,10 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       setIsSaving(true);
       // Pass client ID from auth context
       await reportTypeService.addReportType(
-        newTypeName.trim(), 
-        newTypeDescription.trim(), 
-        employeeData?.clientId
+        newTypeName.trim(),
+        newTypeDescription.trim(),
+        employeeData?.clientId,
+        clientTypeId
       );
       setNewTypeName('');
       setNewTypeDescription('');

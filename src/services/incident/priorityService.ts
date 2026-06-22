@@ -69,7 +69,7 @@ export const priorityService = {
   },
 
   // Add priority - RLS handles client validation automatically
-  addPriority: async (name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientId?: string) => {
+  addPriority: async (name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientId?: string, clientTypeId?: string) => {
     try {
       const trimmedName = name.trim();
       if (!trimmedName) {
@@ -97,12 +97,13 @@ export const priorityService = {
       const { data, error } = await supabase
         .from('incident_priorities')
         .insert([
-          { 
-            name: trimmedName, 
-            description: description || null, 
+          {
+            name: trimmedName,
+            description: description || null,
             color: color || null,
             weight: weight || 0,
-            client_id: finalClientId 
+            client_id: finalClientId,
+            client_type_id: clientTypeId || null
           }
         ])
         .select()

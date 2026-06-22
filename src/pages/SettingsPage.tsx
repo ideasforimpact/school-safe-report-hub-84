@@ -198,7 +198,7 @@ const SettingsPage = () => {
                     <Card className="w-full">
                       <CardHeader>
                         <CardTitle>Student Management</CardTitle>
-                        <CardDescription>Manage students in your institution</CardDescription>
+                        <CardDescription>Manage students in your {clientType === 'school' ? 'school' : 'institution'}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <StudentManagement embedded={true} />

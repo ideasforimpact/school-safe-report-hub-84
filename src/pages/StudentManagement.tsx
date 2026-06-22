@@ -403,7 +403,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Student Management</h1>
             <p className="text-muted-foreground">
-              Manage students in your institution
+              Manage students in your {employeeData?.clientType?.key === 'school' ? 'school' : 'institution'}
             </p>
           </div>
           {!isReadOnlySwitchedContext && (

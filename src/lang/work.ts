@@ -105,7 +105,7 @@ const work: ClientLang = {
   // Organisational structure (Site/Office → Department → Team + Facility)
   structure: {
     pageTitle: 'Workplace Structure',
-    pageDescription: 'Manage sites, departments, teams, and facilities',
+    pageDescription: 'Manage sites / Offices and facilities',
     campus: 'Site / Office',
     campusPlural: 'Sites / Offices',
     grade: 'Department',
