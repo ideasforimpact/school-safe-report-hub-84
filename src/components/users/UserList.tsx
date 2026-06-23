@@ -421,7 +421,9 @@ const UserList = ({
                 })()}
               </div>
             </TableCell>
-            <TableCell>{user.email}</TableCell>
+            <TableCell className="max-w-[200px]">
+                <span className="block truncate" title={user.email}>{user.email}</span>
+              </TableCell>
             <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
             <TableCell className="text-center">
               <button

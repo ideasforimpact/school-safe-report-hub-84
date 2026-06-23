@@ -1095,6 +1095,7 @@ const EditUserDialog = ({
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className={formData.email && !isValidEmail(formData.email) ? 'border-red-500' : ''}
+                maxLength={50}
               />
                 {formData.email && !isValidEmail(formData.email) && (
                   <p className="text-xs text-red-500">Please enter a valid email address</p>

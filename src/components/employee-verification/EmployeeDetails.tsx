@@ -143,9 +143,9 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
             <p className="text-sm text-gray-500 text-left">Employee ID</p>
             <p className="font-medium text-left">{employee.employeeId}</p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-gray-500 text-left">Email</p>
-            <p className="font-medium text-left">{employee.email}</p>
+            <p className="font-medium text-left break-all">{employee.email}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Phone</p>
