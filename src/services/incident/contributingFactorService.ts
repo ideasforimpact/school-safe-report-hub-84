@@ -69,7 +69,7 @@ export const contributingFactorService = {
   },
 
   // Add contributing factor - always requiring clientId
-  addContributingFactor: async (name: string, description: string, weight: string, clientId: string) => {
+  addContributingFactor: async (name: string, description: string, weight: string, clientId: string, clientTypeId?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -89,11 +89,12 @@ export const contributingFactorService = {
       const { data, error } = await supabase
         .from('contributing_factors')
         .insert([
-          { 
-            name: trimmedName, 
-            description: description || null, 
-            weight: weight || null, 
-            client_id: clientId 
+          {
+            name: trimmedName,
+            description: description || null,
+            weight: weight || null,
+            client_id: clientId,
+            client_type_id: clientTypeId || null
           }
         ])
         .select()

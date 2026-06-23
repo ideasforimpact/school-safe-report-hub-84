@@ -166,10 +166,11 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       setIsAdding(true);
       // Strictly using contributingFactorService and passing clientId
       await contributingFactorService.addContributingFactor(
-        currentName.trim(), 
-        currentDescription.trim(), 
+        currentName.trim(),
+        currentDescription.trim(),
         currentWeight,
-        employeeData.clientId
+        employeeData.clientId,
+        clientTypeId
       );
       
       // Refresh factors from service

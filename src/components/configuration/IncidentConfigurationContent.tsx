@@ -50,6 +50,7 @@ const IncidentConfigurationContent = () => {
     updateSubcategory,
     deleteSubcategory,
     loadData,
+    silentRefresh,
   } = useIncidentCategories();
 
   // Fetch contributing factors
@@ -356,8 +357,8 @@ const IncidentConfigurationContent = () => {
   };
 
   const handleCategoriesUpdated = useCallback(() => {
-    loadData();
-  }, [loadData]);
+    silentRefresh();
+  }, [silentRefresh]);
 
 
   useRealTimeSubHook({

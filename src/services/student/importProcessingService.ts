@@ -9,7 +9,7 @@ import { checkBulkStudentIdDuplicates } from './studentValidationService';
  * Handles both new student insertion and existing student updates
  * Now includes client-specific duplicate checking
  */
-export const processStudentData = async (rawData: RawStudentData[], clientId?: string): Promise<ImportResult> => {
+export const processStudentData = async (rawData: RawStudentData[], clientId?: string, clientTypeId?: string): Promise<ImportResult> => {
   const result: ImportResult = {
     addedStudents: [],
     successCount: 0,
@@ -145,7 +145,8 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
           headers: { path: 'bulk-create', 'client-id': clientId },
           body: {
             students: studentsToCreate,
-            client_id: clientId
+            client_id: clientId,
+            client_type_id: clientTypeId || null
           }
         }
       );
