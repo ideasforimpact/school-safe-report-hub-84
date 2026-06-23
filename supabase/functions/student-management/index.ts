@@ -354,7 +354,8 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     grade: body.grade,
     section: body.section,
     campus: body.campus,
-    client_id: body.client_id
+    client_id: body.client_id,
+    client_type_id: body.clientTypeId || body.client_type_id || null
   };
 
   // Add IDs if provided
@@ -1006,6 +1007,7 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
 async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) {
   const students = body.students || [];
   const clientId = body.client_id;
+  const clientTypeId = body.client_type_id || null;
 
   if (!students.length) {
     return new Response(
@@ -1057,7 +1059,8 @@ async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) 
       campus_id: campusId,
       grade_id: gradeId,
       section_id: sectionId,
-      client_id: clientId
+      client_id: clientId,
+      client_type_id: clientTypeId
     });
   });
 

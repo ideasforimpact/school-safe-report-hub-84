@@ -115,7 +115,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       }
 
       console.log('Starting import process...');
-      await processStudentExcel(file, employeeData.clientId);
+      await processStudentExcel(file, employeeData.clientId, undefined, employeeData.clientType?.id);
       
       // Refresh the students list after successful import
       console.log('Import completed, refreshing student list...');

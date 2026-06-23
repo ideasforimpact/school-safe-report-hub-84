@@ -10,6 +10,7 @@ export interface CreateTemplateRequest {
   clientId: string;
   employeeId: string;
   templateId?: string; // For updates
+  clientTypeId?: string;
 }
 
 export interface CreateTemplateResponse {
@@ -253,7 +254,8 @@ export const templateService = {
           questions: processedQuestions,
           clientId: request.clientId,
           employeeId: request.employeeId,
-          templateId: request.templateId // Will be undefined for creates
+          templateId: request.templateId,
+          clientTypeId: request.clientTypeId
         }
       });
 

@@ -13,6 +13,26 @@ export function useIncidentCategories() {
   // Load categories and subcategories on mount
   const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? undefined;
 
+  const fetchAndApply = async () => {
+    if (!employeeData?.clientId || !clientTypeId) return;
+
+    const [categoriesData, subcategoriesData] = await Promise.all([
+      categoryService.getCategories(employeeData.clientId, clientTypeId),
+      categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId),
+    ]);
+
+    setCategories(categoriesData);
+
+    const mappings: Record<string, SubcategoryItem[]> = {};
+    subcategoriesData.forEach(sub => {
+      if (sub.category_id) {
+        if (!mappings[sub.category_id]) mappings[sub.category_id] = [];
+        mappings[sub.category_id].push(sub);
+      }
+    });
+    setSubcategoryMappings(mappings);
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -20,31 +40,22 @@ export function useIncidentCategories() {
         toast.error('Client information not available');
         return;
       }
-
-      const [categoriesData, subcategoriesData] = await Promise.all([
-        categoryService.getCategories(employeeData.clientId, clientTypeId),
-        categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId),
-      ]);
-
-      setCategories(categoriesData);
-      
-      // Group subcategories by category_id
-      const mappings: Record<string, SubcategoryItem[]> = {};
-      subcategoriesData.forEach(sub => {
-        if (sub.category_id) {
-          if (!mappings[sub.category_id]) {
-            mappings[sub.category_id] = [];
-          }
-          mappings[sub.category_id].push(sub);
-        }
-      });
-      
-      setSubcategoryMappings(mappings);
+      await fetchAndApply();
     } catch (error) {
       console.error('Error loading categories and subcategories:', error);
       toast.error('Failed to load categories and subcategories');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Silent refresh: re-fetches data without showing the full-page loader.
+  // Used by real-time subscriptions so CRUD operations don't unmount the UI.
+  const silentRefresh = async () => {
+    try {
+      await fetchAndApply();
+    } catch (error) {
+      console.error('Error refreshing categories and subcategories:', error);
     }
   };
 
@@ -282,6 +293,7 @@ export function useIncidentCategories() {
     addSubcategory,
     updateSubcategory,
     deleteSubcategory,
-    loadData
+    loadData,
+    silentRefresh
   };
 }
