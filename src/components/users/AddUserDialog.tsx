@@ -893,6 +893,7 @@ const canProceedToNextStep = () => {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    maxLength={50}
                   />
                   {formData.email && !isValidEmail(formData.email) && (
                     <p className="text-xs text-red-500">Please enter a valid email address</p>
