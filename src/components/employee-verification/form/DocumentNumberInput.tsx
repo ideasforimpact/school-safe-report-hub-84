@@ -3,6 +3,36 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
+const DRIVING_LICENSE_PATTERNS: RegExp[] = [
+  // Pattern 1: modern — State RTO [Series] Year Serial (separators: space or dash)
+  // e.g. TN3820230008943  TN38A20230008943  TN-38-2023-0008943  TN38 A 2023 0008943
+  /^[A-Z]{2}[- ]?[0-9]{2}[- ]?[A-Z]?[- ]?[0-9]{2,4}[- ]?[0-9]{4,7}$/i,
+
+  // Pattern 2: old slash — State/RTO/Serial/Year
+  // e.g. TN/07/12345/1999
+  /^[A-Z]{2}\/[0-9]{2,3}\/[0-9]{4,7}\/[0-9]{2,4}$/i,
+
+  // Pattern 3: old slash with prefix — Prefix/State/RTO/Serial/Year
+  // e.g. F/TN/040/12345/2004
+  /^[A-Z]\/[A-Z]{2}\/[0-9]{2,3}\/[0-9]{4,7}\/[0-9]{2,4}$/i,
+
+  // Pattern 4: old dash-slash — State-Serial/Year  (no explicit RTO group)
+  // e.g. TN-12345/1998
+  /^[A-Z]{2}-[0-9]{4,7}\/[0-9]{2,4}$/i,
+
+  // Pattern 5: State-RTO/Year/Serial
+  // e.g. TN-01/1998/0009875
+  /^[A-Z]{2}-[0-9]{2,3}\/[0-9]{2,4}\/[0-9]{4,7}$/i,
+
+  // Pattern 6: State/RTO/Year/Serial  (year before serial, all slashes)
+  // e.g. WB/01/98/12345
+  /^[A-Z]{2}\/[0-9]{2,3}\/[0-9]{2,4}\/[0-9]{4,7}$/i,
+
+  // Pattern 7: RTO/Serial/Year  (very old paper booklet — no state code)
+  // e.g. 14/9876/1999
+  /^[0-9]{2}\/[0-9]{4,7}\/[0-9]{2,4}$/,
+];
+
 interface DocumentNumberInputProps {
   documentType: string;
   value: string;
@@ -74,12 +104,12 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
         return {
           label: 'Driving License Number',
           placeholder: 'TN38 20230008943',
-          maxLength: 16,
-          pattern: /^[A-Z]{2}[0-9]{2}\s?[0-9]{4}\s?[0-9]{7}$/,
-          format: (val: string) =>
-            val.toUpperCase().replace(/[^A-Z0-9\s]/g, ''),
+          // 22 covers longest old-slash format: F/TN/040/1234567/2004 = 21 chars
+          maxLength: 22,
+          pattern: DRIVING_LICENSE_PATTERNS[0],
+          format: (val: string) => val.toUpperCase().replace(/[^A-Z0-9\s\/-]/g, ''),
           validate: (val: string) =>
-            /^[A-Z]{2}[0-9]{2}\s?[0-9]{4}\s?[0-9]{7}$/.test(val)
+            DRIVING_LICENSE_PATTERNS.some(p => p.test(val.toUpperCase()))
         };
       case 'voter_id':
         return {
@@ -123,7 +153,9 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
     // Apply character restrictions based on document type
     if (documentType === 'aadhar') {
       inputValue = inputValue.replace(/[^\d\s]/g, '');
-    } else if (documentType === 'pan' || documentType === 'driving_license' || documentType === 'voter_id' || documentType === 'passport') {
+    } else if (documentType === 'driving_license') {
+      inputValue = inputValue.replace(/[^A-Za-z0-9\s\/-]/g, '');
+    } else if (documentType === 'pan' || documentType === 'voter_id' || documentType === 'passport') {
       inputValue = inputValue.replace(/[^A-Za-z0-9-]/g, '');
     } else if (documentType === 'bank_account' && fieldType === 'account_number') {
       inputValue = inputValue.replace(/\D/g, '');
@@ -160,7 +192,7 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
         case 'pan':
           return 'PAN must be in format: ABCDE1234F';
         case 'driving_license':
-          return 'Driving License number must be in format: TN38 20230008943';
+          return 'Invalid Driving License Number Format';
         case 'voter_id':
           return 'Voter ID must be in format: IVZ2144343';
         case 'passport':
