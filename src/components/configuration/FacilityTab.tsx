@@ -251,7 +251,7 @@ export const FacilityTab = ({
       );
     }
     
-    if (filterCampusId) {
+    if (filterCampusId && filterCampusId !== 'all') {
       filtered = filtered.filter(facility => (facility as any).campusId === filterCampusId);
     }
     
@@ -367,7 +367,7 @@ export const FacilityTab = ({
                 <SelectValue placeholder={`Filter by ${s.campus.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{`All ${s.campusPlural.toLowerCase()}`}</SelectItem>
+                <SelectItem value="all">{`All ${s.campusPlural.toLowerCase()}`}</SelectItem>
                 {campuses.map((campus) => (
                   <SelectItem key={campus.id} value={campus.id}>
                     {campus.name}
