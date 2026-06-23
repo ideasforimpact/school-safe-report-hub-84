@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +22,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowLeft, Users, Eye, Clock3, FileText, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Tooltip,
@@ -37,6 +37,7 @@ import GroupDetailsDialog from '@/components/sop/GroupDetailsDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
+import { useAssignedSopList, sopKeys } from '@/hooks/sop/useSopQueries';
 
 interface SOP {
   id: string;
@@ -75,161 +76,96 @@ interface SOP {
   completed_date?: string | null;
 }
 
+const PAGE_SIZE = 10;
+
 const AssignedSOPPage = () => {
   const navigate = useNavigate();
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
   const { client } = useClient();
-  const [sops, setSops] = useState<SOP[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const PAGE_SIZE = 10;
+  const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
+
   const [signoffDialogOpen, setSignoffDialogOpen] = useState(false);
   const [signoffSOP, setSignoffSOP] = useState<SOP | null>(null);
   const [groupDetailsDialogOpen, setGroupDetailsDialogOpen] = useState(false);
   const [selectedGroupsForDialog, setSelectedGroupsForDialog] = useState<any[]>([]);
   const [selectedSopTitleForDialog, setSelectedSopTitleForDialog] = useState<string>('');
 
-  // Statistics state
-  const [employeeTotalSOPs, setEmployeeTotalSOPs] = useState(0);
-  const [employeeTotalSOPsSignedOff, setEmployeeTotalSOPsSignedOff] = useState(0);
-  const [employeeTotalSOPsToBeDone, setEmployeeTotalSOPsToBeDone] = useState(0);
-  const [statisticsLoading, setStatisticsLoading] = useState(true);
-
-  // Resolve clientId from employeeData (same pattern as SOPPage)
   const resolvedClientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
 
-  // Guards to prevent concurrent / duplicate fetch-assigned-sop calls
-  const fetchingRef = useRef(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastDirectFetchRef = useRef<number>(0);
-  const currentPageRef = useRef(1);
-
-  // Keep ref in sync
-  useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
-
-  // Initial load
+  // Reset to page 1 whenever filters change
   useEffect(() => {
-    if (resolvedClientId && employeeData?.id) {
-      setCurrentPage(1);
-      currentPageRef.current = 1;
-      fetchAssignedSOPs();
-    }
-  }, [resolvedClientId, employeeData?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchAssignedSOPs = useCallback(async () => {
-    if (fetchingRef.current) return; // drop concurrent call
-    fetchingRef.current = true;
-    lastDirectFetchRef.current = Date.now();
-    setLoading(true);
-    try {
-      const clientId = resolvedClientId;
-      const employeeId = employeeData?.id || null;
-
-      if (!clientId || !employeeId) {
-        setLoading(false);
-        fetchingRef.current = false;
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('fetch-assigned-sop', {
-        body: { client_id: clientId, employee_id: employeeId, page: 1, limit: PAGE_SIZE },
-      });
-
-      if (error) { console.error('Error fetching assigned SOPs:', error); toast.error('Failed to load assigned SOPs'); return; }
-      if (data?.error) { toast.error(data.error || 'Failed to load assigned SOPs'); return; }
-
-      if (data?.success) {
-        const sopList: any[] = data.data || [];
-        setSops(sopList);
-        setTotalCount(data.pagination?.total ?? sopList.length);
-
-        // Categories for filter dropdown (from first page)
-        const seen = new Set<string>();
-        setCategories(sopList
-          .filter((s: any) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
-          .map((s: any) => ({ id: s.category_id, category_name: s.category_name }))
-          .sort((a: any, b: any) => a.category_name.localeCompare(b.category_name)));
-
-        // Stats — total from server count
-        const total = data.pagination?.total ?? sopList.length;
-        const signedOff = sopList.filter((s: any) => s.signoff_request_status === 'Completed').length;
-        setEmployeeTotalSOPs(total);
-        setEmployeeTotalSOPsSignedOff(signedOff);
-        setEmployeeTotalSOPsToBeDone(Math.max(0, total - signedOff));
-        setStatisticsLoading(false);
-      }
-    } catch (error) {
-      console.error('Error fetching assigned SOPs:', error);
-      toast.error('Failed to load assigned SOPs');
-    } finally {
-      setLoading(false);
-      fetchingRef.current = false;
-    }
-  }, [resolvedClientId, employeeData?.id, PAGE_SIZE]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Debounced wrapper — suppressed for 2s after a direct fetch
-  const scheduleFetchAssignedSOPs = useCallback((page: number = 1) => {
-    if (Date.now() - lastDirectFetchRef.current < 2000) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchAssignedSOPs(), 300);
-  }, [fetchAssignedSOPs]);
-
-  // Server-side filtered fetch — updates table + totalCount only
-  const fetchFilteredAssignedSOPs = useCallback(async (search: string, status: string, categoryId: string, page: number = 1) => {
-    const clientId = resolvedClientId;
-    const employeeId = employeeData?.id || null;
-    if (!clientId || !employeeId) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-assigned-sop', {
-        body: {
-          client_id: clientId, employee_id: employeeId,
-          search: search.trim() || null,
-          status: status !== 'all' ? status : null,
-          category_id: categoryId !== 'all' ? categoryId : null,
-          page, limit: PAGE_SIZE,
-        },
-      });
-      if (error) { console.error('Error:', error); return; }
-      if (data?.success) {
-        setSops(data.data || []);
-        setTotalCount(data.pagination?.total ?? (data.data || []).length);
-      }
-    } catch (error) {
-      console.error('Error fetching filtered assigned SOPs:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [resolvedClientId, employeeData?.id, PAGE_SIZE]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Filter change — reset to page 1 and fetch (search debounce handled by DebouncedSearchInput)
-  useEffect(() => {
-    const hasFilters = searchTerm.trim() || statusFilter !== 'all' || categoryFilter !== 'all';
     setCurrentPage(1);
-    if (!hasFilters) {
-      fetchAssignedSOPs();
-      return;
-    }
-    fetchFilteredAssignedSOPs(searchTerm, statusFilter, categoryFilter, 1);
-  }, [searchTerm, statusFilter, categoryFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchTerm, statusFilter, categoryFilter]);
 
-  // Page change — re-fetch keeping current filters
+  // ─── React Query ─────────────────────────────────────────────────────────────
+  const { data, isFetching: loading } = useAssignedSopList({
+    clientId: resolvedClientId,
+    employeeId: employeeData?.id || null,
+    search: searchTerm,
+    status: statusFilter,
+    categoryId: categoryFilter,
+    page: currentPage,
+    limit: PAGE_SIZE,
+  });
+
+  const sops: SOP[] = data?.data || [];
+  const totalCount = data?.pagination?.total ?? sops.length;
+  const signedOffCount = sops.filter(s => s.signoff_request_status === 'Completed').length;
+  const employeeTotalSOPs = totalCount;
+  const employeeTotalSOPsSignedOff = signedOffCount;
+  const employeeTotalSOPsToBeDone = Math.max(0, totalCount - signedOffCount);
+
+  // Build category filter options from current page data
   useEffect(() => {
-    const hasFilters = searchTerm.trim() || statusFilter !== 'all' || categoryFilter !== 'all';
-    if (hasFilters) {
-      fetchFilteredAssignedSOPs(searchTerm, statusFilter, categoryFilter, currentPage);
-    } else {
-      fetchAssignedSOPs();
-    }
-  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!data?.data?.length) return;
+    const seen = new Set<string>();
+    setCategories(
+      data.data
+        .filter((s: any) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
+        .map((s: any) => ({ id: s.category_id, category_name: s.category_name }))
+        .sort((a: any, b: any) => a.category_name.localeCompare(b.category_name))
+    );
+  }, [data]);
 
-  // Truncate text helper
+  const invalidateAssignedSops = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: sopKeys.assignedLists() });
+  }, [queryClient]);
+
+  // ─── Realtime ─────────────────────────────────────────────────────────────────
+  useRealTimeSubHook({
+    channelName: 'assigned-sop-realtime-assigned',
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    table: 'sop_assigned',
+    filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
+    enabled: !!resolvedClientId && !!employeeData?.id,
+    onPayload: invalidateAssignedSops,
+  });
+
+  useRealTimeSubHook({
+    channelName: 'assigned-sop-realtime-signoff',
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    table: 'sop_signoff_request',
+    filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
+    enabled: !!resolvedClientId && !!employeeData?.id,
+    onPayload: invalidateAssignedSops,
+  });
+
+  useRealTimeSubHook({
+    channelName: 'assigned-sop-realtime-group-employees',
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    table: 'group_employees',
+    enabled: !!resolvedClientId && !!employeeData?.id,
+    onPayload: invalidateAssignedSops,
+  });
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────────
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
@@ -239,11 +175,7 @@ const AssignedSOPPage = () => {
     searchTerm,
     statusFilter !== 'all' ? statusFilter : '',
     categoryFilter !== 'all' ? categoryFilter : '',
-  ].filter((value) => {
-    if (!value) return false;
-    if (typeof value === 'string') return value.trim() !== '';
-    return true;
-  }).length;
+  ].filter((value) => typeof value === 'string' && value.trim() !== '').length;
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -251,7 +183,6 @@ const AssignedSOPPage = () => {
     setCategoryFilter('all');
   };
 
-  // Render text with tooltip if truncated
   const renderTextWithTooltip = (text: string | null | undefined, maxLength: number = 25) => {
     if (!text) return <span>-</span>;
     const isTruncated = text.length > maxLength;
@@ -272,33 +203,6 @@ const AssignedSOPPage = () => {
 
     return <span>{displayText}</span>;
   };
-
-  // Real-time updates: refresh assigned SOPs (stats recomputed from the same response)
-  useRealTimeSubHook({
-    channelName: 'assigned-sop-realtime-assigned',
-    events: ['INSERT', 'UPDATE', 'DELETE'],
-    table: 'sop_assigned',
-    filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
-    enabled: !!resolvedClientId && !!employeeData?.id,
-    onPayload: () => scheduleFetchAssignedSOPs(currentPageRef.current),
-  });
-
-  useRealTimeSubHook({
-    channelName: 'assigned-sop-realtime-signoff',
-    events: ['INSERT', 'UPDATE', 'DELETE'],
-    table: 'sop_signoff_request',
-    filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
-    enabled: !!resolvedClientId && !!employeeData?.id,
-    onPayload: () => scheduleFetchAssignedSOPs(currentPageRef.current),
-  });
-
-  useRealTimeSubHook({
-    channelName: 'assigned-sop-realtime-group-employees',
-    events: ['INSERT', 'UPDATE', 'DELETE'],
-    table: 'group_employees',
-    enabled: !!resolvedClientId && !!employeeData?.id,
-    onPayload: () => scheduleFetchAssignedSOPs(currentPageRef.current),
-  });
 
   return (
     <Layout>
@@ -326,29 +230,23 @@ const AssignedSOPPage = () => {
                   View SOPs assigned to you
                 </p>
 
-                {/* Metrics in one row with 3 columns */}
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  {/* Total SOPs */}
                   <div>
                     <p className="text-sm text-gray-500">Total SOPs</p>
                     <p className="text-3xl font-semibold text-gray-900">
-                      {statisticsLoading ? '-' : employeeTotalSOPs}
+                      {loading ? '-' : employeeTotalSOPs}
                     </p>
                   </div>
-
-                  {/* Total SOPs Signed off */}
                   <div>
                     <p className="text-sm text-gray-500">Total SOPs Signed off</p>
                     <p className="text-3xl font-semibold text-green-600">
-                      {statisticsLoading ? '-' : employeeTotalSOPsSignedOff}
+                      {loading ? '-' : employeeTotalSOPsSignedOff}
                     </p>
                   </div>
-
-                  {/* To be Done */}
                   <div>
                     <p className="text-sm text-gray-500">To be Done</p>
                     <p className="text-3xl font-semibold text-orange-600">
-                      {statisticsLoading ? '-' : employeeTotalSOPsToBeDone}
+                      {loading ? '-' : employeeTotalSOPsToBeDone}
                     </p>
                   </div>
                 </div>
@@ -361,7 +259,6 @@ const AssignedSOPPage = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mx-6 p-6">
           {/* Filters Section */}
           <div className="mb-6 flex flex-wrap items-center gap-4">
-            {/* Search Box */}
             <DebouncedSearchInput
               value={searchTerm}
               onChange={setSearchTerm}
@@ -370,7 +267,6 @@ const AssignedSOPPage = () => {
               triggerOnEnter
             />
 
-            {/* Category Filter */}
             <div className="w-[180px]">
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger>
@@ -387,7 +283,6 @@ const AssignedSOPPage = () => {
               </Select>
             </div>
 
-            {/* Status Filter */}
             <div className="w-[180px]">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
@@ -415,7 +310,7 @@ const AssignedSOPPage = () => {
           </div>
 
           {loading ? (
-            <Loader text= "Loading assigned SOPs..." />
+            <Loader text="Loading assigned SOPs..." />
           ) : sops.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No assigned SOPs found</p>
@@ -424,119 +319,109 @@ const AssignedSOPPage = () => {
             <TooltipProvider>
               <div className="overflow-x-auto">
                 <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Category Name</TableHead>
-                    <TableHead>Assigned Groups</TableHead>
-                    <TableHead>Completed At</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-              {sops.map((sop) => (
-                    <TableRow key={sop.id}>
-                      <TableCell className="font-medium">
-                        {renderTextWithTooltip(sop.title, 25)}
-                      </TableCell>
-                      <TableCell>
-                        {renderTextWithTooltip(sop.description, 25)}
-                      </TableCell>
-                      <TableCell>
-                        {renderTextWithTooltip(sop.category_name, 25)}
-                      </TableCell>
-                      <TableCell>
-                        {sop.assignments && sop.assignments.length > 0 ? (
-                          <Badge
-                            variant="outline"
-                            className="bg-blue-50 border-blue-300 text-blue-700 flex items-center gap-1.5 w-fit cursor-pointer hover:bg-blue-100"
-                            onClick={() => {
-                              setSelectedGroupsForDialog(sop.assignments || []);
-                              setSelectedSopTitleForDialog(sop.title);
-                              setGroupDetailsDialogOpen(true);
-                            }}
-                          >
-                            <Users className="h-3 w-3" />
-                            <span>{sop.assignments.length} group{sop.assignments.length === 1 ? '' : 's'}</span>
-                          </Badge>
-                        ) : (
-                          <span className="text-sm text-gray-500">-</span>
-                      )}
-                      </TableCell>
-                      <TableCell>
-                        {sop.completed_date ? (
-                          <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                            <Clock3 className="h-3.5 w-3.5" />
-                            <span>{formatDate(sop.completed_date)}</span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {sop.signoff_request_status === 'Completed' ? (
-                          <Badge className="bg-green-100 text-green-800">
-                            Signed off
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-amber-100 text-amber-800">
-                            In-progress
-                          </Badge>
-                      )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSignoffSOP(sop);
-                            setSignoffDialogOpen(true);
-                          }}
-                          className="h-8 w-8 p-0"
-                          title="View"
-                        >
-                          <Eye className="h-4 w-4 text-green-600" />
-                        </Button>
-                      </TableCell>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Category Name</TableHead>
+                      <TableHead>Assigned Groups</TableHead>
+                      <TableHead>Completed At</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {sops.map((sop) => (
+                      <TableRow key={sop.id}>
+                        <TableCell className="font-medium">
+                          {renderTextWithTooltip(sop.title, 25)}
+                        </TableCell>
+                        <TableCell>
+                          {renderTextWithTooltip(sop.description, 25)}
+                        </TableCell>
+                        <TableCell>
+                          {renderTextWithTooltip(sop.category_name, 25)}
+                        </TableCell>
+                        <TableCell>
+                          {sop.assignments && sop.assignments.length > 0 ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-50 border-blue-300 text-blue-700 flex items-center gap-1.5 w-fit cursor-pointer hover:bg-blue-100"
+                              onClick={() => {
+                                setSelectedGroupsForDialog(sop.assignments || []);
+                                setSelectedSopTitleForDialog(sop.title);
+                                setGroupDetailsDialogOpen(true);
+                              }}
+                            >
+                              <Users className="h-3 w-3" />
+                              <span>{sop.assignments.length} group{sop.assignments.length === 1 ? '' : 's'}</span>
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-gray-500">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {sop.completed_date ? (
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <Clock3 className="h-3.5 w-3.5" />
+                              <span>{formatDate(sop.completed_date)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-500">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {sop.signoff_request_status === 'Completed' ? (
+                            <Badge className="bg-green-100 text-green-800">Signed off</Badge>
+                          ) : (
+                            <Badge className="bg-amber-100 text-amber-800">In-progress</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSignoffSOP(sop);
+                              setSignoffDialogOpen(true);
+                            }}
+                            className="h-8 w-8 p-0"
+                            title="View"
+                          >
+                            <Eye className="h-4 w-4 text-green-600" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
 
-              <TablePaginationBar
-                currentPage={currentPage}
-                totalPages={Math.ceil(totalCount / PAGE_SIZE)}
-                totalCount={totalCount}
-                pageSize={PAGE_SIZE}
-                itemLabel="SOPs"
-                onPageChange={setCurrentPage}
-              />
-            </div>
+                <TablePaginationBar
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(totalCount / PAGE_SIZE)}
+                  totalCount={totalCount}
+                  pageSize={PAGE_SIZE}
+                  itemLabel="SOPs"
+                  onPageChange={setCurrentPage}
+                />
+              </div>
             </TooltipProvider>
           )}
         </div>
 
-        {/* Signoff Request Dialog */}
         <SignoffRequestDialog
           open={signoffDialogOpen}
           onOpenChange={(open) => {
-            if (!open) {
-              setSignoffSOP(null);
-            }
+            if (!open) setSignoffSOP(null);
             setSignoffDialogOpen(open);
           }}
           sop={signoffSOP}
           clientId={resolvedClientId}
           employeeId={employeeData?.id || null}
           sopSignoffRequestExist={signoffSOP?.sop_signoff_request_exist}
-          onSuccess={() => {
-            fetchAssignedSOPs();
-          }}
+          onSuccess={invalidateAssignedSops}
         />
 
-        {/* Group Details Dialog */}
         <GroupDetailsDialog
           open={groupDetailsDialogOpen}
           onOpenChange={setGroupDetailsDialogOpen}
