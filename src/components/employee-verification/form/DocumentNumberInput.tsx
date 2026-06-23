@@ -106,7 +106,6 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
           placeholder: 'TN38 20230008943',
           // 22 covers longest old-slash format: F/TN/040/1234567/2004 = 21 chars
           maxLength: 22,
-          pattern: DRIVING_LICENSE_PATTERNS[0],
           format: (val: string) => val.toUpperCase().replace(/[^A-Z0-9\s\/-]/g, ''),
           validate: (val: string) =>
             DRIVING_LICENSE_PATTERNS.some(p => p.test(val.toUpperCase()))
