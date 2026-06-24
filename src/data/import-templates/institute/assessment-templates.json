@@ -55,48 +55,6 @@
         "allowAttachments": false
       }
     ]
-  },
-  {
-    "client_id": null,
-    "title": "Academic Integrity Assessment",
-    "description": "Reviews the institute's policies and systems to uphold academic honesty, research ethics, and fair evaluation practices",
-    "category_name": "Academic",
-    "questions": [
-      {
-        "text": "Is there a published academic integrity and anti-plagiarism policy accessible to all students and faculty?",
-        "files": [],
-        "required": true,
-        "allowComments": true,
-        "allowAttachments": false
-      },
-      {
-        "text": "Is plagiarism detection software used for evaluating student submissions and research papers?",
-        "files": [],
-        "required": true,
-        "allowComments": true,
-        "allowAttachments": false
-      },
-      {
-        "text": "Is there a defined process for investigating and resolving academic misconduct complaints?",
-        "files": [],
-        "required": true,
-        "allowComments": true,
-        "allowAttachments": false
-      },
-      {
-        "text": "Are examination procedures (invigilation, secure paper distribution, result publication) standardized and auditable?",
-        "files": [],
-        "required": true,
-        "allowComments": true,
-        "allowAttachments": false
-      },
-      {
-        "text": "Is a research ethics committee (or equivalent) active for reviewing research involving human participants?",
-        "files": [],
-        "required": true,
-        "allowComments": true,
-        "allowAttachments": false
-      }
-    ]
   }
+  
 ]

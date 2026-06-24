@@ -1788,8 +1788,16 @@ async function handleUpdateClient(clientData: any) {
       updateData.is_head_office = requestedIsHeadOffice;
     }
     // if (clientInfo.website !== undefined) updateData.website = clientInfo.website;
+    // Is that client type got changed
+    const { data:actual_client, error: originalClientTypeIdError } = await supabase
+        .from('clients')
+        .select('client_type_id')
+        .eq('id', clientId).single();
+
+    console.log("Actual Client type id from client",originalClientTypeIdError,clientId,actual_client);
     
-    if (clientTypeId) {
+
+    if (clientTypeId != actual_client?.client_type_id) {
       // Block type change if client already has incidents
       const { count: incidentCount, error: incidentCheckError } = await supabase
         .from('incidents')
