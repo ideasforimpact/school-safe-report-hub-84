@@ -187,7 +187,7 @@ function getSurePareConfig() {
   return {
     apiKey: Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '',
     baseUrl: 'https://kyc-api.surepass.io',
-    rcEndpoint: "/api/v1/rc/rc-v2",
+    rcEndpoint: "/api/v1/rc/rc-full",
     challanEndpoint: "/api/v1/rc/rc-related/challan-details"
   };
 }
@@ -198,7 +198,7 @@ function getSurePareConfig() {
 function prepareSurePareRCPayload(registrationNumber: string) {
   return {
     id_number: registrationNumber,
-    enrich  : true
+    // enrich  : true
   };
 }
 
