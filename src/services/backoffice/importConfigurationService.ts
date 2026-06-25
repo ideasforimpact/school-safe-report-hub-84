@@ -14,7 +14,6 @@ import workCategories from '@/data/import-templates/work/categories.json';
 import workContribFactors from '@/data/import-templates/work/contributing-factors.json';
 import workReportTypes from '@/data/import-templates/work/report-types.json';
 import workPriorities from '@/data/import-templates/work/priorities.json';
-import workForm from '@/data/import-templates/work/forms.json';
 import workAssessments from '@/data/import-templates/work/assessment-templates.json';
 import workEduResources from '@/data/import-templates/work/edu-resources.json';
 
@@ -23,9 +22,10 @@ import instituteCategories from '@/data/import-templates/institute/categories.js
 import instituteContribFactors from '@/data/import-templates/institute/contributing-factors.json';
 import instituteReportTypes from '@/data/import-templates/institute/report-types.json';
 import institutePriorities from '@/data/import-templates/institute/priorities.json';
-import instituteForm from '@/data/import-templates/institute/forms.json';
 import instituteAssessments from '@/data/import-templates/institute/assessment-templates.json';
 import instituteEduResources from '@/data/import-templates/institute/edu-resources.json';
+
+const sharedGrievanceForm = schoolForm as any;
 
 const TEMPLATES_BY_TYPE: Record<string, {
   categories: any[];
@@ -50,7 +50,7 @@ const TEMPLATES_BY_TYPE: Record<string, {
     contributing_factors: (workContribFactors as any).contributing_factors,
     report_types: (workReportTypes as any).report_types,
     priorities: (workPriorities as any).priorities,
-    forms: [workForm],
+    forms: [],
     assessment_templates: workAssessments as any[],
     edu_resources: workEduResources as any[],
   },
@@ -59,7 +59,7 @@ const TEMPLATES_BY_TYPE: Record<string, {
     contributing_factors: (instituteContribFactors as any).contributing_factors,
     report_types: (instituteReportTypes as any).report_types,
     priorities: (institutePriorities as any).priorities,
-    forms: [instituteForm],
+    forms: [],
     assessment_templates: instituteAssessments as any[],
     edu_resources: instituteEduResources as any[],
   },

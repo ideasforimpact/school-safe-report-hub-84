@@ -1877,6 +1877,7 @@ export type Database = {
           id: string
           name: string
           updated_at: string
+          client_type_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1884,6 +1885,7 @@ export type Database = {
           id?: string
           name: string
           updated_at?: string
+          client_type_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1891,6 +1893,7 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+          client_type_id?: string | null
         }
         Relationships: []
       }

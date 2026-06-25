@@ -116,6 +116,7 @@ export const templateService = {
           questions,
           created_at,
           created_by,
+          employees:created_by(first_name, last_name),
           template_categories(
             id,
             name,
@@ -147,7 +148,9 @@ export const templateService = {
         category_id: template.category_id,
         questions: template.questions as unknown as AssessmentQuestion[],
         createdAt: template.created_at,
-        createdBy: template.created_by,
+        createdBy: template.employees
+          ? `${(template.employees as any).first_name || ''} ${(template.employees as any).last_name || ''}`.trim()
+          : (template.created_by || 'System'),
         isActive: template.is_active
       })) || [];
 
@@ -171,7 +174,8 @@ export const templateService = {
           category_id: templateData.category_id,
           questions: templateData.questions || [],
           created_by: templateData.createdBy || '',
-          client_id: templateData.clientId || ''
+          client_id: templateData.clientId || '',
+          client_type_id: templateData.clientTypeId || null
         })
         .select()
         .single();

@@ -16,6 +16,7 @@ import AltchaWidget from '@/components/captcha/AltchaWidget';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { FileItem } from '@/types/fileTypes';
 import { notificationService } from '@/services/notification/notificationService';
+import { normalizeGrievanceSubmitterFields } from '@/utils/grievanceFormFields';
 
 const PublicFormPage = () => {
   const { previewUrl } = useParams() as { previewUrl?: string };
@@ -35,6 +36,7 @@ const PublicFormPage = () => {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const altchaRef = useRef<{ value: string | null } | null>(null);
   const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
+  const [clientTypeKey, setClientTypeKey] = useState<string | null>(null);
 
   useEffect(() => {
     const token = formIdQS || previewUrl;
@@ -55,6 +57,11 @@ const PublicFormPage = () => {
     }
   };
 
+  const getClientTypeKeyFromRelation = (relation: any): string | null => {
+    if (Array.isArray(relation)) return relation[0]?.key ?? null;
+    return relation?.key ?? null;
+  };
+
   const fetchForm = async (token: string) => {
     try {
       setLoading(true);
@@ -67,7 +74,7 @@ const PublicFormPage = () => {
       if (formIdQS) {
         const byId = await (supabase as any)
           .from('custom_forms')
-          .select('*')
+          .select('*, client_type:client_type_id(key)')
           .eq('id', trimmed)
           .eq('is_active', true)
           .maybeSingle();
@@ -79,7 +86,7 @@ const PublicFormPage = () => {
       if (!data) {
         const viaPreview1 = await (supabase as any)
           .from('custom_forms')
-          .select('*')
+          .select('*, client_type:client_type_id(key)')
           .eq('preview_url', prefixed)
           .eq('is_active', true)
           .maybeSingle();
@@ -91,7 +98,7 @@ const PublicFormPage = () => {
       if (!data) {
         const viaPreview2 = await (supabase as any)
           .from('custom_forms')
-          .select('*')
+          .select('*, client_type:client_type_id(key)')
           .eq('preview_url', trimmed)
           .eq('is_active', true)
           .maybeSingle();
@@ -105,6 +112,7 @@ const PublicFormPage = () => {
         return;
       }
 
+      const formClientTypeKey = getClientTypeKeyFromRelation((data as any).client_type);
       const fields = normalizeFields((data as any).fields);
       const mapped: CustomForm = {
         id: (data as any).id,
@@ -120,31 +128,36 @@ const PublicFormPage = () => {
         created_by: (data as any).created_by ?? undefined,
       };
 
-      setForm(mapped);
-      
       // Build logo URL from path if needed
       const { buildClientLogoUrl } = await import('@/lib/utils');
       const logoUrl = buildClientLogoUrl(mapped.client_logo);
       setClientLogoUrl(logoUrl || null);
 
-      // Fallback: fetch client name/logo if not present on form
-      if (!logoUrl || !clientName) {
-        const { data: clientRow } = await supabase
-          .from('clients')
-          .select('name, logo, client_logo')
-          .eq('id', mapped.client_id)
-          .maybeSingle();
-        if (clientRow) {
-          setClientName((clientRow as any).name || null);
-          if (!logoUrl) {
-            const fallbackLogoUrl = buildClientLogoUrl((clientRow as any).client_logo || (clientRow as any).logo);
-            setClientLogoUrl(fallbackLogoUrl || null);
-          }
+      // Fetch client details for header display and as a fallback client type source.
+      let resolvedClientTypeKey = formClientTypeKey;
+      const { data: clientRow } = await supabase
+        .from('clients')
+        .select('name, logo, client_logo, client_type:client_type_id(key)')
+        .eq('id', mapped.client_id)
+        .maybeSingle();
+      if (clientRow) {
+        setClientName((clientRow as any).name || null);
+        resolvedClientTypeKey = resolvedClientTypeKey ?? getClientTypeKeyFromRelation((clientRow as any).client_type);
+        if (!logoUrl) {
+          const fallbackLogoUrl = buildClientLogoUrl((clientRow as any).client_logo || (clientRow as any).logo);
+          setClientLogoUrl(fallbackLogoUrl || null);
         }
       }
 
+      setClientTypeKey(resolvedClientTypeKey);
+      const normalizedFields = normalizeGrievanceSubmitterFields(fields, resolvedClientTypeKey);
+      setForm({
+        ...mapped,
+        fields: normalizedFields,
+      });
+
       const initialData: Record<string, any> = {};
-      fields.forEach((field: FormField) => {
+      normalizedFields.forEach((field: FormField) => {
         initialData[field.id] = '';
       });
       setFormData(initialData);
@@ -455,6 +468,8 @@ const PublicFormPage = () => {
   };
 
   const renderField = (field: FormField) => {
+    const normalizedField = normalizeGrievanceSubmitterFields([field], clientTypeKey)[0];
+    field = normalizedField;
     const isRequired = isFieldRequired(field);
     
     switch (field.type) {

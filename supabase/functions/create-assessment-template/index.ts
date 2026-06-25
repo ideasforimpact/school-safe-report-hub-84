@@ -186,15 +186,16 @@ serve(async (req) => {
       .from('template_categories')
       .select('id')
       .eq('name', type)
+      .is('client_type_id', null)
       .single();
 
     if (categoryError) {
       console.error('Category lookup error:', categoryError);
       return new Response(
         JSON.stringify({ error: `Template category '${type}' not found` }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
