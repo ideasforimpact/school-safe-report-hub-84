@@ -1565,6 +1565,7 @@ export type Database = {
           assigned_to: string | null
           category_id: string | null
           client_id: string | null
+          client_type_id: string | null
           closure_attachments: Json
           comments: Json | null
           contributing_factor: Json | null
@@ -1591,6 +1592,7 @@ export type Database = {
           assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
+          client_type_id?: string | null
           closure_attachments?: Json
           comments?: Json | null
           contributing_factor?: Json | null
@@ -1617,6 +1619,7 @@ export type Database = {
           assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
+          client_type_id?: string | null
           closure_attachments?: Json
           comments?: Json | null
           contributing_factor?: Json | null
@@ -1874,6 +1877,7 @@ export type Database = {
           id: string
           name: string
           updated_at: string
+          client_type_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1881,6 +1885,7 @@ export type Database = {
           id?: string
           name: string
           updated_at?: string
+          client_type_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1888,6 +1893,7 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+          client_type_id?: string | null
         }
         Relationships: []
       }

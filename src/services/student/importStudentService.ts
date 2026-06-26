@@ -14,7 +14,7 @@ import { toast } from 'sonner';
  * @param clientId - The client ID for the import
  * @param errorRowNumbers - Optional array of row numbers (1-indexed, including header) to exclude from import
  */
-export const processStudentExcel = async (file: File, clientId?: string, errorRowNumbers?: number[]): Promise<Student[]> => {
+export const processStudentExcel = async (file: File, clientId?: string, errorRowNumbers?: number[], clientTypeId?: string): Promise<Student[]> => {
   try {
     if (!clientId) {
       throw new Error('Client information not available. Please ensure you are logged in properly.');
@@ -47,7 +47,7 @@ export const processStudentExcel = async (file: File, clientId?: string, errorRo
       
       // Process the data and add/update students using bulk operations
       console.time('Bulk import processing');
-      const result = await processStudentData(filteredData, clientId);
+      const result = await processStudentData(filteredData, clientId, clientTypeId);
       console.timeEnd('Bulk import processing');
       
       console.log('Import completed:', result);

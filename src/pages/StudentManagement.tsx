@@ -115,7 +115,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       }
 
       console.log('Starting import process...');
-      await processStudentExcel(file, employeeData.clientId);
+      await processStudentExcel(file, employeeData.clientId, undefined, employeeData.clientType?.id);
       
       // Refresh the students list after successful import
       console.log('Import completed, refreshing student list...');
@@ -403,7 +403,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Student Management</h1>
             <p className="text-muted-foreground">
-              Manage students in your institution
+              Manage students in your {employeeData?.clientType?.key === 'school' ? 'school' : 'institution'}
             </p>
           </div>
           {!isReadOnlySwitchedContext && (

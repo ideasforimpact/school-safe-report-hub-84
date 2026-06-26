@@ -13,8 +13,8 @@ export const EMPLOYEE_ID_CONSTANTS = {
   /** Maximum length for employee ID */
   MAX_LENGTH: 25,
   
-  /** Validation regex pattern - allows alphanumeric and special characters */
-  PATTERN: /^.{3,25}$/,
+  /** Validation regex pattern - allows alphanumeric characters only */
+  PATTERN: /^[a-zA-Z0-9]{3,25}$/,
 } as const;
 
 /**
@@ -22,7 +22,7 @@ export const EMPLOYEE_ID_CONSTANTS = {
  * @returns Error message string
  */
 export const getEmployeeIdErrorMessage = (): string => {
-  return `Employee ID must be between ${EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters`;
+  return `Employee ID must be ${EMPLOYEE_ID_CONSTANTS.MIN_LENGTH}–${EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters and contain only letters and numbers`;
 };
 
 /**

@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts'
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts'
+import { getActiveClient } from '../_shared/getActiveClient.ts'
 
 const supabase = createClient(
   getSupabaseUrl(),
@@ -146,17 +147,15 @@ Deno.serve(async (req) => {
 
     console.log('Updating incident:', incidentId, 'with updates:', updates)
 
-    // Get employee data for permission checking
-    const { data: employee, error: employeeError } = await supabase
-      .from('employees')
-      .select('id, client_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (employeeError || !employee) {
-      console.error('Error fetching employee data:', employeeError)
+    // Feature 3: resolve employee from JWT app_metadata. Multi-client users
+    // have N rows under the same user_id; the legacy .single() throws.
+    const { client_id: activeClientId, employee_id: activeEmployeeId } =
+      await getActiveClient(supabase, user)
+    if (!activeClientId || !activeEmployeeId) {
+      console.error('Active employee not found for user', user.id)
       throw new Error('Employee not found')
     }
+    const employee = { id: activeEmployeeId, client_id: activeClientId }
 
     // Validate IP whitelist
     if (employee.client_id) {

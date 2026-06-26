@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, FileText, Upload, X } from 'lucide-react';
+import { ArrowLeft, AlertCircle, FileText, Upload, X, Link as LinkIcon } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,8 +36,15 @@ const EditResourceContent = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [youtubeLink, setYoutubeLink] = useState('');
+  const [youtubeError, setYoutubeError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  
+
+  const isValidYouTubeUrl = (url: string): boolean => {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]+/;
+    return youtubeRegex.test(url);
+  };
+
   // Load resource data when component mounts
   useEffect(() => {
     if (resource) {
@@ -45,6 +52,7 @@ const EditResourceContent = () => {
       setDescription(resource.description);
       setCategory(resource.category);
       setTags(resource.tags);
+      setYoutubeLink(resource.youtube_link || '');
     }
   }, [resource]);
   
@@ -197,7 +205,18 @@ const EditResourceContent = () => {
       toast.error('Please enter a title');
       return;
     }
-    
+
+    if (category === 'youtube') {
+      if (!youtubeLink.trim()) {
+        toast.error('Please enter a YouTube link');
+        return;
+      }
+      if (!isValidYouTubeUrl(youtubeLink.trim())) {
+        toast.error('Please enter a valid YouTube URL');
+        return;
+      }
+    }
+
     setIsUploading(true);
     
     try {
@@ -214,7 +233,8 @@ const EditResourceContent = () => {
           title: title.trim(),
           description: description.trim(),
           category,
-          tags
+          tags,
+          youtube_link: category === 'youtube' ? youtubeLink.trim() : undefined
         });
       }
       
@@ -296,6 +316,7 @@ const EditResourceContent = () => {
                     <SelectItem value="guidelines">Guidelines</SelectItem>
                     <SelectItem value="forms">Forms</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="youtube">YouTube Link</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -345,6 +366,33 @@ const EditResourceContent = () => {
                 )}
               </div>
               
+              {category === 'youtube' && (
+                <div className="space-y-2">
+                  <Label htmlFor="youtubeLink">
+                    YouTube Link <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="youtubeLink"
+                      value={youtubeLink}
+                      onChange={(e) => {
+                        setYoutubeLink(e.target.value);
+                        if (e.target.value.trim() && !isValidYouTubeUrl(e.target.value.trim())) {
+                          setYoutubeError('Please enter a valid YouTube URL');
+                        } else {
+                          setYoutubeError('');
+                        }
+                      }}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      className={`pl-9 ${youtubeError ? 'border-red-500' : ''}`}
+                    />
+                  </div>
+                  {youtubeError && <p className="text-xs text-red-500">{youtubeError}</p>}
+                </div>
+              )}
+
+              {category !== 'youtube' && (
               <div className="space-y-2">
                 <Label>File</Label>
                 {file ? (
@@ -424,6 +472,7 @@ const EditResourceContent = () => {
                   </div>
                 )}
               </div>
+              )}
             </div>
             
             <div className="flex justify-end space-x-2">

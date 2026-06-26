@@ -1,8 +1,9 @@
 
 import { useState, useEffect } from 'react';
 import { reportTypeService, ReportTypeItem } from '@/services/incident/reportTypeService';
+import { useAuth } from '@/contexts/auth/useAuth';
 
-export function useReportTypes() {
+export function useReportTypes(clientTypeId?: string) {
   const [reportTypes, setReportTypes] = useState<ReportTypeItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,10 +12,7 @@ export function useReportTypes() {
     try {
       setLoading(true);
       setError(null);
-      
-      // RLS handles client filtering automatically - no need for manual client checks
-      const types = await reportTypeService.getReportTypes(activeOnly);
-      
+      const types = await reportTypeService.getReportTypes(activeOnly, clientTypeId);
       // Sort active report types to the top
       const sortedTypes = (types || []).sort((a, b) => {
         // Active items first
@@ -36,7 +34,7 @@ export function useReportTypes() {
 
   useEffect(() => {
     fetchReportTypes();
-  }, []);
+  }, [clientTypeId]);
 
   return {
     reportTypes,
@@ -52,17 +50,15 @@ export function useActiveReportTypes() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { employeeData, user } = useAuth();
+  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? undefined;
+
   const fetchReportTypes = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // RLS handles client filtering automatically - no need for manual client checks
-      const types = await reportTypeService.getReportTypes(true); // Only active
-      
-      // Sort by name alphabetically for active report types
+      const types = await reportTypeService.getReportTypes(true, clientTypeId);
       const sortedTypes = (types || []).sort((a, b) => a.name.localeCompare(b.name));
-      
       setReportTypes(sortedTypes);
     } catch (err: any) {
       console.error("Error fetching active report types:", err);
@@ -75,7 +71,7 @@ export function useActiveReportTypes() {
 
   useEffect(() => {
     fetchReportTypes();
-  }, []);
+  }, [clientTypeId]);
 
   return {
     reportTypes,

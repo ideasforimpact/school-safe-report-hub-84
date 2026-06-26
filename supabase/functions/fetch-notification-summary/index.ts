@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSupabaseUrl, getSupabaseAnonKey } from "../_shared/env.ts";
+import { getActiveClient } from "../_shared/getActiveClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,19 +36,18 @@ serve(async (req) => {
     const limit = Number.isFinite(body?.limit) ? Math.min(Math.max(Number(body.limit), 1), 25) : 10;
     const cursor = typeof body?.cursor === "string" && body.cursor.trim() ? body.cursor.trim() : null;
 
-    const { data: employee, error: employeeError } = await supabase
-      .from("employees")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
+    // Feature 3: resolve the active employees row from JWT app_metadata
+    // so multi-client users see notifications scoped to their picked
+    // client, not whichever employees row Postgres returned first.
+    const { employee_id: activeEmployeeId } = await getActiveClient(supabase, user);
 
-    if (employeeError || !employee?.id) {
+    if (!activeEmployeeId) {
       return new Response(
         JSON.stringify({ success: true, unread_count: 0, notifications: [], next_cursor: null }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+    const employee = { id: activeEmployeeId };
 
     let unreadCount = 0;
     if (!cursor) {

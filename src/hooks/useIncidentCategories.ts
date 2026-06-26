@@ -8,37 +8,39 @@ export function useIncidentCategories() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [subcategoryMappings, setSubcategoryMappings] = useState<Record<string, SubcategoryItem[]>>({});
   const [loading, setLoading] = useState(true);
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
 
   // Load categories and subcategories on mount
+  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? undefined;
+
+  const fetchAndApply = async () => {
+    if (!employeeData?.clientId || !clientTypeId) return;
+
+    const [categoriesData, subcategoriesData] = await Promise.all([
+      categoryService.getCategories(employeeData.clientId, clientTypeId),
+      categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId),
+    ]);
+
+    setCategories(categoriesData);
+
+    const mappings: Record<string, SubcategoryItem[]> = {};
+    subcategoriesData.forEach(sub => {
+      if (sub.category_id) {
+        if (!mappings[sub.category_id]) mappings[sub.category_id] = [];
+        mappings[sub.category_id].push(sub);
+      }
+    });
+    setSubcategoryMappings(mappings);
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      if (!employeeData?.clientId) {
+      if (!employeeData?.clientId || !clientTypeId) {
         toast.error('Client information not available');
         return;
       }
-
-      const [categoriesData, subcategoriesData] = await Promise.all([
-        categoryService.getCategories(employeeData.clientId),
-        categoryService.getSubcategories(undefined, employeeData.clientId)
-      ]);
-
-      setCategories(categoriesData);
-      
-      // Group subcategories by category_id
-      const mappings: Record<string, SubcategoryItem[]> = {};
-      subcategoriesData.forEach(sub => {
-        if (sub.category_id) {
-          if (!mappings[sub.category_id]) {
-            mappings[sub.category_id] = [];
-          }
-          mappings[sub.category_id].push(sub);
-        }
-      });
-      
-      setSubcategoryMappings(mappings);
+      await fetchAndApply();
     } catch (error) {
       console.error('Error loading categories and subcategories:', error);
       toast.error('Failed to load categories and subcategories');
@@ -47,9 +49,19 @@ export function useIncidentCategories() {
     }
   };
 
+  // Silent refresh: re-fetches data without showing the full-page loader.
+  // Used by real-time subscriptions so CRUD operations don't unmount the UI.
+  const silentRefresh = async () => {
+    try {
+      await fetchAndApply();
+    } catch (error) {
+      console.error('Error refreshing categories and subcategories:', error);
+    }
+  };
+
   useEffect(() => {
     loadData();
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, clientTypeId]);
 
   // Category operations
   const addCategory = async (name: string) => {
@@ -59,12 +71,12 @@ export function useIncidentCategories() {
     }
 
     try {
-      await categoryService.addCategory(name, undefined, employeeData.clientId);
+      await categoryService.addCategory(name, undefined, employeeData.clientId, clientTypeId);
       
       // Refresh data from server to ensure consistency
       const [categoriesData, subcategoriesData] = await Promise.all([
-        categoryService.getCategories(employeeData.clientId),
-        categoryService.getSubcategories(undefined, employeeData.clientId)
+        categoryService.getCategories(employeeData.clientId, clientTypeId),
+        categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId)
       ]);
 
       setCategories(categoriesData);
@@ -100,8 +112,8 @@ export function useIncidentCategories() {
       
       // Refresh data from server to ensure consistency
       const [categoriesData, subcategoriesData] = await Promise.all([
-        categoryService.getCategories(employeeData.clientId),
-        categoryService.getSubcategories(undefined, employeeData.clientId)
+        categoryService.getCategories(employeeData.clientId, clientTypeId),
+        categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId)
       ]);
 
       setCategories(categoriesData);
@@ -142,8 +154,8 @@ export function useIncidentCategories() {
       // Refresh data from server to ensure consistency
       console.log('Hook: Refreshing data from server...');
       const [categoriesData, subcategoriesData] = await Promise.all([
-        categoryService.getCategories(employeeData.clientId),
-        categoryService.getSubcategories(undefined, employeeData.clientId)
+        categoryService.getCategories(employeeData.clientId, clientTypeId),
+        categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId)
       ]);
 
       console.log('Hook: Received refreshed data:', { 
@@ -182,10 +194,10 @@ export function useIncidentCategories() {
     }
 
     try {
-      await categoryService.addSubcategory(name, categoryId, undefined, employeeData.clientId);
+      await categoryService.addSubcategory(name, categoryId, undefined, employeeData.clientId, clientTypeId);
       
       // Refresh subcategories from server to ensure consistency
-      const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId);
+      const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId);
       
       // Group subcategories by category_id
       const mappings: Record<string, SubcategoryItem[]> = {};
@@ -217,7 +229,7 @@ export function useIncidentCategories() {
       await categoryService.updateSubcategory(id, name, categoryId, undefined, employeeData.clientId);
       
       // Refresh subcategories from server to ensure consistency
-      const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId);
+      const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId);
       
       // Group subcategories by category_id
       const mappings: Record<string, SubcategoryItem[]> = {};
@@ -249,7 +261,7 @@ export function useIncidentCategories() {
       await categoryService.deleteSubcategory(id, employeeData.clientId);
       
       // Refresh subcategories from server to ensure consistency
-      const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId);
+      const subcategoriesData = await categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId);
       
       // Group subcategories by category_id
       const mappings: Record<string, SubcategoryItem[]> = {};
@@ -281,6 +293,7 @@ export function useIncidentCategories() {
     addSubcategory,
     updateSubcategory,
     deleteSubcategory,
-    loadData
+    loadData,
+    silentRefresh
   };
 }

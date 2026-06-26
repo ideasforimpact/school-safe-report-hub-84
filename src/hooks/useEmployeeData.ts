@@ -230,11 +230,31 @@ export const useEmployeeData = () => {
     try {
       isFetchingEmployeeDataRef.current = true;
 
-      const { data, error } = await supabase
+      // Feature 4 (C-1 fix): scope the lookup to the user's active client.
+      // Multi-client users have N employees rows with the same user_id —
+      // without this scope, .maybeSingle() picks one non-deterministically
+      // and downstream Redux/dashboard state ends up pointing at the wrong
+      // client. JWT app_metadata.client_id is the authoritative source
+      // (stamped by set_active_client_for_login on every login); we fall
+      // back to Redux state.activeClientId / state.clientId if for some
+      // reason the JWT hasn't been stamped yet (e.g. legacy session).
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const jwtClientId =
+        (currentSession?.user?.app_metadata as Record<string, unknown> | undefined)?.client_id as string | undefined;
+      const activeClientId =
+        jwtClientId
+        ?? (state.activeClientId as string | undefined)
+        ?? (state.clientId as string | undefined)
+        ?? null;
+
+      let query = supabase
         .from('employees')
         .select('id, client_id, first_name, last_name, email, is_super_admin')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
+      if (activeClientId) {
+        query = query.eq('client_id', activeClientId);
+      }
+      const { data, error } = await query.maybeSingle();
         
       if (error) {
         return;
@@ -266,7 +286,7 @@ export const useEmployeeData = () => {
     } finally {
       isFetchingEmployeeDataRef.current = false;
     }
-  }, [shouldSkipEmployeeData, dispatch, fetchConfiguredModules]);
+  }, [shouldSkipEmployeeData, dispatch, fetchConfiguredModules, state.activeClientId, state.clientId]);
 
   // Main effect for setting employee data from auth context
   useEffect(() => {

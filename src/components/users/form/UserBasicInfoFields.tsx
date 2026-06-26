@@ -90,6 +90,7 @@ const UserBasicInfoFields = ({ formData, setFormData, isEditMode = false }: User
           value={formData.email}
           onChange={(e) => setFormData({...formData, email: e.target.value})}
           placeholder="Enter email"
+          maxLength={50}
         />
       </div>
 

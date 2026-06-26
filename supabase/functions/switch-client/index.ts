@@ -354,6 +354,44 @@ Deno.serve(async (req) => {
       );
       const normalizedReadOnly = switched && permissions.access_level === "R";
 
+      // Fetch modules for the target client using service role (bypasses RLS).
+      // Fall back to home client modules if target client has none configured.
+      let clientModulesRaw: any[] = [];
+      const { data: targetModules } = await serviceSupabase
+        .from("client_modules")
+        .select("module_id, enabled, access_level, modules(id, name, icon, level, order, url)")
+        .eq("client_id", targetClientId)
+        .eq("enabled", true);
+      clientModulesRaw = targetModules || [];
+
+      if (clientModulesRaw.length === 0) {
+        const { data: homeModules } = await serviceSupabase
+          .from("client_modules")
+          .select("module_id, enabled, access_level, modules(id, name, icon, level, order, url)")
+          .eq("client_id", updatedContext.home_client_id)
+          .eq("enabled", true);
+        clientModulesRaw = homeModules || [];
+      }
+
+      const configuredModules = clientModulesRaw
+        .map((row: any) => {
+          const mod = row.modules;
+          if (!mod) return null;
+          return {
+            id: mod.id,
+            name: mod.name,
+            key: mod.level,
+            icon: mod.icon || "",
+            level: mod.level,
+            enabled: true,
+            accessLevel: row.access_level || {},
+            order: mod.order || 999,
+            url: mod.url || `/${mod.name.toLowerCase().replace(/\s+/g, "-")}`,
+          };
+        })
+        .filter(Boolean)
+        .sort((a: any, b: any) => (a.order || 999) - (b.order || 999));
+
       return jsonResponse({
         success: true,
         head_office_id: headOfficeClientId,
@@ -363,6 +401,7 @@ Deno.serve(async (req) => {
         client_management_read_only: normalizedReadOnly,
         client_management_permissions: permissions,
         selected_client: targetClient,
+        configured_modules: configuredModules,
       });
     }
 

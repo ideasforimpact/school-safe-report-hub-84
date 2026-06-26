@@ -90,12 +90,15 @@ serve(async (req) => {
       if (currentUser) {
         currentUserId = currentUser.id
         
-        // Try to get real name from employees table
+        // Try to get real name from employees table. Multi-client users
+        // have N rows with the same user_id — for display any one row's
+        // name is fine, so .limit(1).maybeSingle() avoids PGRST116.
         const { data: employee, error: employeeError } = await supabase
           .from('employees')
           .select('first_name, last_name, email')
           .eq('user_id', currentUser.id)
-          .single()
+          .limit(1)
+          .maybeSingle()
         
         if (employee && !employeeError) {
           // Use real name from employees table

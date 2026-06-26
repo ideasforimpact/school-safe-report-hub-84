@@ -198,7 +198,8 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
       
       await processStudentData(
         importData.filter((_, i) => !errorRowNumbers.has(i + 2)),
-        employeeData.clientId
+        employeeData.clientId,
+        employeeData.clientType?.id
       );
 
       handleDialogClose();

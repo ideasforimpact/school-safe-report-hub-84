@@ -7,10 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCustomForms } from '@/hooks/useCustomForms';
 import ConditionalFormRenderer from '@/components/forms/ConditionalFormRenderer';
+import { useAuth } from '@/contexts/auth';
 
 const FormPreviewPage = () => {
   const { formId } = useParams<{ formId: string }>();
   const { forms, loading } = useCustomForms();
+  const { employeeData, user } = useAuth();
+  const clientTypeKey = employeeData?.clientType?.key ?? (user as any)?.clientType?.key ?? null;
   
   const form = forms.find(f => f.id === formId);
 
@@ -101,6 +104,7 @@ const FormPreviewPage = () => {
             <ConditionalFormRenderer 
               fields={form.fields} 
               isPreview={true}
+              clientTypeKey={clientTypeKey}
             />
           </CardContent>
         </Card>

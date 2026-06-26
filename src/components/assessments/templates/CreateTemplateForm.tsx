@@ -29,6 +29,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   const navigate = useNavigate();
   const { createTemplate, updateTemplate, getTemplateById, refreshTemplates } = useAssessment();
   const { user, employeeData } = useAuth();
+  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id;
   
   // Form state
   const [title, setTitle] = useState('');
@@ -286,7 +287,8 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           questions: questionsWithFiles,
           clientId: employeeData.clientId,
           employeeId: employeeData.id,
-          templateId: templateId
+          templateId: templateId,
+          clientTypeId
         });
         
         console.log('Template updated successfully:', result.templateId);
@@ -316,7 +318,8 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           isActive,
           questions: questionsWithFiles,
           clientId: employeeData.clientId,
-          employeeId: employeeData.id
+          employeeId: employeeData.id,
+          clientTypeId
         });
         
         console.log('Template created successfully:', result.templateId);

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { getBatchEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
+import { getActiveClientId } from '@/services/auth/getActiveClientId';
 
 export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoClient: boolean = true): Promise<Employee[]> => {
   try {
@@ -373,13 +374,20 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
     }
 
     console.log('Fetching employee by user ID:', userId);
-    
-    // SECURITY: Query will be automatically filtered by RLS policies
-    const { data, error } = await supabase
+
+    // Feature 3 multi-client: scope by JWT active client_id so we return
+    // the row that corresponds to the user's CURRENT login session, not a
+    // random row when the user has access to multiple clients.
+    const activeClientId = await getActiveClientId();
+
+    let employeeQuery = supabase
       .from('employees')
       .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
-      .eq('user_id', userId)
-      .maybeSingle();
+      .eq('user_id', userId);
+    if (activeClientId) {
+      employeeQuery = employeeQuery.eq('client_id', activeClientId);
+    }
+    const { data, error } = await employeeQuery.maybeSingle();
 
     if (error) {
       console.error("Error fetching employee by user ID:", error);

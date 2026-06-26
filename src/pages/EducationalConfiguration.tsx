@@ -4,8 +4,10 @@ import Layout from '@/components/layout/Layout';
 import { EducationalStructureConfig } from './configuration/EducationalStructureConfig';
 import { EducationalConfigurationHeader } from '@/components/configuration/EducationalConfigurationHeader';
 import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
+import { useLang } from '@/hooks/useLang';
 
 const EducationalConfiguration = () => {
+  const lang = useLang();
   const {
     activeTab,
     setActiveTab,
@@ -32,8 +34,8 @@ const EducationalConfiguration = () => {
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
         <EducationalConfigurationHeader
-          title="Educational Structure Configuration"
-          description="Manage campuses, classes, sections, and facilities"
+          title={`${lang.structure.pageTitle} Configuration`}
+          description={lang.structure.pageDescription}
         />
 
         <EducationalStructureConfig 

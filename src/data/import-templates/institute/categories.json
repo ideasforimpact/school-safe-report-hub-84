@@ -1,0 +1,376 @@
+{
+  "categories": [
+    {
+      "id": "",
+      "name": "Student Conduct & Discipline",
+      "description": "Behavioural issues, misconduct, and disciplinary matters among students",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Bullying or ragging",
+          "description": "Physical, verbal, or psychological bullying or ragging of students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Academic dishonesty (plagiarism, cheating)",
+          "description": "Academic misconduct including plagiarism, exam cheating, or unauthorized collaboration",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Substance use on campus",
+          "description": "Use, possession, or distribution of prohibited substances",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Physical altercation between students",
+          "description": "Physical fights or assaults between students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Property damage",
+          "description": "Intentional or accidental damage to institute or personal property",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unauthorized absence",
+          "description": "Absence from classes or campus without valid reason",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Social media misuse",
+          "description": "Misuse of social media targeting individuals or the institution",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Safety & Security",
+      "description": "Physical safety hazards and security incidents on campus",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Slip, trip, or fall injury",
+          "description": "Accidents resulting from slips, trips, or falls",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Laboratory accident",
+          "description": "Accidents involving chemicals, equipment, or reagents in labs",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unauthorized entry on campus",
+          "description": "Unauthorized individuals gaining access to campus premises",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fire or smoke incident",
+          "description": "Fire-related incidents or smoke detection on campus",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Electrical hazard",
+          "description": "Electrical safety incidents or exposed wiring",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Theft or robbery",
+          "description": "Theft of personal or institute property",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Security breach or access control failure",
+          "description": "Failure of access control systems or security protocols",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Health & Medical",
+      "description": "Medical emergencies and health-related incidents on campus",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Injury during sports or physical activity",
+          "description": "Injuries occurring during sports events or physical activities",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Mental health crisis or emotional distress",
+          "description": "Mental health concerns, anxiety, depression, or suicidal ideation",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Communicable disease outbreak",
+          "description": "Outbreak of contagious illness affecting campus community",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Allergic reaction or food poisoning",
+          "description": "Allergic reactions or illness caused by food at canteen or events",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fainting or medical emergency",
+          "description": "Sudden medical emergencies requiring first aid or hospital care",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Faculty & Staff Conduct",
+      "description": "Issues related to faculty or staff behavior and professionalism",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Harassment by faculty or staff",
+          "description": "Verbal, sexual, or psychological harassment by a faculty or staff member",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unfair grading or academic bias",
+          "description": "Biased evaluation or unfair academic practices by faculty",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Research misconduct",
+          "description": "Fabrication, falsification, or plagiarism in research activities",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Conflict of interest",
+          "description": "Undisclosed personal interests affecting academic decisions",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Absenteeism or academic negligence",
+          "description": "Failure to attend classes or fulfill academic responsibilities",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Infrastructure & Facilities",
+      "description": "Non-human incidents affecting campus operations",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Power failure",
+          "description": "Electrical power outages or failures",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Internet or network outage",
+          "description": "Internet connectivity or network service disruptions",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "HVAC or ventilation failure",
+          "description": "Air conditioning, heating, or ventilation system issues",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Plumbing or water supply issue",
+          "description": "Water leakage, blockage, or supply disruption",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Lab equipment damage or malfunction",
+          "description": "Damage to or failure of laboratory equipment",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Canteen or food service issue",
+          "description": "Hygiene, pricing, or quality issues in the canteen",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Academic & Administrative",
+      "description": "Non-behavioral incidents affecting academic or administrative operations",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Examination irregularity",
+          "description": "Errors or misconduct related to exam conduct or results",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Incorrect academic records",
+          "description": "Errors in student records, transcripts, or certificates",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fee or scholarship dispute",
+          "description": "Issues with fee structures, payments, or scholarship allocation",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Timetable or scheduling conflict",
+          "description": "Clashes or errors in academic timetables or room bookings",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Hostel or accommodation issue",
+          "description": "Complaints related to hostel facilities, cleanliness, or administration",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Cyber & IT Security",
+      "description": "Digital and online incidents affecting campus or academic systems",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Cyberbullying or online harassment",
+          "description": "Online harassment or bullying targeting members of the institute",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unauthorized access to academic systems",
+          "description": "Unauthorized access to ERP, LMS, or exam portals",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Data breach or privacy violation",
+          "description": "Unauthorized disclosure of student or staff personal data",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Malware or virus attack",
+          "description": "Malicious software affecting institute IT systems",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Exam or result system tampering",
+          "description": "Unauthorized modification of exam marks or academic records",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Positive Incident Reporting",
+      "description": "Capture commendable conduct and positive contributions from campus community",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Student excellence or innovation",
+          "description": "Outstanding academic achievement or innovative project by a student",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Faculty excellence",
+          "description": "Exceptional teaching, mentoring, or research contribution by faculty",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Peer support or mentoring",
+          "description": "Students or staff supporting peers through challenges",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Safety suggestion implemented",
+          "description": "A campus safety suggestion that was reviewed and implemented",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    }
+  ]
+}

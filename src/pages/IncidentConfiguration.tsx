@@ -18,6 +18,7 @@ const IncidentConfiguration = () => {
   const [priorities, setPriorities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { employeeData } = useAuth();
+  const clientTypeId = employeeData?.clientType?.id;
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   // Use the custom hook for categories and subcategories
@@ -74,7 +75,7 @@ const IncidentConfiguration = () => {
   // Handle report types operations using the new service with RLS
   const handleAddReportType = async (name: string, description: string) => {
     try {
-      const newType = await reportTypeService.addReportType(name, description);
+      const newType = await reportTypeService.addReportType(name, description, employeeData?.clientId, clientTypeId);
       setReportTypes([...reportTypes, newType]);
       toast.success('Report type added successfully');
     } catch (error) {
@@ -125,7 +126,7 @@ const IncidentConfiguration = () => {
   // Handle priorities operations using the new service
   const handleAddPriority = async (name: string, description: string, color: string, weight: number) => {
     try {
-      const newPriority = await priorityService.addPriority(name, description, color, weight);
+      const newPriority = await priorityService.addPriority(name, description, color, weight, employeeData?.clientId, clientTypeId);
       setPriorities([...priorities, newPriority]);
       toast.success('Priority added successfully');
     } catch (error) {

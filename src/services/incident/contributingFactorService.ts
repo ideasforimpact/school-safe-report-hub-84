@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { incidentReferenceService } from "./incidentReferenceService";
+import { getActiveClientId } from "@/services/auth/getActiveClientId";
 
 export interface ContributingFactorItem {
   id: string;
@@ -39,17 +40,22 @@ export const contributingFactorService = {
   },
 
   // Get contributing factors - always requiring clientId
-  getContributingFactors: async (clientId: string) => {
+  getContributingFactors: async (clientId: string, clientTypeId?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
       }
 
-      const { data: factors, error } = await supabase
+      let query = supabase
         .from('contributing_factors')
         .select('id, name, description, weight, client_id')
-        .eq('client_id', clientId)
-        .order('name');
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data: factors, error } = await query.order('name');
 
       if (error) {
         throw error;
@@ -63,7 +69,7 @@ export const contributingFactorService = {
   },
 
   // Add contributing factor - always requiring clientId
-  addContributingFactor: async (name: string, description: string, weight: string, clientId: string) => {
+  addContributingFactor: async (name: string, description: string, weight: string, clientId: string, clientTypeId?: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -83,11 +89,12 @@ export const contributingFactorService = {
       const { data, error } = await supabase
         .from('contributing_factors')
         .insert([
-          { 
-            name: trimmedName, 
-            description: description || null, 
-            weight: weight || null, 
-            client_id: clientId 
+          {
+            name: trimmedName,
+            description: description || null,
+            weight: weight || null,
+            client_id: clientId,
+            client_type_id: clientTypeId || null
           }
         ])
         .select()
@@ -154,24 +161,13 @@ export const contributingFactorService = {
     try {
       let finalClientId = clientId;
 
-      // If clientId not provided, get it from current user's employee record
+      // If clientId not provided, get it from JWT app_metadata (Feature 3).
       if (!finalClientId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
+        const resolved = await getActiveClientId();
+        if (!resolved) {
+          throw new Error('Active client not found');
         }
-
-        const { data: employee, error: employeeError } = await supabase
-          .from('employees')
-          .select('client_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (employeeError || !employee) {
-          throw new Error('Employee record not found');
-        }
-
-        finalClientId = employee.client_id;
+        finalClientId = resolved;
       }
 
       if (!finalClientId) {

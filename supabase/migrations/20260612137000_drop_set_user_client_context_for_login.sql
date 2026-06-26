@@ -1,0 +1,24 @@
+-- Feature 3 cleanup.
+--
+-- The RPC public.set_user_client_context_for_login(uuid, uuid) was added
+-- by a prior session (migration 20260612130000) as part of an alternative
+-- "write the picker's choice into user_client_context" design path.
+--
+-- The user explicitly rejected that approach: switching clients via
+-- user_client_context is the in-app "switch organisation" feature (driven
+-- by supabase/functions/switch-client/index.ts) and must not be touched
+-- by the multi-client login picker. The login picker now stamps the
+-- choice into auth.users.raw_app_meta_data via
+-- public.set_active_client_for_login (migration 20260612134000) instead.
+--
+-- This drops the unused RPC so it can't be accidentally called or
+-- mistaken for a current part of the design. We intentionally do NOT
+-- delete the original migration file — Supabase migration history is
+-- append-only; reversing via a new migration keeps the history linear
+-- and works for dev DBs that already applied 20260612130000.
+--
+-- The user_client_context TABLE itself is untouched (it belongs to the
+-- separate switch-client feature) and the fallback that reads from it
+-- inside public.get_current_user_client_id() is preserved.
+
+DROP FUNCTION IF EXISTS public.set_user_client_context_for_login(uuid, uuid);

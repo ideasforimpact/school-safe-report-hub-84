@@ -1,0 +1,60 @@
+[
+  {
+    "client_id": null,
+    "title": "Campus Safety Assessment",
+    "description": "Evaluates the overall safety infrastructure, emergency preparedness, and hazard management on campus to ensure a safe environment for students, faculty, and staff",
+    "category_name": "Safety",
+    "questions": [
+      {
+        "text": "Are all emergency exits clearly marked, unobstructed, and inspected regularly?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is a CCTV surveillance system installed across key campus areas and monitored actively?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are fire extinguishers placed at designated points and serviced within the last 12 months?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Is there a functional anti-ragging committee with clear escalation procedures?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Are laboratory safety protocols (PPE availability, chemical storage, emergency shower) in place?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": true
+      },
+      {
+        "text": "Is access control implemented at campus entry/exit points with visitor management?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      },
+      {
+        "text": "Has an emergency response plan been tested through a drill in the last 12 months?",
+        "files": [],
+        "required": true,
+        "allowComments": true,
+        "allowAttachments": false
+      }
+    ]
+  }
+  
+]

@@ -1,5 +1,7 @@
 import React, { createContext, useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType, ClientIntegration, LogoutReason } from './types';
+import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType, ClientIntegration, LogoutReason, ClientChoiceRow } from './types';
+import type { PendingClientChoices } from './hooks/useAuthHandlers';
+import { ClientPickerDialog } from '@/components/auth/ClientPickerDialog';
 import { 
   logoutUser, 
   loginUser, 
@@ -42,7 +44,10 @@ export const AuthContext = createContext<AuthContextType>({
   handleUserAuthentication: async () => {},
   employeeData: null,
   setUser: () => {},
-  isProcessingAuth: false
+  isProcessingAuth: false,
+  pendingClientChoices: null,
+  confirmClientChoice: async () => {},
+  cancelClientChoice: async () => {},
 });
 
 interface AuthProviderProps {
@@ -264,8 +269,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch(setCurrentUser(user));
   };
 
+  // Multi-client picker state. Populated by useAuthHandlers when a Google
+  // or Azure SSO login resolves to more than one active employees row.
+  // While non-null, the ClientPickerDialog (mounted below) is open and the
+  // app's auth state is intentionally not advanced — route guards keep the
+  // user on whichever public/shell route they landed on until they pick.
+  const [pendingClientChoices, setPendingClientChoicesState] = useState<PendingClientChoices | null>(null);
+
   // Import useAuthHandlers
-  const { handleUserAuthentication } = useAuthHandlers({
+  const { handleUserAuthentication, completeAuthForEmployee } = useAuthHandlers({
     user: currentUser,
     users,
     setUser: (user: User | null) => dispatch(setCurrentUser(user)),
@@ -274,8 +286,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     authInitCompleteRef,
     setEmployeeData: (employeeData: EmployeeData | null) => dispatch(setEmployeeData(employeeData)),
     dispatch,
-    navigate
+    navigate,
+    setPendingClientChoices: setPendingClientChoicesState,
   });
+
+  // Resume the paused auth flow with the row the user picked. Runs the same
+  // path a single-client login would have run (steps 4-11), then clears the
+  // picker state so the dialog closes.
+  const confirmClientChoice = useCallback(async (row: ClientChoiceRow) => {
+    if (!pendingClientChoices) return;
+    setShowAuthLoading(true);
+    try {
+      await completeAuthForEmployee(row as any, pendingClientChoices.supabaseUser);
+    } finally {
+      setPendingClientChoicesState(null);
+      setShowAuthLoading(false);
+    }
+  }, [pendingClientChoices, completeAuthForEmployee]);
+
+  // User declined to pick (or closed the dialog). Sign out so we don't leave
+  // a half-authenticated Supabase session lying around, and bounce back to
+  // /login. The SIGNED_OUT branch of onAuthStateChange handles the cleanup.
+  const cancelClientChoice = useCallback(async () => {
+    setPendingClientChoicesState(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('cancelClientChoice signOut failed', err);
+    }
+    navigate('/login', { replace: true });
+  }, [navigate]);
 
   const broadcastToOtherTabs = useCallback((type: string) => {
     if (typeof BroadcastChannel !== 'undefined') {
@@ -795,6 +835,40 @@ const handleLogoutBroadcast = useCallback(() => {
             .single();
           
           if (employeeData && !error) {
+            // Feature 3: stamp the resolved client into auth.users.app_metadata
+            // so RLS picks it up via JWT. Best-effort here — the password
+            // login path is a local-fixture flow (loginUser checks an
+            // in-memory users array) and may not have a Supabase auth
+            // session at all; in that case auth.uid() is null and the RPC
+            // returns success=false. We log and continue rather than hard-
+            // fail because the legacy fixture path predates real RLS use
+            // for password login. The OAuth path enforces it strictly.
+            try {
+              const { data: stampData, error: stampError } = await supabase.rpc(
+                'set_active_client_for_login',
+                {
+                  p_employee_id: employeeData.id,
+                  p_client_id: employeeData.client_id,
+                },
+              );
+              const stampResult = stampData as { success?: boolean; error?: string } | null;
+              if (stampError || !stampResult?.success) {
+                console.warn(
+                  '[handleLogin] set_active_client_for_login skipped or failed (likely no Supabase session for fixture login):',
+                  stampError?.message || stampResult?.error,
+                );
+              } else {
+                // Refresh only if we actually stamped — otherwise refreshSession
+                // would error with "no session".
+                const { error: refreshError } = await supabase.auth.refreshSession();
+                if (refreshError) {
+                  console.warn('[handleLogin] refreshSession after stamp failed:', refreshError.message);
+                }
+              }
+            } catch (stampEx) {
+              console.warn('[handleLogin] exception stamping app_metadata (continuing):', stampEx);
+            }
+
             const { client, clientType, clientIntegration } = await fetchClientInfo(employeeData.client_id);
 
             const employee: EmployeeData = {
@@ -805,18 +879,18 @@ const handleLogoutBroadcast = useCallback(() => {
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
-              department: employeeData.department, 
+              department: employeeData.department,
               employeeType: employeeData.employee_type,
               client: client,
               clientType: clientType,
               client_integration: clientIntegration
             };
-            
+
             console.log('🔍 AuthProvider - Employee data loaded:', employee);
-            
+
             dispatch(setEmployeeData(employee));
             saveEmployeeDataToStorage(employee);
-            
+
             if (employee.clientId) {
               dispatch(setClientId(employee.clientId));
               dispatch(setSwitchContext({
@@ -1032,9 +1106,12 @@ const handleLogoutBroadcast = useCallback(() => {
     employeeData: state.employeeData,
     setUser: handleSetUser,
     isProcessingAuth,
+    pendingClientChoices: pendingClientChoices?.rows ?? null,
+    confirmClientChoice,
+    cancelClientChoice,
   }), [
     currentUser,
-    displayUsers, 
+    displayUsers,
     handleLogin,
     handleLogout,
     isAdmin,
@@ -1042,7 +1119,10 @@ const handleLogoutBroadcast = useCallback(() => {
     handleChangePassword,
     authError,
     state.employeeData,
-    isProcessingAuth
+    isProcessingAuth,
+    pendingClientChoices,
+    confirmClientChoice,
+    cancelClientChoice,
   ]);
 
   if (isInitializing) {
@@ -1053,6 +1133,10 @@ const handleLogoutBroadcast = useCallback(() => {
     <AuthContext.Provider value={contextValue}>
       {showAuthLoading && <AuthLoadingOverlay isVisible={showAuthLoading} />}
       {children}
+      {/* Mounted once at the provider root so the picker overlays whatever
+          route is currently rendered. Azure's redirectTo is /dashboard, so
+          the user may already be on the dashboard skeleton when this opens. */}
+      <ClientPickerDialog />
     </AuthContext.Provider>
   );
 };

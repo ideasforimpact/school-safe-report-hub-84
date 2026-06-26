@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSupabaseUrl, getSupabaseAnonKey } from "../_shared/env.ts";
+import { getActiveClient } from "../_shared/getActiveClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,19 +36,17 @@ serve(async (req) => {
     const notificationId = body?.notification_id as string | undefined;
     const markAll = Boolean(body?.mark_all);
 
-    const { data: employee, error: employeeError } = await supabase
-      .from("employees")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-
-    if (employeeError || !employee?.id) {
+    // Feature 3: scope to JWT app_metadata active employee (multi-client
+    // users have N rows; picking the wrong row would mark the wrong
+    // client's notifications as read).
+    const { employee_id: activeEmployeeId } = await getActiveClient(supabase, user);
+    if (!activeEmployeeId) {
       return new Response(
         JSON.stringify({ success: false, error: "Employee not found for current user" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+    const employee = { id: activeEmployeeId };
 
     let updateQuery = supabase
       .from("centralized_notification_recipients")

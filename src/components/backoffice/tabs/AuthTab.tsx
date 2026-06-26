@@ -24,11 +24,16 @@ interface AuthTabProps {
   onRemoveIP?: (ip: string) => void;
   onUpdateIP?: (oldIp: string, newIp: IPAddress) => void;
   showErrors?: boolean;
+  /**
+   * Feature 2: passed through so SuperAdminDomainInput can apply its
+   * edit-view-only cap behavior. Add view stays uncapped (legacy).
+   */
+  isEdit?: boolean;
 }
 
-const AuthTab = ({ 
-  formData, 
-  onAddDomain, 
+const AuthTab = ({
+  formData,
+  onAddDomain,
   onRemoveDomain,
   onAddSuperAdminDomain,
   onRemoveSuperAdminDomain,
@@ -36,7 +41,8 @@ const AuthTab = ({
   onAddIP,
   onRemoveIP,
   onUpdateIP,
-  showErrors = false
+  showErrors = false,
+  isEdit = false,
 }: AuthTabProps) => {
   const hasProviders = Object.values(formData.authProviders || {}).some(v => v);
 
@@ -57,6 +63,7 @@ const AuthTab = ({
         domains={formData.superAdminAllowedDomains}
         onAdd={onAddSuperAdminDomain}
         onRemove={onRemoveSuperAdminDomain}
+        isEdit={isEdit}
       />
       {showErrors && (!formData.superAdminAllowedDomains || formData.superAdminAllowedDomains.length === 0) && (
         <p className="text-xs text-red-600">At least one super admin domain is required.</p>

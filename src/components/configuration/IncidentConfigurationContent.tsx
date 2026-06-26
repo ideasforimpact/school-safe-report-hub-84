@@ -34,8 +34,9 @@ const IncidentConfigurationContent = () => {
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+  const clientTypeId = employeeData?.clientType?.id || (user as any)?.clientType?.id;
 
   // Use the existing hook for categories and subcategories
   const {
@@ -49,24 +50,16 @@ const IncidentConfigurationContent = () => {
     updateSubcategory,
     deleteSubcategory,
     loadData,
+    silentRefresh,
   } = useIncidentCategories();
 
   // Fetch contributing factors
   useEffect(() => {
+    if (!employeeData?.clientId || !clientTypeId) return;
     async function fetchContributingFactors() {
       try {
-        const { data, error } = await supabase
-          .from('contributing_factors')
-          .select('id, name, description, weight, client_id')
-          .order('name');
-        
-        if (error) {
-          console.error('Error fetching contributing factors:', error);
-          toast.error('Failed to load contributing factors');
-          return;
-        }
-        
-        setContributingFactors(data || []);
+        const factors = await contributingFactorService.getContributingFactors(employeeData!.clientId, clientTypeId);
+        setContributingFactors(factors);
       } catch (error) {
         console.error('Exception fetching contributing factors:', error);
         toast.error('An unexpected error occurred');
@@ -74,26 +67,16 @@ const IncidentConfigurationContent = () => {
         setLoading(false);
       }
     }
-
     fetchContributingFactors();
-  }, []);
+  }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch report types
   useEffect(() => {
+    if (!clientTypeId) return;
     async function fetchReportTypes() {
       try {
-        const { data, error } = await supabase
-          .from('incident_report_types')
-          .select('id, name, description, is_active')
-          .order('name');
-        
-        if (error) {
-          console.error('Error fetching report types:', error);
-          toast.error('Failed to load report types');
-          return;
-        }
-        
-        setReportTypes(data || []);
+        const data = await reportTypeService.getReportTypes(false, clientTypeId);
+        setReportTypes(data as ReportType[]);
       } catch (error) {
         console.error('Exception fetching report types:', error);
         toast.error('An unexpected error occurred');
@@ -101,24 +84,15 @@ const IncidentConfigurationContent = () => {
     }
 
     fetchReportTypes();
-  }, []);
+  }, [clientTypeId]);
 
   // Fetch priorities
   useEffect(() => {
+    if (!clientTypeId) return;
     async function fetchPriorities() {
       try {
-        const { data, error } = await supabase
-          .from('incident_priorities')
-          .select('id, name, description, color, weight, is_active')
-          .order('weight');
-        
-        if (error) {
-          console.error('Error fetching priorities:', error);
-          toast.error('Failed to load priorities');
-          return;
-        }
-        
-        setPriorities(data || []);
+        const data = await priorityService.getPriorities(false, clientTypeId);
+        setPriorities(data as PriorityItem[]);
       } catch (error) {
         console.error('Exception fetching priorities:', error);
         toast.error('An unexpected error occurred');
@@ -126,7 +100,7 @@ const IncidentConfigurationContent = () => {
     }
 
     fetchPriorities();
-  }, []);
+  }, [clientTypeId]);
 
   // Handle contributing factors operations
   const handleAddContributingFactor = async (name: string, description: string, weight: string) => {
@@ -383,8 +357,8 @@ const IncidentConfigurationContent = () => {
   };
 
   const handleCategoriesUpdated = useCallback(() => {
-    loadData();
-  }, [loadData]);
+    silentRefresh();
+  }, [silentRefresh]);
 
 
   useRealTimeSubHook({

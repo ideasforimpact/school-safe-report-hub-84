@@ -10,6 +10,7 @@ export interface CreateTemplateRequest {
   clientId: string;
   employeeId: string;
   templateId?: string; // For updates
+  clientTypeId?: string;
 }
 
 export interface CreateTemplateResponse {
@@ -102,9 +103,9 @@ async function convertFilesToBase64(questions: AssessmentQuestion[]): Promise<an
 
 export const templateService = {
   // Get all templates for a client
-  getTemplates: async (clientId: string): Promise<AssessmentTemplate[]> => {
+  getTemplates: async (clientId: string, clientTypeId?: string): Promise<AssessmentTemplate[]> => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('assessment_templates')
         .select(`
           id,
@@ -115,14 +116,18 @@ export const templateService = {
           questions,
           created_at,
           created_by,
+          employees:created_by(first_name, last_name),
           template_categories(
             id,
             name,
             description
           )
         `)
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
+        .eq('client_id', clientId);
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching templates:', error);
@@ -143,7 +148,9 @@ export const templateService = {
         category_id: template.category_id,
         questions: template.questions as unknown as AssessmentQuestion[],
         createdAt: template.created_at,
-        createdBy: template.created_by,
+        createdBy: template.employees
+          ? `${(template.employees as any).first_name || ''} ${(template.employees as any).last_name || ''}`.trim()
+          : (template.created_by || 'System'),
         isActive: template.is_active
       })) || [];
 
@@ -167,7 +174,8 @@ export const templateService = {
           category_id: templateData.category_id,
           questions: templateData.questions || [],
           created_by: templateData.createdBy || '',
-          client_id: templateData.clientId || ''
+          client_id: templateData.clientId || '',
+          client_type_id: templateData.clientTypeId || null
         })
         .select()
         .single();
@@ -250,7 +258,8 @@ export const templateService = {
           questions: processedQuestions,
           clientId: request.clientId,
           employeeId: request.employeeId,
-          templateId: request.templateId // Will be undefined for creates
+          templateId: request.templateId,
+          clientTypeId: request.clientTypeId
         }
       });
 

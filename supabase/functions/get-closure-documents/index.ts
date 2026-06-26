@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts'
 import { closureAttachmentsToDocuments } from '../_shared/closureAttachments.ts'
+import { getActiveClient } from '../_shared/getActiveClient.ts'
 
 const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey())
 
@@ -30,16 +31,14 @@ Deno.serve(async (req) => {
       throw new Error('incident_id is required')
     }
 
-    const { data: employee, error: employeeError } = await supabase
-      .from('employees')
-      .select('id, client_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (employeeError || !employee) {
-      console.error('Error fetching employee data:', employeeError)
+    // Feature 3: resolve from JWT app_metadata (multi-client safe).
+    const { client_id: activeClientId, employee_id: activeEmployeeId } =
+      await getActiveClient(supabase, user)
+    if (!activeClientId || !activeEmployeeId) {
+      console.error('Active employee not found for user', user.id)
       throw new Error('Employee not found')
     }
+    const employee = { id: activeEmployeeId, client_id: activeClientId }
 
     const { data: incidentRow, error: incidentFetchError } = await supabase
       .from('incidents')

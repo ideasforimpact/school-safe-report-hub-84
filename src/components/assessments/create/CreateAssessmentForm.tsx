@@ -165,22 +165,44 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     fetchExistingAssessments();
   }, [fetchExistingAssessments]);
 
-  // Find the selected employee
+  // Find the selected employee. Fall back to employeeData when the
+  // pre-filled assignee isn't present in the (filtered) employees list,
+  // so the input still displays the logged-in user's name + email after
+  // the demo icon click sets assignedTo to employeeData.id.
   const selectedEmployee = employees.find(
     emp => emp.id === formData.assignedTo
   );
 
   const selectedEmployeeDisplay = selectedEmployee
     ? `${selectedEmployee.first_name ?? ''} ${selectedEmployee.last_name ?? ''} (${selectedEmployee.email ?? ''})`.trim()
-    : '';
+    : employeeData && formData.assignedTo === employeeData.id
+      ? `${employeeData.firstName ?? ''} ${employeeData.lastName ?? ''} (${employeeData.email ?? ''})`.trim()
+      : '';
 
   // Demo Setup: fill name + description + templateId from one of three
-  // pre-canned scenarios. assignedTo and targetCompletionDate are left
-  // untouched so the user picks them explicitly. Cycles per click.
+  // pre-canned scenarios, and pre-populate assignedTo with the currently
+  // logged-in user so the demo walkthrough doesn't require manually
+  // searching for an assignee. targetCompletionDate is left untouched so
+  // the user picks it explicitly. Cycles scenarios per click.
+  //
+  // The form is intentionally NOT pre-filled on mount — every field
+  // (Description, Assign To, etc.) stays blank until the user clicks the
+  // sparkle icon. The icon itself is hidden when VITE_IS_DEMO_SETUP is
+  // not 'true' (see DemoActionButton), so this handler is unreachable in
+  // non-demo environments.
   const handleDemoAssessmentApply = () => {
     const { scenario, index } = getNextAssessmentScenario();
     const partial = resolveScenarioForAssessment(scenario, templates, index);
-    setFormData(prev => ({ ...prev, ...partial }));
+    const currentEmployeeId = employeeData?.id;
+    setFormData(prev => ({
+      ...prev,
+      ...partial,
+      assignedTo: currentEmployeeId || prev.assignedTo,
+    }));
+    // Clear any in-flight search state so the newly pre-filled assignee
+    // is what the user sees in the input.
+    setSearchQuery('');
+    setIsSearching(false);
     // Trigger the same name-validation path the user typing would
     // trigger, so the form's existing duplicate / format checks
     // re-evaluate against the demo-filled value.

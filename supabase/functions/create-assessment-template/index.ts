@@ -33,6 +33,7 @@ interface CreateTemplateRequest {
   clientId: string;
   employeeId: string;
   templateId?: string; // For updates
+  clientTypeId?: string;
 }
 
 // Sanitize filename for storage (from questionFileService)
@@ -159,7 +160,7 @@ serve(async (req) => {
     )
 
     // Parse request body
-    const { title, description, type, isActive, questions, clientId, employeeId, templateId }: CreateTemplateRequest = await req.json()
+    const { title, description, type, isActive, questions, clientId, employeeId, templateId, clientTypeId }: CreateTemplateRequest = await req.json()
 
     const isUpdate = !!templateId;
     console.log(`${isUpdate ? 'Updating' : 'Creating'} template with files:`, { 
@@ -185,15 +186,16 @@ serve(async (req) => {
       .from('template_categories')
       .select('id')
       .eq('name', type)
+      .is('client_type_id', null)
       .single();
 
     if (categoryError) {
       console.error('Category lookup error:', categoryError);
       return new Response(
         JSON.stringify({ error: `Template category '${type}' not found` }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -438,7 +440,8 @@ serve(async (req) => {
           is_active: isActive,
           questions: processedQuestions,
           created_by: employeeId,
-          client_id: clientId
+          client_id: clientId,
+          client_type_id: clientTypeId || null
         })
         .select()
 

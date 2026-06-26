@@ -35,7 +35,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
       console.log('Fetching students for client ID:', employeeData.clientId);
-      const studentData = await fetchStudentsByClientId(employeeData.clientId);
+      const studentData = await fetchStudentsByClientId(employeeData.clientId, employeeData.clientType?.id);
       setStudents(studentData);
       console.log('Successfully fetched students:', studentData.length);
     } catch (error) {
@@ -45,7 +45,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, employeeData?.clientType?.id]);
 
   // Public refresh method
   const refreshStudents = useCallback(async () => {
@@ -57,14 +57,15 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     console.log('StudentContext useEffect triggered, clientId:', employeeData?.clientId);
     fetchStudents();
-  }, [fetchStudents, employeeData?.clientId]);
+  }, [fetchStudents, employeeData?.clientId, employeeData?.clientType?.id]);
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      // Add client_id to the student data
+      // Add client_id and client_type_id to the student data
       const studentWithClientId = {
         ...student,
-        client_id: employeeData?.clientId
+        client_id: employeeData?.clientId,
+        clientTypeId: employeeData?.clientType?.id || null
       };
 
       const { data, error } = await supabase.functions.invoke('student-management', {

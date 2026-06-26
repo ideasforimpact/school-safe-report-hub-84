@@ -228,7 +228,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
         );
       case 2:
         return (
-          <AuthTab 
+          <AuthTab
             formData={safeFormData}
             onAddDomain={addDomain}
             onRemoveDomain={removeDomain}
@@ -239,6 +239,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
             onRemoveIP={removeIP}
             onUpdateIP={updateIP}
             showErrors={attemptedSteps.has(2)}
+            isEdit={isEdit}
           />
         );
       default:
