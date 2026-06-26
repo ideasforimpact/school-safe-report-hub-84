@@ -44,7 +44,8 @@ export const useTemplateManagement = (userId?: string) => {
       const id = await templateService.createTemplate({
         ...templateData,
         clientId: employeeData.clientId,
-        createdBy: employeeData.id
+        createdBy: employeeData.id,
+        clientTypeId
       });
       console.log('Template created with ID:', id);
       toast.success('Template created successfully');

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
@@ -8,34 +8,41 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormField } from '@/types/formTypes';
+import { normalizeGrievanceSubmitterFields } from '@/utils/grievanceFormFields';
 
 interface ConditionalFormRendererProps {
   fields: FormField[];
   onSubmit?: (data: Record<string, any>) => void;
   isPreview?: boolean;
   isSubmitting?: boolean;
+  clientTypeKey?: string | null;
 }
 
 const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
   fields,
   onSubmit,
   isPreview = false,
-  isSubmitting = false
+  isSubmitting = false,
+  clientTypeKey = null,
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
+  const normalizedFields = useMemo(
+    () => normalizeGrievanceSubmitterFields(fields, clientTypeKey),
+    [fields, clientTypeKey]
+  );
 
   // Calculate which fields should be visible based on conditional logic
   useEffect(() => {
     const newVisibleFields = new Set<string>();
 
-    fields.forEach((field: any) => {
+    normalizedFields.forEach((field: any) => {
       // No conditional logic configured; always show
       newVisibleFields.add(field.id);
     });
 
     setVisibleFields(newVisibleFields);
-  }, [fields, formData]);
+  }, [normalizedFields, formData]);
 
   const handleFieldChange = (fieldId: string, value: any) => {
     setFormData(prev => ({
@@ -302,7 +309,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {fields.map(renderField)}
+      {normalizedFields.map(renderField)}
       
       {!isPreview && (
         <Button type="submit" className="w-full" disabled={isSubmitting}>

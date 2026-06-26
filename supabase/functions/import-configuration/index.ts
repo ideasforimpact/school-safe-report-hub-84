@@ -173,16 +173,18 @@ serve(async (req) => {
     for (const form of templates.forms ?? []) {
       const title = form.title?.trim();
       if (!title) continue;
+      // Forms are shared across client types — store with null client_type_id so
+      // the public form page resolves the submitter field via the client's own type.
       const { data: existForm } = await supabase
         .from('custom_forms').select('id')
-        .eq('client_id', clientId).eq('title', title).eq('client_type_id', clientTypeId);
+        .eq('client_id', clientId).eq('title', title).is('client_type_id', null);
       if (existForm && existForm.length > 0) {
         tableLogs.custom_forms.already_existing_ids.push(existForm[0].id);
         continue;
       }
       const { data, error } = await supabase
         .from('custom_forms')
-        .insert({ client_id: clientId, title, description: form.description ?? null, is_active: form.is_active ?? true, fields: form.fields, client_logo: (form as any).client_logo ?? clientLogo ?? null, client_type_id: clientTypeId })
+        .insert({ client_id: clientId, title, description: form.description ?? null, is_active: form.is_active ?? true, fields: form.fields, client_logo: (form as any).client_logo ?? clientLogo ?? null, client_type_id: null })
         .select('id').single();
       if (error) { tableLogs.custom_forms.errors.push(error.message); responseStatus = 'failed'; responseCode = 207; }
       else if (data?.id) tableLogs.custom_forms.inserted_ids.push(data.id);
