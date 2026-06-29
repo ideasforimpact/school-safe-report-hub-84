@@ -1,0 +1,35 @@
+# Starter pipeline
+# Runs lint, tests, and build for any branch pushed to a sprint/* or release/*
+# branch, and for any PR targeting a sprint/* or release/* branch.
+
+trigger:
+  branches:
+    include:
+      - sprint/*
+      - release/*
+
+pr:
+  branches:
+    include:
+      - sprint/*
+      - release/*
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '20.x'
+
+  - script: npm ci
+    displayName: Install dependencies
+
+  - script: npm run lint
+    displayName: Run ESLint
+
+  - script: npm run test
+    displayName: Run Tests
+
+  - script: npm run build
+    displayName: Build Project
