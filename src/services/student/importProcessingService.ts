@@ -150,6 +150,17 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
           }
         }
       );
+
+      if (error) {
+        console.error('Error creating students in bulk:', error);
+        throw new Error(`Failed to create students: ${error.message}`);
+      }
+
+      result.successCount = data?.count || studentsToCreate.length;
+
+      if (data?.students) {
+        result.addedStudents = result.addedStudents.concat(data.students);
+      }
     }
     
     // Execute bulk update operation if needed
