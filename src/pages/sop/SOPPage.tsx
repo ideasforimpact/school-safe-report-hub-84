@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import SOPHeader from '@/components/sop/SOPHeader';
 import AssignSOPDialog from '@/components/sop/AssignSOPDialog';
@@ -21,8 +22,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -30,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Edit, Eye, UserPlus, Search, Users, User, CheckCircle, Clock, Clock3, Trash2, X } from 'lucide-react';
+import { Edit, Eye, UserPlus, Users, User, CheckCircle, Clock, Clock3, Trash2, X } from 'lucide-react';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import {
   Tooltip,
@@ -50,6 +52,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import CompletedEmployeesDialog from './CompletedEmployeesDialog';
 import Loader from '@/components/common/Loader';
+import { useSopList, useDeleteSop, sopKeys } from '@/hooks/sop/useSopQueries';
 
 interface SOP {
   id: string;
@@ -105,14 +108,12 @@ const SOPPage = () => {
   const [signoffSOP, setSignoffSOP] = useState<SOP | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sopToDelete, setSopToDelete] = useState<SOP | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [sops, setSops] = useState<SOP[]>([]);
-  const [allSops, setAllSops] = useState<SOP[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
   const { state } = useEmployeeStore();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const employeeData = getEmployeeData(state);
@@ -124,112 +125,54 @@ const SOPPage = () => {
   const [selectedSopForCompleted, setSelectedSopForCompleted] = useState<string>('');
   const [completedEmployeeIds, setCompletedEmployeeIds] = useState<string[]>([]);
 
-
-  // Resolve clientId similarly to AddSOPDialog to avoid null client from context
   const resolvedClientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
+  const queryClient = useQueryClient();
 
+  // ─── Data fetching ────────────────────────────────────────────────────────
+  const { data: sopData, isFetching: loading } = useSopList({
+    clientId: resolvedClientId,
+    employeeId: employeeData?.id || null,
+    isSuperAdmin,
+    search: searchTerm,
+    status: statusFilter,
+    categoryId: categoryFilter,
+    page: currentPage,
+    limit: PAGE_SIZE,
+  });
+
+  const sops: SOP[] = sopData?.data || [];
+  const totalCount = sopData?.pagination?.total ?? sops.length;
+
+  // Stats derived from the current page response (same behaviour as before)
+  const sopStats = useMemo(() => ({
+    totalSOPs: sopData?.pagination?.total ?? sops.length,
+    totalEmployeesInvolved: sops.reduce((sum, s) => sum + (s.assigned_employee_count || 0), 0),
+    totalSOPsSignedOff: sops.reduce((sum, s) => sum + (s.completed_count || 0), 0),
+    totalSOPsToBeDone: sops.reduce((sum, s) => sum + (s.to_be_done_count || 0), 0),
+  }), [sopData, sops]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Build the category filter list from page-1 data; keep it stable while paging
   useEffect(() => {
-    // Clear stale records while switching client context
-    setSops([]);
-    setAllSops([]);
-    setLoading(true);
-    fetchSOPs();
-    fetchCategories();
-  }, [resolvedClientId, employeeData?.id, isSuperAdmin]);
-
-  // Fetch categories
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('sop_categories' as any)
-        .select('id, category_name')
-        .order('category_name', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching categories:', error);
-        return;
-      }
-
-      setCategories((data || []) as unknown as Array<{ id: string; category_name: string }>);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
+    if (currentPage === 1 && sops.length) {
+      const seen = new Set<string>();
+      const cats = sops
+        .filter((s: any) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
+        .map((s: any) => ({ id: s.category_id, category_name: s.category_name }))
+        .sort((a: any, b: any) => a.category_name.localeCompare(b.category_name));
+      if (cats.length) setCategories(cats);
     }
-  };
+  }, [sops, currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Filter SOPs based on search, status, and category
+  // Reset to page 1 whenever filters change; React Query re-fetches automatically via key change
   useEffect(() => {
-    let filtered = [...allSops];
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, categoryFilter]);
 
-    // Apply search filter
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (sop) =>
-          sop.title.toLowerCase().includes(searchLower) ||
-          (sop.description && sop.description.toLowerCase().includes(searchLower)) ||
-          (sop.category_name && sop.category_name.toLowerCase().includes(searchLower))
-      );
-    }
+  // ─── Delete mutation ──────────────────────────────────────────────────────
+  const deleteMutation = useDeleteSop();
+  const deleting = deleteMutation.isPending;
 
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      const statusValue = statusFilter === 'active';
-      filtered = filtered.filter((sop) => sop.status === statusValue);
-    }
-
-    // Apply category filter
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter((sop) => sop.category_id === categoryFilter);
-    }
-
-    setSops(filtered);
-  }, [searchTerm, statusFilter, categoryFilter, allSops]);
-
-  const fetchSOPs = async () => {
-    setLoading(true);
-    try {
-      // Use resolvedClientId which properly gets client_id from employeeData
-      const clientId = resolvedClientId;
-      const employeeId = employeeData?.id || null;
-
-      if (!clientId) {
-        setAllSops([]);
-        setSops([]);
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('fetch-sop', {
-        body: {
-          client_id: clientId,
-          employee_id: employeeId,
-          is_super_admin: isSuperAdmin,
-        },
-      });
-
-      if (error) {
-        console.error('Error fetching SOPs:', error);
-        toast.error('Failed to load SOPs');
-        return;
-      }
-
-      if (data && data.error) {
-        toast.error(data.error || 'Failed to load SOPs');
-        return;
-      }
-
-      if (data && data.success) {
-        const sopList = data.data || [];
-        setAllSops(sopList);
-        setSops(sopList);
-      }
-    } catch (error) {
-      console.error('Error fetching SOPs:', error);
-      toast.error('Failed to load SOPs');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ─── Handlers ────────────────────────────────────────────────────────────
   const handleCreateSOP = () => {
     if (isReadOnlySwitchedContext) {
       toast.error('Read-only switched client context: create is not allowed');
@@ -249,8 +192,6 @@ const SOPPage = () => {
   };
 
   const handleSOPCreated = () => {
-    // Refresh SOP list after create/update
-    fetchSOPs();
     setEditingSOP(null);
   };
 
@@ -271,8 +212,7 @@ const SOPPage = () => {
   };
 
   const handleAssignedSummaryUpdate = (_assignedCount: number) => {
-    // Always refetch from backend so list reflects latest sop_assigned state
-    fetchSOPs();
+    // AssignSOPDialog's mutation handles cache invalidation automatically
   };
 
   const handleDeleteClick = (sop: SOP) => {
@@ -284,46 +224,22 @@ const SOPPage = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!sopToDelete || !resolvedClientId) {
-      return;
-    }
-
-    setDeleting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('delete-sop', {
-        body: {
-          sop_id: sopToDelete.id,
-          client_id: resolvedClientId,
+  const handleDeleteConfirm = () => {
+    if (!sopToDelete || !resolvedClientId) return;
+    deleteMutation.mutate(
+      { sopId: sopToDelete.id, clientId: resolvedClientId },
+      {
+        onSuccess: () => {
+          setDeleteDialogOpen(false);
+          setSopToDelete(null);
         },
-      });
-
-      if (error) {
-        console.error('Error deleting SOP:', error);
-        toast.error('Failed to delete SOP');
-        return;
       }
-
-      if (data && data.error) {
-        toast.error(data.details || data.error || 'Failed to delete SOP');
-        return;
-      }
-
-      toast.success('SOP deleted successfully');
-      setDeleteDialogOpen(false);
-      setSopToDelete(null);
-      fetchSOPs();
-    } catch (error) {
-      console.error('Error deleting SOP:', error);
-      toast.error('Failed to delete SOP');
-    } finally {
-      setDeleting(false);
-    }
+    );
   };
 
   // Check if SOP is assigned to any groups
   const isSOPAssigned = (sop: SOP): boolean => {
-    return (sop.assignments && sop.assignments.length > 0) || 
+    return (sop.assignments && sop.assignments.length > 0) ||
            (sop.assigned_group_count && sop.assigned_group_count > 0) || false;
   };
 
@@ -371,14 +287,14 @@ const SOPPage = () => {
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
       const day = date.getDate().toString().padStart(2, '0');
       const year = date.getFullYear();
-      
+
       let hours = date.getHours();
       const minutes = date.getMinutes().toString().padStart(2, '0');
       const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
+      hours = hours ? hours : 12;
       const hoursStr = hours.toString().padStart(2, '0');
-      
+
       return `${month}/${day}/${year} ${hoursStr}:${minutes} ${ampm}`;
     } catch (error) {
       console.error('Error formatting date:', error);
@@ -386,16 +302,15 @@ const SOPPage = () => {
     }
   };
 
-  // Real-time updates: refetch SOPs whenever SOP or sop_assigned changes for this client
+  // ─── Real-time subscriptions ──────────────────────────────────────────────
+  // Invalidate the React Query cache so data refetches automatically
   useRealTimeSubHook({
     channelName: 'sop-realtime',
     events: ['INSERT', 'UPDATE', 'DELETE'],
     table: 'sop',
     filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
     enabled: !!resolvedClientId,
-    onPayload: () => {
-      fetchSOPs();
-    },
+    onPayload: () => queryClient.invalidateQueries({ queryKey: sopKeys.all }),
   });
 
   useRealTimeSubHook({
@@ -404,9 +319,7 @@ const SOPPage = () => {
     table: 'sop_assigned',
     filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
     enabled: !!resolvedClientId,
-    onPayload: () => {
-      fetchSOPs();
-    },
+    onPayload: () => queryClient.invalidateQueries({ queryKey: sopKeys.all }),
   });
 
   // Active filter count
@@ -428,7 +341,7 @@ const SOPPage = () => {
 
   const handleViewCompletedEmployees = async (sop: SOP) => {
     if ((sop.completed_count || 0) < 1) {
-      return; 
+      return;
     }
 
     if (!resolvedClientId) return;
@@ -460,7 +373,7 @@ const SOPPage = () => {
           full_name: `${item.employees?.first_name || ''} ${item.employees?.last_name || ''}`,
           email: item.employees?.email
         })) || [];
-        
+
       setCompletedEmployees(employees);
       setSelectedSopForCompleted(sop.title);
       setCompletedEmployeesDialogOpen(true);
@@ -491,10 +404,12 @@ const SOPPage = () => {
           <SOPHeader 
             onCreateSOP={handleCreateSOP}
             canCreateSOP={!isReadOnlySwitchedContext}
-            onStatisticsRefresh={() => {
-              // Statistics will be refreshed automatically via real-time hooks
-              // This callback can be used for additional actions if needed
-            }}
+            onRefreshStats={() => queryClient.invalidateQueries({ queryKey: sopKeys.all })}
+            loading={loading}
+            totalSOPs={sopStats.totalSOPs}
+            totalEmployeesInvolved={sopStats.totalEmployeesInvolved}
+            totalSOPsSignedOff={sopStats.totalSOPsSignedOff}
+            totalSOPsToBeDone={sopStats.totalSOPsToBeDone}
           />
         </div>
 
@@ -503,15 +418,13 @@ const SOPPage = () => {
           {/* Filters Section */}
           <div className="mb-6 flex flex-wrap items-center gap-4">
             {/* Search Box */}
-            <div className="relative w-[250px]">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search by name, description, category..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <DebouncedSearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search by name, description, category..."
+              className="w-[250px]"
+              triggerOnEnter
+            />
 
             {/* Category Filter */}
             <div className="w-[180px]">
@@ -557,14 +470,6 @@ const SOPPage = () => {
             )}
           </div>
 
-          {/* Results Count */}
-          {!loading && (
-            <div className="mb-4">
-              <p className="text-sm text-gray-600">
-                Showing {sops.length} of {allSops.length} SOPs
-              </p>
-            </div>
-          )}
 
           {loading ? (
             <Loader text="Loading SOPs..." />
@@ -614,8 +519,8 @@ const SOPPage = () => {
                         <>
                       <TableCell>
                             {sop.assigned_group_count && sop.assigned_group_count > 0 ? (
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className="bg-orange-50 border-orange-300 text-orange-700 flex items-center gap-1.5 w-fit"
                           >
                                 <Users className="h-3 w-3" />
@@ -625,8 +530,8 @@ const SOPPage = () => {
                             </span>
                           </Badge>
                         ) : (
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className="bg-red-50 border-red-300 text-red-700 flex items-center gap-1.5 w-fit"
                           >
                                 <Users className="h-3 w-3" />
@@ -638,9 +543,9 @@ const SOPPage = () => {
                         )}
                       </TableCell>
                           <TableCell>
-                            <Badge 
-                              variant="outline" 
-                              className={(sop.assigned_employee_count || 0) > 0 
+                            <Badge
+                              variant="outline"
+                              className={(sop.assigned_employee_count || 0) > 0
                                 ? 'bg-blue-50 border-blue-300 text-blue-700 flex items-center gap-1.5 w-fit'
                                 : 'bg-gray-50 border-gray-300 text-gray-700 flex items-center gap-1.5 w-fit'}
                             >
@@ -656,12 +561,12 @@ const SOPPage = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge 
-                              variant="outline" 
+                            <Badge
+                              variant="outline"
                               onClick={() => handleViewCompletedEmployees(sop)}
                               className={`bg-green-50 border-green-300 text-green-700 flex items-center gap-1.5 w-fit
                                 ${ (sop.completed_count || 0) >= 1
-                                    ? 'cursor-pointer hover:bg-green-100' 
+                                    ? 'cursor-pointer hover:bg-green-100'
                                     : 'cursor-default opacity-70'
                                 }`}
                             >
@@ -673,8 +578,8 @@ const SOPPage = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge 
-                              variant="outline" 
+                            <Badge
+                              variant="outline"
                               className="bg-amber-50 border-amber-300 text-amber-700 flex items-center gap-1.5 w-fit"
                             >
                               <Clock className="h-3 w-3" />
@@ -823,6 +728,16 @@ const SOPPage = () => {
                   ))}
                 </TableBody>
               </Table>
+
+              {/* Pagination */}
+              <TablePaginationBar
+                currentPage={currentPage}
+                totalPages={Math.ceil(totalCount / PAGE_SIZE)}
+                totalCount={totalCount}
+                pageSize={PAGE_SIZE}
+                itemLabel="SOPs"
+                onPageChange={setCurrentPage}
+              />
             </div>
             </TooltipProvider>
           )}
@@ -887,7 +802,7 @@ const SOPPage = () => {
           employeeId={employeeData?.id || null}
           sopSignoffRequestExist={signoffSOP?.sop_signoff_request_exist}
           onSuccess={() => {
-            fetchSOPs();
+            queryClient.invalidateQueries({ queryKey: sopKeys.all });
           }}
         />
         <CompletedEmployeesDialog
@@ -909,8 +824,8 @@ const SOPPage = () => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={handleDeleteConfirm} 
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
                 disabled={deleting}
                 className="bg-red-600 hover:bg-red-700"
               >

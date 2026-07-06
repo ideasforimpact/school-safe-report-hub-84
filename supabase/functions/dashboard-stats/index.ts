@@ -62,16 +62,86 @@ serve(async (req) => {
   try {
     const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey())
 
-    const { client_id, employee_id, is_super_admin } = await req.json()
-    
+    const { client_id, employee_id, is_super_admin, action } = await req.json()
+
     if (!client_id) {
       return new Response(
         JSON.stringify({ error: 'client_id is required' }),
-        { 
+        {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400 
+          status: 400
         }
       )
+    }
+
+    if (action === 'facility_risk_matrix') {
+      const { data: incidents, error } = await supabase
+        .from('incidents')
+        .select('id, facility_id, priority_id, facilities!inner(id, name), incident_priorities!inner(id, name, weight)')
+        .eq('client_id', client_id);
+      if (error) throw error;
+
+      const facilityMap = new Map<string, any>();
+      for (const inc of incidents ?? []) {
+        const f = (inc as any).facilities;
+        const p = (inc as any).incident_priorities;
+        if (!f || !p) continue;
+        if (!facilityMap.has(f.name)) {
+          facilityMap.set(f.name, { Critical: 0, High: 0, Medium: 0, Low: 0, total: 0, riskScore: 0 });
+        }
+        const row = facilityMap.get(f.name);
+        row[p.name] = (row[p.name] || 0) + 1;
+        row.total += 1;
+        row.riskScore += p.weight || 1;
+      }
+
+      const result = Array.from(facilityMap.entries())
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => b.riskScore - a.riskScore);
+
+      return new Response(JSON.stringify({ data: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    if (action === 'category_impact') {
+      const { data: incidents, error } = await supabase
+        .from('incidents')
+        .select('id, category_id, subcategory_id, incident_categories!inner(id, name), incident_subcategories(id, name)')
+        .eq('client_id', client_id);
+      if (error) throw error;
+
+      const categoryMap = new Map<string, any>();
+      for (const inc of incidents ?? []) {
+        const cat = (inc as any).incident_categories;
+        if (!cat) continue;
+        if (!categoryMap.has(cat.name)) {
+          categoryMap.set(cat.name, { name: cat.name, value: 0, subcategories: new Map() });
+        }
+        const row = categoryMap.get(cat.name);
+        row.value += 1;
+        const sub = (inc as any).incident_subcategories;
+        if (sub?.name) {
+          row.subcategories.set(sub.name, (row.subcategories.get(sub.name) || 0) + 1);
+        }
+      }
+
+      const result = Array.from(categoryMap.values())
+        .map(c => ({
+          name: c.name,
+          value: c.value,
+          subcategories: Array.from(c.subcategories.entries())
+            .map(([name, count]: [string, number]) => ({ name, count }))
+            .sort((a: any, b: any) => b.count - a.count)
+            .slice(0, 3),
+        }))
+        .sort((a, b) => b.value - a.value);
+
+      return new Response(JSON.stringify({ data: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
     }
 
     // Validate IP whitelist

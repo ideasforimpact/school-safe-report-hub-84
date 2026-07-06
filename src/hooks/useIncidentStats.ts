@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { incidentDataService } from '@/services/incident/incidentDataService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,23 +23,20 @@ export const useIncidentStats = () => {
   
   const { state: employeeState } = useEmployeeStore();
   const { employeeData: authEmployeeData } = useAuth();
+  const fetchedForClientRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+    if (!clientId) return;
+    if (fetchedForClientRef.current === clientId) return;
+    fetchedForClientRef.current = clientId;
+
     const fetchStats = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
-        
-        if (!clientId) {
-          setStats({ total: 0, open: 0, inProgress: 0, closed: 0 });
-          return;
-        }
-
         const incidentStats = await incidentDataService.getIncidentStats(clientId);
         setStats(incidentStats);
-
       } catch (err: any) {
         console.error('Error fetching incident stats:', err);
         setError(err.message);

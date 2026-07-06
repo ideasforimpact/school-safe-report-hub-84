@@ -111,7 +111,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
         employeeDataForFiltering,
         hasIncidentAdmin,
         { page: 1, pageSize: 10 },
-        {},
+        { status: 'Open' },
         true
       );
 

@@ -198,10 +198,10 @@ class IncidentDataService {
       };
     }
     
-    // Create cache key including filters and user-specific data (no page info)
+    // Create cache key including filters, user, and page
     const filterKey = JSON.stringify(filters);
     const userKey = `${employeeData.id}_${employeeData.isSuperAdmin}_${hasIncidentAdmin}`;
-    const cacheKey = `${clientId}_${userKey}_${filterKey}`;
+    const cacheKey = `${clientId}_${userKey}_${filterKey}_p${page}_ps${pageSize}`;
     
     console.log(`   - Cache key: ${cacheKey}`);
     
@@ -539,52 +539,18 @@ class IncidentDataService {
         return { total: 0, open: 0, inProgress: 0, closed: 0 };
       }
 
-      let query = supabase
-        .from('incidents')
-        .select(`
-          id,
-          created_by,
-          assigned_to,
-          incident_status!status_id(name)
-        `)
-        .eq('client_id', clientId);
-
-      // Apply same improved filtering logic for stats
       const isSuperAdmin = employeeData.isSuperAdmin === true;
-      
-      if (isSuperAdmin) {
-        // Super admin can see all incidents
-        console.log('Stats: Super admin access - all incidents');
-      } else if (hasIncidentAdmin) {
-        // Incident admin can see all incidents for the client
-        console.log('Stats: Incident admin access - all incidents');
-      } else {
-        // Regular users can only see incidents they created or are assigned to
-        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-        console.log('Stats: Regular user access - filtered incidents');
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      const stats = {
-        total: data?.length || 0,
-        open: 0,
-        inProgress: 0,
-        closed: 0
-      };
-
-      data?.forEach((incident: any) => {
-        const status = incident.incident_status?.name;
-        if (status === 'Open') stats.open++;
-        else if (status === 'In Progress') stats.inProgress++;
-        else if (status === 'Closed') stats.closed++;
+      const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+        body: {
+          operation: 'get_stats',
+          clientId,
+          employeeId: employeeData.id,
+          isSuperAdmin,
+          hasIncidentAdmin: !!hasIncidentAdmin,
+        },
       });
-
-      return stats;
+      if (error) throw error;
+      return data?.data ?? { total: 0, open: 0, inProgress: 0, closed: 0 };
     } catch (error) {
       console.error('Error fetching incident stats:', error);
       return { total: 0, open: 0, inProgress: 0, closed: 0 };

@@ -5,48 +5,46 @@ import { Student } from '@/types/student';
 /**
  * Fetch all students for a specific client
  */
-export const fetchStudentsByClientId = async (clientId: string, clientTypeId?: string): Promise<Student[]> => {
+export const fetchStudentsByClientId = async (clientId: string): Promise<Student[]> => {
   try {
     console.log('Fetching students for client_id:', clientId);
-
-    const applyFilters = (q: any) => {
-      q = q.eq('client_id', clientId);
-      if (clientTypeId) q = q.eq('client_type_id', clientTypeId);
-      return q;
-    };
-
+    
     // Fetch students with joined grade and section names using foreign keys
     // Try different join syntaxes to handle various Supabase configurations
     let data: any[] | null = null;
     let error: any = null;
-
+    
     // First try: using explicit foreign key relationship
-    const result1 = await applyFilters(supabase
+    const query1 = supabase
       .from('students')
       .select(`
         *,
         grade_info:grades!students_grade_id_fkey(id, name),
         section_info:sections!students_section_id_fkey(id, name),
         campus_info:campuses!students_campus_id_fkey(id, name)
-      `))
+      `)
+      .eq('client_id', clientId)
       .order('created_at', { ascending: false });
-
+    
+    const result1 = await query1;
     error = result1.error;
     data = result1.data;
-
+    
     // If that fails, try without explicit foreign key name
     if (error) {
       console.log('First query failed, trying alternative join syntax...');
-      const result2 = await applyFilters(supabase
+      const query2 = supabase
         .from('students')
         .select(`
           *,
           grade_info:grades(id, name),
           section_info:sections(id, name),
           campus_info:campuses(id, name)
-        `))
+        `)
+        .eq('client_id', clientId)
         .order('created_at', { ascending: false });
-
+      
+      const result2 = await query2;
       error = result2.error;
       data = result2.data;
     }
@@ -55,9 +53,10 @@ export const fetchStudentsByClientId = async (clientId: string, clientTypeId?: s
       console.error('Error fetching students:', error);
       // If foreign key join fails, try without joins as fallback
       console.log('Trying fallback query without joins...');
-      const { data: fallbackData, error: fallbackError } = await applyFilters(supabase
+      const { data: fallbackData, error: fallbackError } = await supabase
         .from('students')
-        .select('*'))
+        .select('*')
+        .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
       if (fallbackError) {

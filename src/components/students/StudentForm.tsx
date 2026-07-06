@@ -205,35 +205,27 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
       try {
         console.log('Fetching educational structure for client:', employeeData.clientId);
         
-        const clientTypeId = employeeData.clientType?.id;
-
-        // Fetch campuses filtered by client_id and client_type_id
-        let campusQuery = supabase
+        // Fetch campuses filtered by client_id
+        const { data: campusData, error: campusError } = await supabase
           .from('campuses')
           .select('id, name')
           .eq('client_id', employeeData.clientId);
-        if (clientTypeId) campusQuery = campusQuery.eq('client_type_id', clientTypeId);
-        const { data: campusData, error: campusError } = await campusQuery;
-
+        
         if (campusError) throw campusError;
-
-        // Fetch grades filtered by client_id and client_type_id
-        let gradeQuery = supabase
+        
+        // Fetch grades filtered by client_id
+        const { data: gradeData, error: gradeError } = await supabase
           .from('grades')
           .select('id, name, campus_id')
           .eq('client_id', employeeData.clientId);
-        if (clientTypeId) gradeQuery = gradeQuery.eq('client_type_id', clientTypeId);
-        const { data: gradeData, error: gradeError } = await gradeQuery;
-
+        
         if (gradeError) throw gradeError;
-
-        // Fetch sections filtered by client_id and client_type_id
-        let sectionQuery = supabase
+        
+        // Fetch sections filtered by client_id
+        const { data: sectionData, error: sectionError } = await supabase
           .from('sections')
           .select('id, name, grade_id')
           .eq('client_id', employeeData.clientId);
-        if (clientTypeId) sectionQuery = sectionQuery.eq('client_type_id', clientTypeId);
-        const { data: sectionData, error: sectionError } = await sectionQuery;
         
         if (sectionError) throw sectionError;
         

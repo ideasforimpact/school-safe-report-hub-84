@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, Loader2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -64,11 +64,12 @@ const HeaderIcons = () => {
   const isBackofficeRoute =
     location.pathname.startsWith('/backoffice') ||
     location.pathname.startsWith('/backoffice-');
-
+  const isTransportSafetyRoute = location.pathname.startsWith('/transport-safety');
   const currentModuleName = useMemo(() => getModuleNameFromPath(location.pathname), [location.pathname]);
   const isUnsupportedModule = !SUPPORTED_NOTIFICATION_MODULES.has(currentModuleName);
-  const skipNotifications = isBackofficeRoute || isBackofficeUser || isUnsupportedModule;
-
+  const skipNotifications = isBackofficeRoute || isBackofficeUser || isUnsupportedModule  || isTransportSafetyRoute;
+  const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Crown, Shield, User } from "lucide-react";
 import { useEmployeeDepartments } from "@/hooks/useEmployeeDepartments";
 import { employeeDepartmentName } from "@/services/employeeNameHelpers";
+import { useLocation } from "react-router-dom";
 
 
 interface UserRoleBadgeProps {
@@ -24,12 +25,24 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   isSuperAdmin = false,
   department,
 }) => {
-  const { employeeDepartments, loading } = useEmployeeDepartments();
+  const location = useLocation();
+  const isUsersRoute = location.pathname === '/users';
+  const isIncidentRoute =
+    location.pathname.startsWith('/incidents') ||
+    location.pathname.startsWith('/incident/') ||
+    location.pathname.startsWith('/report-incident');
+  const isTransportSafetyRoute = location.pathname.startsWith('/transport-safety');
+  const uuidLike = !!department && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(department.trim());
+  const isAssessmentsRoute =
+    location.pathname.startsWith('/assessments') ||
+    location.pathname.startsWith('/assessment/');
+  const needsDepartmentLookup = !isUsersRoute && !isIncidentRoute && !isAssessmentsRoute && !isTransportSafetyRoute && uuidLike;
+  const { employeeDepartments, loading: departmentsLoading } = useEmployeeDepartments();
 
   const isUuid = !!department && UUID_RE.test(department.trim());
 
   const resolved = isUuid
-    ? loading
+    ? departmentsLoading
       ? ''
       : employeeDepartmentName(department, employeeDepartments)
     : (department?.trim() || '');

@@ -25,7 +25,6 @@ serve(async (req) => {
     const action = req.method === 'GET'
       ? new URL(req.url).searchParams.get('action') || 'list'
       : body.action || '';
-
     switch (action) {
       case 'list': {
         const clientId = req.method === 'GET'

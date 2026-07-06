@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
 import { incidentDataService } from '@/services/incident/incidentDataService';
@@ -80,6 +80,11 @@ const IncidentsList = () => {
     subcategoryOptions: dbSubcategoryOptions,
     locationOptions: dbLocationOptions 
   } = useFilterOptions();
+  const initFetchKeyRef = useRef<string | null>(null);
+  const pageSizeRef = useRef<number>(10);
+  // Tracks when the most recent intentional fetch completed so realtime events
+  // arriving immediately after don't trigger a redundant second fetch.
+  const lastFetchCompletedAtRef = useRef<number>(Date.now());
 
   useEffect(() => {
     if (!loading) {
@@ -217,24 +222,18 @@ const IncidentsList = () => {
 
       console.log(`✅ Server returned ${response.totalCount} total incidents (ALL matching records)`);
 
-      // Always preserve original incidents for restoration
-    
+      setAllIncidents(response.data);
 
-      // Apply URL-driven client-side filter: students_involved => include incidents with at least one Student
-      const studentsFilterActive = searchParams.get('filter') === 'students_involved';
-      const filteredByStudents = studentsFilterActive
-        ? response.data.filter((incident: any) => {
-            const people = (incident as any)?.peopleInvolved || (incident as any)?.people_involved;
-            if (!Array.isArray(people) || people.length === 0) return false;
-            return people.some((p: any) => (p?.role || '').toLowerCase() === 'student');
-          })
-        : response.data;
-
-      // Store incidents after optional filter
-      setAllIncidents(filteredByStudents);
-
-      // Apply client-side pagination to show first page
-      applyClientSidePagination(filteredByStudents, 1, pagination.pageSize);
+      // Update pagination state from server response
+      setPagination({
+        currentPage: response.currentPage,
+        totalPages: response.totalPages,
+        totalCount: response.totalCount,
+        hasMore: response.hasMore,
+        pageSize: pageSizeRef.current
+      });
+      
+      setDisplayedIncidents(response.data);
 
     } catch (error: any) {
       console.error('❌ Error fetching incidents:', error);
@@ -247,7 +246,14 @@ const IncidentsList = () => {
       setLoading(false);
       setHasFetched(true);
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin, pagination.pageSize, applyClientSidePagination]);
+  }, [
+    employeeState.employeeData?.clientId,
+    authEmployeeData?.clientId,
+    employeeState.employeeData?.id,
+    authEmployeeData?.id,
+    user?.email,
+    hasIncidentAdmin,
+  ]);
 
   // Handle filter changes (triggers server request)
   const handleFilterChange = useCallback((field: string, value: any) => {
@@ -289,9 +295,10 @@ const IncidentsList = () => {
   }, [pagination.totalPages, pagination.pageSize, loading, allIncidents, applyClientSidePagination]);
 
   const changePageSize = useCallback((newPageSize: number) => {
-    console.log(`📏 Changing page size to ${newPageSize} (CLIENT-SIDE)`);
-    applyClientSidePagination(allIncidents, 1, newPageSize); // Reset to page 1 when changing page size
-  }, [allIncidents, applyClientSidePagination]);
+    pageSizeRef.current = newPageSize;
+    setPagination(prev => ({ ...prev, pageSize: newPageSize }));
+    fetchIncidents(filters, false, 1);
+  }, [filters, fetchIncidents]);
 
   // Initial fetch and navigation handling with improved logic
  useEffect(() => {

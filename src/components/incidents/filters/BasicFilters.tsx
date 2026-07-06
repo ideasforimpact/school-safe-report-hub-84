@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 
 interface ServerFilters {
   search?: string;
@@ -35,20 +34,18 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
   statusOptions,
   priorityOptions
 }) => {
+
   return (
     <div className="space-y-4">
       {/* Search Bar - Full Width */}
       <div className="w-full">
         <label className="text-sm font-medium text-gray-700 mb-2 block">Search</label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search tickets..."
-            value={filters.search || ''}
-            onChange={(e) => onFilterChange('search', e.target.value)}
-            className="pl-10"
-          />
-        </div>
+        <DebouncedSearchInput
+          value={filters.search || ''}
+          onChange={(val) => onFilterChange('search', val)}
+          placeholder="Search tickets..."
+          triggerOnEnter
+        />
       </div>
 
       {/* Filter Dropdowns Grid */}

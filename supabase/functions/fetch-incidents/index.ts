@@ -55,7 +55,35 @@ serve(async (req) => {
       );
     }
 
-    // ── get_config ──────────────────────────────────────────────────────────
+    if (operation === 'get_stats') {
+      const { hasIncidentAdmin } = body;
+      let query = supabaseClient
+        .from('incidents')
+        .select('id, created_by, assigned_to, incident_status!status_id(name)')
+        .eq('client_id', clientId);
+
+      if (!isSuperAdmin && !hasIncidentAdmin) {
+        query = query.or(`created_by.eq.${employeeId},assigned_to.eq.${employeeId}`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const stats = { total: 0, open: 0, inProgress: 0, closed: 0 };
+      for (const inc of data ?? []) {
+        stats.total++;
+        const status = (inc as any).incident_status?.name;
+        if (status === 'Open') stats.open++;
+        else if (status === 'In Progress') stats.inProgress++;
+        else if (status === 'Closed') stats.closed++;
+      }
+
+      return new Response(JSON.stringify({ success: true, data: stats }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (operation === 'get_config') {
       let reportTypesQuery = supabaseClient
         .from('incident_report_types')

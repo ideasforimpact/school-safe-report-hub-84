@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -15,7 +15,7 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
 import { Employee } from '@/types/employeeVerification';
 import { usePagination } from '@/hooks/usePagination';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { formatDepartment } from '@/lib/formatUtils';
 import { aggregatePersonalInfo } from './utils/personalInfoUtils';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
@@ -55,12 +55,20 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     }
   }, [employees.length, isLoading, fetchEmployees]);
 
-  const handleEmployeesRealtime = useCallback(
-    async () => {
-      await fetchEmployees();
-    },
-    [fetchEmployees]
-  );
+  // Debounced realtime handler with 3s cooldown — prevents rapid successive list refetches
+  // when a verification edge function makes multiple sequential document updates
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastListRefetchRef = useRef<number>(0);
+  const LIST_REFETCH_COOLDOWN_MS = 3000;
+  const handleEmployeesRealtime = useCallback(() => {
+    if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+    realtimeDebounceRef.current = setTimeout(() => {
+      const now = Date.now();
+      if (now - lastListRefetchRef.current < LIST_REFETCH_COOLDOWN_MS) return;
+      lastListRefetchRef.current = now;
+      fetchEmployees();
+    }, 800);
+  }, [fetchEmployees]);
   useRealTimeSubHook({
     channelName: "employees-realtime",
     events: "*",
@@ -250,7 +258,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
               paginatedEmployees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
                 const isInactive = employee.status === false;
-                
+
                 // Prepare truncated name for display with full value on hover
                 const fullName = employee.name || '';
                 const displayName =
@@ -358,40 +366,15 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
           </TableBody>
         </Table>
       </div>
-      
-    {totalPages > 1 && (
-        <div className="flex justify-center mt-4">
-          <Pagination>
-            <PaginationContent className="flex items-center gap-3">
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={goToPreviousPage}
-                  className={
-                    currentPage === 1
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                  {currentPage} of {totalPages}
-                </span>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  onClick={goToNextPage}
-                  className={
-                    currentPage === totalPages
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
+
+      <TablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        totalCount={employees.length}
+        pageSize={10}
+        itemLabel="employees"
+      />
     </div>
   );
 };

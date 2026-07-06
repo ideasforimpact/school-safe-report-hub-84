@@ -81,7 +81,6 @@ export const categoryService = {
       let query = supabase
         .from('incident_categories')
         .select('*')
-        .eq('client_id', clientId)
         .order('name');
 
       if (clientTypeId) {

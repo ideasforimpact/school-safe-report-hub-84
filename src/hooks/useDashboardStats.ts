@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -85,13 +85,13 @@ export const useDashboardStats = () => {
   
   const { user, employeeData } = useAuth();
   const clientId = employeeData?.clientId || user?.clientId;
+  const fetchedForClientRef = useRef<string | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!clientId) {
-        console.log('No client ID available for dashboard stats');
-        return;
-      }
+      if (!clientId) return;
+      if (fetchedForClientRef.current === clientId) return;
+      fetchedForClientRef.current = clientId;
 
       try {
         setLoading(true);
