@@ -47,9 +47,9 @@ export const incidentDocumentAggregator = {
       const commentDocuments: IncidentDocument[] = [];
       
       if (Array.isArray(incident.comments)) {
-        incident.comments.forEach((comment: any) => {
+        (incident.comments as Array<Record<string, unknown> & { files?: Array<Record<string, unknown>> }>).forEach((comment) => {
           if (comment.files && Array.isArray(comment.files)) {
-            comment.files.forEach((file: any) => {
+            comment.files.forEach((file) => {
               commentDocuments.push({
                 id: file.id || `${comment.id}-${file.name}`,
                 name: file.name,

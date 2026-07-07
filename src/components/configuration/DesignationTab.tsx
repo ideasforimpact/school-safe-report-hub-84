@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfigItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 interface DesignationTabProps {
   designations: ConfigItem[];

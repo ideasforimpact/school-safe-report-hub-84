@@ -13,7 +13,7 @@ interface DocumentMetadataProps {
   verificationDate?: string;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';
-  params?: any;
+  params?: Record<string, string | undefined>;
 }
 
 const DocumentMetadata: React.FC<DocumentMetadataProps> = ({

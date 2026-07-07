@@ -67,10 +67,10 @@ serve(async (req) => {
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (err: any) {
+  } catch (err) {
     console.error('fetch-consultation-modes error:', err);
     return new Response(
-      JSON.stringify({ error: err?.message ?? 'An unexpected error occurred' }),
+      JSON.stringify({ error: err instanceof Error ? err.message : 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

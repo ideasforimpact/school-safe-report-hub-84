@@ -1,5 +1,5 @@
 
-import { Incident, Person, UserRef } from '@/types/incident';
+import { Incident, Person, UserRef, IncidentCategory, IncidentLocation, IncidentStatus } from '@/types/incident';
 import { 
   studentPool, 
   staffPool, 
@@ -123,14 +123,14 @@ export const generateSingleIncident = (index: number, category: string): Inciden
     type: category === 'Security Breach' ? 'Incident' : 
           Math.random() < 0.7 ? 'Incident' : // 70% incidents
           Math.random() < 0.5 ? 'Near Miss' : 'Unsafe Condition', // Split the rest
-    category: category as any,
+    category: category as IncidentCategory,
     subcategory,
     description,
     rootCause,
     date,
-    location: location as any,
+    location: location as IncidentLocation,
     peopleInvolved,
-    status: status as any,
+    status: status as IncidentStatus,
     reportedBy,
     owner,
     facility,

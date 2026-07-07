@@ -125,8 +125,8 @@ export interface Incident {
   learningPoints?: string; // Maps to learning_points column
   actionTaken?: string; // Maps to action_taken column
   contributingFactor?: ContributingFactor[]; // Maps to contributing_factor jsonb column
-  recommended_action?: any; // Maps to recommended_action column (snake_case for database compatibility)
-  recommendedAction?: any; // camelCase version for UI compatibility
+  recommended_action?: string | Record<string, unknown>; // Maps to recommended_action column (snake_case for database compatibility)
+  recommendedAction?: string | Record<string, unknown>; // camelCase version for UI compatibility
 }
 
 // Create a user type for dropdown selection

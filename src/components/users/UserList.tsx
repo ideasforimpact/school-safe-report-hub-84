@@ -45,18 +45,30 @@ interface UserListProps {
   hasAdminAccess?: boolean;
   onRefresh?: () => void;
   canEditUsers?: boolean;
+  // When provided, pagination is server-driven: `users` is treated as already
+  // being just the current page's data (no further client-side slicing), and
+  // page navigation calls onPageChange instead of managing state locally.
+  currentPage?: number;
+  totalItems?: number;
+  itemsPerPage?: number;
+  onPageChange?: (page: number) => void;
 }
 
-const UserList = ({ 
-  users, 
-  onEditClick, 
-  onDeleteUser, 
-  onDeactivateUser, 
-  onReactivateUser, 
+const UserList = ({
+  users,
+  onEditClick,
+  onDeleteUser,
+  onDeactivateUser,
+  onReactivateUser,
   hasAdminAccess = false,
   onRefresh,
   canEditUsers = true,
+  currentPage: serverCurrentPage,
+  totalItems: serverTotalItems,
+  itemsPerPage: serverItemsPerPage,
+  onPageChange,
 }: UserListProps) => {
+  const isServerPaginated = serverTotalItems !== undefined && onPageChange !== undefined;
   const { employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [isTableLoading, setIsTableLoading] = useState(false);
@@ -70,9 +82,10 @@ const UserList = ({
   const [verificationDocsForDialog, setVerificationDocsForDialog] = useState<VerificationDocumentRow[]>([]);
   const [verificationDocsLoading, setVerificationDocsLoading] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  // Pagination state (only used when not server-paginated)
+  const [internalCurrentPage, setInternalCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(serverItemsPerPage ?? 10);
+  const currentPage = isServerPaginated ? serverCurrentPage! : internalCurrentPage;
   const shouldHideWriteActions = isReadOnlySwitchedContext || !canEditUsers;
 
 
@@ -155,14 +168,14 @@ const UserList = ({
     return () => {
       cancelled = true;
     };
-  }, [documentDialogUser?.id]);
+  }, [documentDialogUser?.id, documentDialogUser?.clientId, employeeData?.clientId]);
 
   console.log("UserList component - Users:", users);
   console.log("UserList component - hasAdminAccess:", hasAdminAccess);
 
   // Pagination logic
-  const totalItems = users.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalItems = isServerPaginated ? serverTotalItems! : users.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
     const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
@@ -171,22 +184,28 @@ const UserList = ({
     });
   }, [users]);
   const paginatedUsers = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
+    // When server-paginated, `users` is already just the current page's data.
+    if (isServerPaginated) return sortedUsers;
+    const startIndex = (internalCurrentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return sortedUsers.slice(startIndex, endIndex);
-  }, [sortedUsers, currentPage, itemsPerPage]);
-  // Reset to first page when items per page changes
+  }, [sortedUsers, internalCurrentPage, itemsPerPage, isServerPaginated]);
+  // Reset to first page when items per page changes (client-paginated mode only)
   React.useEffect(() => {
-    setCurrentPage(1);
-  }, [itemsPerPage]);
+    if (!isServerPaginated) setInternalCurrentPage(1);
+  }, [itemsPerPage, isServerPaginated]);
 
-  // Reset to first page when users array changes
+  // Reset to first page when users array changes (client-paginated mode only)
   React.useEffect(() => {
-    setCurrentPage(1);
-  }, [users.length]);
+    if (!isServerPaginated) setInternalCurrentPage(1);
+  }, [users.length, isServerPaginated]);
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    if (isServerPaginated) {
+      onPageChange!(page);
+      return;
+    }
+    setInternalCurrentPage(page);
   };
 
   const handleItemsPerPageChange = (value: string) => {
@@ -402,10 +421,11 @@ const UserList = ({
               <div className="flex flex-col">
                 <span className="font-medium text-gray-900">{user.firstName} {user.lastName}</span>
                 {(() => {
+                  const extUser = user as unknown as { tags?: string[]; designation?: string };
                   const tags =
-                    Array.isArray((user as any).tags) && (user as any).tags.length > 0
-                      ? (user as any).tags
-                      : ((user as any).designation || '')
+                    Array.isArray(extUser.tags) && (extUser.tags?.length ?? 0) > 0
+                      ? extUser.tags
+                      : (extUser.designation || '')
                           .split(',')
                           .map((tag: string) => tag.trim())
                           .filter(Boolean)
@@ -774,13 +794,13 @@ const UserList = ({
                   <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.email)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Phone</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).phone)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.phone)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Address</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.residenceAddress || (documentDialogUser as any).residenceAddress)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.residenceAddress || (documentDialogUser as unknown as { residenceAddress?: string }).residenceAddress)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Tags</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as unknown as { designation?: string }).designation)}</p>
                   </div>
                 </div>
               </div>
@@ -795,39 +815,39 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">Middle Name</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.middleName || (documentDialogUser as any).middleName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.middleName || (documentDialogUser as unknown as { middleName?: string }).middleName)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Father's Name</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.fatherName || (documentDialogUser as any).fatherName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.fatherName || (documentDialogUser as unknown as { fatherName?: string }).fatherName)}</p>
                   </div>
 
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Experience</p>
                     <p className="font-medium break-words">{valueOrNotSet(
-                        (documentDialogUser as any).personalDetails?.experience)}
+                        documentDialogUser.personalDetails?.experience)}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Qualification</p>
                     <p className="font-medium break-words">{valueOrNotSet(
-                        (documentDialogUser as any).personalDetails?.qualification)}
+                        documentDialogUser.personalDetails?.qualification)}
                     </p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Gender</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.gender || (documentDialogUser as any).gender)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.gender || (documentDialogUser as unknown as { gender?: string }).gender)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Date of Birth</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.dob || (documentDialogUser as any).dob)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.dob || (documentDialogUser as unknown as { dob?: string }).dob)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Religion</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.religion || (documentDialogUser as any).religion)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.religion || (documentDialogUser as unknown as { religion?: string }).religion)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Nationality</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.nationality || (documentDialogUser as any).nationality)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.nationality || (documentDialogUser as unknown as { nationality?: string }).nationality)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Blood Group</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.bloodGroup || (documentDialogUser as any).bloodGroup)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.bloodGroup || (documentDialogUser as unknown as { bloodGroup?: string }).bloodGroup)}</p>
                   </div>
                 </div>
               </div>
@@ -846,7 +866,7 @@ const UserList = ({
                   </div>
                   
                   <div><p className="text-sm text-slate-400 mb-1">Designation</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as unknown as { designation?: string }).designation)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Department</p>
                   <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.department)}</p>
@@ -867,22 +887,22 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">Aadhaar No</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.aadharNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.aadharNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">PAN No</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.panNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.panNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">ESI No</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.esiNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.esiNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">PF No</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.pfNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.pfNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Resigning / Termination Date</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.exitDate)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.exitDate)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Biometric User ID</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.biometricUserId)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.biometricUserId)}</p>
                   </div>
                 </div>
               </div>

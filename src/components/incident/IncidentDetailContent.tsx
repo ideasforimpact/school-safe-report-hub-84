@@ -118,7 +118,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   const displayIncident = currentIncident;
 
   // Convert incident documents to the expected format
-  const convertedDocuments: IncidentDocument[] = (displayIncident.documents || []).map((doc: any) => ({
+  const convertedDocuments: IncidentDocument[] = (displayIncident.documents || []).map((doc: Partial<IncidentDocument> & { data?: string }) => ({
     id: doc.id || crypto.randomUUID(),
     name: doc.name || 'Unknown Document',
     type: doc.type || 'application/octet-stream',

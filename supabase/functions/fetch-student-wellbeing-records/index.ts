@@ -23,6 +23,9 @@ serve(async (req) => {
     const clientId = body.clientId ?? body.client_id;
     const employeeId = body.employeeId ?? body.employee_id;
     const academicYear = body.academicYear ?? body.academic_year ?? null;
+    const status = body.status ?? 'all';
+    const dateFrom = body.dateFrom ?? body.date_from ?? null;
+    const dateTo = body.dateTo ?? body.date_to ?? null;
 
     if (!clientId) {
       return new Response(
@@ -91,6 +94,9 @@ serve(async (req) => {
 
     if (createdFrom) query = query.gte('created_at', createdFrom);
     if (createdTo) query = query.lte('created_at', createdTo);
+    if (status && status !== 'all') query = query.eq('status', status);
+    if (dateFrom) query = query.gte('date_of_observation', dateFrom);
+    if (dateTo) query = query.lte('date_of_observation', dateTo);
 
     const { data: records, error } = await query.order('date_of_observation', { ascending: false });
 
@@ -225,12 +231,32 @@ serve(async (req) => {
       };
     });
 
+    // Summary counts must reflect the whole matching set regardless of the status
+    // filter above — otherwise selecting "Open" would make the header's Closed/Under
+    // Observation counts collapse to 0. Scoped by the same client/date/academic-year
+    // bounds, but status-independent.
+    let summaryQuery = supabase
+      .from('student_well_begin_management')
+      .select('id, student_id, external_student_involved, is_external_student, status')
+      .eq('client_id', clientId)
+      .eq('is_deleted', false)
+      .is('deleted_at', null);
+    if (createdFrom) summaryQuery = summaryQuery.gte('created_at', createdFrom);
+    if (createdTo) summaryQuery = summaryQuery.lte('created_at', createdTo);
+    if (dateFrom) summaryQuery = summaryQuery.gte('date_of_observation', dateFrom);
+    if (dateTo) summaryQuery = summaryQuery.lte('date_of_observation', dateTo);
+
+    const { data: summaryRows } = await summaryQuery;
+    const summarySource = summaryRows || [];
+
     const uniqueStudentIds = new Set(
-      (list as any[]).map((x) => x.student_id ?? x.student_display_id)
+      summarySource.map((x: any) =>
+        x.is_external_student ? (x.external_student_involved?.student?.id ?? null) : x.student_id
+      )
     );
-    const openCount = (list as any[]).filter((x) => x.status === 'open').length;
-    const underObservationCount = (list as any[]).filter((x) => x.status === 'under_observation').length;
-    const closedCount = (list as any[]).filter((x) => x.status === 'closed').length;
+    const openCount = summarySource.filter((x: any) => x.status === 'open').length;
+    const underObservationCount = summarySource.filter((x: any) => x.status === 'under_observation').length;
+    const closedCount = summarySource.filter((x: any) => x.status === 'closed').length;
 
     return new Response(
       JSON.stringify({

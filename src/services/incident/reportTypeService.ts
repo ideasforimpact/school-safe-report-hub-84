@@ -31,14 +31,14 @@ export const reportTypeService = {
       }
 
       return data && data.length > 0;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking duplicate report type:', error);
       return false;
     }
   },
 
-  // Get report types - RLS handles client filtering automatically
-  getReportTypes: async (activeOnly: boolean = false) => {
+  // Get report types filtered by client type key
+  getReportTypes: async (activeOnly: boolean = false, clientTypeId?: string) => {
     try {
       let query = supabase
         .from('incident_report_types')
@@ -47,7 +47,9 @@ export const reportTypeService = {
       if (activeOnly) {
         query = query.eq('is_active', true);
       }
-      
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
       const { data, error } = await query.order('name');
       
       if (error) {
@@ -56,14 +58,14 @@ export const reportTypeService = {
       }
 
       return data as ReportTypeItem[];
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching report types:', error);
       return [];
     }
   },
 
   // Add report type - RLS handles client validation automatically
-  addReportType: async (name: string, description: string | null = null, clientId?: string) => {
+  addReportType: async (name: string, description: string | null = null, clientId?: string, clientTypeId?: string) => {
     try {
       const trimmedName = name.trim();
       if (!trimmedName) {
@@ -101,10 +103,11 @@ export const reportTypeService = {
       const { data, error } = await supabase
         .from('incident_report_types')
         .insert([
-          { 
-            name: trimmedName, 
-            description: description || null, 
-            client_id: finalClientId 
+          {
+            name: trimmedName,
+            description: description || null,
+            client_id: finalClientId,
+            client_type_id: clientTypeId || null
           }
         ])
         .select()
@@ -116,7 +119,7 @@ export const reportTypeService = {
       }
 
       return data as ReportTypeItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding report type:', error);
       throw error;
     }
@@ -174,7 +177,7 @@ export const reportTypeService = {
       }
 
       return data as ReportTypeItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating report type:', error);
       throw error;
     }
@@ -217,7 +220,7 @@ export const reportTypeService = {
       }
 
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting report type:', error);
       throw error;
     }
@@ -275,7 +278,7 @@ export const reportTypeService = {
       }
 
       return data as ReportTypeItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error toggling report type status:', error);
       throw error;
     }

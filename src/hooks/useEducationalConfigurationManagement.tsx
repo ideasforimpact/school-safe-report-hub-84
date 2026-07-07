@@ -1,20 +1,17 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ConfigItem, CampusItem, ClassItem, SectionItem } from '@/contexts/types';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealTimeSubHook } from './useRealTimeSubHook';
-import { getLang } from '@/lang';
 
 export function useEducationalConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('campuses');
   const { employeeData, user } = useAuth();
-  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? null;
-  const clientTypeKey = employeeData?.clientType?.key ?? (user as any)?.clientType?.key ?? null;
-  const structureLabels = useMemo(() => getLang(clientTypeKey).structure, [clientTypeKey]);
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? null;
   
   // Local states
   const [loading, setLoading] = useState(false);
@@ -31,16 +28,6 @@ export function useEducationalConfigurationManagement() {
     }
   }, [searchParams]);
 
-  // Fetch data from Supabase when client or type changes
-  useEffect(() => {
-    if (employeeData?.clientId && clientTypeId) {
-      fetchCampuses();
-      fetchClasses();
-      fetchSections();
-      fetchFacilities();
-    }
-  }, [employeeData?.clientId, clientTypeId]);
-
   // Fetch campuses
   const fetchCampuses = useCallback(async () => {
     if (!employeeData?.clientId) return;
@@ -52,18 +39,19 @@ export function useEducationalConfigurationManagement() {
       });
 
       if (error) throw error;
-      
-      setCampuses(data.campuses.map((campus: any) => ({
-        id: campus.id,
-        name: campus.name
-      })));
+
+      // campus-management's list action only returns `campuses` — grades/sections/
+      // facilities are fetched independently below by their own dedicated calls.
+      // Setting them here from this response (always undefined) used to wipe them
+      // back to [] whenever this ran alongside the others (e.g. on realtime refetch).
+      setCampuses((data.campuses ?? []).map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
     } catch (error) {
       console.error("Error fetching campuses:", error);
-      toast.error(`Failed to load ${structureLabels.campusPlural.toLowerCase()}`);
+      toast.error("Failed to load campuses");
     } finally {
       setLoading(false);
     }
-  }, [employeeData?.clientId, clientTypeId, structureLabels.campusPlural]);
+  }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch classes/grades
   const fetchClasses = useCallback(async () => {
@@ -77,18 +65,18 @@ export function useEducationalConfigurationManagement() {
 
       if (error) throw error;
       
-      setClasses(data.grades.map((grade: any) => ({
+      setClasses(data.grades.map((grade: { id: string; name: string; campus_id: string }) => ({
         id: grade.id,
         name: grade.name,
         campusId: grade.campus_id
       })));
     } catch (error) {
       console.error("Error fetching grades:", error);
-      toast.error(`Failed to load ${structureLabels.gradePlural.toLowerCase()}`);
+      toast.error("Failed to load grades");
     } finally {
       setLoading(false);
     }
-  }, [employeeData?.clientId, clientTypeId, structureLabels.gradePlural]);
+  }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch sections with campus_id
   const fetchSections = useCallback(async () => {
@@ -102,7 +90,7 @@ export function useEducationalConfigurationManagement() {
 
       if (error) throw error;
       
-      setSections(data.sections.map((section: any) => ({
+      setSections(data.sections.map((section: { id: string; name: string; grade_id: string; campus_id: string }) => ({
         id: section.id,
         name: section.name,
         classId: section.grade_id,
@@ -110,11 +98,11 @@ export function useEducationalConfigurationManagement() {
       })));
     } catch (error) {
       console.error("Error fetching sections:", error);
-      toast.error(`Failed to load ${structureLabels.sectionPlural.toLowerCase()}`);
+      toast.error("Failed to load sections");
     } finally {
       setLoading(false);
     }
-  }, [employeeData?.clientId, clientTypeId, structureLabels.sectionPlural]);
+  }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch facilities
   const fetchFacilities = useCallback(async () => {
@@ -128,18 +116,28 @@ export function useEducationalConfigurationManagement() {
 
       if (error) throw error;
       
-      setFacilities(data.facilities.map((facility: any) => ({
+      setFacilities(data.facilities.map((facility: { id: string; name: string; campus_id: string }) => ({
         id: facility.id,
         name: facility.name,
         campusId: facility.campus_id
       })));
     } catch (error) {
       console.error("Error fetching facilities:", error);
-      toast.error(`Failed to load ${structureLabels.facilityPlural.toLowerCase()}`);
+      toast.error("Failed to load facilities");
     } finally {
       setLoading(false);
     }
-  }, [employeeData?.clientId, clientTypeId, structureLabels.facilityPlural]);
+  }, [employeeData?.clientId, clientTypeId]);
+
+  // Fetch data from Supabase when client or type changes
+  useEffect(() => {
+    if (employeeData?.clientId && clientTypeId) {
+      fetchCampuses();
+      fetchClasses();
+      fetchSections();
+      fetchFacilities();
+    }
+  }, [employeeData?.clientId, clientTypeId, fetchCampuses, fetchClasses, fetchSections, fetchFacilities]);
 
   // Campus management with Supabase
   const handleAddCampus = async (name: string) => {
@@ -157,10 +155,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => [...prev, { id: data.campus.id, name: data.campus.name }]);
-      toast.success(`${structureLabels.campus} added successfully`);
+      toast.success("Campus added successfully");
     } catch (error) {
       console.error("Error adding campus:", error);
-      toast.error(`Failed to add ${structureLabels.campus.toLowerCase()}`);
+      toast.error("Failed to add campus");
     } finally {
       setLoading(false);
     }
@@ -181,10 +179,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => prev.map(c => c.id === id ? { ...c, name } : c));
-      toast.success(`${structureLabels.campus} updated successfully`);
+      toast.success("Campus updated successfully");
     } catch (error) {
       console.error("Error updating campus:", error);
-      toast.error(`Failed to update ${structureLabels.campus.toLowerCase()}`);
+      toast.error("Failed to update campus");
     } finally {
       setLoading(false);
     }
@@ -199,21 +197,21 @@ export function useEducationalConfigurationManagement() {
     // Check if campus has associated classes/grades
     const hasClasses = classes.some(cls => cls.campusId === id);
     if (hasClasses) {
-      toast.error(`Cannot delete ${structureLabels.campus.toLowerCase()} with associated ${structureLabels.gradePlural.toLowerCase()}. Remove the ${structureLabels.gradePlural.toLowerCase()} first.`);
+      toast.error("Cannot delete campus with associated grades. Remove the grades first.");
       return;
     }
     
     // Check if campus has associated facilities
-    const hasFacilities = facilities.some((facility: any) => facility.campusId === id);
+    const hasFacilities = (facilities as (ConfigItem & { campusId?: string })[]).some((facility) => facility.campusId === id);
     if (hasFacilities) {
-      toast.error(`Cannot delete ${structureLabels.campus.toLowerCase()} with associated ${structureLabels.facilityPlural.toLowerCase()}. Remove the ${structureLabels.facilityPlural.toLowerCase()} first.`);
+      toast.error("Cannot delete campus with associated facilities. Remove the facilities first.");
       return;
     }
-    
+
     // Check if campus has associated sections
-    const hasSections = sections.some((section: any) => section.campusId === id);
+    const hasSections = sections.some((section) => section.campusId === id);
     if (hasSections) {
-      toast.error(`Cannot delete ${structureLabels.campus.toLowerCase()} with associated ${structureLabels.sectionPlural.toLowerCase()}. Remove the ${structureLabels.sectionPlural.toLowerCase()} first.`);
+      toast.error("Cannot delete campus with associated sections. Remove the sections first.");
       return;
     }
     
@@ -226,10 +224,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => prev.filter(c => c.id !== id));
-      toast.success(`${structureLabels.campus} deleted successfully`);
+      toast.success("Campus deleted successfully");
     } catch (error) {
       console.error("Error deleting campus:", error);
-      toast.error(`Failed to delete ${structureLabels.campus.toLowerCase()}`);
+      toast.error("Failed to delete campus");
     } finally {
       setLoading(false);
     }
@@ -255,10 +253,10 @@ export function useEducationalConfigurationManagement() {
         name: data.grade.name,
         campusId: data.grade.campus_id
       }]);
-      toast.success(`${structureLabels.grade} added successfully`);
+      toast.success("Grade added successfully");
     } catch (error) {
       console.error("Error adding grade:", error);
-      toast.error(`Failed to add ${structureLabels.grade.toLowerCase()}`);
+      toast.error("Failed to add grade");
     } finally {
       setLoading(false);
     }
@@ -284,10 +282,10 @@ export function useEducationalConfigurationManagement() {
         campusId: data.grade.campus_id 
       } : c));
       
-      toast.success(`${structureLabels.grade} updated successfully`);
+      toast.success("Grade updated successfully");
     } catch (error) {
       console.error("Error updating grade:", error);
-      toast.error(`Failed to update ${structureLabels.grade.toLowerCase()}`);
+      toast.error("Failed to update grade");
     } finally {
       setLoading(false);
     }
@@ -302,7 +300,7 @@ export function useEducationalConfigurationManagement() {
     // Check if class has associated sections
     const hasSections = sections.some(section => section.classId === id);
     if (hasSections) {
-      toast.error(`Cannot delete ${structureLabels.grade.toLowerCase()} with associated ${structureLabels.sectionPlural.toLowerCase()}. Remove the ${structureLabels.sectionPlural.toLowerCase()} first.`);
+      toast.error("Cannot delete grade with associated sections. Remove the sections first.");
       return;
     }
     
@@ -315,10 +313,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setClasses(prev => prev.filter(c => c.id !== id));
-      toast.success(`${structureLabels.grade} deleted successfully`);
+      toast.success("Grade deleted successfully");
     } catch (error) {
       console.error("Error deleting grade:", error);
-      toast.error(`Failed to delete ${structureLabels.grade.toLowerCase()}`);
+      toast.error("Failed to delete grade");
     } finally {
       setLoading(false);
     }
@@ -352,10 +350,10 @@ export function useEducationalConfigurationManagement() {
         classId: data.section.grade_id,
         campusId: data.section.campus_id
       }]);
-      toast.success(`${structureLabels.section} added successfully`);
+      toast.success("Section added successfully");
     } catch (error) {
       console.error("Error adding section:", error);
-      toast.error(`Failed to add ${structureLabels.section.toLowerCase()}`);
+      toast.error("Failed to add section");
     } finally {
       setLoading(false);
     }
@@ -389,10 +387,10 @@ export function useEducationalConfigurationManagement() {
         campusId: data.section.campus_id
       } : section));
       
-      toast.success(`${structureLabels.section} updated successfully`);
+      toast.success("Section updated successfully");
     } catch (error) {
       console.error("Error updating section:", error);
-      toast.error(`Failed to update ${structureLabels.section.toLowerCase()}`);
+      toast.error("Failed to update section");
     } finally {
       setLoading(false);
     }
@@ -413,10 +411,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setSections(prev => prev.filter(section => section.id !== id));
-      toast.success(`${structureLabels.section} deleted successfully`);
+      toast.success("Section deleted successfully");
     } catch (error) {
       console.error("Error deleting section:", error);
-      toast.error(`Failed to delete ${structureLabels.section.toLowerCase()}`);
+      toast.error("Failed to delete section");
     } finally {
       setLoading(false);
     }
@@ -442,10 +440,10 @@ export function useEducationalConfigurationManagement() {
         name: data.facility.name,
         campusId: data.facility.campus_id
       }]);
-      toast.success(`${structureLabels.facility} added successfully`);
+      toast.success("Facility added successfully");
     } catch (error) {
       console.error("Error adding facility:", error);
-      toast.error(`Failed to add ${structureLabels.facility.toLowerCase()}`);
+      toast.error("Failed to add facility");
     } finally {
       setLoading(false);
     }
@@ -471,10 +469,10 @@ export function useEducationalConfigurationManagement() {
         campusId: data.facility.campus_id
       } : f));
       
-      toast.success(`${structureLabels.facility} updated successfully`);
+      toast.success("Facility updated successfully");
     } catch (error) {
       console.error("Error updating facility:", error);
-      toast.error(`Failed to update ${structureLabels.facility.toLowerCase()}`);
+      toast.error("Failed to update facility");
     } finally {
       setLoading(false);
     }
@@ -495,10 +493,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setFacilities(prev => prev.filter(f => f.id !== id));
-      toast.success(`${structureLabels.facility} deleted successfully`);
+      toast.success("Facility deleted successfully");
     } catch (error) {
       console.error("Error deleting facility:", error);
-      toast.error(`Failed to delete ${structureLabels.facility.toLowerCase()}`);
+      toast.error("Failed to delete facility");
     } finally {
       setLoading(false);
     }

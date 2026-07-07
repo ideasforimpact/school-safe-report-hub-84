@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { mapDbClientToClient, prepareClientForDb } from '@/types/clientTypes';
+import { mapDbClientToClient, prepareClientForDb, ClientRecord, ClientModuleRecord } from '@/types/clientTypes';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store/authSelectors';
 import { useLocation } from 'react-router-dom';
@@ -71,7 +71,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const isBackofficeMode = location.pathname.startsWith('/backoffice');
 
   // Extracted fetchClients function - now simplified since context is only used when appropriate
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     setLoading(true);
     try {
       console.log('ClientProvider: Fetching clients data...');
@@ -88,7 +88,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
 
         if (response?.data) {
-          const mappedClients = response.data.map((dbClient: any) => ({
+          const mappedClients = (response.data as ClientRecord[]).map((dbClient) => ({
             ...mapDbClientToClient(dbClient),
             clientTypeId: dbClient.client_type_id,
             incidentRecommendedActionsEnabled:
@@ -123,7 +123,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
 
         // Group module access by client id
-        const modulesByClient: Record<string, any[]> = {};
+        const modulesByClient: Record<string, ClientModuleRecord[]> = {};
         modulesData?.forEach(module => {
           if (!modulesByClient[module.client_id]) {
             modulesByClient[module.client_id] = [];
@@ -177,16 +177,16 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [isBackofficeMode, client]);
 
   // Load clients from Supabase on mount - context is now only used when appropriate
   useEffect(() => {
     if (isAuthenticated && (isBackofficeUser || currentUser?.role === 'saas_owner')) {
       fetchClients();
     }
-  }, [isAuthenticated, isBackofficeUser, currentUser, state.employeeData]);
+  }, [isAuthenticated, isBackofficeUser, currentUser, state.employeeData, fetchClients]);
 
-  const mapModulesToPermissions = (clientModules: any[]): Partial<ModulePermissions> => {
+  const mapModulesToPermissions = (clientModules: ClientModuleRecord[]): Partial<ModulePermissions> => {
     const permissions: Partial<ModulePermissions> = {
       superAdmin: false,
       incidentReporting: false,

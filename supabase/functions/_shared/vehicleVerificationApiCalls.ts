@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Persists per-vehicle API attempt metrics to `vehicle_verification_api_calls`.
  * Mirrors employee_verification_api_calls: totals include all providers; fallback-only
@@ -54,21 +53,26 @@ function normalizeAuditLog(existing: unknown): VehicleAuditEvent[] {
   if (!Array.isArray(existing)) return [];
   return existing
     .filter((x) => x && typeof x === "object")
-    .map((x: any) => ({
-      ts: String(x.ts ?? new Date().toISOString()),
-      provider: String(x.provider ?? "unknown"),
-      role: x.role === "fallback" ? "fallback" : "primary",
-      operation: x.operation === "challan" ? "challan" : "rc",
-      result: x.result === "success" ? "success" : "failed",
-      rc_counts_after: {
-        success: Number(x?.rc_counts_after?.success ?? 0),
-        failed: Number(x?.rc_counts_after?.failed ?? 0),
-      },
-      challan_counts_after: {
-        success: Number(x?.challan_counts_after?.success ?? 0),
-        failed: Number(x?.challan_counts_after?.failed ?? 0),
-      },
-    }));
+    .map((x) => {
+      const obj = x as Record<string, unknown>;
+      const rcCountsAfter = (obj.rc_counts_after ?? {}) as Record<string, unknown>;
+      const challanCountsAfter = (obj.challan_counts_after ?? {}) as Record<string, unknown>;
+      return {
+        ts: String(obj.ts ?? new Date().toISOString()),
+        provider: String(obj.provider ?? "unknown"),
+        role: obj.role === "fallback" ? "fallback" : "primary",
+        operation: obj.operation === "challan" ? "challan" : "rc",
+        result: obj.result === "success" ? "success" : "failed",
+        rc_counts_after: {
+          success: Number(rcCountsAfter.success ?? 0),
+          failed: Number(rcCountsAfter.failed ?? 0),
+        },
+        challan_counts_after: {
+          success: Number(challanCountsAfter.success ?? 0),
+          failed: Number(challanCountsAfter.failed ?? 0),
+        },
+      };
+    }) as VehicleAuditEvent[];
 }
 
 export async function recordVehicleVerificationApiCall(
@@ -150,8 +154,8 @@ export async function recordVehicleVerificationApiCall(
     const curFailedObj = nextOtherFailed[String(provider)] ?? {};
     const curProviderSuccess = getNestedNumber(curSuccessObj, "success");
     const curProviderFailed = getNestedNumber(curFailedObj, "failed");
-    (nextOtherSuccess as any)[String(provider)] = { success: curProviderSuccess + successInc };
-    (nextOtherFailed as any)[String(provider)] = { failed: curProviderFailed + failedInc };
+    nextOtherSuccess[String(provider)] = { success: curProviderSuccess + successInc };
+    nextOtherFailed[String(provider)] = { failed: curProviderFailed + failedInc };
   }
 
   const isMultipleFlag =

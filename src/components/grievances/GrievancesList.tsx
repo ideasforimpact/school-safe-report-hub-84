@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGrievance } from '@/contexts/grievances/GrievanceContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { Badge, BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, Filter, MessageSquare } from 'lucide-react';
 import GrievanceDetailDialog from './GrievanceDetailDialog';
@@ -18,7 +18,7 @@ const GrievancesList = () => {
     return statusFilter === 'all' || submission.status === statusFilter;
   });
   
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeVariant = (status: string): BadgeProps['variant'] => {
     switch (status) {
       case 'new':
         return 'default';
@@ -114,7 +114,7 @@ const GrievancesList = () => {
                     {submission.needsFollowup ? 'Yes' : 'No'}
                   </TableCell>
                   <TableCell className="text-left">
-                    <Badge variant={getStatusBadgeVariant(submission.status) as any}>
+                    <Badge variant={getStatusBadgeVariant(submission.status)}>
                       {capitalizeStatus(submission.status)}
                     </Badge>
                   </TableCell>

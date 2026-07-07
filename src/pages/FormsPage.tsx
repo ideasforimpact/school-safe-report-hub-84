@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,7 +8,7 @@ import { useClient } from '@/contexts/ClientContext';
 import { backofficeFormService } from '@/services/forms/backofficeFormService';
 import { FormConfiguration } from '@/components/backoffice/forms/FormConfiguration';
 import { CustomForm } from '@/types/formTypes';
-import { Edit, Trash2, ExternalLink, FileText, Plus, QrCode, Search, Eye, Filter, X, Calendar, CheckCircle, MessageSquareWarning } from 'lucide-react';
+import { Edit, Trash2, ExternalLink, FileText, Plus, QrCode, Eye, Filter, X, Calendar, CheckCircle, MessageSquareWarning } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from "@/lib/Dateformat";
 import Loader from '@/components/common/Loader';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const FormsPage = () => {
@@ -39,7 +40,7 @@ const FormsPage = () => {
   const { user, employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [selectedClientId, setSelectedClientId] = useState<string>(''); // used only for backoffice
-  const authClientId = (employeeData as any)?.clientId || (user as any)?.clientId;
+  const authClientId = (employeeData as Record<string, unknown>)?.clientId || (user as Record<string, unknown>)?.clientId;
   const effectiveClientId = isBackoffice ? selectedClientId : (authClientId ?? client?.id ?? '');
 
   const [forms, setForms] = useState<CustomForm[]>([]);
@@ -48,8 +49,8 @@ const FormsPage = () => {
   const [showFormConfig, setShowFormConfig] = useState(false);
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewSubmission, setViewSubmission] = useState<any | null>(null);
-  const [acknowledgeSubmission, setAcknowledgeSubmission] = useState<any | null>(null);
+  const [viewSubmission, setViewSubmission] = useState<Record<string, unknown> | null>(null);
+  const [acknowledgeSubmission, setAcknowledgeSubmission] = useState<Record<string, unknown> | null>(null);
   const [acknowledgeComment, setAcknowledgeComment] = useState('');
   const [isSubmittingAcknowledgment, setIsSubmittingAcknowledgment] = useState(false);
   const [acknowledgementFiles, setAcknowledgementFiles] = useState<FileItem[]>([]);
@@ -82,40 +83,41 @@ const FormsPage = () => {
   }, [searchParams]);
 
   // Helpers to extract values from mixed response shapes (array or object)
-  const extractFromResponses = (responses: any, keys: string[]) => {
+  const extractFromResponses = (responses: unknown, keys: string[]): unknown => {
     if (!responses) return null;
     if (Array.isArray(responses)) {
       for (const k of keys) {
-        const found = responses.find((r: any) => {
-          const candidates = [r.label, r.field_label, r.field_id].map((v: any) => (v || '').toString().toLowerCase());
+        const found = (responses as Record<string, unknown>[]).find((r: Record<string, unknown>) => {
+          const candidates = [r.label, r.field_label, r.field_id].map((v) => ((v || '') as string).toString().toLowerCase());
           return candidates.includes(k);
         });
-        if (found) return found.value;
+        if (found) return (found as Record<string, unknown>).value;
       }
       return null;
     }
-    if (typeof responses === 'object') {
+    if (typeof responses === 'object' && responses !== null) {
+      const obj = responses as Record<string, unknown>;
       for (const k of keys) {
-        if (responses[k] !== undefined && responses[k] !== null) return responses[k];
+        if (obj[k] !== undefined && obj[k] !== null) return obj[k];
       }
     }
     return null;
   };
 
-  const getName = (sub: any) => sub.submitter_name || extractFromResponses(sub.responses, ['name','full_name','submitter_name']) || 'Anonymous';
-  const getPhone = (sub: any) => sub.submitter_phone || extractFromResponses(sub.responses, ['phone','contact','mobile']) || '';
-  const getTitle = (sub: any) => {
+  const getName = useCallback((sub: Record<string, unknown>) => (sub.submitter_name as string) || extractFromResponses(sub.responses, ['name','full_name','submitter_name']) || 'Anonymous', []);
+  const getPhone = useCallback((sub: Record<string, unknown>) => (sub.submitter_phone as string) || extractFromResponses(sub.responses, ['phone','contact','mobile']) || '', []);
+  const getTitle = useCallback((sub: Record<string, unknown>) => {
     const v = extractFromResponses(sub.responses, ['subject','heading','title']) || '';
     const s = (typeof v === 'string') ? v : (v != null ? JSON.stringify(v) : '');
     return s.length > 30 ? s.slice(0, 30) + '…' : s;
-  };
+  }, []);
 
-  const getFullTitle = (sub: any) => {
+  const getFullTitle = (sub: Record<string, unknown>) => {
     const v = extractFromResponses(sub.responses, ['subject','heading','title']) || '';
     return (typeof v === 'string') ? v : (v != null ? JSON.stringify(v) : '');
   };
 
-  const getType = (sub: any) => sub.submitter_type || (extractFromResponses(sub.responses, ['submitter_type','type']) || '');
+  const getType = (sub: Record<string, unknown>) => (sub.submitter_type as string) || (extractFromResponses(sub.responses, ['submitter_type','type']) || '');
 
   // Helper function to get status badge with proper formatting and colors
   const getStatusBadge = (status: string) => {
@@ -156,8 +158,19 @@ const FormsPage = () => {
     }
   };
 
-  // Submissions hook (normal view)
-  const { submissions, loading: submissionsLoading, refetch: refetchSubmissions } = useFormSubmissions(selectedForm?.id || null, effectiveClientId || null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  const setStatusFilterWithReset = (v: string) => { setStatusFilter(v); setCurrentPage(1); };
+  const setDateFromWithReset = (d: Date | undefined) => { setDateFrom(d); setCurrentPage(1); };
+  const setDateToWithReset = (d: Date | undefined) => { setDateTo(d); setCurrentPage(1); };
+
+  // Submissions hook (normal view) — server-side pagination + filters
+  const { submissions, loading: submissionsLoading, refetch: refetchSubmissions, total: submissionsTotal, totalPages, stats: submissionsStats } = useFormSubmissions(
+    selectedForm?.id || null,
+    effectiveClientId || null,
+    { page: currentPage, pageSize: PAGE_SIZE, status: statusFilter, dateFrom, dateTo }
+  );
 
   // For backoffice, preselect first active client when list loads
   useEffect(() => {
@@ -167,10 +180,11 @@ const FormsPage = () => {
     }
   }, [isBackoffice, clients, selectedClientId]);
 
+  const lastFetchedClientId = useRef<string | null>(null);
   useEffect(() => {
-    if (effectiveClientId) {
-      fetchForms(effectiveClientId);
-    }
+    if (!effectiveClientId || effectiveClientId === lastFetchedClientId.current) return;
+    lastFetchedClientId.current = effectiveClientId;
+    fetchForms(effectiveClientId);
   }, [effectiveClientId]);
 
   // Do not auto-select a form. Default view shows all forms for the client.
@@ -189,7 +203,7 @@ const FormsPage = () => {
     }
   };
 
-  const handleCreateForm = async (formData: any) => {
+  const handleCreateForm = async (formData: Record<string, unknown>) => {
     if (!effectiveClientId) {
       toast.error('No client selected');
       return;
@@ -210,7 +224,7 @@ const FormsPage = () => {
     }
   };
 
-  const handleUpdateForm = async (formData: any) => {
+  const handleUpdateForm = async (formData: Record<string, unknown>) => {
     if (!editingForm) return;
 
     try {
@@ -224,31 +238,11 @@ const FormsPage = () => {
       toast.error('Failed to update form');
     }
   };
-  const grievanceStats = useMemo(() => {
-      if (!submissions) {
-      return {
-        open: 0,
-        acknowledged: 0,
-      };
-    }
-
-    let open = 0;
-    let acknowledged = 0;
-
-    submissions.forEach((sub: any) => {
-      const status = (sub.status || 'pending').toLowerCase();
-
-      if (status === 'pending') {
-        open += 1;
-      } else if (status === 'acknowledged') {
-        acknowledged += 1;
-      }
-    });
-
-    return { open, acknowledged };
-  }, [submissions]);
-
-  const total = grievanceStats.open + grievanceStats.acknowledged;
+  const grievanceStats = {
+    open: submissionsStats.pending,
+    acknowledged: submissionsStats.acknowledged,
+  };
+  const total = submissionsStats.total;
   const handleDeleteForm = async (formId: string) => {
     if (!confirm('Are you sure you want to delete this form?')) return;
 
@@ -267,7 +261,7 @@ const FormsPage = () => {
     setShowFormConfig(true);
   };
 
-  const handleSaveFormConfig = async (formConfig: any) => {
+  const handleSaveFormConfig = async (formConfig: Record<string, unknown>) => {
     try {
       if (!effectiveClientId) {
         toast.error('No client selected');
@@ -280,26 +274,26 @@ const FormsPage = () => {
           description: formConfig.description,
           fields: formConfig.fields,
           excluded_fields: formConfig.excluded_fields
-        } as any);
+        } as Parameters<typeof backofficeFormService.updateForm>[1]);
         setForms(prev => prev.map(f => f.id === updated.id ? updated : f));
         toast.success('Form updated successfully');
       } else {
         const created = await backofficeFormService.createForm({
           client_id: effectiveClientId,
-          title: formConfig.title,
-          description: formConfig.description,
-          fields: formConfig.fields,
+          title: formConfig.title as string,
+          description: formConfig.description as string,
+          fields: formConfig.fields as CustomForm['fields'],
           is_active: true,
-          preview_url: undefined as any
-        } as any);
+          preview_url: undefined
+        } as Parameters<typeof backofficeFormService.createForm>[0]);
         setForms(prev => [created, ...prev]);
         toast.success('Form created successfully');
       }
       setShowFormConfig(false);
       setEditingForm(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      toast.error(err?.message || 'Failed to save form');
+      toast.error(err instanceof Error ? err.message : 'Failed to save form');
     }
   };
 
@@ -312,56 +306,18 @@ const FormsPage = () => {
     return `${window.location.origin}/form-preview/${form.id}`;
   };
 
-  // Filtered submissions with all filters applied
+  // Client-side search filter only (status and date are server-side)
   const filteredSubmissions = useMemo(() => {
     if (!submissions) return [];
-    
-    let filtered = [...submissions];
-
-    // Search filter
-    if (searchTerm.trim()) {
+    if (!searchTerm.trim()) return submissions;
     const s = searchTerm.toLowerCase();
-      filtered = filtered.filter((sub: any) =>
-        (getName(sub) || '').toLowerCase().includes(s) ||
-        (getPhone(sub) || '').toLowerCase().includes(s) ||
-        (getTitle(sub) || '').toLowerCase().includes(s) ||
-      (sub.status || '').toLowerCase().includes(s)
+    return submissions.filter((sub: Record<string, unknown>) =>
+      (getName(sub) as string || '').toLowerCase().includes(s) ||
+      (getPhone(sub) as string || '').toLowerCase().includes(s) ||
+      (getTitle(sub) as string || '').toLowerCase().includes(s) ||
+      ((sub.status as string) || '').toLowerCase().includes(s)
     );
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((sub: any) => (sub.status || 'pending') === statusFilter);
-    }
-
-    // Form type filter
-    if (formTypeFilter !== 'all') {
-      filtered = filtered.filter((sub: any) => {
-        const formId = sub.form_id;
-        const form = forms.find(f => f.id === formId);
-        return form && form.title === formTypeFilter;
-      });
-    }
-
-    // Date range filter
-    if (dateFrom) {
-      filtered = filtered.filter((sub: any) => {
-        const submissionDate = new Date(sub.created_at);
-        return submissionDate >= dateFrom;
-      });
-    }
-    if (dateTo) {
-      filtered = filtered.filter((sub: any) => {
-        const submissionDate = new Date(sub.created_at);
-        // Set time to end of day for dateTo
-        const endOfDay = new Date(dateTo);
-        endOfDay.setHours(23, 59, 59, 999);
-        return submissionDate <= endOfDay;
-      });
-    }
-
-    return filtered;
-  }, [submissions, searchTerm, statusFilter, formTypeFilter, dateFrom, dateTo, forms]);
+  }, [submissions, searchTerm, getName, getPhone, getTitle]);
 
   const clearAllFilters = () => {
     setSearchTerm('');
@@ -369,6 +325,7 @@ const FormsPage = () => {
     setFormTypeFilter('all');
     setDateFrom(undefined);
     setDateTo(undefined);
+    setCurrentPage(1);
   };
 
   // Active filter count
@@ -404,7 +361,7 @@ const FormsPage = () => {
       // 1) Upload evidence files to storage under bucket/clientId/employeeId/submissionId
       const bucketId = 'form_submission_comment_attachements';
       const clientId = effectiveClientId || 'unknown-client';
-      const employeeId = (employeeData as any)?.id || (user as any)?.id || 'unknown-employee';
+      const employeeId = (employeeData as Record<string, unknown>)?.id || (user as Record<string, unknown>)?.id || 'unknown-employee';
 
       const filePayload: { path: string; filename: string; size?: number }[] = [];
 
@@ -445,25 +402,28 @@ const FormsPage = () => {
         );
       }
 
-      // 2) Update submission status and acknowledgement details synchronously
-      const { error: updateError } = await supabase
-        .from('form_submissions')
-        .update({
+      // 2) Update submission status and acknowledgement details via edge function
+      const empData = employeeData as Record<string, unknown>;
+      const userData = user as Record<string, unknown>;
+      const acknowledgedByName =
+        empData?.firstName && empData?.lastName
+          ? `${empData.firstName} ${empData.lastName}`
+          : userData?.firstName
+          ? `${userData.firstName} ${(userData.lastName || '')}`.trim()
+          : null;
+
+      const { data: updateData, error: updateError } = await supabase.functions.invoke('update-form-submission', {
+        body: {
+          submission_id: acknowledgeSubmission.id,
           status: 'acknowledged',
           comments: trimmedComment || null,
-          acknowledged_by_name:
-            (employeeData as any)?.firstName && (employeeData as any)?.lastName
-              ? `${(employeeData as any).firstName} ${(employeeData as any).lastName}`
-              : (user as any)?.firstName
-              ? `${(user as any).firstName} ${((user as any).lastName || '')}`.trim()
-              : null,
+          acknowledged_by_name: acknowledgedByName,
           acknowledged_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', acknowledgeSubmission.id);
+        },
+      });
 
-      if (updateError) {
-        console.error('Error acknowledging submission:', updateError);
+      if (updateError || !updateData?.success) {
+        console.error('Error acknowledging submission:', updateError || updateData?.error);
         toast.error('Failed to acknowledge submission');
         return;
       }
@@ -476,7 +436,7 @@ const FormsPage = () => {
             comments: trimmedComment || null,
             files: filePayload,
           },
-        } as any);
+        });
 
         if (fnError) {
           console.error('Error queueing acknowledgement attachments:', fnError);
@@ -486,10 +446,7 @@ const FormsPage = () => {
       }
 
       toast.success('Submission acknowledged successfully');
-      
-      // Refresh only the submissions data using the refetch function
-      await refetchSubmissions();
-      
+      // Realtime subscription handles the refetch automatically
       setAcknowledgeSubmission(null);
       setAcknowledgeComment('');
       setAcknowledgementFiles([]);
@@ -612,7 +569,7 @@ const Content = (
             </CardHeader>
             <CardContent>
               <FormConfiguration 
-                initialForm={editingForm as any}
+                initialForm={editingForm ?? undefined}
                 onSave={handleSaveFormConfig}
                 onCancel={handleCancelFormConfig}
               />
@@ -713,19 +670,17 @@ const Content = (
           {/* Single Row: Search and All Filters */}
           <div className="flex flex-wrap gap-4 items-center">
             {/* 1. Search Box */}
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search name and title..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <DebouncedSearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search name and title..."
+              className="w-64"
+              triggerOnEnter
+            />
 
             {/* 2. Status Filter */}
             <div className="w-48">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={setStatusFilterWithReset}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -782,9 +737,9 @@ const Content = (
                         mode="single"
                         selected={dateFrom}
                         onSelect={(date) => {
-                          setDateFrom(date);
+                          setDateFromWithReset(date);
                           if (dateTo && date && dateTo < date) {
-                            setDateTo(undefined);
+                            setDateToWithReset(undefined);
                           }
                         }}
                         className="rounded-md border"
@@ -795,7 +750,7 @@ const Content = (
                       <CalendarIcon
                         mode="single"
                         selected={dateTo}
-                        onSelect={setDateTo}
+                        onSelect={setDateToWithReset}
                         disabled={(date) =>
                           dateFrom ? date < dateFrom : false
                         }
@@ -817,11 +772,11 @@ const Content = (
           </div>
 
           {/* Results Info */}
-          {hasActiveFilters && (
-            <div className="text-sm text-muted-foreground">
-              Showing {filteredSubmissions.length} of {submissions.length} grievances
-            </div>
-          )}
+          <div className="text-sm text-muted-foreground">
+            {hasActiveFilters
+              ? `Showing ${filteredSubmissions.length} of ${submissionsTotal} grievances`
+              : `Total: ${submissionsTotal} grievances`}
+          </div>
           </div>
 
           {loading ? (
@@ -850,7 +805,7 @@ const Content = (
                     </TableCell>
                     </TableRow>
                   ) : (
-                    filteredSubmissions.map((sub: any) => (
+                    filteredSubmissions.map((sub: Record<string, unknown>) => (
                       <TableRow key={sub.id}>
                         <TableCell>
                           <div className="font-medium">{getName(sub)}</div>
@@ -884,6 +839,63 @@ const Content = (
                   )}
                 </TableBody>
               </Table>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                «
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                ‹ Prev
+              </Button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+                const pageNum = start + i;
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === currentPage ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next ›
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                »
+              </Button>
+            </div>
+          </div>
+        )}
+
         {viewSubmission && (
           <Dialog open={!!viewSubmission} onOpenChange={(open) => { if (!open) setViewSubmission(null); }}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1004,15 +1016,15 @@ const Content = (
                         </div>
                         )}
 
-                        {Array.isArray((viewSubmission as any).comments_attachment) &&
-                        (viewSubmission as any).comments_attachment.length > 0 && (
+                        {Array.isArray(viewSubmission.comments_attachment) &&
+                        (viewSubmission.comments_attachment as unknown[]).length > 0 && (
                         <div className="mt-3">
                           <div className="text-gray-700 font-semibold mb-1">
                             Acknowledgement Evidence
                           </div>
                           <ul className="space-y-2">
-                            {(viewSubmission as any).comments_attachment.map(
-                            (f: any, idx: number) => (
+                            {(viewSubmission.comments_attachment as Record<string, unknown>[]).map(
+                            (f, idx: number) => (
                               <li
                               key={idx}
                               className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 gap-2"
@@ -1102,13 +1114,13 @@ const Content = (
                   <div className="text-lg font-semibold">Attachments</div>
                   {(() => {
                     const raw =
-                    (viewSubmission as any).attachments ||
-                    ((viewSubmission as any).responses &&
-                      (viewSubmission as any).responses.attachments);
-                    const list = raw
+                    viewSubmission.attachments ||
+                    (viewSubmission.responses &&
+                      (viewSubmission.responses as Record<string, unknown>).attachments);
+                    const list: Record<string, unknown>[] = raw
                     ? Array.isArray(raw)
-                      ? raw
-                      : (Object.values(raw) as any[]).flat()
+                      ? raw as Record<string, unknown>[]
+                      : (Object.values(raw as Record<string, unknown>) as unknown[]).flat() as Record<string, unknown>[]
                     : [];
                     if (!list || list.length === 0) {
                     return (
@@ -1148,7 +1160,7 @@ const Content = (
                     return (
                     <div className="space-y-2">
                       <ul className="space-y-2">
-                      {list.map((f: any, idx: number) => {
+                      {list.map((f, idx: number) => {
                         const fileName =
                         f.filename ||
                         f.name ||

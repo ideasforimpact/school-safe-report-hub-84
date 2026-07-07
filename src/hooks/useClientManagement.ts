@@ -125,7 +125,7 @@ export const useClientManagement = () => {
       if (data && data.modules) {
         console.log("Modules loaded successfully:", data.modules.length);
         // Enable all modules with admin access by default for new client
-        const moduleInfoArray: ModuleInfo[] = data.modules.map((module: any) => ({
+        const moduleInfoArray: ModuleInfo[] = data.modules.map((module: { id: string; name: string }) => ({
           name: module.name,
           module_id: module.id,
           is_admin: true
@@ -403,18 +403,23 @@ export const useClientManagement = () => {
         }
         console.log('Client modules data:', clientModulesData);
         // Transform client modules data to moduleInfoArray
-        const moduleInfoArray = clientModulesData ? clientModulesData.map((module: any) => {
+        type ClientModuleRow = {
+          module_id: string | null;
+          access_level: Record<string, unknown> | null;
+          modules: { id: string; name: string } | null;
+        };
+        const moduleInfoArray = clientModulesData ? (clientModulesData as ClientModuleRow[]).map((module) => {
           const moduleName = module.modules?.name || '';
-          const accessLevel = module.access_level as Record<string, any> || {};
-          const isAdmin = typeof accessLevel === 'object' && accessLevel !== null ? 
+          const accessLevel = (module.access_level as Record<string, unknown>) || {};
+          const isAdmin = typeof accessLevel === 'object' && accessLevel !== null ?
             !!accessLevel.isAdmin : false;
-          
+
           return {
             name: moduleName,
             module_id: module.module_id || '',
             is_admin: isAdmin
           };
-        }).filter((m: any) => m.module_id) : [];
+        }).filter((m) => m.module_id) : [];
         
         // Fetch ALL super admins for this client. Pre-Feature-2 each client
         // had exactly one (primary); post-Feature-2 a client can have up to
@@ -434,17 +439,17 @@ export const useClientManagement = () => {
         }
 
         const primaryRow = (superAdminRows || []).find(
-          (row: any) => row.is_secondary_super_admin !== true
+          (row) => row.is_secondary_super_admin !== true
         );
         const secondaryRows = (superAdminRows || []).filter(
-          (row: any) => row.is_secondary_super_admin === true
+          (row) => row.is_secondary_super_admin === true
         );
         // employeeData mirrors the legacy single-record fetch so the rest
         // of this function (which still references employeeData?.email)
         // keeps working unchanged.
         const employeeData = primaryRow ? { email: primaryRow.email } : null;
         const secondarySuperAdminEmails: string[] = secondaryRows.map(
-          (row: any) => row.email
+          (row) => row.email
         );
         
         // Fetch whitelisted IPs
@@ -461,7 +466,7 @@ export const useClientManagement = () => {
         }
         
         // Transform IP data to IPAddress format
-        const whitelistedIPs: IPAddress[] = ipData ? ipData.map((ip: any) => ({
+        const whitelistedIPs: IPAddress[] = ipData ? ipData.map((ip: { ip_address: string; name?: string | null }) => ({
           ip: ip.ip_address,
           name: ip.name || undefined
         })) : [];

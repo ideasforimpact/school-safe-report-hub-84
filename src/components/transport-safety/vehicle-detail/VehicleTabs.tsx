@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Vehicle, VehicleDocument } from '@/types/transportSafety';
+import { Vehicle, VehicleDocument, VehicleVerificationData } from '@/types/transportSafety';
 import DocumentUploader from '../documents/DocumentUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -33,16 +33,36 @@ import VerificationDetailsDialog from '../VerificationDetailsDialog';
 import { getVehicleChallans, getVehicleDocuments } from '@/services/transport-safety/vehicleService';
 import { VehicleChallans } from '@/types/transportSafety';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { Json } from '@/integrations/supabase/types';
 
 interface VehicleTabsProps {
   vehicleId: string;
   vehicle: Vehicle;
 }
 
+// Challan snapshot shape varies by provider; only the fields this component
+// reads are named, the rest is preserved via the index signature.
+interface ChallanSnapshot {
+  process_id?: string;
+  bothFallback?: boolean;
+  parent_process_id?: string;
+  success?: boolean;
+  [key: string]: unknown;
+}
+
+interface VerificationDetailsData {
+  challanSnapshot: ChallanSnapshot;
+  challanError: string | null;
+}
+
+interface UploadSuccessResult {
+  documentData?: UploadedDocument;
+}
+
 const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [showVerificationDetails, setShowVerificationDetails] = React.useState(false);
-  const [selectedVerificationData, setSelectedVerificationData] = React.useState<any>(null);
+  const [selectedVerificationData, setSelectedVerificationData] = React.useState<VerificationDetailsData | null>(null);
   const [vehicleChallans, setVehicleChallans] = React.useState<VehicleChallans | null>(vehicle.vehicleChallans || null);
   const [showAddDocumentDialog, setShowAddDocumentDialog] = React.useState(false);
   const [showFilePreview, setShowFilePreview] = React.useState(false);
@@ -105,7 +125,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
 
     if (!log || typeof log !== 'object') return [];
 
-    const entries = Object.entries(log).map(([date, snapshot]: [string, any]) => ({
+    const entries = Object.entries(log).map(([date, snapshot]: [string, ChallanSnapshot]) => ({
       date,
       snapshot, // full challan snapshot from DB
     }));
@@ -180,12 +200,12 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
   // const verificationHistory = getVerificationHistory();
   
   // Format verification data - remove internal/noisy fields
-  const formatVerificationData = (data: any) => {
+  const formatVerificationData = (data: VehicleVerificationData[] | null | undefined) => {
     if (!data || !Array.isArray(data)) return [];
-    
+
     // Filter out fields we don't want to show in the details popup
     return data
-      .filter((item: any) => {
+      .filter((item) => {
         const fieldName = String(item.field || '').toLowerCase();
         // Skip verification_log, last_response, status, challan_details, response metadata,
         // less info, and any client identifiers
@@ -205,9 +225,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
         
         return true;
       })
-      .map((item: any) => {
+      .map((item) => {
         // Format the field label
-        let label = item.field.replace(/_/g, ' ')
+        const label = item.field.replace(/_/g, ' ')
                           .split(' ')
                           .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                           .join(' ');
@@ -220,7 +240,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
       });
   };
   
-  const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
+  const viewVerificationDetails = (entry: { date: string; snapshot: ChallanSnapshot }) => {
     const challanSnapshot = entry.snapshot;
 
     const challanError =
@@ -271,7 +291,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
   };
 
   // Handle successful upload
-  const handleUploadSuccess = (result: any) => {
+  const handleUploadSuccess = (result: UploadSuccessResult) => {
     console.log('Upload success:', result);
     
     // Use documentData for the newly uploaded file, not the entire result array
@@ -343,22 +363,23 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
         }
         
         if (currentData && Array.isArray(currentData.documents)) {
-          const updatedDocuments = currentData.documents.filter(
-            (doc: any) => doc.uploadedAt !== document.uploadedAt
+          const documents = currentData.documents as unknown as UploadedDocument[];
+          const updatedDocuments = documents.filter(
+            (doc) => doc.uploadedAt !== document.uploadedAt
           );
           
           const { error: updateError } = await supabase
             .from('vehicle_documents')
-            .update({ documents: updatedDocuments })
+            .update({ documents: updatedDocuments as unknown as Json })
             .eq('vehicle_id', vehicleId);
-            
+
           if (updateError) {
             console.error('Error updating documents:', updateError);
             return;
           }
-          
+
           // Update local state to reflect deletion
-          setUploadedDocuments(prev => 
+          setUploadedDocuments(prev =>
             prev.filter(doc => doc.uploadedAt !== document.uploadedAt)
           );
         }
@@ -376,11 +397,12 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
         }
         
         if (currentData && Array.isArray(currentData.documents)) {
-          const updatedDocuments = currentData.documents.map((doc: any) => {
+          const documents = currentData.documents as unknown as UploadedDocument[];
+          const updatedDocuments = documents.map((doc) => {
             if (doc.uploadedAt === document.uploadedAt) {
               return {
                 ...doc,
-                files: doc.files.filter((_: any, idx: number) => idx !== fileIndex)
+                files: doc.files.filter((_, idx) => idx !== fileIndex)
               };
             }
             return doc;
@@ -388,9 +410,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
           
           const { error: updateError } = await supabase
             .from('vehicle_documents')
-            .update({ documents: updatedDocuments })
+            .update({ documents: updatedDocuments as unknown as Json })
             .eq('vehicle_id', vehicleId);
-            
+
           if (updateError) {
             console.error('Error updating documents:', updateError);
             return;

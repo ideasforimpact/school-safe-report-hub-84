@@ -288,11 +288,11 @@ export const SectionTab = ({
       );
     }
     
-    if (filterCampusId && filterCampusId !== 'all') {
+    if (filterCampusId) {
       filtered = filtered.filter(section => section.campusId === filterCampusId);
     }
-
-    if (filterClassId && filterClassId !== 'all') {
+    
+    if (filterClassId) {
       filtered = filtered.filter(section => section.classId === filterClassId);
     }
     
@@ -316,7 +316,7 @@ export const SectionTab = ({
 
   // Get classes filtered by selected campus for the class filter dropdown
   const availableClassesForFilter = useMemo(() => {
-    if (filterCampusId && filterCampusId !== 'all') {
+    if (filterCampusId) {
       return classes.filter(cls => cls.campusId === filterCampusId);
     }
     return classes;
@@ -451,7 +451,7 @@ export const SectionTab = ({
                 <SelectValue placeholder={`Filter by ${s.campus.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{`All ${s.campusPlural.toLowerCase()}`}</SelectItem>
+                <SelectItem value="">{`All ${s.campusPlural.toLowerCase()}`}</SelectItem>
                 {campuses.map((campus) => (
                   <SelectItem key={campus.id} value={campus.id}>
                     {campus.name}
@@ -470,7 +470,7 @@ export const SectionTab = ({
                 <SelectValue placeholder={`Filter by ${s.grade.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{`All ${s.gradePlural.toLowerCase()}`}</SelectItem>
+                <SelectItem value="">{`All ${s.gradePlural.toLowerCase()}`}</SelectItem>
                 {availableClassesForFilter.map((classItem) => (
                   <SelectItem key={classItem.id} value={classItem.id}>
                     {classItem.name}

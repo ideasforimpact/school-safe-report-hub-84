@@ -40,8 +40,13 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
   
   // No API calls here - the parent component handles fetching
   
-  // Use fetched document types, or fall back to default if still loading
-  const typesToDisplay = documentTypes.length > 0 ? 
+  // Use fetched document types, or fall back to default if still loading. The fallback
+  // uses placeholder ids ('1', '2', ...) that don't exist in the employee_document_type
+  // table — selecting one and submitting before the real list loads makes the upload
+  // edge function reject the request with "Invalid document type" (400). So the fallback
+  // is shown as a loading placeholder only; it's never clickable (see isPlaceholder below).
+  const hasRealTypes = documentTypes.length > 0;
+  const typesToDisplay = hasRealTypes ?
     // Sort according to the specified order if we have API data and filter enabled types
     [...documentTypes]
       .filter(type => type.name !== 'bank_account') // Hide bank account only
@@ -57,7 +62,7 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
           'other_documents': 8
         };
         return (orderMap[a.name] || 99) - (orderMap[b.name] || 99);
-      }) : 
+      }) :
     // Filter enabled types from default types
     defaultDocumentTypes.filter(type => type.enabled && type.name !== 'bank_account');
   
@@ -117,13 +122,18 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
           <div
             key={type.id}
             className={`
-              relative flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors
-              ${isSelected 
-                ? `${bgColor} border-primary text-primary` 
+              relative flex flex-col items-center justify-center p-3 rounded-lg border transition-colors
+              ${!hasRealTypes
+                ? 'opacity-50 cursor-not-allowed'
+                : 'cursor-pointer'
+              }
+              ${isSelected
+                ? `${bgColor} border-primary text-primary`
                 : `${bgColor} border-transparent hover:border-gray-300`
               }
             `}
-            onClick={() => onChange(type.id)}
+            onClick={() => hasRealTypes && onChange(type.id)}
+            aria-disabled={!hasRealTypes}
           >
             {hasUploaded && shouldShowCompletionBadge(type.name) && (
               <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-1">

@@ -58,17 +58,15 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadedComments, setLoadedComments] = useState<CommentEntry[] | null>(null);
 
-  // Client view: if comments not provided, fetch from employee_documents by documentId
+  // Client view: if comments not provided, fetch via edge function by documentId
   React.useEffect(() => {
     const fetchComments = async () => {
       if (!comments && documentId) {
-        const { data, error } = await supabase
-          .from('employee_documents')
-          .select('comments')
-          .eq('id', documentId)
-          .maybeSingle();
+        const { data, error } = await supabase.functions.invoke('employee-documents', {
+          body: { action: 'getDocumentComments', documentId },
+        });
         if (!error) {
-          const arr = Array.isArray((data as any)?.comments) ? (data as any).comments as CommentEntry[] : [];
+          const arr = Array.isArray(data?.comments) ? data.comments as CommentEntry[] : [];
           setLoadedComments(arr);
         }
       }
@@ -77,20 +75,22 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
   }, [comments, documentId]);
 
   // Normalize comments from comments column or loaded
-  const sourceComments = comments ?? loadedComments ?? [];
-  const normalizedComments: CommentEntry[] = Array.isArray(sourceComments)
-    ? sourceComments.filter((comment): comment is CommentEntry =>
-        comment && typeof comment === 'object' && 'id' in comment && 'text' in comment
-      )
-    : [];
+  const normalizedComments: CommentEntry[] = useMemo(() => {
+    const sourceComments = comments ?? loadedComments ?? [];
+    return Array.isArray(sourceComments)
+      ? sourceComments.filter((comment): comment is CommentEntry =>
+          comment && typeof comment === 'object' && 'id' in comment && 'text' in comment
+        )
+      : [];
+  }, [comments, loadedComments]);
 
   // Filter comments by sentiment
-  const positiveComments = useMemo(() => 
+  const positiveComments = useMemo(() =>
     normalizedComments.filter(comment => comment.sentiment === true),
     [normalizedComments]
   );
 
-  const negativeComments = useMemo(() => 
+  const negativeComments = useMemo(() =>
     normalizedComments.filter(comment => comment.sentiment === false),
     [normalizedComments]
   );
@@ -216,7 +216,7 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
     setIsProcessing(true);
     try {
       const bucketName = 'employee_other_type_statement';
-      const basePath = `${(employee as any)?.clientId || (employee as any)?.client_id || ''}/${employee?.id || ''}/${documentId}/comments/${editingCommentId}`;
+      const basePath = `${employee?.clientId || (employee as Employee & { client_id?: string })?.client_id || ''}/${employee?.id || ''}/${documentId}/comments/${editingCommentId}`;
 
       // Find original comment
       const original = normalizedComments.find(c => c.id === editingCommentId);
@@ -261,7 +261,7 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
         body: {
           operation: 'update',
           documentId,
-          clientId: (employee as any)?.clientId || (employee as any)?.client_id,
+          clientId: employee?.clientId || (employee as Employee & { client_id?: string })?.client_id,
           employeeId: employee?.id,
           commentId: editingCommentId,
           comment: {
@@ -291,7 +291,7 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
         body: {
           operation: 'delete',
           documentId,
-          clientId: (employee as any)?.clientId || (employee as any)?.client_id,
+          clientId: employee?.clientId || (employee as Employee & { client_id?: string })?.client_id,
           employeeId: employee?.id,
           commentId: comment.id,
           filesToDelete: paths

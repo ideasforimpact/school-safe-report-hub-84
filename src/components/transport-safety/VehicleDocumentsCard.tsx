@@ -5,6 +5,7 @@ import { Vehicle } from '@/types/transportSafety';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Flag } from 'lucide-react';
 import { formatDate } from '@/utils/dateUtils';
+import { RawChallan } from '@/services/transport-safety/vehicleService';
 
 interface VehicleDocumentsCardProps {
   vehicle: Vehicle;
@@ -98,7 +99,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
               </div>
               
               <div className="space-y-2 mt-3">
-                {challanRecords.map((challan: any, index: number) => (
+                {challanRecords.map((challan: RawChallan, index: number) => (
                   <div key={index} className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm p-2 bg-white rounded border border-orange-100">
                     <span className="font-medium">Number:</span>
                     <span>{challan.challan_number || 'N/A'}</span>

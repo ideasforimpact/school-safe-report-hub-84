@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -22,20 +22,7 @@ const BackofficeEmployeeDocumentsPage = () => {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (employeeId && clientId) {
-      fetchEmployeeData();
-    } else {
-      toast({
-        title: "Error",
-        description: "Employee ID or Client ID is missing",
-        variant: "destructive",
-      });
-      navigate('/backoffice/verification');
-    }
-  }, [employeeId, clientId]);
-
-  const fetchEmployeeData = async () => {
+  const fetchEmployeeData = useCallback(async () => {
     if (!employeeId || !clientId) return;
 
     try {
@@ -63,7 +50,20 @@ const BackofficeEmployeeDocumentsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeId, clientId, toast, navigate]);
+
+  useEffect(() => {
+    if (employeeId && clientId) {
+      fetchEmployeeData();
+    } else {
+      toast({
+        title: "Error",
+        description: "Employee ID or Client ID is missing",
+        variant: "destructive",
+      });
+      navigate('/backoffice/verification');
+    }
+  }, [employeeId, clientId, fetchEmployeeData, toast, navigate]);
 
   const handleBack = () => {
     navigate('/backoffice/verification');

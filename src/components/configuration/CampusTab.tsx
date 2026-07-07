@@ -155,7 +155,7 @@ export const CampusTab = ({
         await deleteCampus(campusToDelete.id);
         setDeleteDialogOpen(false);
         setCampusToDelete(null);
-      } catch (error: any) {
+      } catch (error) {
         // Error handling is done in the hook, just close the dialog
         setDeleteDialogOpen(false);
         setCampusToDelete(null);

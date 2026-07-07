@@ -55,35 +55,7 @@ serve(async (req) => {
       );
     }
 
-    if (operation === 'get_stats') {
-      const { hasIncidentAdmin } = body;
-      let query = supabaseClient
-        .from('incidents')
-        .select('id, created_by, assigned_to, incident_status!status_id(name)')
-        .eq('client_id', clientId);
-
-      if (!isSuperAdmin && !hasIncidentAdmin) {
-        query = query.or(`created_by.eq.${employeeId},assigned_to.eq.${employeeId}`);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      const stats = { total: 0, open: 0, inProgress: 0, closed: 0 };
-      for (const inc of data ?? []) {
-        stats.total++;
-        const status = (inc as any).incident_status?.name;
-        if (status === 'Open') stats.open++;
-        else if (status === 'In Progress') stats.inProgress++;
-        else if (status === 'Closed') stats.closed++;
-      }
-
-      return new Response(JSON.stringify({ success: true, data: stats }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
+    // ── get_config ──────────────────────────────────────────────────────────
     if (operation === 'get_config') {
       let reportTypesQuery = supabaseClient
         .from('incident_report_types')
@@ -180,10 +152,11 @@ serve(async (req) => {
       const stats = { total: 0, open: 0, inProgress: 0, closed: 0 };
       for (const inc of data ?? []) {
         stats.total++;
-        const s = (inc as any).incident_status?.name;
-        if (s === 'Open') stats.open++;
-        else if (s === 'In Progress') stats.inProgress++;
-        else if (s === 'Closed') stats.closed++;
+        const incidentStatus = (inc as { incident_status?: { name?: string } | { name?: string }[] }).incident_status;
+        const status = Array.isArray(incidentStatus) ? incidentStatus[0]?.name : incidentStatus?.name;
+        if (status === 'Open') stats.open++;
+        else if (status === 'In Progress') stats.inProgress++;
+        else if (status === 'Closed') stats.closed++;
       }
 
       return new Response(JSON.stringify({ success: true, data: stats }), {
@@ -200,15 +173,15 @@ serve(async (req) => {
         .from('incidents')
         .select(`
           *,
-          incident_report_types:type_id(id, name),
-          incident_categories:category_id(id, name),
-          incident_subcategories:subcategory_id(id, name),
-          campuses:location_id(id, name),
-          facilities:facility_id(id, name),
-          incident_priorities:priority_id(id, name),
-          incident_status:status_id(id, name),
-          created_by_employee:employees!created_by(id, first_name, last_name),
-          assigned_employee:employees!assigned_to(id, first_name, last_name)
+          type:type_id(id, name),
+          category:category_id(id, name),
+          subcategory:subcategory_id(id, name),
+          location:location_id(id, name),
+          facility:facility_id(id, name),
+          priority:priority_id(id, name),
+          status:status_id(id, name),
+          created_by:employees!created_by(id, first_name, last_name),
+          assigned_to:employees!assigned_to(id, first_name, last_name)
         `)
         .eq('id', incidentId)
         .eq('client_id', clientId);
@@ -217,7 +190,15 @@ serve(async (req) => {
 
       if (error) throw error;
 
-      return new Response(JSON.stringify({ success: true, incident }), {
+      const { data: contributingFactors, error: cfError } = await supabaseClient
+        .from('contributing_factors')
+        .select('id, name, weight')
+        .eq('client_id', clientId)
+        .order('name');
+
+      if (cfError) throw cfError;
+
+      return new Response(JSON.stringify({ success: true, incident, contributingFactors: contributingFactors ?? [] }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -234,6 +215,17 @@ serve(async (req) => {
       priority ? supabaseClient.from('incident_priorities').select('id').eq('name', priority).eq('client_id', clientId).limit(1).maybeSingle() : Promise.resolve({ data: null }),
       status ? supabaseClient.from('incident_status').select('id').eq('name', status).limit(1).maybeSingle() : Promise.resolve({ data: null }),
     ]);
+
+    let matchingTypeIds: string[] = [];
+
+      if (search.trim()) {
+        const { data: reportTypes } = await supabaseClient
+          .from("incident_report_types")
+          .select("id")
+          .ilike("name", `%${search.trim()}%`);
+
+        matchingTypeIds = reportTypes?.map((x) => x.id) || [];
+      }
 
     let baseQuery = supabaseClient
       .from('incidents')
@@ -256,9 +248,23 @@ serve(async (req) => {
     if (!isAdmin && employeeId) {
       baseQuery = baseQuery.or(`created_by.eq.${employeeId},assigned_to.eq.${employeeId}`);
     }
-    if (search) {
-      baseQuery = baseQuery.or(`ticket_id.ilike.%${search}%,description.ilike.%${search}%`);
+    if (search.trim()) {
+      const text = search.trim();
+
+      const searchFilters = [
+        `ticket_id.ilike.%${text}%`,
+        `description.ilike.%${text}%`,
+        `root_cause_analysis.ilike.%${text}%`,
+        `learning_points.ilike.%${text}%`
+      ];
+
+      if (matchingTypeIds.length > 0) {
+        searchFilters.push(`type_id.in.(${matchingTypeIds.join(",")})`);
+      }
+
+      baseQuery = baseQuery.or(searchFilters.join(","));
     }
+    
     if (categoryRes.data?.id) baseQuery = baseQuery.eq('category_id', categoryRes.data.id);
     if (subcategoryRes.data?.id) baseQuery = baseQuery.eq('subcategory_id', subcategoryRes.data.id);
     if (locationRes.data?.id) baseQuery = baseQuery.eq('location_id', locationRes.data.id);

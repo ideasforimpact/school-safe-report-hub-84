@@ -13,13 +13,29 @@ const supabaseClient = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 );
 
+interface RequestBody {
+  client_id?: string;
+  page?: number;
+  search?: string;
+  status?: string;
+  created_by?: string;
+  assigned_to?: string;
+  target_date_from?: string | null;
+  target_date_to?: string | null;
+  assessment_id_url?: string | null;
+  is_admin?: boolean;
+  employee_id?: string | null;
+  include_meta?: boolean;
+  assessment_id?: string;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders, status: 204 });
   }
   try {
     const path = req.headers.get("path") || "list";
-    let body: any = {};
+    let body: RequestBody = {};
     if (req.method !== "GET" && req.method !== "OPTIONS") {
       body = await req.json();
     }
@@ -56,7 +72,47 @@ serve(async (req) => {
 
 const PAGE_SIZE = 10;
 
-async function handleList(body: any): Promise<Response> {
+interface PersonName {
+  first_name: string;
+  last_name: string;
+}
+
+interface AssessmentRow {
+  id: string;
+  assessment_id: string;
+  name: string;
+  status: string;
+  target_completion_date: string | null;
+  created_by: string;
+  assigned_to: string;
+  template_id: string;
+  created_at: string;
+  score: number | null;
+  answers: unknown;
+  client_id: string;
+  creator: PersonName | null;
+  assignee: PersonName | null;
+  template: { questions: unknown } | null;
+}
+
+interface ListResponse {
+  assessments: unknown[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  statusCounts?: {
+    total: number;
+    new: number;
+    draft: number;
+    submitted: number;
+    completed: number;
+  };
+  creators?: { id: string; name: string }[];
+  assignees?: { id: string; name: string }[];
+}
+
+async function handleList(body: RequestBody): Promise<Response> {
   const {
     client_id,
     page = 1,
@@ -79,7 +135,20 @@ async function handleList(body: any): Promise<Response> {
     );
   }
 
-  const applyFilters = (q: any) => {
+  const buildBaseQuery = () =>
+    supabaseClient
+      .from("assessments")
+      .select(
+        `id,assessment_id,name,status,target_completion_date,created_by,assigned_to,` +
+        `template_id,created_at,score,answers,client_id,` +
+        `creator:employees!assessments_created_by_fkey(first_name,last_name),` +
+        `assignee:employees!assessments_assigned_to_fkey(first_name,last_name),` +
+        `template:assessment_templates(questions)`,
+        { count: 'exact' }
+      )
+      .eq("client_id", client_id);
+
+  const applyFilters = (q: ReturnType<typeof buildBaseQuery>) => {
     if (!is_admin && employee_id) {
       q = q.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`);
     }
@@ -99,17 +168,7 @@ async function handleList(body: any): Promise<Response> {
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  let pageQuery = supabaseClient
-    .from("assessments")
-    .select(
-      `id,assessment_id,name,status,target_completion_date,created_by,assigned_to,` +
-      `template_id,created_at,score,answers,client_id,` +
-      `creator:employees!assessments_created_by_fkey(first_name,last_name),` +
-      `assignee:employees!assessments_assigned_to_fkey(first_name,last_name),` +
-      `template:assessment_templates(questions)`,
-      { count: 'exact' }
-    )
-    .eq("client_id", client_id);
+  let pageQuery = buildBaseQuery();
 
   pageQuery = applyFilters(pageQuery);
   pageQuery = pageQuery.order("created_at", { ascending: false }).range(from, to);
@@ -125,7 +184,7 @@ async function handleList(body: any): Promise<Response> {
 
   const totalCount = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const assessments = (data || []).map((a: any) => ({
+  const assessments = (data || []).map((a: AssessmentRow) => ({
     ...a,
     answers: Array.isArray(a.answers) ? a.answers : [],
     creator_name: a.creator ? `${a.creator.first_name} ${a.creator.last_name}` : 'Unknown',
@@ -135,7 +194,7 @@ async function handleList(body: any): Promise<Response> {
       : undefined,
   }));
 
-  const response: any = { assessments, totalCount, page, pageSize: PAGE_SIZE, totalPages };
+  const response: ListResponse = { assessments, totalCount, page, pageSize: PAGE_SIZE, totalPages };
 
   if (include_meta) {
     let statusQuery = supabaseClient
@@ -146,13 +205,13 @@ async function handleList(body: any): Promise<Response> {
       statusQuery = statusQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`);
     }
     const { data: allStatuses } = await statusQuery;
-    const statuses = allStatuses || [];
+    const statuses: { status: string }[] = allStatuses || [];
     response.statusCounts = {
       total: statuses.length,
-      new: statuses.filter((a: any) => a.status === 'New').length,
-      draft: statuses.filter((a: any) => a.status === 'Draft').length,
-      submitted: statuses.filter((a: any) => a.status === 'Submitted').length,
-      completed: statuses.filter((a: any) => a.status === 'Completed').length,
+      new: statuses.filter((a) => a.status === 'New').length,
+      draft: statuses.filter((a) => a.status === 'Draft').length,
+      submitted: statuses.filter((a) => a.status === 'Submitted').length,
+      completed: statuses.filter((a) => a.status === 'Completed').length,
     };
 
     let metaQuery = supabaseClient
@@ -170,7 +229,7 @@ async function handleList(body: any): Promise<Response> {
 
     const creatorsMap = new Map<string, string>();
     const assigneesMap = new Map<string, string>();
-    (metaData || []).forEach((a: any) => {
+    (metaData || []).forEach((a: { created_by: string; assigned_to: string; creator: PersonName | null; assignee: PersonName | null }) => {
       if (a.created_by && a.creator) {
         creatorsMap.set(a.created_by, `${a.creator.first_name} ${a.creator.last_name}`);
       }
@@ -190,7 +249,7 @@ async function handleList(body: any): Promise<Response> {
 
 // ─── get ─────────────────────────────────────────────────────────────────────
 
-async function handleGet(body: any): Promise<Response> {
+async function handleGet(body: RequestBody): Promise<Response> {
   const { assessment_id, client_id } = body;
 
   if (!client_id || !assessment_id) {

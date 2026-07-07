@@ -28,7 +28,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this category because it is currently linked to ${count} incident${count > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking category references:', error);
       return {
         hasReferences: false,
@@ -59,7 +59,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this subcategory because it is currently linked to ${count} incident${count > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking subcategory references:', error);
       return {
         hasReferences: false,
@@ -90,7 +90,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this priority because it is currently linked to ${count} incident${count > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking priority references:', error);
       return {
         hasReferences: false,
@@ -121,7 +121,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this report type because it is currently linked to ${count} incident${count > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking report type references:', error);
       return {
         hasReferences: false,
@@ -152,7 +152,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this facility because it is currently linked to ${count} incident${count > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking facility references:', error);
       return {
         hasReferences: false,
@@ -183,7 +183,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this campus because it is currently linked to ${count} incident${count > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking location references:', error);
       return {
         hasReferences: false,
@@ -222,7 +222,7 @@ export const incidentReferenceService = {
         
         // Check if any factor in the array has the matching id
         // Compare both as strings to handle UUID and timestamp string formats
-        return factors.some((factor: any) => {
+        return factors.some((factor: Record<string, unknown>) => {
           const factorIdStr = String(factor?.id || '').trim();
           const searchIdStr = String(factorId || '').trim();
           return factorIdStr === searchIdStr;
@@ -238,7 +238,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this contributing factor because it is currently linked to ${finalCount} incident${finalCount > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking contributing factor references:', error);
       return {
         hasReferences: false,
@@ -248,48 +248,27 @@ export const incidentReferenceService = {
     }
   },
 
-  // Check if a student is referenced by incidents in people_involved column
   checkStudentReferences: async (studentId: string, clientId: string): Promise<IncidentReferenceCheck> => {
     try {
-      // Query all incidents with people_involved column for this client
-      const { data: allIncidents, error: fetchError } = await supabase
-        .from('incidents')
-        .select('id, people_involved')
-        .eq('client_id', clientId)
-        .not('people_involved', 'is', null);
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Count incidents where people_involved array contains an object with matching id and role 'Student'
-      const matchingIncidents = (allIncidents || []).filter(incident => {
-        if (!incident.people_involved) return false;
-        
-        // people_involved is a JSONB array of objects
-        const people = Array.isArray(incident.people_involved) 
-          ? incident.people_involved 
-          : [];
-        
-        // Check if any person in the array has the matching id and role 'Student'
-        return people.some((person: any) => {
-          const personIdStr = String(person?.id || '').trim();
-          const searchIdStr = String(studentId || '').trim();
-          return personIdStr === searchIdStr && person?.role === 'Student';
-        });
+      const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+        body: { 
+          clientId: clientId, 
+          action: 'check-references',
+          studentId: studentId
+        }
       });
 
-      const finalCount = matchingIncidents.length;
-      
+      if (error) {
+        throw error;
+      }
+
       return {
-        hasReferences: finalCount > 0,
-        count: finalCount,
-        message: finalCount > 0 
-          ? `Cannot delete this student because they are currently linked to ${finalCount} incident${finalCount > 1 ? 's' : ''}`
-          : ''
+        hasReferences: data.hasReferences || false,
+        count: data.count || 0,
+        message: data.message || ''
       };
-    } catch (error: any) {
-      console.error('Error checking student references:', error);
+    } catch (error) {
+      console.error('Error checking student references via edge function:', error);
       return {
         hasReferences: false,
         count: 0,
@@ -301,8 +280,8 @@ export const incidentReferenceService = {
   // Check if a grade is referenced by students
   checkGradeReferences: async (gradeId: string, clientId: string): Promise<IncidentReferenceCheck> => {
     try {
-      // @ts-ignore - grade_id column exists but types may not be updated yet
-      const result: any = await supabase
+      // @ts-expect-error - grade_id column exists but types may not be updated yet
+      const result = await supabase
         .from('students')
         .select('id')
         .eq('grade_id', gradeId)
@@ -320,7 +299,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this grade because it is currently linked to ${count} student${count > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking grade references:', error);
       return {
         hasReferences: false,
@@ -333,8 +312,8 @@ export const incidentReferenceService = {
   // Check if a section is referenced by students
   checkSectionReferences: async (sectionId: string, clientId: string): Promise<IncidentReferenceCheck> => {
     try {
-      // @ts-ignore - section_id column exists but types may not be updated yet
-      const result: any = await supabase
+      // @ts-expect-error - section_id column exists but types may not be updated yet
+      const result = await supabase
         .from('students')
         .select('id')
         .eq('section_id', sectionId)
@@ -352,7 +331,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this section because it is currently linked to ${count} student${count > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking section references:', error);
       return {
         hasReferences: false,
@@ -386,7 +365,7 @@ export const incidentReferenceService = {
           : [];
         
         // Check if any person in the array has the matching id and role 'Staff'
-        return people.some((person: any) => {
+        return people.some((person: Record<string, unknown>) => {
           const personIdStr = String(person?.id || '').trim();
           const searchIdStr = String(employeeId || '').trim();
           return personIdStr === searchIdStr && person?.role === 'Staff';
@@ -402,7 +381,7 @@ export const incidentReferenceService = {
           ? `Cannot delete this employee because they are currently linked to ${finalCount} incident${finalCount > 1 ? 's' : ''}`
           : ''
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking employee references:', error);
       return {
         hasReferences: false,

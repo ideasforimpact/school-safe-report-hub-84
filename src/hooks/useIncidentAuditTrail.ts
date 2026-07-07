@@ -90,7 +90,7 @@ export const useIncidentAuditTrail = (incidentId?: string) => {
     fetchAuditTrail();
     
     console.log('=== END AUDIT TRAIL HOOK EFFECT ===');
-  }, [fetchAuditTrail]);
+  }, [fetchAuditTrail, incidentId]);
 
   return {
     auditEntries,

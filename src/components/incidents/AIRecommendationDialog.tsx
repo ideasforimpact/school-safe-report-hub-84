@@ -7,13 +7,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
+import { Incident } from '@/types/incident';
 
 type AIRecommendationDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  incidentJson: any | null; // raw payload object
+  incidentJson: Record<string, unknown> | null; // raw payload object
   incidentId?: string; // incident ID to save the recommendation
-  incident?: any | null; // full incident object with recommended_action
+  incident?: Incident | null; // full incident object with recommended_action
   onRefresh?: () => void | Promise<void>; // Callback to refresh incident list after saving
 };
 
@@ -74,9 +75,9 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
       // Save to database if incidentId is provided
       if (incidentId) {
         try {
-          const { error: updateError } = await (supabase as any)
+          const { error: updateError } = await supabase
             .from('incidents')
-            .update({ recommended_action: parsed })
+            .update({ recommended_action: parsed } as never)
             .eq('id', incidentId);
 
           if (updateError) {
@@ -93,26 +94,25 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
               await onRefresh();
             }
           }
-        } catch (dbError: any) {
+        } catch (dbError) {
           console.error('Database save error:', dbError);
           // Don't throw - we still want to show the result
         }
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error('Error calling edge function:', e);
-      setError(e?.message || 'Failed to generate AI recommendation');
+      setError(e instanceof Error ? e.message : 'Failed to generate AI recommendation');
     } finally {
       setIsLoading(false);
     }
-  }, [incidentJson, incidentId, toast, getClientId, getEmployeeId]);
+  }, [incidentJson, incidentId, toast, getClientId, getEmployeeId, onRefresh]);
 
   React.useEffect(() => {
     if (open) {
       // Check if incident has existing recommended_action
       // Check multiple possible field names for compatibility
-      const existingRecommendation = incident?.recommended_action 
-        || incident?.recommendedAction 
-        || (incident as any)?.recommended_action;
+      const existingRecommendation = incident?.recommended_action
+        || incident?.recommendedAction;
       
       console.log('Checking for existing recommendation:', {
         hasIncident: !!incident,

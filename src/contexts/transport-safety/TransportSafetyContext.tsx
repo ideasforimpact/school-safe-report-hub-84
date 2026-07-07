@@ -14,7 +14,13 @@ import {
 import { VehicleTypeOption } from '@/types/transportSafety';
 import { useAuth } from '@/contexts/auth';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { useLocation } from 'react-router';
+import { useLocation } from 'react-router-dom';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+
+interface VehicleRealtimeRow {
+  id: string;
+  client_id?: string;
+}
 
 const PAGE_SIZE = 10;
 
@@ -174,7 +180,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       // Reset so that StrictMode's second run (and real re-mounts) also trigger a fetch
       prevIsTransportListRef.current = false;
     };
-  }, [clientId, isUsersRoute, isTransportListRoute]);
+  }, [clientId, isUsersRoute, isTransportListRoute, fetchVehicles]);
 
   // ── Pagination ────────────────────────────────────────────────────────────
 
@@ -335,16 +341,16 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
   };
 
   const handleVehicleUpdate = useCallback(
-    async (payload: any) => {
+    async (payload: RealtimePostgresChangesPayload<VehicleRealtimeRow>) => {
       const event = payload.eventType;
-      const newVehicle = payload.new;
-      const oldVehicle = payload.old;
+      const newVehicle = payload.new as Partial<VehicleRealtimeRow> | undefined;
+      const oldVehicle = payload.old as Partial<VehicleRealtimeRow> | undefined;
 
       const vehicleToCheck = newVehicle || oldVehicle;
       if (vehicleToCheck?.client_id && vehicleToCheck.client_id !== clientIdRef.current) return;
 
       if (event === 'DELETE') {
-        setVehicles(prev => prev.filter(v => v.id !== oldVehicle.id));
+        setVehicles(prev => prev.filter(v => v.id !== oldVehicle?.id));
         return;
       }
 

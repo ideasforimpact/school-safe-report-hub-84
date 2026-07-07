@@ -13,7 +13,7 @@ export interface AuditLogEntry {
   changed_at: string;
   change_type: string;
   description: string | null;
-  changes: any[] | null;
+  changes: unknown[] | null;
   created_at: string;
 }
 
@@ -27,7 +27,7 @@ export interface FormattedAuditEntry {
   userId: string;
   date: Date;
   details?: string;
-  changes?: any[];
+  changes?: unknown[];
 }
 
 // Fetch audit log entries for a specific incident (RLS handles client filtering automatically)
@@ -138,61 +138,68 @@ const resolveFieldValue = async (fieldName: string, value: string): Promise<stri
   
   try {
     switch (fieldName) {
-      case 'status_id':
+      case 'status_id': {
         const { data: status } = await supabase
           .from('incident_status')
           .select('name')
           .eq('id', value)
           .single();
         return status?.name || value;
-        
-      case 'priority_id':
+      }
+
+      case 'priority_id': {
         const { data: priority } = await supabase
           .from('incident_priorities')
           .select('name')
           .eq('id', value)
           .single();
         return priority?.name || value;
-        
-      case 'category_id':
+      }
+
+      case 'category_id': {
         const { data: category } = await supabase
           .from('incident_categories')
           .select('name')
           .eq('id', value)
           .single();
         return category?.name || value;
-        
-      case 'subcategory_id':
+      }
+
+      case 'subcategory_id': {
         const { data: subcategory } = await supabase
           .from('incident_subcategories')
           .select('name')
           .eq('id', value)
           .single();
         return subcategory?.name || value;
-        
-      case 'type_id':
+      }
+
+      case 'type_id': {
         const { data: type } = await supabase
           .from('incident_report_types')
           .select('name')
           .eq('id', value)
           .single();
         return type?.name || value;
-        
-      case 'assigned_to':
+      }
+
+      case 'assigned_to': {
         const { data: assignee } = await supabase
           .from('employees')
           .select('first_name, last_name')
           .eq('id', value)
           .single();
         return assignee ? `${assignee.first_name} ${assignee.last_name}` : value;
-        
-      case 'facility_id':
+      }
+
+      case 'facility_id': {
         const { data: facility } = await supabase
           .from('facilities')
           .select('name')
           .eq('id', value)
           .single();
         return facility?.name || value;
+      }
         
       case 'people_involved':
         try {
@@ -292,7 +299,7 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
       if (entry.change_type === 'field_update') {
         if (entry.field_changed === 'status_id' && entry.changes) {
           // Check changes array for status updates
-          const statusChange = entry.changes.find((change: any) => change.field === 'status_id');
+          const statusChange = entry.changes.find((change: Record<string, unknown>) => change.field === 'status_id');
           if (statusChange) {
             entityType = 'status';
             if (statusChange.new_value === 'closed') {
@@ -332,19 +339,19 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
                 const newItems = JSON.parse(change.new_value || '[]');
                 
                 // Find what was added and removed
-                const added = newItems.filter((newItem: any) => {
+                const added = newItems.filter((newItem: Record<string, unknown>) => {
                   if (change.field === 'people_involved') {
-                    return !oldItems.some((oldItem: any) => oldItem.name === newItem.name);
+                    return !oldItems.some((oldItem: Record<string, unknown>) => oldItem.name === newItem.name);
                   } else {
-                    return !oldItems.some((oldItem: any) => oldItem.name === newItem.name);
+                    return !oldItems.some((oldItem: Record<string, unknown>) => oldItem.name === newItem.name);
                   }
                 });
-                
-                const removed = oldItems.filter((oldItem: any) => {
+
+                const removed = oldItems.filter((oldItem: Record<string, unknown>) => {
                   if (change.field === 'people_involved') {
-                    return !newItems.some((newItem: any) => newItem.name === oldItem.name);
+                    return !newItems.some((newItem: Record<string, unknown>) => newItem.name === oldItem.name);
                   } else {
-                    return !newItems.some((newItem: any) => newItem.name === oldItem.name);
+                    return !newItems.some((newItem: Record<string, unknown>) => newItem.name === oldItem.name);
                   }
                 });
                 
@@ -352,7 +359,7 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
                 const changes = [];
                 
                 if (removed.length > 0) {
-                  const removedStr = removed.map((item: any) => {
+                  const removedStr = removed.map((item: Record<string, unknown>) => {
                     if (change.field === 'people_involved') {
                       return `${item.role} (${item.name})`;
                     } else {
@@ -361,9 +368,9 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
                   }).join(', ');
                   changes.push(`Removed "${removedStr}"`);
                 }
-                
+
                 if (added.length > 0) {
-                  const addedStr = added.map((item: any) => {
+                  const addedStr = added.map((item: Record<string, unknown>) => {
                     if (change.field === 'people_involved') {
                       return `${item.role} (${item.name})`;
                     } else {
@@ -471,7 +478,7 @@ export const logAuditEntry = async (
   newValue?: string,
   changeType: string = 'action',
   description?: string,
-  changes?: any[]
+  changes?: Record<string, unknown>[]
 ): Promise<string | null> => {
   try {
     // Get client_id from JWT app_metadata (Feature 3). The audit log row

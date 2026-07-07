@@ -174,7 +174,7 @@ export const FacilityTab = ({
         await deleteFacility(facilityToDelete.id);
         setDeleteDialogOpen(false);
         setFacilityToDelete(null);
-      } catch (error: any) {
+      } catch (error) {
         // Error handling is done in the hook, just close the dialog
         setDeleteDialogOpen(false);
         setFacilityToDelete(null);
@@ -251,8 +251,8 @@ export const FacilityTab = ({
       );
     }
     
-    if (filterCampusId && filterCampusId !== 'all') {
-      filtered = filtered.filter(facility => (facility as any).campusId === filterCampusId);
+    if (filterCampusId) {
+      filtered = filtered.filter(facility => facility.campusId === filterCampusId);
     }
     
     return filtered;
@@ -367,7 +367,7 @@ export const FacilityTab = ({
                 <SelectValue placeholder={`Filter by ${s.campus.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{`All ${s.campusPlural.toLowerCase()}`}</SelectItem>
+                <SelectItem value="">{`All ${s.campusPlural.toLowerCase()}`}</SelectItem>
                 {campuses.map((campus) => (
                   <SelectItem key={campus.id} value={campus.id}>
                     {campus.name}

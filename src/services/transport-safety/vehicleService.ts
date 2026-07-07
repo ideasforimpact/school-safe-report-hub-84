@@ -1,13 +1,62 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Vehicle, VehicleType, VehicleChallans, VehicleTypeOption } from "@/types/transportSafety";
+import { Vehicle, VehicleType, VehicleChallans, VehicleTypeOption, VehicleVerificationData } from "@/types/transportSafety";
 import { UploadedDocument } from "@/types/fileTypes";
 
 export type { VehicleTypeOption };
 
+// Raw vehicle row as returned by the `vehicles` edge function (snake_case DB columns).
+interface VehicleRow {
+  id: string;
+  registration_number: string;
+  type: string;
+  vehicle_type_name?: string | null;
+  vehicle_type_icon?: string | null;
+  internal_vehicle_name?: string | null;
+  make: string;
+  model: string;
+  year: number | null;
+  driver: string;
+  route: string;
+  capacity?: number | null;
+  status: string;
+  active?: boolean;
+  client_id?: string;
+  employee_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  verification_status?: string;
+  verification_date?: string;
+  verification_data?: RawVerificationItem[];
+  current_rc_data?: unknown;
+  provider?: string | null;
+  status_code?: string | null;
+  rc_status?: string | null;
+  vehicle_challans?: VehicleChallans | null;
+}
+
+interface RawVerificationItem {
+  field?: string;
+  value?: unknown;
+  verified?: unknown;
+}
+
+// Challan shape varies by provider (surepass/quickeyc), so only the fields we
+// actually read are named; everything else is preserved via the index signature.
+export interface RawChallan {
+  challan_number?: string;
+  challan_no?: string;
+  challan_date_time?: string;
+  challan_date?: string;
+  amount?: string | number;
+  challan_amount?: string | number;
+  challan_status?: string;
+  [key: string]: unknown;
+}
+
 // ─── Edge function invoker ────────────────────────────────────────────────────
 
-async function invokeVehicles<T = any>(operation: string, payload: Record<string, any> = {}): Promise<T> {
+async function invokeVehicles<T = unknown>(operation: string, payload: Record<string, unknown> = {}): Promise<T> {
   const { data, error } = await supabase.functions.invoke(`vehicles/${operation}`, {
     body: payload,
   });
@@ -32,7 +81,7 @@ const isReadOnlySwitchedWriteError = (error: unknown): boolean =>
   (error.message.includes('Read-only switched client context') ||
     error.message.includes('Switched client permission denied:'));
 
-function mapVehicle(v: any): Vehicle {
+function mapVehicle(v: VehicleRow): Vehicle {
   return {
     id: v.id,
     registrationNumber: v.registration_number,
@@ -57,7 +106,7 @@ function mapVehicle(v: any): Vehicle {
     verificationStatus: v.verification_status,
     verificationDate: v.verification_date,
     verificationData: Array.isArray(v.verification_data)
-      ? v.verification_data.map((item: any) => ({
+      ? v.verification_data.map((item) => ({
           field: String(item.field || ''),
           value: item.value,
           verified: Boolean(item.verified),
@@ -109,7 +158,7 @@ export const fetchVehiclesPaginated = async (params: FetchVehiclesParams): Promi
   const { clientId, page = 1, pageSize = 10, search = '', status = '', typeId = '' } = params;
 
   const data = await invokeVehicles<{
-    vehicles: any[];
+    vehicles: VehicleRow[];
     vehicle_types: VehicleTypeOption[];
     total_count: number;
     page: number;
@@ -130,7 +179,7 @@ export const fetchVehiclesPaginated = async (params: FetchVehiclesParams): Promi
 // ─── Get all vehicles (no pagination — for challans page, export) ─────────────
 
 export const getAllVehicles = async (clientId?: string): Promise<Vehicle[]> => {
-  const data = await invokeVehicles<{ vehicles: any[] }>('list_all', { clientId });
+  const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_all', { clientId });
   return (data.vehicles || []).map(mapVehicle);
 };
 
@@ -148,7 +197,7 @@ export const getVehicleById = async (id: string, clientId?: string): Promise<Veh
 
   const request = (async () => {
     try {
-      const data = await invokeVehicles<{ vehicle: any }>('get_by_id', { id, clientId });
+      const data = await invokeVehicles<{ vehicle: VehicleRow | null }>('get_by_id', { id, clientId });
       const vehicle = data.vehicle ? mapVehicle(data.vehicle) : null;
       vehicleByIdRecent.set(cacheKey, { at: Date.now(), value: vehicle });
       return vehicle;
@@ -165,22 +214,41 @@ export const getVehicleById = async (id: string, clientId?: string): Promise<Veh
 
 // ─── Get uploaded vehicle documents ──────────────────────────────────────────
 
+interface RawUploadedFile {
+  name?: string;
+  path?: string;
+  url?: string;
+  uploadedAt?: string;
+}
+
+interface RawUploadedDoc {
+  name: string;
+  type: string;
+  uploadedAt: string;
+  files: RawUploadedFile[];
+}
+
+function isRawUploadedDoc(doc: unknown): doc is RawUploadedDoc {
+  if (!doc || typeof doc !== 'object') return false;
+  const d = doc as Record<string, unknown>;
+  return (
+    typeof d.name === 'string' &&
+    typeof d.type === 'string' &&
+    typeof d.uploadedAt === 'string' &&
+    Array.isArray(d.files)
+  );
+}
+
 const mapUploadedDocuments = (documents: unknown): UploadedDocument[] => {
   if (!Array.isArray(documents)) return [];
 
   return documents
-    .filter((doc: any) =>
-      doc &&
-      typeof doc.name === 'string' &&
-      typeof doc.type === 'string' &&
-      typeof doc.uploadedAt === 'string' &&
-      Array.isArray(doc.files)
-    )
-    .map((doc: any) => ({
+    .filter(isRawUploadedDoc)
+    .map((doc) => ({
       name: doc.name,
       type: doc.type,
       uploadedAt: doc.uploadedAt,
-      files: doc.files.map((file: any) => ({
+      files: doc.files.map((file) => ({
         name: file.name || 'Unnamed file',
         path: file.path || '',
         url: file.url || '',
@@ -219,7 +287,7 @@ export const getVehicleDocuments = async (
 export const addVehicle = async (
   vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>,
 ): Promise<Vehicle | null> => {
-  const dbVehicle: Record<string, any> = {
+  const dbVehicle: Record<string, unknown> = {
     registration_number: vehicleData.registrationNumber,
     type: vehicleData.typeId || vehicleData.type,
     make: vehicleData.make,
@@ -246,7 +314,7 @@ export const addVehicle = async (
     dbVehicle.internal_vehicle_name = vehicleData.internalVehicleName;
   }
 
-  const data = await invokeVehicles<{ vehicle: any }>('create', {
+  const data = await invokeVehicles<{ vehicle: VehicleRow | null }>('create', {
     vehicleData: dbVehicle,
     clientId: vehicleData.clientId,
   });
@@ -257,7 +325,7 @@ export const addVehicle = async (
 // ─── Update a vehicle ─────────────────────────────────────────────────────────
 
 export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Promise<Vehicle | null> => {
-  const dbUpdates: Record<string, any> = {};
+  const dbUpdates: Record<string, unknown> = {};
 
   if (updates.registrationNumber) dbUpdates.registration_number = updates.registrationNumber;
   if (updates.typeId !== undefined) {
@@ -286,7 +354,7 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
     }));
   }
 
-  const data = await invokeVehicles<{ vehicle: any }>('update', { id, updates: dbUpdates });
+  const data = await invokeVehicles<{ vehicle: VehicleRow | null }>('update', { id, updates: dbUpdates });
   return data.vehicle ? mapVehicle(data.vehicle) : null;
 };
 
@@ -334,7 +402,7 @@ export const fetchVehicleTypes = async (): Promise<string[]> => {
 
 export const getVehicleChallans = async (vehicleId: string): Promise<VehicleChallans | null> => {
   try {
-    const data = await invokeVehicles<{ vehicleChallans: any }>('get_vehicle_challans', { vehicleId });
+    const data = await invokeVehicles<{ vehicleChallans: VehicleChallans | null }>('get_vehicle_challans', { vehicleId });
     return data.vehicleChallans ?? null;
   } catch {
     return null;
@@ -349,7 +417,7 @@ const normalizeChallanStatus = (status?: string): string =>
 const isDisposedChallanStatus = (status?: string): boolean =>
   ['DISPOSED', 'PAID', 'CASH'].includes(normalizeChallanStatus(status));
 
-const dedupeChallans = (challans: any[]): any[] => {
+const dedupeChallans = (challans: RawChallan[]): RawChallan[] => {
   if (!Array.isArray(challans)) return [];
 
   const hasValue = (value: unknown) => {
@@ -358,15 +426,15 @@ const dedupeChallans = (challans: any[]): any[] => {
     return String(value).trim() !== '';
   };
 
-  const mergeChallan = (base: any, incoming: any) => {
-    const merged = { ...base };
+  const mergeChallan = (base: RawChallan, incoming: RawChallan): RawChallan => {
+    const merged: RawChallan = { ...base };
     Object.entries(incoming || {}).forEach(([key, value]) => {
-      if (!hasValue((merged as any)[key]) && hasValue(value)) (merged as any)[key] = value;
+      if (!hasValue(merged[key]) && hasValue(value)) merged[key] = value;
     });
     return merged;
   };
 
-  const getDedupKey = (challan: any) => {
+  const getDedupKey = (challan: RawChallan) => {
     const challanNumber = String(challan?.challan_number || challan?.challan_no || '').trim().toUpperCase();
     if (challanNumber) return `number:${challanNumber}`;
     const challanDate = String(challan?.challan_date_time || challan?.challan_date || '').trim();
@@ -375,8 +443,8 @@ const dedupeChallans = (challans: any[]): any[] => {
     return `fallback:${challanDate}|${amount}|${status}`;
   };
 
-  const deduped = new Map<string, any>();
-  challans.forEach((challan: any) => {
+  const deduped = new Map<string, RawChallan>();
+  challans.forEach((challan) => {
     const key = getDedupKey(challan);
     const existing = deduped.get(key);
     deduped.set(key, existing ? mergeChallan(existing, challan) : challan);
@@ -385,7 +453,7 @@ const dedupeChallans = (challans: any[]): any[] => {
   return Array.from(deduped.values());
 };
 
-export const extractChallansFromVehicleChallans = (vehicleChallans: VehicleChallans | null): any[] => {
+export const extractChallansFromVehicleChallans = (vehicleChallans: VehicleChallans | null): RawChallan[] => {
   if (!vehicleChallans?.latest_challan_data) return [];
 
   const challanData = vehicleChallans.latest_challan_data;
@@ -408,21 +476,33 @@ export const extractChallansFromVehicleChallans = (vehicleChallans: VehicleChall
   return [];
 };
 
+interface RawChallanPayload {
+  challan_details?: { challans?: RawChallan[] };
+  challan_data?: RawChallan[];
+}
+
+interface ChallanLogEntry {
+  data?: {
+    status_code?: number;
+    data?: RawChallanPayload;
+  };
+}
+
 export const getPendingChallansFromVehicleChallans = (
   vehicleChallans: VehicleChallans | null,
-): any[] => {
+): RawChallan[] => {
   const logs = vehicleChallans?.challan_history_log;
   if (!logs || typeof logs !== 'object') return [];
 
   const successLogs = Object.entries(logs).filter(
-    ([_, entry]: any) => entry?.data?.status_code === 200,
+    ([, entry]: [string, ChallanLogEntry]) => entry?.data?.status_code === 200,
   );
 
   if (successLogs.length === 0) return [];
 
   successLogs.sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime());
 
-  const [, latestLog]: any = successLogs[0];
+  const [, latestLog] = successLogs[0] as [string, ChallanLogEntry];
   const challanData = latestLog?.data?.data;
   if (!challanData) return [];
 
@@ -433,25 +513,25 @@ export const getPendingChallansFromVehicleChallans = (
   const challans = dedupeChallans(rawChallans);
 
   return challans.filter(
-    (c: any) => c?.challan_status && !isDisposedChallanStatus(c.challan_status),
+    (c) => c?.challan_status && !isDisposedChallanStatus(c.challan_status),
   );
 };
 
 // Legacy — kept for backward compatibility
-export const getPendingChallans = (verificationData: any) => {
+export const getPendingChallans = (verificationData: VehicleVerificationData[] | undefined | null): RawChallan[] => {
   if (!Array.isArray(verificationData)) return [];
 
-  const log = verificationData.find((v: any) => v.field === 'verification_log');
+  const log = verificationData.find((v) => v.field === 'verification_log');
   if (!log?.value) return [];
 
   const latestKey = Object.keys(log.value).sort().pop();
   const latestLog = latestKey ? log.value[latestKey] : null;
   if (!Array.isArray(latestLog)) return [];
 
-  const challanField = latestLog.find((f: any) => f.field === 'challan_details');
+  const challanField = latestLog.find((f) => f?.field === 'challan_details');
   const allChallans = dedupeChallans(challanField?.value?.challan_details?.challans ?? []);
   return allChallans.filter(
-    (c: any) => c?.challan_status && !isDisposedChallanStatus(c.challan_status),
+    (c) => c?.challan_status && !isDisposedChallanStatus(c.challan_status),
   );
 };
 

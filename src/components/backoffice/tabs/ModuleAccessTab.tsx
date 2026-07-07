@@ -23,7 +23,7 @@ interface ModuleAccess {
   module_id: string;
   is_admin: boolean;
   is_enabled: boolean;
-  level?: Record<string, any>;
+  level?: Record<string, unknown>;
 }
 
 export interface ModuleInfo {
@@ -43,10 +43,10 @@ interface ModuleAccessTabProps {
 }
 
 // Debounce utility function
-const useDebounce = (callback: Function, delay: number) => {
+const useDebounce = <T extends (...args: unknown[]) => unknown>(callback: T, delay: number) => {
   const timeoutRef = useRef<NodeJS.Timeout>();
-  
-  return useCallback((...args: any[]) => {
+
+  return useCallback((...args: Parameters<T>) => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -207,6 +207,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
     return () => {
       mountedRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Effect to initialize state when modules are available
@@ -225,7 +226,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
       console.log("Syncing state changes to parent:", currentModuleInfoArray);
       debouncedUpdate(currentModuleInfoArray);
     }
-  }, [currentModuleInfoArray, debouncedUpdate]);
+  }, [currentModuleInfoArray, debouncedUpdate, moduleAccessState.length]);
 
   // Handle module checkbox changes
   const handleModuleCheckboxChange = useCallback((moduleId: string, checked: boolean) => {

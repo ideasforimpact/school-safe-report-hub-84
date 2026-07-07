@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -62,7 +63,7 @@ export function useSopList(params: SopListParams) {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      return data as { data: any[]; pagination: { total: number } };
+      return data as { data: unknown[]; pagination: { total: number } };
     },
     enabled: !!params.clientId,
     placeholderData: (prev) => prev,
@@ -87,7 +88,7 @@ export function useAssignedSopList(params: AssignedSopListParams) {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      return data as { success: boolean; data: any[]; pagination: { total: number } };
+      return data as { success: boolean; data: unknown[]; pagination: { total: number } };
     },
     enabled: !!params.clientId && !!params.employeeId,
     placeholderData: (prev) => prev,
@@ -104,7 +105,7 @@ export function useSopCategories(clientId: string | null, enabled: boolean) {
       });
       if (error) {
         console.warn('[useSopCategories] edge function failed, falling back:', error);
-        const { data: fbData, error: fbError } = await (supabase as any)
+        const { data: fbData, error: fbError } = await (supabase as unknown as SupabaseClient)
           .from('sop_categories')
           .select('id, category_name')
           .order('category_name', { ascending: true });
@@ -160,7 +161,7 @@ export function useDeleteSop() {
 export function useCreateOrUpdateSop() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (body: Record<string, any>) => {
+    mutationFn: async (body: Record<string, unknown> & { sop_id?: string }) => {
       const fnName = body.sop_id ? 'update-sop' : 'create-sop';
       const { data, error } = await supabase.functions.invoke(fnName, { body });
       if (error) throw error;

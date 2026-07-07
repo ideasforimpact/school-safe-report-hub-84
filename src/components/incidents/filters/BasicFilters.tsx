@@ -17,7 +17,7 @@ interface ServerFilters {
 
 interface BasicFiltersProps {
   filters: ServerFilters;
-  onFilterChange: (field: string, value: any) => void;
+  onFilterChange: (field: string, value: unknown) => void;
   availableCategories: string[];
   availableSubcategories: string[];
   availableLocations: string[];

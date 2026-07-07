@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,8 +46,9 @@ interface Group {
 const GroupConfigurationContent = () => {
   const { employeeData, user } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  const clientId = employeeData?.clientId || user?.clientId;
-  const employeeId = employeeData?.id || user?.id;
+  const clientId = useMemo(() => employeeData?.clientId || user?.clientId, [employeeData?.clientId, user?.clientId]);
+  const employeeId = useMemo(() => employeeData?.id || user?.id, [employeeData?.id, user?.id]);
+  const fetchedForClientRef = useRef<string | null>(null);
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,49 +61,20 @@ const GroupConfigurationContent = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
 
-  useEffect(() => {
-    if (clientId) {
-      fetchGroups();
-    }
-  }, [clientId]);
-
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     if (!clientId) return;
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('groups' as any)
-        .select('id, name, description, group_type, status, client_id, employee_id, department_id, created_at, updated_at, group_employees:group_employees(count)')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
+      const { data: result, error } = await supabase.functions.invoke('create-group', {
+        body: { action: 'list', client_id: clientId, employee_id: employeeId },
+      });
 
       if (error) throw error;
 
-      // Get all group IDs to check SOP assignments
-      const groupIds = (data || []).map((g: any) => g.id);
+      const data = result?.groups ?? [];
 
-      // Check which groups are assigned to any SOP
-      let assignedGroupIds = new Set<string>();
-      if (groupIds.length > 0) {
-        const { data: sopAssignedData, error: sopAssignedError } = await supabase
-          .from('sop_assigned')
-          .select('group_id')
-          .in('group_id', groupIds)
-          .not('group_id', 'is', null);
-
-        if (sopAssignedError) {
-          console.error('Error checking SOP assignments:', sopAssignedError);
-        } else if (sopAssignedData) {
-          assignedGroupIds = new Set(
-            sopAssignedData
-              .map((item: any) => item.group_id)
-              .filter((id: string | null) => id !== null)
-          );
-        }
-      }
-
-      const mapped = (data || []).map((g: any) => ({
+      const mapped = (data || []).map((g: Record<string, unknown>) => ({
         id: g.id,
         name: g.name,
         description: g.description,
@@ -113,20 +85,24 @@ const GroupConfigurationContent = () => {
         department_id: g.department_id ?? null,
         created_at: g.created_at,
         updated_at: g.updated_at,
-        member_count: Array.isArray(g.group_employees) && g.group_employees.length > 0
-          ? g.group_employees[0].count
-          : 0,
-        is_assigned_to_sop: assignedGroupIds.has(g.id),
+        member_count: g.member_count ?? 0,
+        is_assigned_to_sop: g.is_assigned_to_sop ?? false,
       })) as Group[];
 
       setGroups(mapped);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching groups:', error);
       toast.error('Failed to load groups');
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId, employeeId]);
+
+  useEffect(() => {
+    if (!clientId || fetchedForClientRef.current === clientId) return;
+    fetchedForClientRef.current = clientId;
+    fetchGroups();
+  }, [clientId, fetchGroups]);
 
   const filteredGroups = useMemo(() => {
     let filtered = [...groups];
@@ -236,9 +212,9 @@ const GroupConfigurationContent = () => {
       fetchGroups();
       setDeleteDialogOpen(false);
       setGroupToDelete(null);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting group:', error);
-      toast.error(error?.message || 'Failed to delete group');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete group');
     } finally {
       setIsDeleting(false);
     }

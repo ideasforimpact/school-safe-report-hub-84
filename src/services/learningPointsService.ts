@@ -32,9 +32,8 @@ export async function fetchLearningPoints(
   pageSize = 10,
   filters: LearningPointFilters = {}
 ): Promise<PaginatedLearningPoints> {
-  const anyClient = supabase as any;
   // Base select with required joins
-  let query = anyClient
+  const query = supabase
     .from('incidents')
     .select(
       `id, ticket_id, learning_points, created_at,
@@ -54,7 +53,17 @@ export async function fetchLearningPoints(
     throw error;
   }
 
-  const records: LearningPointRecord[] = (data || []).map((row: any) => ({
+  interface LearningPointQueryRow {
+    id: string;
+    ticket_id: string;
+    learning_points: string | null;
+    created_at: string;
+    incident_categories: { name: string } | null;
+    incident_subcategories: { name: string } | null;
+    created_by_employee: { id: string; first_name: string; last_name: string } | null;
+  }
+
+  const records: LearningPointRecord[] = (data || []).map((row: LearningPointQueryRow) => ({
     id: row.id,
     incidentId: row.ticket_id,
     category: row.incident_categories?.name || 'Unknown',

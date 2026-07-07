@@ -25,9 +25,32 @@ import { useNavigate } from 'react-router-dom';
 import VisitorDetailDialog from '@/components/visitor/VisitorDetailDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { supabase } from '@/integrations/supabase/client';
+import type { RealtimePostgresChangesPayload, SupabaseClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { VISITOR_LIST_CONSTANTS, truncateVisitorName } from '@/constant/visitorConstant';
 import Loader from '@/components/common/Loader';
+
+// `trusted_vehicle` and `visitor_vehicle_type` are not yet in the generated Database types,
+// so queries against them go through an untyped client rather than casting individual calls to `any`.
+const untypedSupabase = supabase as unknown as SupabaseClient;
+
+interface TrustedVehicleRow {
+  id: string;
+  vehicle_name?: string | null;
+  name?: string | null;
+  vehicle_no?: string | null;
+  client_id?: string | null;
+  employee_id?: string | null;
+  entry_status?: string | null;
+  in_time?: string | null;
+  exit_time?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+  validity_from: string;
+  validity_to: string;
+}
+
+type RealtimeChangePayload = RealtimePostgresChangesPayload<Record<string, unknown>>;
 
 const VisitorsPage = () => {
   const { employeeData } = useAuth();
@@ -169,7 +192,7 @@ const VisitorsPage = () => {
   const [unifiedList, setUnifiedList] = useState<UnifiedListItem[]>([]);
 
   // Transform function to create unified list from visitors and trusted vehicles
-  const transformToUnifiedList = useCallback((visitors: Visitor[], trustedVehiclesData: any[]): UnifiedListItem[] => {
+  const transformToUnifiedList = useCallback((visitors: Visitor[], trustedVehiclesData: TrustedVehicleRow[]): UnifiedListItem[] => {
     const unified: UnifiedListItem[] = [];
 
     // Add visitors
@@ -231,15 +254,15 @@ const VisitorsPage = () => {
 
       // Fetch trusted vehicles with entry_status = 'IN' or 'OUT' and all required fields
       // Note: Trusted vehicles are fetched separately and combined with visitors
-      const { data: trustedVehiclesData, error: trustedVehiclesError } = await (supabase as any)
+      const { data: trustedVehiclesData, error: trustedVehiclesError } = (await untypedSupabase
         .from('trusted_vehicle')
         .select('id, vehicle_name, name, vehicle_no, client_id, employee_id, entry_status, in_time, exit_time, created_at, updated_at, validity_from, validity_to')
         .eq('client_id', clientId)
-        .in('entry_status', ['IN', 'OUT']);
+        .in('entry_status', ['IN', 'OUT'])) as { data: TrustedVehicleRow[] | null; error: { message?: string } | null };
 
       if (employeeId) {
         // Optionally filter by employee_id if provided
-        trustedVehiclesData?.filter((tv: any) => tv.employee_id === employeeId);
+        trustedVehiclesData?.filter((tv) => tv.employee_id === employeeId);
       }
 
       if (trustedVehiclesError) {
@@ -251,7 +274,7 @@ const VisitorsPage = () => {
       setUnifiedList(unified);
 
       // Also keep trusted vehicles for filtering logic
-      const { data: allTrustedVehicles, error: allTrustedError } = await (supabase as any)
+      const { data: allTrustedVehicles, error: allTrustedError } = await untypedSupabase
         .from('trusted_vehicle')
         .select('id, vehicle_no, validity_from, validity_to')
         .eq('client_id', clientId)
@@ -265,7 +288,7 @@ const VisitorsPage = () => {
           validity_to: string;
         }>);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching visitors:', error);
       toast.error(error?.message || 'Failed to fetch visitors');
     } finally {
@@ -280,7 +303,7 @@ const VisitorsPage = () => {
     }
 
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await untypedSupabase
         .from('trusted_vehicle')
         .select('id, vehicle_no, validity_from, validity_to')
         .eq('client_id', clientId)
@@ -297,7 +320,7 @@ const VisitorsPage = () => {
         validity_from: string;
         validity_to: string;
       }>);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching trusted vehicles:', error);
     }
   }, [clientId]);
@@ -319,7 +342,7 @@ const VisitorsPage = () => {
   // Fetch visitor vehicle types for dynamic filter options
   const fetchVisitorVehicleTypes = useCallback(async () => {
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await untypedSupabase
         .from('visitor_vehicle_type')
         .select('id, key, name, active')
         .eq('active', true)
@@ -346,11 +369,11 @@ const VisitorsPage = () => {
   }, [fetchVisitorVehicleTypes]);
 
   // Handle realtime visitor updates
-  const handleVisitorUpdate = useCallback(async (payload: any) => {
+  const handleVisitorUpdate = useCallback(async (payload: RealtimeChangePayload) => {
     console.log('[Realtime] Visitor update payload received:', payload);
-    
-    const updatedVisitor = payload.new;
-    const oldVisitor = payload.old;
+
+    const updatedVisitor = payload.new as Record<string, unknown> | undefined;
+    const oldVisitor = payload.old as Record<string, unknown> | undefined;
     const eventType = payload.eventType || (payload.new && !payload.old ? 'INSERT' : payload.old && !payload.new ? 'DELETE' : 'UPDATE');
 
     // Determine event type
@@ -409,14 +432,14 @@ const VisitorsPage = () => {
       // Refresh the current page on error
       await fetchVisitors(currentPage);
     }
-  }, [clientId, employeeId, fetchVisitors, showToast]);
+  }, [clientId, employeeId, fetchVisitors, showToast, currentPage]);
 
   // Handle realtime visitor_kyc updates
-  const handleVisitorKycUpdate = useCallback(async (payload: any) => {
+  const handleVisitorKycUpdate = useCallback(async (payload: RealtimeChangePayload) => {
     console.log('[Realtime] Visitor KYC update payload received:', payload);
-    
-    const updatedKyc = payload.new;
-    const oldKyc = payload.old;
+
+    const updatedKyc = payload.new as Record<string, unknown> | undefined;
+    const oldKyc = payload.old as Record<string, unknown> | undefined;
 
     // For DELETE events, use old record; otherwise use new record
     const kycToCheck = updatedKyc || oldKyc;
@@ -447,7 +470,7 @@ const VisitorsPage = () => {
       // Refresh the current page on error
       await fetchVisitors(currentPage);
     }
-  }, [clientId, employeeId, fetchVisitors, showToast]);
+  }, [clientId, employeeId, fetchVisitors, showToast, currentPage]);
 
   // Set up realtime subscription for visitors table
   // Filter by employee_id if available (more specific), otherwise by client_id
@@ -480,7 +503,7 @@ const VisitorsPage = () => {
   });
 
   // Handle realtime trusted vehicle updates
-  const handleTrustedVehicleUpdate = useCallback(async (payload: any) => {
+  const handleTrustedVehicleUpdate = useCallback(async (payload: RealtimeChangePayload) => {
     console.log('[Realtime] Trusted vehicle update payload received:', payload);
     // Refresh the current page to ensure unified list is updated
     await fetchVisitors(currentPage);
@@ -611,7 +634,7 @@ const VisitorsPage = () => {
   const hasActiveFilters = activeFilterCount > 0;
 
   // Helper function to get vehicle type name
-  const getVehicleTypeName = (vehicleType: string | null | undefined): string => {
+  const getVehicleTypeName = useCallback((vehicleType: string | null | undefined): string => {
     if (!vehicleType) return '-';
     
     const typeMeta = visitorVehicleTypeMap[vehicleType];
@@ -624,7 +647,7 @@ const VisitorsPage = () => {
     if (vehicleType === 'four_wheeler') return 'Four Wheeler';
     
     return vehicleType;
-  };
+  }, [visitorVehicleTypeMap]);
 
   // Helper function to format document type name to readable format
   const formatDocumentTypeName = (documentType: string): string => {
@@ -709,7 +732,7 @@ const VisitorsPage = () => {
         const exitTime = item.exit_time ? formatDate(item.exit_time, { isTiming: true }) : '-';
 
         // Base data with only required columns
-        const row: any = {
+        const row: Record<string, string> = {
           'Type': item.is_trusted_vehicle ? 'Trusted Vehicle' : getVehicleTypeName(item.vehicle_type),
           'Visitor Name': item.name || '-',
           'Vehicle number': item.vehicle_no || '-',
@@ -758,11 +781,11 @@ const VisitorsPage = () => {
       XLSX.writeFile(workbook, filename);
       
       toast.success(`Exported ${filteredVisitors.length} visitor(s) successfully`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error exporting visitors:', error);
       toast.error(error?.message || 'Failed to export visitors');
     }
-  }, [filteredVisitors, visitors, visitorVehicleTypeMap]);
+  }, [filteredVisitors, visitors, getVehicleTypeName]);
 
   return (
     <Layout>

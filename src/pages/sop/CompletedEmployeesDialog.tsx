@@ -8,7 +8,7 @@ import { Users, CheckCircle2 } from "lucide-react";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  employees: any[];
+  employees: { id: string; full_name: string; email: string }[];
   sopTitle?: string;
 }
 

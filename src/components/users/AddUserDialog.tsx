@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, Dispatch, SetStateAction } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,57 +23,59 @@ import { fileToBase64 } from '@/utils/fileToBase64';
 
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_PERSONAL_INFO_CONSTANTS, STAFF_ID_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS } from '@/constant/employeeConstant';
 
+type AddUserFormData = {
+  firstName: string;
+  lastName: string;
+  personalDetails?: {
+    middleName?: string;
+    fatherName?: string;
+    staffId?: string;
+    experience?: string;
+    qualification?: string;
+    gender?: string;
+    dob?: string;
+    religion?: string;
+    nationality?: string;
+    bloodGroup?: string;
+    residenceAddress?: string;
+  };
+
+  email: string;
+  phone?: string;
+  designation?: string;
+  tags?: string[];
+  employeeId?: string;
+  employeeType?: EmployeeType;
+  department?: DepartmentType;
+  joiningDate?: string;
+  professionalOtherDetails?: {
+    aadharNo?: string;
+    panNo?: string;
+    esiNo?: string;
+    pfNo?: string;
+    exitDate?: string;
+    biometricUserId?: string;
+  };
+  moduleAccessPayload?: ModuleAccessItem[];
+
+  documents?: Array<{
+    key?: string;
+    fileName: string;
+    filePath?: string;
+    uploadedAt: string;
+    fileData?: string;
+    contentType?: string;
+  }>;
+  clientId?: string;
+  is_cpd_involved?: boolean;
+};
+
 interface AddUserDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  formData: {
-    firstName: string;
-    lastName: string;
-    personalDetails?: {
-      middleName?: string;
-      fatherName?: string;
-      staffId?: string;
-      experience?: string;
-      qualification?: string;
-      gender?: string;
-      dob?: string;
-      religion?: string;
-      nationality?: string;
-      bloodGroup?: string;
-      residenceAddress?: string;
-    };
-
-    email: string;
-    phone?: string;
-    designation?: string;
-    tags?: string[];
-    employeeId?: string;
-    employeeType?: EmployeeType;
-    department?: DepartmentType;
-    joiningDate?: string;
-    professionalOtherDetails?: {
-      aadharNo?: string;
-      panNo?: string;
-      esiNo?: string;
-      pfNo?: string;
-      exitDate?: string;
-      biometricUserId?: string;
-    };
-    moduleAccessPayload?: ModuleAccessItem[];
-
-    documents?: Array<{
-      key?: string;
-      fileName: string;
-      filePath?: string;
-      uploadedAt: string;
-      fileData?: string;
-      contentType?: string;
-    }>;
-    clientId?: string;
-    is_cpd_involved?: boolean;
-  };
-  setFormData: (data: any) => void;
-  onSubmit: (formData?: any) => void;
+  formData: AddUserFormData;
+  setFormData: Dispatch<SetStateAction<AddUserFormData>>;
+  onSubmit: (formData?: AddUserFormData) => void;
   resetForm: () => void;
   isLoading: boolean;
   clientId?: string;

@@ -19,7 +19,18 @@ const AddEmployeeDialog = () => {
   const { addEmployee } = useEmployeeVerification();
   const { toast } = useToast();
 
-  const handleSubmit = (data: any) => {
+  const handleSubmit = (data: {
+    employeeId: string;
+    name: string;
+    email: string;
+    phone: string;
+    dateOfBirth: string;
+    address: string;
+    joiningDate: string;
+    department: string;
+    position: string;
+    employeeType: 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern';
+  }) => {
     setIsSubmitting(true);
     try {
       addEmployee(data);

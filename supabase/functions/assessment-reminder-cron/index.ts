@@ -2,6 +2,33 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey, getFrontendUrl } from '../_shared/env.ts';
 
+interface AssessmentEmployee {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  status: boolean;
+}
+
+interface Assessment {
+  id: string;
+  title: string;
+  target_completion_date: string | null;
+  assigned_to: string;
+  created_by: string;
+  client_id: string;
+  assigned_employee: AssessmentEmployee | null;
+}
+
+interface EmailVariables {
+  User_Name: string;
+  Assessment_ID: string;
+  Assessment_Title: string;
+  Due_Date: string;
+  Assessment_URL: string;
+  Overdue_Days?: string;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -42,14 +69,14 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in assessment reminder cron:', error);
     
     return new Response(
       JSON.stringify({
         success: false,
         message: 'Failed to process assessment reminders',
-        error: String(error?.message || error)
+        error: String(error instanceof Error ? error.message : error)
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
@@ -59,7 +86,7 @@ serve(async (req) => {
 /**
  * Process assessment reminders (due in 5 days and overdue)
  */
-async function processAssessmentReminders(supabase: any): Promise<AssessmentReminderResult> {
+async function processAssessmentReminders(supabase: ReturnType<typeof createClient>): Promise<AssessmentReminderResult> {
   const result: AssessmentReminderResult = {
     dueReminders: 0,
     overdueReminders: 0,
@@ -122,8 +149,8 @@ async function processAssessmentReminders(supabase: any): Promise<AssessmentRemi
             await queueAssessmentDueReminderNotification(supabase, assessment, assessment.assigned_employee);
             result.dueReminders++;
             console.log(`Queued due reminder for assessment ${assessment.id}`);
-          } catch (error: any) {
-            const errorMsg = `Error processing due reminder for assessment ${assessment.id}: ${error.message}`;
+          } catch (error) {
+            const errorMsg = `Error processing due reminder for assessment ${assessment.id}: ${error instanceof Error ? error.message : String(error)}`;
             console.error(errorMsg);
             result.errors.push(errorMsg);
           }
@@ -179,8 +206,8 @@ async function processAssessmentReminders(supabase: any): Promise<AssessmentRemi
             await queueAssessmentOverdueNotification(supabase, assessment, assessment.assigned_employee, overdueDays);
             result.overdueReminders++;
             console.log(`Queued overdue reminder for assessment ${assessment.id} (${overdueDays} days overdue)`);
-          } catch (error: any) {
-            const errorMsg = `Error processing overdue reminder for assessment ${assessment.id}: ${error.message}`;
+          } catch (error) {
+            const errorMsg = `Error processing overdue reminder for assessment ${assessment.id}: ${error instanceof Error ? error.message : String(error)}`;
             console.error(errorMsg);
             result.errors.push(errorMsg);
           }
@@ -188,9 +215,9 @@ async function processAssessmentReminders(supabase: any): Promise<AssessmentRemi
       }
     }
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in processAssessmentReminders:', error);
-    result.errors.push(`General processing error: ${error.message}`);
+    result.errors.push(`General processing error: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   return result;
@@ -200,9 +227,9 @@ async function processAssessmentReminders(supabase: any): Promise<AssessmentRemi
  * Queue assessment due in 5 days notification
  */
 async function queueAssessmentDueReminderNotification(
-  supabase: any, 
-  assessment: any, 
-  assignedEmployee: any
+  supabase: ReturnType<typeof createClient>,
+  assessment: Assessment,
+  assignedEmployee: AssessmentEmployee
 ): Promise<void> {
   // Use shared function to get frontend URL
   const getBaseUrl = () => getFrontendUrl();
@@ -278,9 +305,9 @@ async function queueAssessmentDueReminderNotification(
  * Queue assessment overdue notification
  */
 async function queueAssessmentOverdueNotification(
-  supabase: any, 
-  assessment: any, 
-  assignedEmployee: any, 
+  supabase: ReturnType<typeof createClient>,
+  assessment: Assessment,
+  assignedEmployee: AssessmentEmployee,
   overdueDays: number
 ): Promise<void> {
   // Use shared function to get frontend URL
@@ -360,7 +387,7 @@ async function queueAssessmentOverdueNotification(
 /**
  * Generate email body for due reminder (simplified HTML)
  */
-function generateAssessmentDueReminderEmailBody(variables: any): string {
+function generateAssessmentDueReminderEmailBody(variables: EmailVariables): string {
   return `
 <div style="max-width:640px;margin:0 auto;padding:24px;font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#1f2937;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;">
 <div style="text-align:center;background-color:#fef3c7;padding:20px;margin:-24px -24px 24px -24px;border-bottom:1px solid #e5e7eb;border-radius:8px 8px 0 0;">
@@ -386,7 +413,7 @@ function generateAssessmentDueReminderEmailBody(variables: any): string {
 /**
  * Generate email body for overdue notification (simplified HTML)
  */
-function generateAssessmentOverdueEmailBody(variables: any): string {
+function generateAssessmentOverdueEmailBody(variables: EmailVariables): string {
   return `
 <div style="max-width:640px;margin:0 auto;padding:24px;font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#1f2937;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;">
 <div style="text-align:center;background-color:#fee2e2;padding:20px;margin:-24px -24px 24px -24px;border-bottom:1px solid #e5e7eb;border-radius:8px 8px 0 0;">

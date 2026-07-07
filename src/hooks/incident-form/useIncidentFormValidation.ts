@@ -8,10 +8,23 @@ export interface FormErrors {
   [key: string]: string;
 }
 
+interface ValidatableFormData {
+  typeId?: string | null;
+  description?: string | null;
+  date?: string | null;
+  time?: string | null;
+  categoryId?: string | null;
+  subcategoryId?: string | null;
+  locationId?: string | null;
+  facilityId?: string | null;
+  priorityId?: string | null;
+  owner?: string | null;
+}
+
 export function useIncidentFormValidation() {
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const validateForm = (formData: any, peopleInvolved: Person[] = []) => {
+  const validateForm = (formData: ValidatableFormData, peopleInvolved: Person[] = []) => {
     const newErrors: FormErrors = {};
 
     // Validate type ID

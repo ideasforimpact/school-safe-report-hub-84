@@ -60,7 +60,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { employeeData, user } = useAuth();
-  const clientTypeId = employeeData?.clientType?.id || (user as any)?.clientType?.id;
+  const clientTypeId = employeeData?.clientType?.id || user?.clientType?.id;
   const [factors, setFactors] = useState<ContributingFactorItem[]>([]);
   const [factorReferences, setFactorReferences] = useState<Record<string, IncidentReferenceCheck>>({});
   
@@ -182,11 +182,9 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       setCurrentDescription('');
       setCurrentWeight(null);
       setIsAddDialogOpen(false);
-      
-      toast.success('Contributing factor added successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding contributing factor:', error);
-      setError(error.message || 'Failed to add contributing factor');
+      setError(error instanceof Error ? error.message : 'Failed to add contributing factor');
     } finally {
       setIsAdding(false);
     }
@@ -225,10 +223,9 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       setFactors(updatedFactors);
       
       setIsEditDialogOpen(false);
-      toast.success('Contributing factor updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating contributing factor:', error);
-      setError(error.message || 'Failed to update contributing factor');
+      setError(error instanceof Error ? error.message : 'Failed to update contributing factor');
     } finally {
       setIsUpdating(false);
     }
@@ -282,10 +279,9 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
           // propDeleteFactor(id);
           
           setConfirmationDialog(prev => ({ ...prev, open: false }));
-          toast.success(`Contributing factor deleted successfully`);
-        } catch (error: any) {
+        } catch (error) {
           console.error('Error deleting contributing factor:', error);
-          const errorMessage = error?.message || 'Failed to delete contributing factor';
+          const errorMessage = error instanceof Error ? error.message : 'Failed to delete contributing factor';
           setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
         } finally {
           setIsDeleting(false);

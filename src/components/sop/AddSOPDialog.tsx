@@ -60,7 +60,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
   const { client } = useClient();
-  
+
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
@@ -69,7 +69,6 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
     { id: '1', step: '' },
   ]);
   const [importantNotes, setImportantNotes] = useState('');
-  const [loadingCategories, setLoadingCategories] = useState(false);
 
   const clientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
 
@@ -252,7 +251,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
       return;
     }
 
-    const body: Record<string, any> = {
+    const body: Record<string, unknown> = {
       title: trimmedTitle,
       category_id: categoryId,
       description: trimmedDescription || null,
@@ -335,7 +334,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             </Label>
             <Select value={categoryId} onValueChange={setCategoryId} required>
               <SelectTrigger>
-                <SelectValue placeholder={loadingCategories ? "Loading..." : "Select category"} />
+                <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((category) => (

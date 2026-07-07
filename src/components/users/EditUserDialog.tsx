@@ -22,61 +22,63 @@ import WizardProgress from '@/components/ui/wizard-progress';
 import { EMPLOYEE_COMPLIANCE_DOCUMENTS } from '@/constants/employeeComplianceDocuments';
 import { getProfileDocumentSignedUrl } from '@/services/employee/employeeProfileDocumentService';
 import { fileToBase64 } from '@/utils/fileToBase64';
+import { EmployeeUser } from '@/pages/UserManagement';
+
+type EditUserFormData = {
+  firstName: string;
+  lastName: string;
+  personalDetails?: {
+    middleName?: string;
+    fatherName?: string;
+    staffId?: string;
+    experience?: string;
+    qualification?: string;
+    gender?: string;
+    dob?: string;
+    religion?: string;
+    nationality?: string;
+    bloodGroup?: string;
+    residenceAddress?: string;
+  };
+  email: string;
+  phone?: string;
+  designation?: string;
+  tags?: string[];
+  employeeId?: string;
+  employeeType?: EmployeeType;
+  department?: DepartmentType;
+  joiningDate?: string;
+  professionalOtherDetails?: {
+    aadharNo?: string;
+    panNo?: string;
+    esiNo?: string;
+    pfNo?: string;
+    exitDate?: string;
+    biometricUserId?: string;
+  };
+  moduleAccessPayload?: ModuleAccessItem[];
+  documents?: Array<{
+    key?: string;
+    fileName: string;
+    filePath?: string;
+    uploadedAt: string;
+    fileData?: string;
+    contentType?: string;
+  }>;
+  is_cpd_involved?: boolean;
+};
 
 interface EditUserDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  formData: {
-    firstName: string;
-    lastName: string;
-    personalDetails?: {
-      middleName?: string;
-      fatherName?: string;
-      staffId?: string;
-      experience?: string;
-      qualification?: string;
-      gender?: string;
-      dob?: string;
-      religion?: string;
-      nationality?: string;
-      bloodGroup?: string;
-      residenceAddress?: string;
-    };
-    email: string;
-  
-    phone?: string;
-    designation?: string;
-    tags?: string[];
-    employeeId?: string;
-    employeeType?: EmployeeType;
-    department?: DepartmentType;
-    joiningDate?: string;
-    professionalOtherDetails?: {
-      aadharNo?: string;
-      panNo?: string;
-      esiNo?: string;
-      pfNo?: string;
-      exitDate?: string;
-      biometricUserId?: string;
-    };
-    moduleAccessPayload?: ModuleAccessItem[];
-    documents?: Array<{
-      key?: string;
-      fileName: string;
-      filePath?: string;
-      uploadedAt: string;
-      fileData?: string;
-      contentType?: string;
-    }>;
-    is_cpd_involved?: boolean;
-  };
-  setFormData: (data: any) => void;
+  formData: EditUserFormData;
+  setFormData: (data: EditUserFormData) => void;
   onSubmit: () => void;
   resetForm: () => void;
   isLoading: boolean;
-  currentUser?: any;
+  currentUser?: EmployeeUser;
   /** Latest list of employees so dialog can show fresh data when reopened after save */
-  employeeUsers?: any[];
+  employeeUsers?: EmployeeUser[];
 }
 
 const EditUserDialog = ({
@@ -148,7 +150,7 @@ const EditUserDialog = ({
   
   // Resolve latest user from list so we always show fresh data (e.g. after save + reopen)
   const latestUser = (isOpen && currentUser && employeeUsers?.length)
-    ? (employeeUsers.find((u: any) => u.id === currentUser.id) ?? currentUser)
+    ? (employeeUsers.find((u) => u.id === currentUser.id) ?? currentUser)
     : currentUser;
 
   // Initialize selected modules and form from latest user when dialog opens
@@ -158,7 +160,7 @@ const EditUserDialog = ({
     }
     // Sync from latest user so toggle shows saved value
     if (isOpen && latestUser) {
-      const cpdValue = (latestUser as any).isCpdInvolved ?? (latestUser as any).is_cpd_involved ?? false;
+      const cpdValue = (latestUser as unknown as { isCpdInvolved?: boolean; is_cpd_involved?: boolean }).isCpdInvolved ?? (latestUser as unknown as { isCpdInvolved?: boolean; is_cpd_involved?: boolean }).is_cpd_involved ?? false;
       setFormData(prev => (prev.is_cpd_involved === cpdValue ? prev : { ...prev, is_cpd_involved: cpdValue }));
     }
     // Ensure joiningDate is properly formatted when dialog opens (only once when dialog opens)
@@ -221,13 +223,13 @@ const EditUserDialog = ({
       const mergedNames: Record<string, string> = {};
       const mergedMeta: Record<string, { bucket?: string; storagePath?: string; source: 'profile' | 'verification' | 'new' }> = {};
 
-      mergedDocs.forEach((doc: any) => {
-        const docKey = doc?.docKey;
+      mergedDocs.forEach((doc: Record<string, unknown>) => {
+        const docKey = typeof doc?.docKey === 'string' ? doc.docKey : undefined;
         if (!docKey) return;
-        mergedNames[docKey] = doc.fileName || `Upload ${doc.label || 'Document'}`;
+        mergedNames[docKey] = (typeof doc.fileName === 'string' ? doc.fileName : null) || `Upload ${typeof doc.label === 'string' ? doc.label : 'Document'}`;
         mergedMeta[docKey] = {
-          bucket: doc.bucket,
-          storagePath: doc.storagePath,
+          bucket: typeof doc.bucket === 'string' ? doc.bucket : undefined,
+          storagePath: typeof doc.storagePath === 'string' ? doc.storagePath : undefined,
           source: doc.source === 'verification' ? 'verification' : 'profile',
         };
       });
@@ -253,7 +255,7 @@ const EditUserDialog = ({
         if (matchingType) {
           setFormData(prev => ({
             ...prev,
-            employeeType: matchingType.id as any
+            employeeType: matchingType.id as EmployeeType
           }));
         }
       }
@@ -273,7 +275,7 @@ const EditUserDialog = ({
         if (matchingDept) {
           setFormData(prev => ({
             ...prev,
-            department: matchingDept.id as any
+            department: matchingDept.id as DepartmentType
           }));
         }
       }
@@ -393,7 +395,7 @@ const EditUserDialog = ({
       );
       setShowOtherDetails(hasExistingOtherDetails);
     }
-  }, [isOpen, currentUser?.id]);
+  }, [isOpen, currentUser?.id, formData.professionalOtherDetails]);
 
   useEffect(() => {
     if (currentStep > steps.length - 1) {
@@ -859,7 +861,10 @@ const EditUserDialog = ({
     try {
       const existingDocuments = Array.isArray(formData.documents) ? formData.documents : [];
       const filteredExistingDocuments = existingDocuments.filter(
-        (doc) => !removedProfilePaths.includes((doc as any).storagePath || (doc as any).storage_path || (doc as any).filePath || (doc as any).file_path)
+        (doc) => {
+          const d = doc as unknown as { storagePath?: string; storage_path?: string; filePath?: string; file_path?: string };
+          return !removedProfilePaths.includes(d.storagePath || d.storage_path || d.filePath || d.file_path || '');
+        }
       );
       const documentsPayload: Array<{
         key: string;
@@ -895,7 +900,7 @@ const EditUserDialog = ({
       documentsPayload.forEach((doc) => {
         const existingIndex = mergedDocuments.findIndex(
           (item) =>
-            (item as any).key === doc.key
+            (item as unknown as { key?: string }).key === doc.key
         );
         if (existingIndex === -1) mergedDocuments.push(doc);
         else mergedDocuments[existingIndex] = doc;
@@ -907,7 +912,7 @@ const EditUserDialog = ({
       const originalEmail = (currentUser.email as string | null) ?? null;
       const emailChanged = normalizedEmail !== originalEmail;
 
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         id: currentUser.id,
         firstName: formData.firstName,
         lastName: formData.lastName,

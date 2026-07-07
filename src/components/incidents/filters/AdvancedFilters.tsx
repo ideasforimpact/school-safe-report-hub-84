@@ -24,7 +24,7 @@ interface AdvancedFiltersProps {
     hasAttachments: boolean;
     location: string;
   };
-  onFilterChange: (field: string, value: any) => void;
+  onFilterChange: (field: string, value: unknown) => void;
   availableFacilities: string[];
   availableOwners: { id: string, name: string }[];
 }

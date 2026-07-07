@@ -34,7 +34,6 @@ import { getEmployeeData } from '@/store/employeeSelectors';
 import { useClient } from '@/contexts/ClientContext';
 import SignoffRequestDialog from '@/components/sop/SignoffRequestDialog';
 import GroupDetailsDialog from '@/components/sop/GroupDetailsDialog';
-import { getEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
@@ -95,7 +94,7 @@ const AssignedSOPPage = () => {
   const [signoffDialogOpen, setSignoffDialogOpen] = useState(false);
   const [signoffSOP, setSignoffSOP] = useState<SOP | null>(null);
   const [groupDetailsDialogOpen, setGroupDetailsDialogOpen] = useState(false);
-  const [selectedGroupsForDialog, setSelectedGroupsForDialog] = useState<any[]>([]);
+  const [selectedGroupsForDialog, setSelectedGroupsForDialog] = useState<NonNullable<SOP['assignments']>>([]);
   const [selectedSopTitleForDialog, setSelectedSopTitleForDialog] = useState<string>('');
 
   const resolvedClientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
@@ -128,10 +127,10 @@ const AssignedSOPPage = () => {
     if (!data?.data?.length) return;
     const seen = new Set<string>();
     setCategories(
-      data.data
-        .filter((s: any) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
-        .map((s: any) => ({ id: s.category_id, category_name: s.category_name }))
-        .sort((a: any, b: any) => a.category_name.localeCompare(b.category_name))
+      (data.data as SOP[])
+        .filter((s) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
+        .map((s) => ({ id: s.category_id, category_name: s.category_name as string }))
+        .sort((a, b) => a.category_name.localeCompare(b.category_name))
     );
   }, [data]);
 

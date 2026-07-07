@@ -64,10 +64,10 @@ const HeaderIcons = () => {
   const isBackofficeRoute =
     location.pathname.startsWith('/backoffice') ||
     location.pathname.startsWith('/backoffice-');
-  const isTransportSafetyRoute = location.pathname.startsWith('/transport-safety');
+
   const currentModuleName = useMemo(() => getModuleNameFromPath(location.pathname), [location.pathname]);
   const isUnsupportedModule = !SUPPORTED_NOTIFICATION_MODULES.has(currentModuleName);
-  const skipNotifications = isBackofficeRoute || isBackofficeUser || isUnsupportedModule  || isTransportSafetyRoute;
+  const skipNotifications = isBackofficeRoute || isBackofficeUser || isUnsupportedModule;
   const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [loading, setLoading] = useState(false);
@@ -204,9 +204,11 @@ const HeaderIcons = () => {
       )
       .subscribe();
 
+    const debounceHandle = fetchDebounceRef.current;
     return () => {
       supabase.removeChannel(recipientChannel);
       supabase.removeChannel(notificationChannel);
+      if (debounceHandle) clearTimeout(debounceHandle);
     };
   }, [employeeData?.id, currentModuleName, fetchFirstPage, skipNotifications]);
 

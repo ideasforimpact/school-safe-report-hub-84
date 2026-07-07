@@ -1,11 +1,13 @@
 
 import React, { createContext, useContext, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { AssessmentContextType } from './types';
 import { useTemplateManagement } from './hooks/useTemplateManagement';
 import { useQuestionManagement } from './hooks/useQuestionManagement';
 import { useAssignmentManagement } from './hooks/useAssignmentManagement';
 import { useResponseManagement } from './hooks/useResponseManagement';
+
 const AssessmentContext = createContext<AssessmentContextType | undefined>(undefined);
 
 export const useAssessment = () => {
@@ -18,6 +20,14 @@ export const useAssessment = () => {
 
 export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { user } = useAuth();
+  const location = useLocation();
+  const isUsersRoute = location.pathname === '/users';
+  const isAssessmentRoute =
+    location.pathname.startsWith('/assessments') ||
+    location.pathname.startsWith('/backoffice/assessments') ||
+    location.pathname.startsWith('/settings');
+  
+
   
   // Set up template management
   const { 
@@ -29,7 +39,7 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     setTemplates,
     refreshTemplates,
     loading 
-  } = useTemplateManagement(user?.id);
+  } = useTemplateManagement(user?.id, !isUsersRoute && isAssessmentRoute);
   
   // Set up assignment management
   const { 

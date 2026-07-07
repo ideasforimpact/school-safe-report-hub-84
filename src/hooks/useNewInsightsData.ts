@@ -113,7 +113,7 @@ export interface MonthlyTrendsArea {
 export const useNewInsightsData = (dateRange?: DateRange) => {
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
-  const [incidents, setIncidents] = useState<any[]>([]);
+  const [incidents, setIncidents] = useState<Record<string, unknown>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Get client ID from employee data

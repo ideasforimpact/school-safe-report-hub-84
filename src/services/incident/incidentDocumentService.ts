@@ -64,14 +64,14 @@ export const incidentDocumentService = {
       console.log('Successfully uploaded files via edge function:', data.documents?.length || 0);
 
       // Convert edge function response to IncidentDocument format
-      const uploadedDocuments: IncidentDocument[] = (data.documents || []).map((doc: any) => ({
-        id: doc.id,
-        name: doc.name,
-        type: doc.type,
-        size: doc.size,
+      const uploadedDocuments: IncidentDocument[] = (data.documents || []).map((doc: Record<string, unknown>) => ({
+        id: doc.id as string,
+        name: doc.name as string,
+        type: doc.type as string,
+        size: doc.size as number,
         url: '', // Edge function only returns path, URL will be generated when needed
-        path: doc.path,
-        uploadedAt: doc.uploadedAt
+        path: doc.path as string,
+        uploadedAt: doc.uploadedAt as string
       }));
 
       return uploadedDocuments;
@@ -111,14 +111,14 @@ export const incidentDocumentService = {
       console.log('Successfully uploaded files and updated incident via edge function:', data.documents?.length || 0);
 
       // Convert edge function response to IncidentDocument format
-      const uploadedDocuments: IncidentDocument[] = (data.documents || []).map((doc: any) => ({
-        id: doc.id,
-        name: doc.name,
-        type: doc.type,
-        size: doc.size,
+      const uploadedDocuments: IncidentDocument[] = (data.documents || []).map((doc: Record<string, unknown>) => ({
+        id: doc.id as string,
+        name: doc.name as string,
+        type: doc.type as string,
+        size: doc.size as number,
         url: '', // Edge function only returns path, URL will be generated when needed
-        path: doc.path,
-        uploadedAt: doc.uploadedAt
+        path: doc.path as string,
+        uploadedAt: doc.uploadedAt as string
       }));
 
       return uploadedDocuments;
@@ -143,7 +143,7 @@ export const incidentDocumentService = {
 
     const { error } = await supabase
       .from('incidents')
-      .update({ documents: documentsForStorage as any })
+      .update({ documents: documentsForStorage as unknown as import('@/integrations/supabase/types').Json })
       .eq('id', incidentId);
 
     if (error) {
@@ -168,8 +168,8 @@ export const incidentDocumentService = {
     }
 
     // Convert from stored format back to IncidentDocument[]
-    const storedDocuments = data?.documents as any[];
-    return (storedDocuments || []).map((doc: any): IncidentDocument => ({
+    const storedDocuments = data?.documents as Array<Record<string, unknown>>;
+    return (storedDocuments || []).map((doc): IncidentDocument => ({
       id: doc.id || '',
       name: doc.name || '',
       type: doc.type || '',

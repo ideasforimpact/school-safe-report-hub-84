@@ -56,14 +56,22 @@ export const fetchVehicleChallansForReport = async (
 
   const rows = data || [];
 
-  let totalPendingAmount = 0;
-  const pendingChallans: any[] = [];
+  type ChallanItem = Record<string, unknown>;
+  type ChallanRow = {
+    vehicle_id: unknown;
+    latest_challan_data?: { data?: { challan_details?: { challans?: ChallanItem[] } } };
+    vehicles: { registration_number: unknown; internal_vehicle_name: unknown };
+    created_at: unknown;
+  };
 
-  rows.forEach((row: any) => {
+  let totalPendingAmount = 0;
+  const pendingChallans: ChallanItem[] = [];
+
+  (rows as ChallanRow[]).forEach((row) => {
     const challanList =
       row.latest_challan_data?.data?.challan_details?.challans || [];
 
-    challanList.forEach((c: any) => {
+    challanList.forEach((c) => {
       const status = (c.challan_status || "").toLowerCase();
 
       if (status === "pending") {
@@ -153,7 +161,7 @@ export const fetchEmployeeDocumentsForClient = async (clientId: string,startDate
   if (error) throw error;
 
   // 3. Map employee name manually
-  const employeeMap: any = {};
+  const employeeMap: Record<string, { name: string; employee_code: string | null; joining_date?: string | null }> = {};
   employees.forEach(emp => {
     employeeMap[emp.id] = {
       name: `${emp.first_name || ""} ${emp.last_name || ""}`.trim(),
@@ -162,7 +170,7 @@ export const fetchEmployeeDocumentsForClient = async (clientId: string,startDate
   });
 
   const formatted =
-    docs?.map((doc: any) => ({
+    docs?.map((doc) => ({
       employee_id: doc.employee_id,
       employee_name: employeeMap[doc.employee_id]?.name || "Employee",
       employee_code: employeeMap[doc.employee_id]?.employee_code || "-",

@@ -53,7 +53,7 @@ export function useLocationOptions(locationId: string) {
     // Since the ConfigItem type doesn't include locationId,
     // we need to use a more appropriate filter method
     // that doesn't assume all facilities have a locationId
-    const filteredFacilities = facilities.filter((facility: any) => {
+    const filteredFacilities = (facilities as FacilityItem[]).filter((facility) => {
       // Check if the facility has a locationId property
       return facility.locationId === locationId;
     });

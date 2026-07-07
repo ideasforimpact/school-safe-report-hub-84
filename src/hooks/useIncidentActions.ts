@@ -74,7 +74,7 @@ export function useIncidentActions(
       const ticketId = generateTicketId();
 
       // Create incident record in the database with client_id restriction
-      const dbRecord: any = {
+      const dbRecord: Record<string, unknown> = {
         category_id: incidentData.categoryId,
         description: incidentData.description,
         date: incidentData.date instanceof Date ? incidentData.date.toISOString() : incidentData.date,
@@ -163,9 +163,9 @@ export function useIncidentActions(
       toast.success(`${incidentData.type} reported successfully!`);
       
       return newIncident;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to create incident:', error);
-      toast.error(`Failed to create incident: ${error.message}`);
+      toast.error(`Failed to create incident: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -214,9 +214,9 @@ export function useIncidentActions(
       });
 
       toast.success('Incident updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating incident:', error);
-      toast.error(`Failed to update incident: ${error.message}`);
+      toast.error(`Failed to update incident: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   };

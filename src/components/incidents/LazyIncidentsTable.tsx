@@ -6,7 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import TablePaginationBar from '@/components/common/TablePaginationBar';
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from '@/components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIncidentPermissions } from '@/utils/incidentPermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,31 +54,12 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   const navigate = useNavigate();
   const { checkPermissions } = useIncidentPermissions();
   const { user } = useAuth();
-  const [policyTitles, setPolicyTitles] = React.useState<string[]>([]);
   const [aiOpen, setAiOpen] = React.useState(false);
-  const [aiPayload, setAiPayload] = React.useState<any | null>(null);
+  const [aiPayload, setAiPayload] = React.useState<Record<string, unknown> | null>(null);
   const { state } = useEmployeeStore();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
     
   const currentUser = getCurrentUser(state);
-  
-  React.useEffect(() => {
-    const loadPolicyDocs = async () => {
-      try {
-        if (!user?.clientId) return;
-        // Use edge function for client resources (returns both organisational/global in our setup)
-        const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
-          body: { action: 'fetch_resources', data: { client_id: user.clientId } }
-        });
-        if (error) return;
-        const titles = (data?.resources || []).map((r: any) => r?.title).filter(Boolean);
-        setPolicyTitles(titles);
-      } catch (_) {
-        // no-op; keep empty
-      }
-    };
-    loadPolicyDocs();
-  }, [user?.clientId]);
 
   const handleRowClick = (incidentId: string) => {
     navigate(`/incident/${incidentId}`);
@@ -131,19 +119,31 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
     return text.length > 10 ? `${text.slice(0, 10)}...` : text;
   };
 
-  const logIncidentForAi = (e: React.MouseEvent, incident: IncidentRecord) => {
+  const logIncidentForAi = async (e: React.MouseEvent, incident: IncidentRecord) => {
     e.stopPropagation();
-    const policyDocs = policyTitles;
-    const payload: any = {
+    let policyDocs: string[] = [];
+    try {
+      if (user?.clientId) {
+        const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
+          body: { action: 'fetch_resources', data: { client_id: user.clientId } }
+        });
+        if (!error) {
+          policyDocs = (data?.resources || []).map((r: Record<string, unknown>) => r?.title).filter(Boolean);
+        }
+      }
+    } catch (_) {
+      // no-op; proceed without policy docs
+    }
+    const payload: Record<string, unknown> = {
       id: incident.id,
       category: incident.category,
-      sub_category: (incident as any).subcategory,
-      facility: (incident as any).facility,
-      location: (incident as any).location,
-      description: (incident as any).description,
-      root_cause: (incident as any).root_cause ?? null,
-      learning_points: (incident as any).learning_points ?? null,
-      action_taken: (incident as any).action_taken ?? null,
+      sub_category: incident.subcategory,
+      facility: incident.facility,
+      location: incident.location,
+      description: incident.description,
+      root_cause: incident.root_cause ?? null,
+      learning_points: incident.learning_points ?? null,
+      action_taken: incident.action_taken ?? null,
       policy_docs: policyDocs,
     };
     // Include the full incident object with recommended_action
@@ -410,16 +410,74 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
         </Table>
       </div>
       
-      {/* Pagination */}
+      {/* Pagination - Always show when pagination data exists and handlers are provided */}
       {pagination && onPageChange && (
-        <TablePaginationBar
-          currentPage={pagination.currentPage}
-          totalPages={pagination.totalPages}
-          totalCount={pagination.totalCount}
-          pageSize={pagination.pageSize}
-          itemLabel="incidents"
-          onPageChange={onPageChange}
-        />
+        <div className="py-4 border-t">
+          {/* Page info - Always show current page context */}
+          <div className="flex items-center justify-between px-6 mb-3">
+            <div className="text-sm text-gray-600">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </div>
+            {pagination.totalPages === 1 && (
+              <div className="text-sm text-gray-500">
+                {pagination.totalCount === pagination.pageSize ? 
+                  `All ${pagination.totalCount} records displayed` : 
+                  `Showing all ${pagination.totalCount} records on 1 page`
+                }
+              </div>
+            )}
+          </div>
+          
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                {pagination.currentPage === 1 ? (
+                  <PaginationPrevious 
+                    aria-disabled="true"
+                    className="pointer-events-none opacity-50"
+                  />
+                ) : (
+                  <PaginationPrevious 
+                    onClick={() => onPageChange(Math.max(pagination.currentPage - 1, 1))}
+                    className="cursor-pointer"
+                  />
+                )}
+              </PaginationItem>
+              
+              {getPageNumbers().map((pageNum, index) => 
+                pageNum === -1 ? (
+                  <PaginationItem key={`ellipsis-${index}`}>
+                    <span className="flex h-10 w-10 items-center justify-center">...</span>
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      isActive={pagination.currentPage === pageNum}
+                      onClick={() => onPageChange(pageNum)}
+                      className="cursor-pointer"
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+              
+              <PaginationItem>
+                {pagination.currentPage === pagination.totalPages ? (
+                  <PaginationNext 
+                    aria-disabled="true" 
+                    className="pointer-events-none opacity-50"
+                  />
+                ) : (
+                  <PaginationNext 
+                    onClick={() => onPageChange(Math.min(pagination.currentPage + 1, pagination.totalPages))}
+                    className="cursor-pointer"
+                  />
+                )}
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
       
       {/* Loading indicator for page changes */}

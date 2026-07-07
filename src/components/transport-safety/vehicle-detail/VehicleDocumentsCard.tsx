@@ -16,6 +16,16 @@ interface VehicleDocumentsCardProps {
   vehicle: Vehicle;
 }
 
+interface RawChallanPayload {
+  challan_details?: { challans?: unknown[] };
+  challan_data?: unknown[];
+}
+
+interface ChallanLogEntry {
+  data?: { status_code?: number; data?: RawChallanPayload };
+  provider?: string;
+}
+
 const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) => {
   const { documents } = vehicle;
   const [vehicleChallans] = useState<VehicleChallans | null>(vehicle.vehicleChallans || null);
@@ -60,7 +70,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
     if (!logs || typeof logs !== 'object') return null;
 
     const successLogs = Object.entries(logs).filter(
-      ([_, entry]: any) => entry?.data?.status_code === 200
+      ([, entry]: [string, ChallanLogEntry]) => entry?.data?.status_code === 200
     );
 
     if (successLogs.length === 0) return null;
@@ -69,7 +79,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
       ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
     );
 
-    const [timestamp, log]: any = successLogs[0];
+    const [timestamp, log] = successLogs[0] as [string, ChallanLogEntry];
 
     return {
       timestamp,

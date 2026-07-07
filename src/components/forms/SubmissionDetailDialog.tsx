@@ -23,7 +23,7 @@ interface FormSubmission {
   responses: Array<{
     type: string;
     label: string;
-    value: any;
+    value: unknown;
   }>;
   status: string;
   comments: string | null;
@@ -104,7 +104,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
       });
 
       // Change status to 'closed' when adding/updating comments
-      let newStatus = 'closed';
+      const newStatus = 'closed';
       
       const { data, error } = await supabase.functions.invoke('update-form-submission', {
         body: {
@@ -145,11 +145,11 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
     }
   };
 
-  const renderFieldValue = (response: any) => {
+  const renderFieldValue = (response: { type: string; label: string; value: unknown }) => {
     if (Array.isArray(response.value)) {
       return response.value.join(', ');
     }
-    return response.value?.toString() || 'N/A';
+    return response.value != null ? String(response.value) : 'N/A';
   };
 
   return (

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import type { TooltipProps } from 'recharts';
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,9 +39,9 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
     '#1F2937', // Charcoal Slate
   ];
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      const data = payload[0].payload as { name: string; value: number; subcategories?: { name: string; count: number }[] };
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
           <p className="font-semibold">{data.name}</p>
@@ -49,7 +51,7 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
           {data.subcategories && data.subcategories.length > 0 && (
             <div className="mt-2 pt-2 border-t border-border">
               <p className="text-xs font-medium mb-1">Top subcategories:</p>
-              {data.subcategories.map((sub: any, index: number) => (
+              {data.subcategories.map((sub, index) => (
                 <p key={index} className="text-xs text-muted-foreground">
                   • {sub.name}: {sub.count}
                 </p>

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 interface DashboardStats {
   openIncidents: number;
@@ -84,7 +85,12 @@ export const useDashboardStats = () => {
   const [error, setError] = useState<string | null>(null);
   
   const { user, employeeData } = useAuth();
-  const clientId = employeeData?.clientId || user?.clientId;
+  const { state } = useEmployeeStore();
+  // Redux's activeClientId/clientId reflect a super admin's switched client (see
+  // HeaderClientSwitcher); employeeData/user only ever hold the home client, so
+  // using them alone left the dashboard showing home-client stats after a switch
+  // while other modules (e.g. Employee Verification) correctly followed the switch.
+  const clientId = state.activeClientId || state.clientId || employeeData?.clientId || user?.clientId;
   const fetchedForClientRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -119,9 +125,9 @@ export const useDashboardStats = () => {
         console.log('Dashboard stats received:', data);
         setStats(data);
 
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error fetching dashboard stats:', err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
       }

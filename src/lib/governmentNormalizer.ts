@@ -1,17 +1,27 @@
 import { GovernmentDocumentType } 
   from "@/components/employee-verification/document-card/GovernmentVerificationPopup";
 
+type RawApiRecord = Record<string, unknown> & {
+  data?: RawApiRecord;
+  address?: Record<string, unknown>;
+  full_name_split?: string[];
+  personal_info?: { address?: string };
+  vehicle_classes?: unknown;
+};
+
 export const normalizeApiData = (
-  raw: any,
+  raw: unknown,
   docType: GovernmentDocumentType
 ) => {
   if (!raw) return {};
 
+  const rawRecord = raw as RawApiRecord;
+
   // 🔥 Auto unwrap nested API structures
-  const data =
-    raw?.data?.data ||
-    raw?.data ||
-    raw;
+  const data: RawApiRecord =
+    rawRecord?.data?.data ||
+    rawRecord?.data ||
+    rawRecord;
 
   switch (docType) {
 

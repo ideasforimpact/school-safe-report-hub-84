@@ -11,6 +11,7 @@ interface DebouncedSearchInputProps {
   className?: string;
   /** When true, onChange fires only on Enter key press — no auto-debounce */
   triggerOnEnter?: boolean;
+  maxLength?: number;
 }
 
 const DebouncedSearchInput: React.FC<DebouncedSearchInputProps> = ({
@@ -20,6 +21,7 @@ const DebouncedSearchInput: React.FC<DebouncedSearchInputProps> = ({
   delay = 800,
   className = '',
   triggerOnEnter = false,
+  maxLength,
 }) => {
   const [localValue, setLocalValue] = useState(value);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -64,6 +66,7 @@ const DebouncedSearchInput: React.FC<DebouncedSearchInputProps> = ({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         className="pl-10"
+        maxLength={maxLength}
       />
     </div>
   );

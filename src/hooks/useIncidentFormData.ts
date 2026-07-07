@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ConfigItem } from '@/contexts/types';
 import { useAuth } from '@/contexts/auth/useAuth';
 
 export interface IncidentFormData {
@@ -13,115 +12,150 @@ export interface IncidentFormData {
   facilities: { id: string; name: string; campus_id: string }[];
   priorities: { id: string; name: string; color: string | null }[];
 }
+interface ConfigCacheEntry {
+  version: string;
+  formData: IncidentFormData;
+  employees: Record<string, unknown>[];
+  statuses: Record<string, unknown>[];
+  students: Record<string, unknown>[];
+}
+export const configCache = new Map<string, ConfigCacheEntry>();
+const fetchInflight = new Map<string, Promise<void>>();
+// Version bump — forces a re-fetch after the priorities client_id filter fix
+const CACHE_VERSION = 'v3';
+
+function buildCacheKey(clientId: string, clientTypeId: string): string {
+  return `${clientId}::${clientTypeId}::${CACHE_VERSION}`;
+}
+
+export function clearIncidentFormDataCache(clientId?: string) {
+  if (clientId) {
+    for (const key of configCache.keys()) {
+      if (key.startsWith(`${clientId}::`)) configCache.delete(key);
+    }
+    for (const key of fetchInflight.keys()) {
+      if (key.startsWith(`${clientId}::`)) fetchInflight.delete(key);
+    }
+  } else {
+    configCache.clear();
+    fetchInflight.clear();
+  }
+}
 
 export function useIncidentFormData() {
-  const { employeeData } = useAuth();
-  const [formData, setFormData] = useState<IncidentFormData>({
-    reportTypes: [],
-    categories: [],
-    subcategories: [],
-    locations: [],
-    facilities: [],
-    priorities: []
+  const { employeeData, user } = useAuth();
+  const clientId = employeeData?.clientId || null;
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? null;
+  const cacheKey = clientId && clientTypeId ? buildCacheKey(clientId, clientTypeId) : null;
+
+  const [formData, setFormData] = useState<IncidentFormData>(() => {
+    const cached = cacheKey ? configCache.get(cacheKey) : undefined;
+    return cached?.formData || {
+      reportTypes: [],
+      categories: [],
+      subcategories: [],
+      locations: [],
+      facilities: [],
+      priorities: []
+    };
   });
-  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<Record<string, unknown>[]>(() => {
+    const cached = cacheKey ? configCache.get(cacheKey) : undefined;
+    return cached?.employees || [];
+  });
+  const [statuses, setStatuses] = useState<Record<string, unknown>[]>(() => {
+    const cached = cacheKey ? configCache.get(cacheKey) : undefined;
+    return cached?.statuses || [];
+  });
+  const [students, setStudents] = useState<Record<string, unknown>[]>(() => {
+    const cached = cacheKey ? configCache.get(cacheKey) : undefined;
+    return cached?.students || [];
+  });
+  const [loading, setLoading] = useState(!(cacheKey && configCache.has(cacheKey)));
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
-    async function fetchData() {
-      if (!employeeData?.clientId) {
-        console.log('No client ID available for fetching incident form data');
+    // Wait until both IDs are resolved
+    if (!clientId || !clientTypeId || !cacheKey) {
+      setLoading(false);
+      return;
+    }
+
+    // Already cached — apply and stop
+    const existing = configCache.get(cacheKey);
+    if (existing) {
+      setFormData(existing.formData);
+      setEmployees(existing.employees);
+      setStatuses(existing.statuses);
+      setStudents(existing.students);
+      setLoading(false);
+      return;
+    }
+
+    // Piggyback on an in-flight request for the same key
+    const inflight = fetchInflight.get(cacheKey);
+    if (inflight) {
+      inflight.then(() => {
+        const entry = configCache.get(cacheKey);
+        if (entry) {
+          setFormData(entry.formData);
+          setEmployees(entry.employees);
+          setStatuses(entry.statuses);
+          setStudents(entry.students);
+        }
         setLoading(false);
-        return;
-      }
+      });
+      return;
+    }
 
-      setLoading(true);
+    setLoading(true);
+
+    const doFetch = async () => {
       try {
-        console.log('Fetching incident form data for client:', employeeData.clientId);
-
-        // Fetch report types - RLS handles client filtering automatically
-        const { data: reportTypes, error: reportTypesError } = await supabase
-          .from('incident_report_types')
-          .select('id, name, description')
-          .eq('is_active', true);
-          
-        if (reportTypesError) throw reportTypesError;
-        
-        // Fetch categories filtered by client_id
-        const { data: categories, error: categoriesError } = await supabase
-          .from('incident_categories')
-          .select('id, name, description')
-          .eq('is_active', true)
-          .eq('client_id', employeeData.clientId);
-          
-        if (categoriesError) throw categoriesError;
-        
-        // Fetch subcategories filtered by client_id
-        const { data: subcategories, error: subcategoriesError } = await supabase
-          .from('incident_subcategories')
-          .select('id, name, category_id')
-          .eq('is_active', true)
-          .eq('client_id', employeeData.clientId);
-          
-        if (subcategoriesError) throw subcategoriesError;
-        
-        // Fetch locations (campuses) filtered by client_id
-        const { data: locations, error: locationsError } = await supabase
-          .from('campuses')
-          .select('id, name')
-          .eq('client_id', employeeData.clientId);
-          
-        if (locationsError) throw locationsError;
-        
-        // Fetch facilities filtered by client_id
-        const { data: facilities, error: facilitiesError } = await supabase
-          .from('facilities')
-          .select('id, name, campus_id')
-          .eq('client_id', employeeData.clientId);
-          
-        if (facilitiesError) throw facilitiesError;
-        
-        // Fetch priorities - RLS handles client filtering automatically
-        const { data: priorities, error: prioritiesError } = await supabase
-          .from('incident_priorities')
-          .select('id, name, color, weight')
-          .eq('is_active', true)
-          .order('weight', { ascending: true });
-          
-        if (prioritiesError) throw prioritiesError;
-        
-        setFormData({
-          reportTypes: reportTypes || [],
-          categories: categories || [],
-          subcategories: subcategories || [],
-          locations: locations || [],
-          facilities: facilities || [],
-          priorities: priorities || []
+        const { data, error: fnError } = await supabase.functions.invoke('fetch-incidents', {
+          body: { operation: 'get_config', clientId, clientTypeId },
         });
 
-        console.log('Successfully fetched incident form data:', {
-          reportTypes: reportTypes?.length || 0,
-          categories: categories?.length || 0,
-          subcategories: subcategories?.length || 0,
-          locations: locations?.length || 0,
-          facilities: facilities?.length || 0,
-          priorities: priorities?.length || 0
-        });
-      } catch (err: any) {
+        if (fnError) throw fnError;
+        if (!data?.success) throw new Error('Failed to fetch incident form data');
+
+        const d = data.data;
+        const entry: ConfigCacheEntry = {
+          version: CACHE_VERSION,
+          formData: {
+            reportTypes:   d.reportTypes   || [],
+            categories:    d.categories    || [],
+            subcategories: d.subcategories || [],
+            locations:     d.locations     || [],
+            facilities:    d.facilities    || [],
+            priorities:    d.priorities    || [],
+          },
+          employees: d.employees || [],
+          statuses:  d.statuses  || [],
+          students:  d.students  || [],
+        };
+
+        configCache.set(cacheKey, entry);
+
+        setFormData(entry.formData);
+        setEmployees(entry.employees);
+        setStatuses(entry.statuses);
+        setStudents(entry.students);
+
+        console.log('Successfully fetched and cached combined incident form data');
+      } catch (err) {
         console.error("Error fetching form data:", err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : String(err));
         toast.error("Failed to load data from database");
       } finally {
         setLoading(false);
+        fetchInflight.delete(cacheKey);
       }
-    }
-    
-    fetchData();
-  }, [employeeData?.clientId]);
-  
-  return {
-    formData,
-    loading,
-    error
-  };
+    };
+
+    const promise = doFetch();
+    fetchInflight.set(cacheKey, promise);
+  }, [clientId, clientTypeId, cacheKey]);
+
+  return { formData, employees, statuses, students, loading, error };
 }

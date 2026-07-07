@@ -135,7 +135,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
       await onAddEmployee(employeeData);
       // Success message is now handled in the service or context
       handleCloseDialog(); // Close and reset form on success
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding employee:', error);
       
       // Don't show a generic error message if we already showed a specific one

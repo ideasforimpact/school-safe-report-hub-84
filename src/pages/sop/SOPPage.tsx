@@ -92,6 +92,7 @@ interface SOP {
   signoff_request_status?: string;
   sop_signoff_request_exist?: boolean;
   completed_date?: string | null;
+  completed_employee_ids?: string[];
 }
 
 const SOPPage = () => {
@@ -102,7 +103,7 @@ const SOPPage = () => {
   const [viewingSOP, setViewingSOP] = useState<SOP | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [groupDetailsDialogOpen, setGroupDetailsDialogOpen] = useState(false);
-  const [selectedGroupsForDialog, setSelectedGroupsForDialog] = useState<any[]>([]);
+  const [selectedGroupsForDialog, setSelectedGroupsForDialog] = useState<NonNullable<SOP['assignments']>>([]);
   const [selectedSopTitleForDialog, setSelectedSopTitleForDialog] = useState<string>('');
   const [signoffDialogOpen, setSignoffDialogOpen] = useState(false);
   const [signoffSOP, setSignoffSOP] = useState<SOP | null>(null);
@@ -121,7 +122,7 @@ const SOPPage = () => {
   const canManageSOPInCurrentContext = isSuperAdmin && !isReadOnlySwitchedContext;
   const { client } = useClient();
   const [completedEmployeesDialogOpen, setCompletedEmployeesDialogOpen] = useState(false);
-  const [completedEmployees, setCompletedEmployees] = useState<any[]>([]);
+  const [completedEmployees, setCompletedEmployees] = useState<{ id: string; full_name: string; email: string }[]>([]);
   const [selectedSopForCompleted, setSelectedSopForCompleted] = useState<string>('');
   const [completedEmployeeIds, setCompletedEmployeeIds] = useState<string[]>([]);
 
@@ -140,7 +141,7 @@ const SOPPage = () => {
     limit: PAGE_SIZE,
   });
 
-  const sops: SOP[] = sopData?.data || [];
+  const sops: SOP[] = useMemo(() => sopData?.data || [], [sopData]);
   const totalCount = sopData?.pagination?.total ?? sops.length;
 
   // Stats derived from the current page response (same behaviour as before)
@@ -149,19 +150,19 @@ const SOPPage = () => {
     totalEmployeesInvolved: sops.reduce((sum, s) => sum + (s.assigned_employee_count || 0), 0),
     totalSOPsSignedOff: sops.reduce((sum, s) => sum + (s.completed_count || 0), 0),
     totalSOPsToBeDone: sops.reduce((sum, s) => sum + (s.to_be_done_count || 0), 0),
-  }), [sopData, sops]); // eslint-disable-line react-hooks/exhaustive-deps
+  }), [sopData, sops]);
 
   // Build the category filter list from page-1 data; keep it stable while paging
   useEffect(() => {
     if (currentPage === 1 && sops.length) {
       const seen = new Set<string>();
       const cats = sops
-        .filter((s: any) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
-        .map((s: any) => ({ id: s.category_id, category_name: s.category_name }))
-        .sort((a: any, b: any) => a.category_name.localeCompare(b.category_name));
+        .filter((s) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
+        .map((s) => ({ id: s.category_id, category_name: s.category_name as string }))
+        .sort((a, b) => a.category_name.localeCompare(b.category_name));
       if (cats.length) setCategories(cats);
     }
-  }, [sops, currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sops, currentPage]);
 
   // Reset to page 1 whenever filters change; React Query re-fetches automatically via key change
   useEffect(() => {
@@ -347,7 +348,15 @@ const SOPPage = () => {
     if (!resolvedClientId) return;
 
     try {
+      // sop_signoff_request isn't in the generated Supabase types yet, so `.from()`
+      // needs an escape hatch for the table name (cast through `unknown`, not `any`,
+      // for the result shape this query actually selects).
+      type SignoffRequestRow = {
+        employee_id: string;
+        employees: { id: string; first_name: string; last_name: string; email: string } | null;
+      };
       const { data, error } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from('sop_signoff_request' as any)
         .select(`
           employee_id,
@@ -360,7 +369,7 @@ const SOPPage = () => {
         `)
         .eq('sop_id', sop.id)
         .eq('client_id', resolvedClientId)
-        .eq('is_completed', true);
+        .eq('is_completed', true) as unknown as { data: SignoffRequestRow[] | null; error: { message?: string } | null };
 
       if (error) {
         toast.error('Failed to load completed employees');
@@ -368,10 +377,10 @@ const SOPPage = () => {
       }
 
       const employees =
-        data?.map((item: any) => ({
-          id: item.employees?.id,
+        data?.map((item) => ({
+          id: item.employees?.id ?? '',
           full_name: `${item.employees?.first_name || ''} ${item.employees?.last_name || ''}`,
-          email: item.employees?.email
+          email: item.employees?.email ?? ''
         })) || [];
 
       setCompletedEmployees(employees);
@@ -382,18 +391,10 @@ const SOPPage = () => {
     }
   };
 
-  const handleViewSOP = async (sop: SOP) => {
+  const handleViewSOP = (sop: SOP) => {
     setViewingSOP(sop);
+    setCompletedEmployeeIds(sop.completed_employee_ids || []);
     setViewDialogOpen(true);
-
-    const { data } = await supabase
-      .from('sop_signoff_request' as any)
-      .select('employee_id')
-      .eq('sop_id', sop.id)
-      .eq('client_id', resolvedClientId)
-      .eq('is_completed', true);
-
-    setCompletedEmployeeIds(data?.map((d) => d.employee_id) || []);
   };
 
   return (
@@ -401,7 +402,7 @@ const SOPPage = () => {
       <div className="w-full py-6">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6 mb-8">
-          <SOPHeader 
+          <SOPHeader
             onCreateSOP={handleCreateSOP}
             canCreateSOP={!isReadOnlySwitchedContext}
             onRefreshStats={() => queryClient.invalidateQueries({ queryKey: sopKeys.all })}

@@ -36,7 +36,7 @@ const IncidentConfigurationContent = () => {
   const [loading, setLoading] = useState(true);
   const { employeeData, user } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  const clientTypeId = employeeData?.clientType?.id || (user as any)?.clientType?.id;
+  const clientTypeId = employeeData?.clientType?.id || user?.clientType?.id;
 
   // Use the existing hook for categories and subcategories
   const {
@@ -50,15 +50,15 @@ const IncidentConfigurationContent = () => {
     updateSubcategory,
     deleteSubcategory,
     loadData,
-    silentRefresh,
   } = useIncidentCategories();
 
   // Fetch contributing factors
   useEffect(() => {
-    if (!employeeData?.clientId || !clientTypeId) return;
+    const clientId = employeeData?.clientId;
+    if (!clientId || !clientTypeId) return;
     async function fetchContributingFactors() {
       try {
-        const factors = await contributingFactorService.getContributingFactors(employeeData!.clientId, clientTypeId);
+        const factors = await contributingFactorService.getContributingFactors(clientId, clientTypeId);
         setContributingFactors(factors);
       } catch (error) {
         console.error('Exception fetching contributing factors:', error);
@@ -160,7 +160,7 @@ const IncidentConfigurationContent = () => {
       await contributingFactorService.deleteContributingFactor(id);
       setContributingFactors(contributingFactors.filter(factor => factor.id !== id));
       toast.success('Contributing factor deleted successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception deleting contributing factor:', error);
       const errorMessage = error?.message || 'Failed to delete contributing factor';
       // Error will be handled by the component that calls this
@@ -226,7 +226,7 @@ const IncidentConfigurationContent = () => {
       await reportTypeService.deleteReportType(id);
       setReportTypes(reportTypes.filter(type => type.id !== id));
       toast.success('Report type deleted successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception deleting report type:', error);
       const errorMessage = error?.message || 'Failed to delete report type';
       // Error will be handled by the component that calls this
@@ -320,7 +320,7 @@ const IncidentConfigurationContent = () => {
       await priorityService.deletePriority(id);
       setPriorities(priorities.filter(priority => priority.id !== id));
       toast.success('Priority deleted successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception deleting priority:', error);
       const errorMessage = error?.message || 'Failed to delete priority';
       // Error will be handled by the component that calls this
@@ -357,8 +357,8 @@ const IncidentConfigurationContent = () => {
   };
 
   const handleCategoriesUpdated = useCallback(() => {
-    silentRefresh();
-  }, [silentRefresh]);
+    loadData();
+  }, [loadData]);
 
 
   useRealTimeSubHook({

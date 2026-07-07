@@ -2,11 +2,12 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { VehicleVerificationData } from '@/types/transportSafety';
 
 interface VehicleStatusBadgeProps {
   status: 'active' | 'maintenance' | 'inactive';
   verificationStatus?: string;
-  verificationData?: any[];
+  verificationData?: VehicleVerificationData[];
   className?: string;
 }
 

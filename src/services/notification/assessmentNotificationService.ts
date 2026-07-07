@@ -15,6 +15,15 @@ interface Employee {
   status?: boolean;
 }
 
+interface AssessmentNotificationAssessment {
+  id: string;
+  title: string;
+  client_id: string;
+  created_by: string;
+  assigned_to: string;
+  target_completion_date?: string | null;
+}
+
 // Assessment notification data interface
 interface AssessmentNotificationData extends NotificationData {
   metadata: {
@@ -41,9 +50,9 @@ export class AssessmentNotificationService {
    * Queue assessment assigned notification
    */
   async queueAssessmentAssignedNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     assignedEmployee: Employee, 
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       // Validate required employee data — only id + email are required for delivery.
@@ -115,9 +124,9 @@ export class AssessmentNotificationService {
    * Queue assessment submitted notification
    */
   async queueAssessmentSubmittedNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     submittedBy: Employee, 
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const createdByEmployee = await this.getEmployeeById(assessment.created_by);
@@ -172,9 +181,9 @@ export class AssessmentNotificationService {
    * Queue assessment completed notification
    */
   async queueAssessmentCompletedNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     completedBy: Employee,
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(assessment.assigned_to);
@@ -229,10 +238,10 @@ export class AssessmentNotificationService {
    * Queue assessment rework required notification
    */
   async queueAssessmentReworkRequiredNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     requestedBy: Employee, 
     reworkReason: string,
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(assessment.assigned_to);
@@ -281,9 +290,9 @@ export class AssessmentNotificationService {
    * Queue assessment due in 5 days notification
    */
   async queueAssessmentDueReminderNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     assignedEmployee: Employee,
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const recipientDisplayName = formatEmployeeName(assignedEmployee);
@@ -328,10 +337,10 @@ export class AssessmentNotificationService {
    * Queue assessment overdue notification
    */
   async queueAssessmentOverdueNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     assignedEmployee: Employee,
     overdueDays: number,
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const recipientDisplayName = formatEmployeeName(assignedEmployee);

@@ -4,8 +4,19 @@ import {
   NotificationData,
   NotificationType
 } from '@/types/notification';
-import { Incident } from '@/types/incident';
 import { formatEmployeeName } from './formatHelpers';
+
+// Database-row shape for incidents (snake_case, as returned by Supabase)
+interface IncidentRow {
+  id: string;
+  ticket_id: string;
+  client_id: string;
+  description?: string;
+  created_at: string;
+  assigned_to?: string;
+  created_by?: string;
+  [key: string]: unknown;
+}
 
 // Define the Employee interface based on the database structure
 interface Employee {
@@ -31,7 +42,7 @@ export class IncidentNotificationService {
   /**
    * Queue incident assigned notification
    */
-  async queueIncidentAssignedNotification(incident: any, assignedEmployee: Employee, currentEmployeeData?: any): Promise<boolean> {
+  async queueIncidentAssignedNotification(incident: IncidentRow, assignedEmployee: Employee, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
     try {
       // Validate required employee data — only id + email are required for delivery.
       // first_name / last_name may legitimately be empty for shared / single-name accounts.
@@ -96,10 +107,10 @@ export class IncidentNotificationService {
    * Queue incident updated notification
    */
   async queueIncidentUpdatedNotification(
-    incident: any, 
-    updatedBy: Employee, 
+    incident: IncidentRow,
+    updatedBy: Employee,
     updateNotes?: string,
-    currentEmployeeData?: any
+    currentEmployeeData?: Record<string, unknown>
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(incident.assigned_to);
@@ -147,9 +158,9 @@ export class IncidentNotificationService {
    * Queue incident closed notification
    */
   async queueIncidentClosedNotification(
-    incident: any, 
+    incident: IncidentRow,
     closedBy: Employee,
-    currentEmployeeData?: any
+    currentEmployeeData?: Record<string, unknown>
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(incident.assigned_to);
@@ -203,10 +214,10 @@ export class IncidentNotificationService {
    * Queue incident reopened notification
    */
   async queueIncidentReopenedNotification(
-    incident: any, 
-    reopenedBy: Employee, 
+    incident: IncidentRow,
+    reopenedBy: Employee,
     reopenReason?: string,
-    currentEmployeeData?: any
+    currentEmployeeData?: Record<string, unknown>
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(incident.assigned_to);
@@ -254,9 +265,9 @@ export class IncidentNotificationService {
    * Queue incident reminder notification (for incidents open > 10 days)
    */
   async queueIncidentReminderNotification(
-    incident: any, 
+    incident: IncidentRow,
     assignedEmployee: Employee,
-    currentEmployeeData?: any
+    currentEmployeeData?: Record<string, unknown>
   ): Promise<boolean> {
     try {
       const recipientDisplayName = formatEmployeeName(assignedEmployee);
@@ -300,7 +311,7 @@ export class IncidentNotificationService {
   /**
    * Get incident recipients (assigned employee and reporter)
    */
-  private async getIncidentRecipients(incident: any): Promise<Employee[]> {
+  private async getIncidentRecipients(incident: IncidentRow): Promise<Employee[]> {
     const recipients: Employee[] = [];
 
     try {
@@ -368,23 +379,23 @@ export class IncidentNotificationService {
   }
 
   // Legacy methods for backward compatibility
-  async sendIncidentAssignedNotification(incident: any, assignedEmployee: Employee, currentEmployeeData?: any): Promise<boolean> {
+  async sendIncidentAssignedNotification(incident: IncidentRow, assignedEmployee: Employee, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
     return this.queueIncidentAssignedNotification(incident, assignedEmployee, currentEmployeeData);
   }
 
-  async sendIncidentUpdatedNotification(incident: any, updatedBy: Employee, updateNotes?: string, currentEmployeeData?: any): Promise<boolean> {
+  async sendIncidentUpdatedNotification(incident: IncidentRow, updatedBy: Employee, updateNotes?: string, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
     return this.queueIncidentUpdatedNotification(incident, updatedBy, updateNotes, currentEmployeeData);
   }
 
-  async sendIncidentClosedNotification(incident: any, closedBy: Employee, currentEmployeeData?: any): Promise<boolean> {
+  async sendIncidentClosedNotification(incident: IncidentRow, closedBy: Employee, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
     return this.queueIncidentClosedNotification(incident, closedBy, currentEmployeeData);
   }
 
-  async sendIncidentReopenedNotification(incident: any, reopenedBy: Employee, reopenReason?: string, currentEmployeeData?: any): Promise<boolean> {
+  async sendIncidentReopenedNotification(incident: IncidentRow, reopenedBy: Employee, reopenReason?: string, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
     return this.queueIncidentReopenedNotification(incident, reopenedBy, reopenReason, currentEmployeeData);
   }
 
-  async sendIncidentReminderNotification(incident: any, assignedEmployee: Employee, currentEmployeeData?: any): Promise<boolean> {
+  async sendIncidentReminderNotification(incident: IncidentRow, assignedEmployee: Employee, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
     return this.queueIncidentReminderNotification(incident, assignedEmployee, currentEmployeeData);
   }
 }

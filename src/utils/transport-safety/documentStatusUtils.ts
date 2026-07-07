@@ -13,11 +13,11 @@ export interface VerificationLogItem {
 /**
  * Get the latest verification log entry from a vehicle's verification data
  */
-export const getLatestVerificationLog = (vehicle: any) => {
+export const getLatestVerificationLog = (vehicle: Vehicle) => {
   if (!vehicle.verificationData) return null;
-  
+
   // Find the verification_log entry
-  const logEntry = vehicle.verificationData.find((item: any) => item.field === 'verification_log');
+  const logEntry = vehicle.verificationData.find((item) => item.field === 'verification_log');
   if (!logEntry || !logEntry.value) return null;
   
   // Get the timestamps from the log
@@ -49,7 +49,7 @@ export const findVerificationField = (
 export const getLatestVerificationFieldValue = (
   vehicle: Vehicle,
   fieldName: string
-): any | undefined => {
+): VehicleVerificationField['value'] | undefined => {
   if (!vehicle?.verificationData || vehicle.verificationData.length === 0) return undefined;
   const latestLog = getLatestVerificationLog(vehicle);
   if (!latestLog) return undefined;
@@ -415,8 +415,8 @@ export const getVerificationFieldLabel = (field: string): string => {
  * Returns array of { field, value, verified } objects in specified order
  */
 export const transformApiResponseData = (
-  apiResponse: any,
-  vehicleChallans?: any
+  apiResponse: Record<string, unknown>,
+  vehicleChallans?: Record<string, unknown>
 ): VehicleVerificationData[] => {
   const result: VehicleVerificationData[] = [];
 
@@ -427,20 +427,20 @@ export const transformApiResponseData = (
    * what we persist and show in history.
    */
   if (Array.isArray(apiResponse?.transformed)) {
-    const verificationLogEntry = apiResponse.transformed.find(
-      (item: any) => item?.field === 'verification_log' && item?.value
+    const verificationLogEntry = (apiResponse.transformed as VehicleVerificationField[]).find(
+      (item) => item?.field === 'verification_log' && item?.value
     );
 
     if (verificationLogEntry && verificationLogEntry.value && typeof verificationLogEntry.value === 'object') {
-      const timestamps = Object.keys(verificationLogEntry.value);
+      const timestamps = Object.keys(verificationLogEntry.value as Record<string, unknown>);
 
       if (timestamps.length > 0) {
         // Use the latest log entry
         timestamps.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-        const latestLog = verificationLogEntry.value[timestamps[0]] as VehicleVerificationField[] | undefined;
+        const latestLog = (verificationLogEntry.value as Record<string, unknown>)[timestamps[0]] as VehicleVerificationField[] | undefined;
 
         if (Array.isArray(latestLog)) {
-          const fieldMap = new Map<VerificationFieldKey, any>();
+          const fieldMap = new Map<VerificationFieldKey, VehicleVerificationField['value']>();
 
           // Collect only allowed fields from the latest log
           latestLog.forEach((item) => {
@@ -471,16 +471,16 @@ export const transformApiResponseData = (
    */
   if (result.length === 0) {
     // Get RC data from API response
-    let rcData: any = null;
+    let rcData: Record<string, unknown> | null = null;
 
-    if (apiResponse?.original?.data) {
-      rcData = apiResponse.original.data;
+    if (apiResponse?.original && typeof apiResponse.original === 'object' && (apiResponse.original as Record<string, unknown>).data) {
+      rcData = (apiResponse.original as Record<string, unknown>).data as Record<string, unknown>;
     } else if (apiResponse?.data) {
-      rcData = apiResponse.data;
+      rcData = apiResponse.data as Record<string, unknown>;
     }
 
     if (rcData && typeof rcData === 'object') {
-      const fieldMap = new Map<VerificationFieldKey, any>();
+      const fieldMap = new Map<VerificationFieldKey, VehicleVerificationField['value']>();
 
       Object.entries(rcData).forEach(([key, value]) => {
         const fieldLower = key.toLowerCase();
@@ -494,7 +494,7 @@ export const transformApiResponseData = (
         }
 
         if (isVerificationFieldKey(key)) {
-          fieldMap.set(key, value);
+          fieldMap.set(key, value as VehicleVerificationField['value']);
         }
       });
 
@@ -509,21 +509,22 @@ export const transformApiResponseData = (
       });
     }
   }
-  
+
   // Add challan_details from vehicle_challans if available
   if (vehicleChallans?.latest_challan_data) {
-    const challanData = vehicleChallans.latest_challan_data;
-    let challanDetails: any = null;
-    
-    if (challanData?.data?.challan_details) {
+    const challanData = vehicleChallans.latest_challan_data as Record<string, unknown>;
+    let challanDetails: Record<string, unknown> | null = null;
+
+    const challanDataInner = challanData?.data as Record<string, unknown> | undefined;
+    if (challanDataInner?.challan_details) {
       challanDetails = {
-        challan_details: challanData.data.challan_details
+        challan_details: challanDataInner.challan_details
       };
-    } else if (challanData?.data?.challan_data) {
+    } else if (challanDataInner?.challan_data) {
       challanDetails = {
         challan_details: {
-          challans: Array.isArray(challanData.data.challan_data) 
-            ? challanData.data.challan_data 
+          challans: Array.isArray(challanDataInner.challan_data)
+            ? challanDataInner.challan_data
             : []
         }
       };
@@ -532,7 +533,7 @@ export const transformApiResponseData = (
         challan_details: challanData.challan_details
       };
     }
-    
+
     if (challanDetails) {
       result.push({
         field: 'challan_details',
@@ -558,39 +559,40 @@ export const transformVehicleData = (
   const result: VehicleVerificationData[] = [];
   
   // Get RC data from current_rc_data (preferred) or fallback to verificationData
-  let rcData: any = null;
-  
+  let rcData: Record<string, unknown> | null = null;
+
   if (vehicle.currentRcData) {
     // current_rc_data might be:
     // 1. Full API response: { success: true, data: { ... } } or { status_code: 200, data: { ... } }
     // 2. Just the data object: { ... }
     // 3. Already the data object nested: { data: { ... } }
-    
-    if (vehicle.currentRcData.data && typeof vehicle.currentRcData.data === 'object') {
+    const rc = vehicle.currentRcData;
+    if (rc.data && typeof rc.data === 'object') {
       // Case 1 & 3: Has nested data property
-      rcData = vehicle.currentRcData.data;
-    } else if (vehicle.currentRcData.success !== undefined || vehicle.currentRcData.status_code !== undefined) {
+      rcData = rc.data as Record<string, unknown>;
+    } else if (rc.success !== undefined || rc.status_code !== undefined) {
       // Case 1: Full API response but data might be at root level
-      rcData = vehicle.currentRcData.data || vehicle.currentRcData;
+      rcData = (rc.data as Record<string, unknown> | undefined) ?? rc;
     } else {
       // Case 2: Already the data object
-      rcData = vehicle.currentRcData;
+      rcData = rc;
     }
   } else if (vehicle.verificationData && Array.isArray(vehicle.verificationData)) {
     // Fallback: try to reconstruct from verificationData
     const latestLog = getLatestVerificationLog(vehicle);
     if (latestLog) {
       // Convert array format to object format
-      rcData = {};
-      latestLog.forEach((item: VehicleVerificationField) => {
-        if (item.field !== 'challan_details' && 
-            item.field !== 'verification_log' && 
-            item.field !== 'last_response' && 
+      const reconstructed: Record<string, unknown> = {};
+      (latestLog as VehicleVerificationField[]).forEach((item) => {
+        if (item.field !== 'challan_details' &&
+            item.field !== 'verification_log' &&
+            item.field !== 'last_response' &&
             item.field !== 'status' &&
             item.field !== 'rc_history_log') {
-          rcData[item.field] = item.value;
+          reconstructed[item.field] = item.value;
         }
       });
+      rcData = reconstructed;
     }
   }
 
@@ -605,7 +607,7 @@ export const transformVehicleData = (
       'response_metadata', // Exclude response_metadata as per user request
     ];
 
-    const fieldMap = new Map<VerificationFieldKey, any>();
+    const fieldMap = new Map<VerificationFieldKey, VehicleVerificationField['value']>();
 
     Object.entries(rcData).forEach(([key, value]) => {
       const fieldLower = key.toLowerCase();
@@ -621,20 +623,20 @@ export const transformVehicleData = (
       }
 
       if (isVerificationFieldKey(key)) {
-        fieldMap.set(key, value);
+        fieldMap.set(key, value as VehicleVerificationField['value']);
       }
     });
 
     // Ensure rc_status is available even if it's stored outside the filtered rcData
     if (!fieldMap.has('rc_status')) {
       const possibleRcStatus =
-        (rcData as any).rc_status ??
-        (vehicle as any)?.currentRcData?.rc_status ??
-        (vehicle as any)?.rcStatus ??
+        rcData.rc_status ??
+        vehicle.currentRcData?.rc_status ??
+        vehicle.rcStatus ??
         null;
 
       if (possibleRcStatus !== null && possibleRcStatus !== undefined && possibleRcStatus !== '') {
-        fieldMap.set('rc_status', possibleRcStatus);
+        fieldMap.set('rc_status', possibleRcStatus as VehicleVerificationField['value']);
       }
     }
 
@@ -653,25 +655,26 @@ export const transformVehicleData = (
   // Add challan_details from vehicle_challans table
   if (vehicle.vehicleChallans?.latest_challan_data) {
     const challanData = vehicle.vehicleChallans.latest_challan_data;
-    
+
     // Extract challan_details from different possible structures
-    let challanDetails: any = null;
-    
-    if (challanData?.data?.challan_details) {
+    let challanDetails: Record<string, unknown> | null = null;
+
+    const challanDataInner = (challanData as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
+    if (challanDataInner?.challan_details) {
       challanDetails = {
-        challan_details: challanData.data.challan_details
+        challan_details: challanDataInner.challan_details
       };
-    } else if (challanData?.data?.challan_data) {
+    } else if (challanDataInner?.challan_data) {
       challanDetails = {
         challan_details: {
-          challans: Array.isArray(challanData.data.challan_data) 
-            ? challanData.data.challan_data 
+          challans: Array.isArray(challanDataInner.challan_data)
+            ? challanDataInner.challan_data
             : []
         }
       };
-    } else if (challanData?.challan_details) {
+    } else if ((challanData as Record<string, unknown>)?.challan_details) {
       challanDetails = {
-        challan_details: challanData.challan_details
+        challan_details: (challanData as Record<string, unknown>).challan_details
       };
     }
 

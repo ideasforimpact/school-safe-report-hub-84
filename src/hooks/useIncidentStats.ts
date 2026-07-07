@@ -37,9 +37,9 @@ export const useIncidentStats = () => {
         setError(null);
         const incidentStats = await incidentDataService.getIncidentStats(clientId);
         setStats(incidentStats);
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error fetching incident stats:', err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
       }

@@ -87,7 +87,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   
   // Get client ID and type from auth context
   const { employeeData, user } = useAuth();
-  const clientTypeId = employeeData?.clientType?.id || (user as any)?.clientType?.id;
+  const clientTypeId = employeeData?.clientType?.id || user?.clientType?.id;
   // Use the hook to get priorities filtered by client type
   const { priorities, loading, refetch } = usePriorities(clientTypeId);
   const [priorityReferences, setPriorityReferences] = useState<Record<string, IncidentReferenceCheck>>({});
@@ -153,21 +153,15 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         employeeData?.clientId,
         clientTypeId
       );
+      await refetch();
       setNewPriorityName('');
       setNewPriorityDescription('');
       setNewPriorityColor('#10B981');
       setNewPriorityWeight('0');
       setIsAddDialogOpen(false);
-      // Refresh data immediately
-      await refetch();
-      toast.success('Priority added successfully');
-    } catch (error: any) {
-      console.error('Error adding priority:', error);
-      setError(error.message || 'Failed to add priority');
-      // Don't close the dialog when there's an error - keep it open so user can see the error message
-    } finally {
-      setIsSaving(false);
-    }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to add priority');
+    } finally { setIsSaving(false); }
   };
 
   const handleEditPriority = async () => {
@@ -182,27 +176,13 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     }
 
     try {
-      setError(null);
-      setIsSaving(true);
-      await priorityService.updatePriority(
-        selectedPriority.id,
-        editPriorityName.trim(), 
-        editPriorityDescription.trim(), 
-        editPriorityColor, 
-        parseInt(editPriorityWeight) || 0
-      );
-      setIsEditDialogOpen(false);
-      setSelectedPriority(null);
-      // Refresh data immediately
+      setError(null); setIsSaving(true);
+      await priorityService.updatePriority(selectedPriority.id, editPriorityName.trim(), editPriorityDescription.trim(), editPriorityColor, parseInt(editPriorityWeight) || 0);
       await refetch();
-      toast.success('Priority updated successfully');
-    } catch (error: any) {
-      console.error('Error updating priority:', error);
-      setError(error.message || 'Failed to update priority');
-      // Don't close the dialog when there's an error - keep it open so user can see the error message
-    } finally {
-      setIsSaving(false);
-    }
+      setIsEditDialogOpen(false); setSelectedPriority(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update priority');
+    } finally { setIsSaving(false); }
   };
 
   const handleEditClick = (priority: PriorityItem) => {
@@ -242,11 +222,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
           // Refresh data immediately
           await refetch();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
-          toast.success(`Priority ${newStatus ? 'activated' : 'deactivated'} successfully`);
-        } catch (error: any) {
-          console.error('Error toggling priority status:', error);
-          const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} priority`;
-          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
+        } catch (error) {
+          setConfirmationDialog(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Failed', isLoading: false }));
         }
       },
     });
@@ -272,11 +249,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
           // Refresh data immediately
           await refetch();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
-          toast.success('Priority deleted successfully');
-        } catch (error: any) {
-          console.error('Error deleting priority:', error);
-          const errorMessage = error?.message || 'Failed to delete priority';
-          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
+        } catch (error) {
+          setConfirmationDialog(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Failed to delete', isLoading: false }));
         }
       },
     });

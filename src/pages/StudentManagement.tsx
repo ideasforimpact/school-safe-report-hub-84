@@ -4,14 +4,14 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useAuth } from '@/contexts/auth';
 import { Student } from '@/types/student';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PlusCircle, UserSearch, FileUp, Search, RefreshCw, X } from 'lucide-react';
+import { PlusCircle, UserSearch, FileUp, RefreshCw, X } from 'lucide-react';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import StudentsList from '@/components/students/StudentsList';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import EditStudentDialog from '@/components/students/EditStudentDialog';
 import ImportStudentDialog from '@/components/students/ImportStudentDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { fetchStudentsByClientId } from '@/services/student/fetchStudentService';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,10 +36,10 @@ interface StudentManagementProps {
 }
 
 const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
-  const { students, deleteStudent, refreshStudents, isLoading } = useStudents();
+  const { students, totalStudents, deleteStudent, refreshStudents, isLoading } = useStudents();
   const { employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
   const [campusFilter, setCampusFilter] = useState('all');
@@ -53,11 +53,18 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  
+  // Fetch students with current pagination and filters
   useEffect(() => {
     if (employeeData?.clientId) {
-      refreshStudents(); 
+      // Small debounce for filters/pagination changes as well
+      const timer = setTimeout(() => {
+        refreshStudents(currentPage, itemsPerPage, debouncedSearchQuery, gradeFilter, sectionFilter, campusFilter);
+      }, 50);
+      
+      return () => clearTimeout(timer);
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, refreshStudents, currentPage, itemsPerPage, debouncedSearchQuery, gradeFilter, sectionFilter, campusFilter]);
   
   const handleEditClick = (student: Student) => {
     if (isReadOnlySwitchedContext) {
@@ -97,6 +104,8 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       setIsDeleting(true);
       try {
         await deleteStudent(studentToDelete);
+        // After deletion, if we're on a page that might now be empty, we might need to go back
+        // But for now, refreshStudents will be called via realtime or manually
       } catch (error) {
         console.error('Delete error:', error);
       } finally {
@@ -119,7 +128,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       
       // Refresh the students list after successful import
       console.log('Import completed, refreshing student list...');
-      await refreshStudents();
+      await refreshStudents(currentPage, itemsPerPage, debouncedSearchQuery, gradeFilter, sectionFilter, campusFilter);
       
       toast.success("Students imported successfully");
       setIsImportDialogOpen(false);
@@ -129,42 +138,23 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
     }
   };
 
-  // Filter students based on search query and filters
-  const filteredStudents = useMemo(() => {
-    return students.filter(student => {
-      const matchesSearch = 
-        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.grade.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.campus.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesGrade = gradeFilter === 'all' || student.grade === gradeFilter;
-      const matchesSection = sectionFilter === 'all' || student.section === sectionFilter;
-      const matchesCampus = campusFilter === 'all' || student.campus === campusFilter;
-      
-      return matchesSearch && matchesGrade && matchesSection && matchesCampus;
-    });
-  }, [students, searchQuery, gradeFilter, sectionFilter, campusFilter]);
+  // With server-side pagination/filtering, filteredStudents is just the students from context
+  const filteredStudents = students;
 
-  // Pagination logic
-  const totalItems = filteredStudents.length;
+  // Pagination logic using total count from server
+  const totalItems = totalStudents;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   
-  const paginatedStudents = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredStudents.slice(startIndex, endIndex);
-  }, [filteredStudents, currentPage, itemsPerPage]);
+  const paginatedStudents = students;
 
-  // Reset to first page when filters change
+  // Reset to first page when search or filters change (but NOT itemsPerPage)
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, gradeFilter, sectionFilter, campusFilter, itemsPerPage]);
+  }, [debouncedSearchQuery, gradeFilter, sectionFilter, campusFilter]);
 
   // Clear all filters
   const clearAllFilters = () => {
-    setSearchQuery('');
+    setDebouncedSearchQuery('');
     setGradeFilter('all');
     setSectionFilter('all');
     setCampusFilter('all');
@@ -173,7 +163,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
 
   // Get active filters count
   const activeFiltersCount = [
-    searchQuery ? 1 : 0,
+    debouncedSearchQuery ? 1 : 0,
     gradeFilter !== 'all' ? 1 : 0,
     sectionFilter !== 'all' ? 1 : 0,
     campusFilter !== 'all' ? 1 : 0,
@@ -226,7 +216,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   }, [refreshStudents]);
 
   // Handle realtime grades updates
-  const handleGradeUpdate = useCallback(async (payload: any) => {
+  const handleGradeUpdate = useCallback(async (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
     console.log('[Realtime] ===== Grade update handler called =====');
     console.log('[Realtime] Full payload:', JSON.stringify(payload, null, 2));
     console.log('[Realtime] Payload keys:', Object.keys(payload));
@@ -272,7 +262,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   }, [clientId, refreshStudents, showToast]);
 
   // Handle realtime sections updates
-  const handleSectionUpdate = useCallback(async (payload: any) => {
+  const handleSectionUpdate = useCallback(async (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
     console.log('[Realtime] Section update payload received:', payload);
     
     const updatedSection = payload.new;
@@ -306,7 +296,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   }, [clientId, refreshStudents, showToast]);
 
   // Handle realtime campuses updates
-  const handleCampusUpdate = useCallback(async (payload: any) => {
+  const handleCampusUpdate = useCallback(async (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
     console.log('[Realtime] Campus update payload received:', payload);
     
     const updatedCampus = payload.new;
@@ -464,17 +454,13 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
         <CardContent className="pb-4">
           <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full mb-4">
             {/* Search Bar */}
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by name, student ID, grade, section, or campus..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-10"
-                />
-              </div>
-            </div>
+            <DebouncedSearchInput
+              value={debouncedSearchQuery}
+              onChange={setDebouncedSearchQuery}
+              placeholder="Search by name, student ID, grade, section, or campus..."
+              className="flex-1 max-w-md"
+              triggerOnEnter
+            />
             
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
@@ -532,12 +518,6 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
             </div>
           </div>
           
-          {/* Student count after search and filters */}
-          <div className="mb-6">
-            <p className="text-sm text-gray-600">
-              Showing {filteredStudents.length} of {students.length} students
-            </p>
-          </div>
           
           {isLoading ? (
             <div className="flex justify-center py-8">
@@ -548,6 +528,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
               {filteredStudents && filteredStudents.length > 0 ? (
                 <StudentsList
                   students={paginatedStudents}
+                  totalStudents={totalStudents}
                   onEditClick={handleEditClick}
                   onDeleteStudent={handleDeleteClick}
                   canManageStudents={!isReadOnlySwitchedContext}
@@ -559,7 +540,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                 />
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  {searchQuery || gradeFilter !== 'all' || sectionFilter !== 'all' || campusFilter !== 'all' ? 'No students found matching your filters.' : 'No students found.'}
+                  {debouncedSearchQuery || gradeFilter !== 'all' || sectionFilter !== 'all' || campusFilter !== 'all' ? 'No students found matching your filters.' : 'No students found.'}
                 </div>
               )}
             </div>

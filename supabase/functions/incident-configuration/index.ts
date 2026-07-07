@@ -64,7 +64,7 @@ serve(async (req) => {
       case "checkDuplicate":
         return json({ data: await checkDuplicate(supabase, typedResource, clientId, payload.name, { categoryId, excludeId }) });
       case "create":
-        return json({ data: await createItem(supabase, typedResource, clientId, payload) });
+        return json({ data: await createItem(supabase, typedResource, clientId, payload, body.clientTypeId) });
       case "update":
         return json({ data: await updateItem(supabase, typedResource, clientId, id, payload, categoryId) });
       case "delete":
@@ -171,7 +171,7 @@ async function checkDuplicate(
   return (data ?? []).length > 0;
 }
 
-async function createItem(supabase: any, resource: Resource, clientId: string, payload: Record<string, unknown>) {
+async function createItem(supabase: any, resource: Resource, clientId: string, payload: Record<string, unknown>, clientTypeId?: string) {
   const name = String(payload.name ?? "").trim();
   if (!name) throw new Error("Name cannot be empty");
   if (resource === "subcategories" && !payload.categoryId) {
@@ -183,7 +183,7 @@ async function createItem(supabase: any, resource: Resource, clientId: string, p
   });
   if (duplicate) throw new Error(duplicateMessage(resource));
 
-  const record = buildRecord(resource, payload, clientId, name);
+  const record = buildRecord(resource, payload, clientId, name, clientTypeId);
   const { data, error } = await supabase
     .from(resourceConfig[resource].table)
     .insert(record)
@@ -286,12 +286,19 @@ async function toggleStatus(supabase: any, resource: Resource, clientId: string,
   return data;
 }
 
-function buildRecord(resource: Resource, payload: Record<string, unknown>, clientId: string, name: string) {
+function buildRecord(resource: Resource, payload: Record<string, unknown>, clientId: string, name: string, clientTypeId?: string) {
   const base: Record<string, unknown> = {
     name,
     description: payload.description || null,
     client_id: clientId,
   };
+
+  // Only set on create (clientTypeId is only passed there) — categories/subcategories/
+  // priorities/reportTypes are scoped by client_type_id so items created for one
+  // client type don't leak into another type's list for the same client.
+  if (clientTypeId) {
+    base.client_type_id = clientTypeId;
+  }
 
   if (resource === "categories" || resource === "subcategories") {
     base.is_active = true;

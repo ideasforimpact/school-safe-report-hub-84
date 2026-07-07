@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Download, Eye, ImageIcon, Video, File, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
   const { documents: hookDocuments, loadDocuments, deleteDocument } = useIncidentDocuments();
 
-  const loadAllDocuments = async () => {
+  const loadAllDocuments = useCallback(async () => {
     if (!incidentId) return;
     
     setIsLoadingDocs(true);
@@ -53,13 +53,13 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
     } finally {
       setIsLoadingDocs(false);
     }
-  };
+  }, [incidentId]);
 
   useEffect(() => {
     if (incidentId && !propDocuments) {
       loadAllDocuments();
     }
-  }, [incidentId, propDocuments]);
+  }, [incidentId, propDocuments, loadAllDocuments]);
 
   // Use prop documents if provided, otherwise use aggregated documents
   const documents = propDocuments || allDocuments;

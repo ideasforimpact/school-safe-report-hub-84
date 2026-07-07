@@ -7,7 +7,7 @@ interface AuditPayload {
   provider: Provider;
   statusCode?: number;
   message?: string;
-  response?: any;
+  response?: unknown;
   /** Optional: related document type (employee_document_type.id) */
   documentTypeId?: string;
   /** Optional: human-readable document type name (e.g. AADHAAR, PAN, DL, VOTER_ID) */
@@ -149,9 +149,9 @@ export async function logVerificationError(
 
   // Detect both-provider fallback from audit log when not provided in payload (default false)
   const providers = new Set<string>();
-  Object.values(updatedAuditLog).forEach((entries: any) => {
+  Object.values(updatedAuditLog).forEach((entries: unknown) => {
     if (Array.isArray(entries)) {
-      entries.forEach((entry) => {
+      entries.forEach((entry: { provider?: string }) => {
         if (entry?.provider) providers.add(entry.provider);
       });
     }

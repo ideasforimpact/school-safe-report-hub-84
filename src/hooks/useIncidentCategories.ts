@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { categoryService, CategoryItem, SubcategoryItem } from '@/services/incident/categoryService';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
@@ -11,57 +11,52 @@ export function useIncidentCategories() {
   const { employeeData, user } = useAuth();
 
   // Load categories and subcategories on mount
-  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? undefined;
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? undefined;
 
-  const fetchAndApply = async () => {
-    if (!employeeData?.clientId || !clientTypeId) return;
+  // Single edge-function call fetches all incident config data from the server
+  const loadData = useCallback(async () => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
 
-    const [categoriesData, subcategoriesData] = await Promise.all([
-      categoryService.getCategories(employeeData.clientId, clientTypeId),
-      categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId),
-    ]);
-
-    setCategories(categoriesData);
-
-    const mappings: Record<string, SubcategoryItem[]> = {};
-    subcategoriesData.forEach(sub => {
-      if (sub.category_id) {
-        if (!mappings[sub.category_id]) mappings[sub.category_id] = [];
-        mappings[sub.category_id].push(sub);
-      }
-    });
-    setSubcategoryMappings(mappings);
-  };
-
-  const loadData = async () => {
     try {
       setLoading(true);
       if (!employeeData?.clientId || !clientTypeId) {
         toast.error('Client information not available');
         return;
       }
-      await fetchAndApply();
+
+      const [categoriesData, subcategoriesData] = await Promise.all([
+        categoryService.getCategories(employeeData.clientId, clientTypeId),
+        categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId),
+      ]);
+
+      setCategories(categoriesData);
+      
+      // Group subcategories by category_id
+      const mappings: Record<string, SubcategoryItem[]> = {};
+      subcategoriesData.forEach(sub => {
+        if (sub.category_id) {
+          if (!mappings[sub.category_id]) {
+            mappings[sub.category_id] = [];
+          }
+          mappings[sub.category_id].push(sub);
+        }
+      });
+      
+      setSubcategoryMappings(mappings);
     } catch (error) {
       console.error('Error loading categories and subcategories:', error);
       toast.error('Failed to load categories and subcategories');
     } finally {
       setLoading(false);
     }
-  };
-
-  // Silent refresh: re-fetches data without showing the full-page loader.
-  // Used by real-time subscriptions so CRUD operations don't unmount the UI.
-  const silentRefresh = async () => {
-    try {
-      await fetchAndApply();
-    } catch (error) {
-      console.error('Error refreshing categories and subcategories:', error);
-    }
-  };
+  }, [employeeData?.clientId, clientTypeId]);
 
   useEffect(() => {
     loadData();
-  }, [employeeData?.clientId, clientTypeId]);
+  }, [employeeData?.clientId, loadData]);
 
   // Category operations
   const addCategory = async (name: string) => {
@@ -94,7 +89,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Category added successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding category:', error);
       // The service already shows the error toast, so we don't need to show another one
       throw error; // Re-throw to let the component handle it
@@ -131,7 +126,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Category updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating category:', error);
       // The service already shows the error toast, so we don't need to show another one
       throw error; // Re-throw to let the component handle it
@@ -179,9 +174,8 @@ export function useIncidentCategories() {
       setSubcategoryMappings(mappings);
       console.log('Hook: State updated successfully');
       toast.success('Category deleted successfully');
-    } catch (error: any) {
-      console.error('Hook: Error deleting category:', error);
-      // Re-throw the error so the component can handle it and show the specific error message
+    } catch (error) {
+      console.error('Error deleting category:', error);
       throw error;
     }
   };
@@ -212,7 +206,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Subcategory added successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding subcategory:', error);
       // The service already shows the error toast, so we don't need to show another one
       throw error; // Re-throw to let the component handle it
@@ -244,7 +238,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Subcategory updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating subcategory:', error);
       // The service already shows the error toast, so we don't need to show another one
       throw error; // Re-throw to let the component handle it
@@ -276,7 +270,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Subcategory deleted successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting subcategory:', error);
       // Re-throw the error so the component can handle it and show the specific error message
       throw error;
@@ -293,7 +287,6 @@ export function useIncidentCategories() {
     addSubcategory,
     updateSubcategory,
     deleteSubcategory,
-    loadData,
-    silentRefresh
+    loadData
   };
 }

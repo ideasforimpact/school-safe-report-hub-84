@@ -39,7 +39,7 @@ export const categoryService = {
       }
 
       return data && data.length > 0;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking duplicate category:', error);
       return false;
     }
@@ -66,7 +66,7 @@ export const categoryService = {
       }
 
       return data && data.length > 0;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking duplicate subcategory:', error);
       return false;
     }
@@ -81,6 +81,7 @@ export const categoryService = {
       let query = supabase
         .from('incident_categories')
         .select('*')
+        .eq('client_id', clientId)
         .order('name');
 
       if (clientTypeId) {
@@ -94,7 +95,7 @@ export const categoryService = {
       }
 
       return categories as CategoryItem[];
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error(`Failed to fetch categories: ${error.message}`);
       return [];
@@ -117,10 +118,11 @@ export const categoryService = {
       if (isDuplicate) {
         throw new Error('A category with this name already exists');
       }
+
       const { data, error } = await supabase
         .from('incident_categories')
         .insert([
-          { name: trimmedName, description: description || null, client_id: clientId, is_active: true, client_type_id: clientTypeId || null }
+          { name: trimmedName, description: description || null, client_id: clientId, client_type_id: clientTypeId || null, is_active: true }
         ])
         .select();
 
@@ -129,7 +131,7 @@ export const categoryService = {
       }
 
       return data[0] as CategoryItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding category:', error);
       toast.error(`Failed to add category: ${error.message}`);
       throw error;
@@ -164,7 +166,7 @@ export const categoryService = {
       }
 
       return data[0] as CategoryItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating category:', error);
       toast.error(`Failed to update category: ${error.message}`);
       throw error;
@@ -214,7 +216,7 @@ export const categoryService = {
 
       console.log('Category deleted successfully');
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting category:', error);
       // Don't show toast here - let the UI component handle the error display
       throw error;
@@ -247,7 +249,7 @@ export const categoryService = {
       }
 
       return subcategories as SubcategoryItem[];
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching subcategories:', error);
       toast.error(`Failed to fetch subcategories: ${error.message}`);
       return [];
@@ -279,8 +281,8 @@ export const categoryService = {
             category_id: categoryId,
             description: description || null,
             client_id: clientId,
-            is_active: true,
-            client_type_id: clientTypeId || null
+            client_type_id: clientTypeId || null,
+            is_active: true
           }
         ])
         .select();
@@ -290,7 +292,7 @@ export const categoryService = {
       }
 
       return data[0] as SubcategoryItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding subcategory:', error);
       toast.error(`Failed to add subcategory: ${error.message}`);
       throw error;
@@ -331,8 +333,8 @@ export const categoryService = {
         }
       }
 
-      let updateData: any = { name: trimmedName, description: description || null };
-      
+      const updateData: { name: string; description: string | null; category_id?: string } = { name: trimmedName, description: description || null };
+
       if (categoryId) {
         updateData.category_id = categoryId;
       }
@@ -353,7 +355,7 @@ export const categoryService = {
       }
 
       return data[0] as SubcategoryItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating subcategory:', error);
       toast.error(`Failed to update subcategory: ${error.message}`);
       throw error;
@@ -384,7 +386,7 @@ export const categoryService = {
       }
 
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting subcategory:', error);
       // Don't show toast here - let the UI component handle the error display
       throw error;

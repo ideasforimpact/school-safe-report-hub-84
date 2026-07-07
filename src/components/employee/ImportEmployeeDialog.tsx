@@ -37,7 +37,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         return await file.arrayBuffer();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.warn(`Read attempt ${attempt} failed`, err);
         if (attempt === retries) throw err;
         await new Promise(res => setTimeout(res, delay));
@@ -61,10 +61,10 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       setValidationWarnings([]);
 
       toast.success("File uploaded successfully.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Could not read file:", err);
 
-      if (err?.name === "NotReadableError") {
+      if ((err as Error)?.name === "NotReadableError") {
         toast.error("The file is temporarily locked by Excel. Please wait 1–2 seconds and try again.");
       } else {
         toast.error("Failed to load file. Please try again.");
