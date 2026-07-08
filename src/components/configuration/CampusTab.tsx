@@ -75,19 +75,13 @@ export const CampusTab = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          campuses.map(async (campus) => {
-            const refInfo = await incidentReferenceService.checkLocationReferences(campus.id, clientId);
-            return { id: campus.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          campuses.map((campus) => ({ type: 'location' as const, id: campus.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setCampusReferences(map);
       } catch (error) {
         console.error('Error preloading campus reference info:', error);

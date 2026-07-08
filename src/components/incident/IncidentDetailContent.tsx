@@ -12,7 +12,6 @@ import InlineCommentForm from './CommentForm.inline';
 import SupportingDocuments from './SupportingDocuments';
 import AuditTrail from '@/components/AuditTrail';
 import { Incident, Comment as IncidentComment, FileItem } from '@/types/incident';
-import { IncidentDocument } from '@/services/incident/incidentDocumentService';
 import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { formatUserFullName } from '@/utils/userUtils';
@@ -117,17 +116,6 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   // Use currentIncident instead of incident for display
   const displayIncident = currentIncident;
 
-  // Convert incident documents to the expected format
-  const convertedDocuments: IncidentDocument[] = (displayIncident.documents || []).map((doc: Partial<IncidentDocument> & { data?: string }) => ({
-    id: doc.id || crypto.randomUUID(),
-    name: doc.name || 'Unknown Document',
-    type: doc.type || 'application/octet-stream',
-    size: doc.size || 0,
-    url: doc.url || doc.data || '',
-    path: doc.path || '',
-    uploadedAt: doc.uploadedAt || new Date().toISOString()
-  }));
-
   // Determine if user can upload documents (admin users)
   const canUploadDocuments = isAdmin && !isReadOnly;
 
@@ -171,6 +159,8 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         <TabsContent value="documents" className="mt-6">
           <SupportingDocuments
             incidentId={displayIncident.id}
+            rawDocuments={displayIncident.documents}
+            rawComments={displayIncident.comments}
             canDelete={isAdmin && !isReadOnly}
             canUpload={canUploadDocuments}
             onDocumentDeleted={onRefreshIncident}

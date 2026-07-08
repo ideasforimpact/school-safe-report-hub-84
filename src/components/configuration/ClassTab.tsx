@@ -73,19 +73,13 @@ export const ClassTab = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          classes.map(async (cls) => {
-            const refInfo = await incidentReferenceService.checkGradeReferences(cls.id, clientId);
-            return { id: cls.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          classes.map((cls) => ({ type: 'grade' as const, id: cls.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setGradeReferences(map);
       } catch (error) {
         console.error('Error preloading grade reference info:', error);
@@ -351,12 +345,15 @@ export const ClassTab = ({
             )}
           </div>
           <div className="w-48">
-            <Select value={filterCampusId} onValueChange={setFilterCampusId}>
+            <Select
+              value={filterCampusId || 'all'}
+              onValueChange={(value) => setFilterCampusId(value === 'all' ? '' : value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder={`Filter by ${s.campus.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All {s.campusPlural.toLowerCase()}</SelectItem>
+                <SelectItem value="all">All {s.campusPlural.toLowerCase()}</SelectItem>
                 {campuses.map((campus) => (
                   <SelectItem key={campus.id} value={campus.id}>
                     {campus.name}

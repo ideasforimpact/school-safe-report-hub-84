@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText, Download, X, Eye } from 'lucide-react';
+import { Edit, Trash2, UserX, UserCheck, Loader2, AlertCircle, FileText, Download, X, Eye } from 'lucide-react';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Badge } from '@/components/ui/badge';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
@@ -101,19 +102,13 @@ const UserList = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          users.map(async (user) => {
-            const refInfo = await incidentReferenceService.checkEmployeeReferences(user.id, clientId);
-            return { id: user.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          users.map((user) => ({ type: 'employee' as const, id: user.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setEmployeeReferences(map);
       } catch (error) {
         console.error('Error preloading employee reference info:', error);
@@ -649,88 +644,15 @@ const UserList = ({
 
     {/* Pagination Controls */}
     {totalItems > 0 && (
-      <div className="flex items-center justify-center space-x-6 lg:space-x-8 py-4">
-          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-            Page {currentPage} of {totalPages}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => handlePageChange(1)}
-              disabled={currentPage === 1}
-            >
-              <span className="sr-only">Go to first page</span>
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <span className="sr-only">Go to previous page</span>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            
-            {/* Page Numbers */}
-            <div className="flex items-center space-x-1">
-              {Array.from({ length: totalPages }, (_, index) => {
-                const pageNumber = index + 1;
-                const isCurrentPage = pageNumber === currentPage;
-                
-                // Show first page, last page, current page, and pages around current page
-                const shouldShow = 
-                  pageNumber === 1 || 
-                  pageNumber === totalPages || 
-                  (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1);
-                
-                if (!shouldShow) {
-                  // Show ellipsis if there's a gap
-                  if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
-                    return (
-                      <span key={`ellipsis-${pageNumber}`} className="px-2 text-sm text-gray-500">
-                        ...
-                      </span>
-                    );
-                  }
-                  return null;
-                }
-                
-                return (
-                  <Button
-                    key={pageNumber}
-                    variant={isCurrentPage ? "default" : "outline"}
-                    className="h-8 w-8 p-0"
-                    onClick={() => handlePageChange(pageNumber)}
-                  >
-                    {pageNumber}
-                  </Button>
-                );
-              })}
-            </div>
-            
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <span className="sr-only">Go to next page</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => handlePageChange(totalPages)}
-              disabled={currentPage === totalPages}
-            >
-              <span className="sr-only">Go to last page</span>
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <TablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalItems}
+        pageSize={itemsPerPage}
+        itemLabel="users"
+        onPageChange={handlePageChange}
+      />
+    )}
 
       <Dialog open={!!documentDialogUser} onOpenChange={(open) => !open && setDocumentDialogUser(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">

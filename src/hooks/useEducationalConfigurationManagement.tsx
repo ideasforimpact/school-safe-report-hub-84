@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ConfigItem, CampusItem, ClassItem, SectionItem } from '@/contexts/types';
@@ -28,105 +28,141 @@ export function useEducationalConfigurationManagement() {
     }
   }, [searchParams]);
 
+  // Dedupes overlapping calls (e.g. React.StrictMode's dev double-invoke, or this
+  // hook's own mount effect firing all four fetches while a realtime-triggered
+  // refetch is already in flight) without blocking legitimate sequential re-fetches.
+  const campusesInflightRef = useRef<Promise<void> | null>(null);
+  const classesInflightRef = useRef<Promise<void> | null>(null);
+  const sectionsInflightRef = useRef<Promise<void> | null>(null);
+  const facilitiesInflightRef = useRef<Promise<void> | null>(null);
+
   // Fetch campuses
   const fetchCampuses = useCallback(async () => {
     if (!employeeData?.clientId) return;
-    
+    if (campusesInflightRef.current) return campusesInflightRef.current;
+
     setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
-      });
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('campus-management', {
+          body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // campus-management's list action only returns `campuses` — grades/sections/
-      // facilities are fetched independently below by their own dedicated calls.
-      // Setting them here from this response (always undefined) used to wipe them
-      // back to [] whenever this ran alongside the others (e.g. on realtime refetch).
-      setCampuses((data.campuses ?? []).map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
-    } catch (error) {
-      console.error("Error fetching campuses:", error);
-      toast.error("Failed to load campuses");
-    } finally {
-      setLoading(false);
-    }
+        // campus-management's list action only returns `campuses` — grades/sections/
+        // facilities are fetched independently below by their own dedicated calls.
+        // Setting them here from this response (always undefined) used to wipe them
+        // back to [] whenever this ran alongside the others (e.g. on realtime refetch).
+        setCampuses((data.campuses ?? []).map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
+      } catch (error) {
+        console.error("Error fetching campuses:", error);
+        toast.error("Failed to load campuses");
+      } finally {
+        setLoading(false);
+        campusesInflightRef.current = null;
+      }
+    })();
+
+    campusesInflightRef.current = request;
+    return request;
   }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch classes/grades
   const fetchClasses = useCallback(async () => {
     if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
-      });
+    if (classesInflightRef.current) return classesInflightRef.current;
 
-      if (error) throw error;
-      
-      setClasses(data.grades.map((grade: { id: string; name: string; campus_id: string }) => ({
-        id: grade.id,
-        name: grade.name,
-        campusId: grade.campus_id
-      })));
-    } catch (error) {
-      console.error("Error fetching grades:", error);
-      toast.error("Failed to load grades");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('grade-management', {
+          body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
+        });
+
+        if (error) throw error;
+
+        setClasses(data.grades.map((grade: { id: string; name: string; campus_id: string }) => ({
+          id: grade.id,
+          name: grade.name,
+          campusId: grade.campus_id
+        })));
+      } catch (error) {
+        console.error("Error fetching grades:", error);
+        toast.error("Failed to load grades");
+      } finally {
+        setLoading(false);
+        classesInflightRef.current = null;
+      }
+    })();
+
+    classesInflightRef.current = request;
+    return request;
   }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch sections with campus_id
   const fetchSections = useCallback(async () => {
     if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
-      });
+    if (sectionsInflightRef.current) return sectionsInflightRef.current;
 
-      if (error) throw error;
-      
-      setSections(data.sections.map((section: { id: string; name: string; grade_id: string; campus_id: string }) => ({
-        id: section.id,
-        name: section.name,
-        classId: section.grade_id,
-        campusId: section.campus_id
-      })));
-    } catch (error) {
-      console.error("Error fetching sections:", error);
-      toast.error("Failed to load sections");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('section-management', {
+          body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
+        });
+
+        if (error) throw error;
+
+        setSections(data.sections.map((section: { id: string; name: string; grade_id: string; campus_id: string }) => ({
+          id: section.id,
+          name: section.name,
+          classId: section.grade_id,
+          campusId: section.campus_id
+        })));
+      } catch (error) {
+        console.error("Error fetching sections:", error);
+        toast.error("Failed to load sections");
+      } finally {
+        setLoading(false);
+        sectionsInflightRef.current = null;
+      }
+    })();
+
+    sectionsInflightRef.current = request;
+    return request;
   }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch facilities
   const fetchFacilities = useCallback(async () => {
     if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
-      });
+    if (facilitiesInflightRef.current) return facilitiesInflightRef.current;
 
-      if (error) throw error;
-      
-      setFacilities(data.facilities.map((facility: { id: string; name: string; campus_id: string }) => ({
-        id: facility.id,
-        name: facility.name,
-        campusId: facility.campus_id
-      })));
-    } catch (error) {
-      console.error("Error fetching facilities:", error);
-      toast.error("Failed to load facilities");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('facility-management', {
+          body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
+        });
+
+        if (error) throw error;
+
+        setFacilities(data.facilities.map((facility: { id: string; name: string; campus_id: string }) => ({
+          id: facility.id,
+          name: facility.name,
+          campusId: facility.campus_id
+        })));
+      } catch (error) {
+        console.error("Error fetching facilities:", error);
+        toast.error("Failed to load facilities");
+      } finally {
+        setLoading(false);
+        facilitiesInflightRef.current = null;
+      }
+    })();
+
+    facilitiesInflightRef.current = request;
+    return request;
   }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch data from Supabase when client or type changes

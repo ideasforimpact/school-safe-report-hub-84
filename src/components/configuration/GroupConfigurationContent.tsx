@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +8,8 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import AddGroupDialog from './AddGroupDialog';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +44,8 @@ interface Group {
   is_assigned_to_sop?: boolean;
 }
 
+const PAGE_SIZE = 10;
+
 const GroupConfigurationContent = () => {
   const { employeeData, user } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
@@ -60,6 +63,7 @@ const GroupConfigurationContent = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchGroups = useCallback(async () => {
     if (!clientId) return;
@@ -130,6 +134,20 @@ const GroupConfigurationContent = () => {
 
     return filtered;
   }, [groups, searchTerm, statusFilter, groupTypeFilter]);
+
+  const totalCount = filteredGroups.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedGroups = filteredGroups.slice(
+    (safeCurrentPage - 1) * PAGE_SIZE,
+    safeCurrentPage * PAGE_SIZE
+  );
+
+  // Reset to page 1 whenever the filters narrow/widen the result set.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, groupTypeFilter]);
+
   // Active filter count
   const activeFilterCount = [
     searchTerm,
@@ -247,9 +265,9 @@ const GroupConfigurationContent = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-72">
-          <Input
+          <DebouncedSearchInput
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={setSearchTerm}
             placeholder="Search groups..."
             className="w-full"
           />
@@ -317,12 +335,12 @@ const GroupConfigurationContent = () => {
           <TableBody>
             {filteredGroups.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                   No groups found
                 </TableCell>
               </TableRow>
             ) : (
-              filteredGroups.map((group) => (
+              paginatedGroups.map((group) => (
                 <TableRow key={group.id}>
                   <TableCell>
                     <div
@@ -434,6 +452,14 @@ const GroupConfigurationContent = () => {
             )}
           </TableBody>
         </Table>
+        <TablePaginationBar
+          currentPage={safeCurrentPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          pageSize={PAGE_SIZE}
+          itemLabel="groups"
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Add/Edit Dialog */}

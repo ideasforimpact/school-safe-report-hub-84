@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Download, Eye, ImageIcon, Video, File, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,14 +21,21 @@ import { incidentDocumentService } from '@/services/incident/incidentDocumentSer
 interface SupportingDocumentsProps {
   incidentId: string;
   documents?: IncidentDocument[];
+  // Raw `incidents.documents`/`incidents.comments` columns, when the caller
+  // already has the incident row loaded (e.g. via fetch-incidents) — lets the
+  // aggregator skip its own direct table reads for those two pieces.
+  rawDocuments?: Array<Record<string, unknown>> | null;
+  rawComments?: unknown;
   canDelete?: boolean;
   canUpload?: boolean;
   onDocumentDeleted?: () => void;
 }
 
-const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ 
-  incidentId, 
+const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
+  incidentId,
   documents: propDocuments,
+  rawDocuments,
+  rawComments,
   canDelete = false,
   canUpload = false,
   onDocumentDeleted
@@ -40,19 +47,38 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
   const [allDocuments, setAllDocuments] = useState<IncidentDocument[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
   const { documents: hookDocuments, loadDocuments, deleteDocument } = useIncidentDocuments();
+  const inflightRef = useRef<Promise<void> | null>(null);
+  // Read via a ref (not a useCallback dep) so a new array/object identity from
+  // the parent on re-render doesn't change loadAllDocuments's identity and
+  // re-trigger the effect below — only incidentId should do that.
+  const rawDataRef = useRef({ documents: rawDocuments, comments: rawComments });
+  rawDataRef.current = { documents: rawDocuments, comments: rawComments };
 
   const loadAllDocuments = useCallback(async () => {
     if (!incidentId) return;
-    
+    if (inflightRef.current) return inflightRef.current;
+
     setIsLoadingDocs(true);
-    try {
-      const { documents: aggregatedDocs } = await incidentDocumentAggregator.getAllDocuments(incidentId);
-      setAllDocuments(aggregatedDocs);
-    } catch (error) {
-      console.error('Error loading documents:', error);
-    } finally {
-      setIsLoadingDocs(false);
-    }
+    const request = (async () => {
+      try {
+        const { documents: rawDocs, comments: rawCmts } = rawDataRef.current;
+        const { documents: aggregatedDocs } = await incidentDocumentAggregator.getAllDocuments(
+          incidentId,
+          rawDocs !== undefined || rawCmts !== undefined
+            ? { documents: rawDocs, comments: rawCmts }
+            : undefined
+        );
+        setAllDocuments(aggregatedDocs);
+      } catch (error) {
+        console.error('Error loading documents:', error);
+      } finally {
+        setIsLoadingDocs(false);
+        inflightRef.current = null;
+      }
+    })();
+
+    inflightRef.current = request;
+    return request;
   }, [incidentId]);
 
   useEffect(() => {

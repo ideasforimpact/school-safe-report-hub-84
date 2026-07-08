@@ -115,7 +115,9 @@ serve(async (req) => {
       case 'list_employee_types':
         return await handleListEmployeeTypes(supabaseClient);
       case 'get_employee':
-        return await handleGetEmployee(supabaseClient, requestData);
+        return await handleGetEmployee(supabaseClient, requestData)
+      case 'get_permissions':
+        return await handleGetPermissions(supabaseClient, requestData);
       case 'list':
         return await handleList(supabaseClient, requestData);
       case 'create':
@@ -638,6 +640,125 @@ async function handleGetEmployee(supabaseClient: any, requestData: any) {
 
   return new Response(
     JSON.stringify({ employee: data }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+// Mirrors src/hooks/useEmployeeData.ts's fetchConfiguredModules exactly (same
+// super-admin/employee-module-filtering/sort/default-dashboard-fallback logic)
+// — this is the app's sidebar/module-access bootstrap, so it must stay in sync.
+async function handleGetPermissions(supabaseClient: any, requestData: any) {
+  const { employeeId, clientId } = requestData;
+
+  if (!employeeId || !clientId) {
+    return new Response(
+      JSON.stringify({ error: 'employeeId and clientId are required' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const { data: employeeData, error: employeeError } = await supabaseClient
+    .from('employees')
+    .select('is_super_admin')
+    .eq('id', employeeId)
+    .maybeSingle();
+
+  if (employeeError) {
+    return new Response(
+      JSON.stringify({ error: employeeError.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const isSuperAdmin = employeeData?.is_super_admin || false;
+
+  const mapModule = (cm: any, accessLevel: any) => {
+    const moduleObj = cm.modules;
+    if (!moduleObj) return null;
+    return {
+      id: moduleObj.id,
+      name: moduleObj.name,
+      key: moduleObj.level,
+      icon: moduleObj.icon || '',
+      level: moduleObj.level,
+      enabled: true,
+      accessLevel: accessLevel || {},
+      order: moduleObj.order || 999,
+      url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}`,
+    };
+  };
+
+  let configuredModules: any[] = [];
+
+  const { data: clientModules, error: clientModulesError } = await supabaseClient
+    .from('client_modules')
+    .select('id, module_id, enabled, access_level, modules(id, name, icon, level, order, url)')
+    .eq('client_id', clientId)
+    .eq('enabled', true);
+
+  if (clientModulesError) {
+    return new Response(
+      JSON.stringify({ error: clientModulesError.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (isSuperAdmin) {
+    configuredModules = (clientModules ?? [])
+      .map((cm: any) => mapModule(cm, cm.access_level))
+      .filter(Boolean);
+  } else {
+    const { data: employeeModules, error: employeeModulesError } = await supabaseClient
+      .from('employee_modules')
+      .select('module_id, level')
+      .eq('employee_id', employeeId);
+
+    if (employeeModulesError) {
+      return new Response(
+        JSON.stringify({ error: employeeModulesError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const employeeModuleMap = new Map();
+    (employeeModules ?? []).forEach((em: any) => employeeModuleMap.set(em.module_id, em.level));
+
+    configuredModules = (clientModules ?? [])
+      .map((cm: any) => {
+        const moduleObj = cm.modules;
+        if (!moduleObj) return null;
+
+        const hasAccess = (employeeModules ?? []).some((em: any) => em.module_id === moduleObj.id) ||
+          (employeeModules ?? []).length === 0;
+        if (!hasAccess && (employeeModules ?? []).length > 0) return null;
+
+        return mapModule(cm, employeeModuleMap.get(moduleObj.id) || cm.access_level);
+      })
+      .filter(Boolean);
+  }
+
+  configuredModules.sort((a: any, b: any) => {
+    if (a.order === null || a.order === undefined) return 1;
+    if (b.order === null || b.order === undefined) return -1;
+    return a.order - b.order;
+  });
+
+  if (configuredModules.length === 0) {
+    configuredModules = [{
+      id: 'dashboard-default',
+      name: 'Dashboard',
+      key: 'dashboard',
+      icon: 'LayoutDashboard',
+      level: 'client',
+      enabled: true,
+      accessLevel: {},
+      order: 1,
+      url: '/dashboard',
+    }];
+  }
+
+  return new Response(
+    JSON.stringify({ isSuperAdmin, configuredModules }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }

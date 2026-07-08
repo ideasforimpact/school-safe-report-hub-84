@@ -5,6 +5,43 @@ import {
   NotificationType
 } from '@/types/notification';
 import { formatEmployeeName } from './formatHelpers';
+import { supabase } from '@/integrations/supabase/client';
+
+// The 4 incident notification types reachable from create/edit/close/reopen flows
+// are queued via the fetch-incidents edge function (operation: 'queue_notification'),
+// which does the same notification_rules skip-check + template render + email_queue/
+// notification_logs writes server-side instead of as direct REST calls from here.
+// incident_reminder_10_days is cron-triggered, not part of these flows, and still
+// goes through the shared client-side notificationService below.
+async function queueIncidentNotificationViaEdgeFunction(
+  notificationData: NotificationData,
+  currentEmployeeData?: Record<string, unknown>
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+      body: {
+        operation: 'queue_notification',
+        clientId: notificationData.clientId,
+        notificationType: notificationData.type,
+        recipientId: notificationData.recipientId,
+        recipientEmail: notificationData.recipientEmail,
+        recipientName: notificationData.recipientName,
+        notificationPriority: notificationData.priority,
+        notificationVariables: notificationData.variables,
+        notificationMetadata: notificationData.metadata,
+        actionById: currentEmployeeData?.id,
+      },
+    });
+
+    if (error) throw error;
+    if (!data?.success) throw new Error('Failed to queue notification');
+
+    return data.skipped ? false : Boolean(data.delivered);
+  } catch (error) {
+    console.error('Error queueing incident notification via edge function:', error);
+    return false;
+  }
+}
 
 // Database-row shape for incidents (snake_case, as returned by Supabase)
 interface IncidentRow {
@@ -96,7 +133,7 @@ export class IncidentNotificationService {
         recipientEmail: assignedEmployee.email
       });
 
-      return await notificationService.queueNotification(notificationData, currentEmployeeData);
+      return await queueIncidentNotificationViaEdgeFunction(notificationData, currentEmployeeData);
     } catch (error) {
       console.error('Error queueing incident assigned notification:', error);
       return false;
@@ -110,10 +147,13 @@ export class IncidentNotificationService {
     incident: IncidentRow,
     updatedBy: Employee,
     updateNotes?: string,
-    currentEmployeeData?: Record<string, unknown>
+    currentEmployeeData?: Record<string, unknown>,
+    preloadedAssignee?: Employee | null
   ): Promise<boolean> {
     try {
-      const assignedEmployee = await this.getEmployeeById(incident.assigned_to);
+      const assignedEmployee = preloadedAssignee !== undefined
+        ? preloadedAssignee
+        : await this.getEmployeeById(incident.assigned_to);
       if (!assignedEmployee) {
         console.error('Assigned employee not found for incident:', incident.id);
         return false;
@@ -147,7 +187,7 @@ export class IncidentNotificationService {
         }
       };
 
-      return await notificationService.queueNotification(notificationData, currentEmployeeData);
+      return await queueIncidentNotificationViaEdgeFunction(notificationData, currentEmployeeData);
     } catch (error) {
       console.error('Error queueing incident updated notification:', error);
       return false;
@@ -203,7 +243,7 @@ export class IncidentNotificationService {
         }
       };
 
-      return await notificationService.queueNotification(notificationData, currentEmployeeData);
+      return await queueIncidentNotificationViaEdgeFunction(notificationData, currentEmployeeData);
     } catch (error) {
       console.error('Error queueing incident closed notification:', error);
       return false;
@@ -254,7 +294,7 @@ export class IncidentNotificationService {
         }
       };
 
-      return await notificationService.queueNotification(notificationData, currentEmployeeData);
+      return await queueIncidentNotificationViaEdgeFunction(notificationData, currentEmployeeData);
     } catch (error) {
       console.error('Error queueing incident reopened notification:', error);
       return false;

@@ -119,19 +119,13 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          factors.map(async (factor) => {
-            const refInfo = await incidentReferenceService.checkContributingFactorReferences(factor.id, clientId);
-            return { id: factor.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          factors.map((factor) => ({ type: 'contributingFactor' as const, id: factor.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setFactorReferences(map);
       } catch (error) {
         console.error('Error preloading contributing factor reference info:', error);

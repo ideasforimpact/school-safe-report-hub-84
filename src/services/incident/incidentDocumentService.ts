@@ -154,6 +154,22 @@ export const incidentDocumentService = {
     console.log('Successfully updated incident documents in database for incident:', incidentId);
   },
 
+  // Convert the raw `incidents.documents` JSON column back to IncidentDocument[].
+  // Pulled out so callers that already have the incident row loaded (e.g. the
+  // detail page) can reuse this without an extra direct table fetch.
+  mapStoredDocuments(storedDocuments: Array<Record<string, unknown>> | null | undefined): IncidentDocument[] {
+    return (storedDocuments || []).map((doc): IncidentDocument => ({
+      id: doc.id || '',
+      name: doc.name || '',
+      type: doc.type || '',
+      size: doc.size || 0,
+      url: doc.path ? this.getPublicUrl(doc.path) : (doc.url || ''), // Generate URL from path if available
+      path: doc.path || '',
+      uploadedAt: doc.uploadedAt || new Date().toISOString(),
+      source: 'incident'
+    }));
+  },
+
   // Get incident documents
   async getIncidentDocuments(incidentId: string): Promise<IncidentDocument[]> {
     const { data, error } = await supabase
@@ -167,18 +183,7 @@ export const incidentDocumentService = {
       throw error;
     }
 
-    // Convert from stored format back to IncidentDocument[]
-    const storedDocuments = data?.documents as Array<Record<string, unknown>>;
-    return (storedDocuments || []).map((doc): IncidentDocument => ({
-      id: doc.id || '',
-      name: doc.name || '',
-      type: doc.type || '',
-      size: doc.size || 0,
-      url: doc.path ? this.getPublicUrl(doc.path) : (doc.url || ''), // Generate URL from path if available
-      path: doc.path || '',
-      uploadedAt: doc.uploadedAt || new Date().toISOString(),
-      source: 'incident'
-    }));
+    return this.mapStoredDocuments(data?.documents as Array<Record<string, unknown>>);
   },
 
   /** Closure attachments: fetch via edge function (public URLs + metadata). */

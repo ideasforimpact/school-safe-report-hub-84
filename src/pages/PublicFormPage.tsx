@@ -29,6 +29,7 @@ const PublicFormPage = () => {
   const [form, setForm] = useState<CustomForm | null>(null);
   const [clientName, setClientName] = useState<string | null>(null);
   const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
+  const [clientTypeKey, setClientTypeKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
@@ -118,6 +119,17 @@ const PublicFormPage = () => {
       };
 
       setForm(mapped);
+
+      // Needed so grievance forms show the right "Who is raising this
+      // grievance?" options (school vs. workplace wording) — see renderField.
+      const { data: clientTypeRow } = await supabase
+        .from('clients')
+        .select('client_type:client_type_id(key)')
+        .eq('id', mapped.client_id)
+        .maybeSingle();
+      setClientTypeKey(
+        ((clientTypeRow as Record<string, unknown> | null)?.client_type as { key?: string } | null)?.key || null
+      );
 
       // Build logo URL from path if needed
       const { buildClientLogoUrl } = await import('@/lib/utils');

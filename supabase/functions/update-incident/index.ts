@@ -51,21 +51,24 @@ async function checkIncidentPermissions(
     return { canEdit: false, incident: null }
   }
 
-  // Get employee details to check admin status
+  // Get employee details to check admin status. Left join (not `!inner`) —
+  // an inner join here drops the row entirely for employees (including super
+  // admins) with zero employee_modules rows, making `.single()` fail with
+  // "no rows returned" before the is_super_admin bypass below ever runs.
   const { data: employee, error: employeeError } = await supabase
     .from('employees')
     .select(`
-      id, 
-      is_super_admin, 
+      id,
+      is_super_admin,
       client_id,
-      employee_modules!inner(
+      employee_modules(
         level,
         module:modules(name)
       )
     `)
     .eq('id', employeeId)
     .eq('client_id', clientId)
-    .single()
+    .maybeSingle()
 
   if (employeeError || !employee) {
     console.error('Error fetching employee:', employeeError)

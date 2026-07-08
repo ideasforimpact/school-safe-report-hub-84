@@ -47,12 +47,30 @@ serve(async (req) => {
     const body = await req.json();
     const { resource, operation, id, categoryId, excludeId, activeOnly, payload = {} } = body;
 
+    const userId = getUserIdFromAuthorization(req.headers.get("Authorization"));
+
+    // listAll has no single `resource` — it fetches every resource's list in one
+    // round trip (replaces 5 separate `list` calls, one per Incident Configuration
+    // sub-tab, with 5 parallel queries inside a single edge-function invocation).
+    if (operation === "listAll") {
+      const clientId = await resolveClientId(supabase, userId, body.clientId);
+      if (!clientId) {
+        throw new Error("Client ID is required");
+      }
+
+      const resources: Resource[] = ["categories", "subcategories", "priorities", "reportTypes", "contributingFactors"];
+      const [categories, subcategories, priorities, reportTypes, contributingFactors] = await Promise.all(
+        resources.map((r) => listItems(supabase, r, clientId, { activeOnly, clientTypeId: body.clientTypeId }))
+      );
+
+      return json({ data: { categories, subcategories, priorities, reportTypes, contributingFactors } });
+    }
+
     if (!resourceConfig[resource as Resource]) {
       throw new Error("Invalid incident configuration resource");
     }
 
     const typedResource = resource as Resource;
-    const userId = getUserIdFromAuthorization(req.headers.get("Authorization"));
     const clientId = await resolveClientId(supabase, userId, body.clientId, id, typedResource);
     if (!clientId) {
       throw new Error("Client ID is required");
@@ -60,7 +78,7 @@ serve(async (req) => {
 
     switch (operation) {
       case "list":
-        return json({ data: await listItems(supabase, typedResource, clientId, { categoryId, activeOnly }) });
+        return json({ data: await listItems(supabase, typedResource, clientId, { categoryId, activeOnly, clientTypeId: body.clientTypeId }) });
       case "checkDuplicate":
         return json({ data: await checkDuplicate(supabase, typedResource, clientId, payload.name, { categoryId, excludeId }) });
       case "create":
@@ -125,7 +143,7 @@ async function resolveClientId(supabase: any, userId: string | null, requestedCl
   return employee?.client_id ?? null;
 }
 
-async function listItems(supabase: any, resource: Resource, clientId: string, options: { categoryId?: string; activeOnly?: boolean }) {
+async function listItems(supabase: any, resource: Resource, clientId: string, options: { categoryId?: string; activeOnly?: boolean; clientTypeId?: string }) {
   const config = resourceConfig[resource];
   let query = supabase.from(config.table).select(config.columns).eq("client_id", clientId);
 
@@ -135,6 +153,14 @@ async function listItems(supabase: any, resource: Resource, clientId: string, op
 
   if ((resource === "priorities" || resource === "reportTypes") && options.activeOnly) {
     query = query.eq("is_active", true);
+  }
+
+  // categories/subcategories/priorities/reportTypes/contributingFactors are all
+  // scoped by client_type_id (see buildRecord) — filter the list the same way
+  // the direct-query services this replaces did, so items created for one
+  // client type don't leak into another type's list for the same client.
+  if (options.clientTypeId) {
+    query = query.eq("client_type_id", options.clientTypeId);
   }
 
   const { data, error } = await query.order(config.order, { ascending: true });

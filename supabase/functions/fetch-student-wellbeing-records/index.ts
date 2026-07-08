@@ -26,6 +26,10 @@ serve(async (req) => {
     const status = body.status ?? 'all';
     const dateFrom = body.dateFrom ?? body.date_from ?? null;
     const dateTo = body.dateTo ?? body.date_to ?? null;
+    const search = (body.search ?? '').toString().trim().toLowerCase();
+    const page = Number(body.page) > 0 ? Number(body.page) : 1;
+    const pageSize = Number(body.pageSize) > 0 ? Number(body.pageSize) : 10;
+    const exportAll = body.exportAll === true;
 
     if (!clientId) {
       return new Response(
@@ -231,6 +235,29 @@ serve(async (req) => {
       };
     });
 
+    // Apply text search across the fields the UI actually shows (student name,
+    // class/grade-section label, concern) — done in-memory since these live
+    // across several joined tables already resolved above, rather than a
+    // multi-table PostgREST `.or()` filter. Was previously not applied at all:
+    // `search` was accepted by the client but silently ignored server-side.
+    const searchedList = search
+      ? list.filter((r) =>
+          (r.student_name ?? '').toLowerCase().includes(search) ||
+          (r.class ?? '').toLowerCase().includes(search) ||
+          (r.concern ?? '').toLowerCase().includes(search)
+        )
+      : list;
+
+    // Pagination — was previously not applied either: every call returned the
+    // full matching list with no `pagination` field, so the client's fallback
+    // `{ page: 1, totalPages: 1 }` made TablePaginationBar always hide itself.
+    const totalCount = searchedList.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const pageRecords = exportAll
+      ? searchedList
+      : searchedList.slice((safePage - 1) * pageSize, safePage * pageSize);
+
     // Summary counts must reflect the whole matching set regardless of the status
     // filter above — otherwise selecting "Open" would make the header's Closed/Under
     // Observation counts collapse to 0. Scoped by the same client/date/academic-year
@@ -261,12 +288,18 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        records: list,
+        records: pageRecords,
         summary: {
           studentsCount: uniqueStudentIds.size,
           openCases: openCount,
           underObservation: underObservationCount,
           closed: closedCount,
+        },
+        pagination: {
+          page: safePage,
+          pageSize,
+          totalCount,
+          totalPages,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }

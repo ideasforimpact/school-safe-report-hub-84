@@ -369,69 +369,59 @@ class IncidentDataService {
     return response.data;
   }
 
+  private statsInflight: Map<string, Promise<{
+    total: number;
+    open: number;
+    inProgress: number;
+    closed: number;
+  }>> = new Map();
+
   async getIncidentStats(clientId: string, employeeData?: Record<string, unknown>, hasIncidentAdmin?: boolean): Promise<{
     total: number;
     open: number;
     inProgress: number;
     closed: number;
   }> {
-    try {
-      // Early return if no employee data
-      if (!employeeData || !employeeData.id) {
-        console.log('⚠️ No employee data provided for stats, returning empty stats');
-        return { total: 0, open: 0, inProgress: 0, closed: 0 };
-      }
-
-      let query = supabase
-        .from('incidents')
-        .select(`
-          id,
-          created_by,
-          assigned_to,
-          incident_status!status_id(name)
-        `)
-        .eq('client_id', clientId);
-
-      // Apply same improved filtering logic for stats
-      const isSuperAdmin = employeeData.isSuperAdmin === true;
-      
-      if (isSuperAdmin) {
-        // Super admin can see all incidents
-        console.log('Stats: Super admin access - all incidents');
-      } else if (hasIncidentAdmin) {
-        // Incident admin can see all incidents for the client
-        console.log('Stats: Incident admin access - all incidents');
-      } else {
-        // Regular users can only see incidents they created or are assigned to
-        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-        console.log('Stats: Regular user access - filtered incidents');
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      const stats = {
-        total: data?.length || 0,
-        open: 0,
-        inProgress: 0,
-        closed: 0
-      };
-
-      data?.forEach((incident: { incident_status?: { name?: string } | null }) => {
-        const status = incident.incident_status?.name;
-        if (status === 'Open') stats.open++;
-        else if (status === 'In Progress') stats.inProgress++;
-        else if (status === 'Closed') stats.closed++;
-      });
-
-      return stats;
-    } catch (error) {
-      console.error('Error fetching incident stats:', error);
+    // Early return if no employee data
+    if (!employeeData || !employeeData.id) {
+      console.log('⚠️ No employee data provided for stats, returning empty stats');
       return { total: 0, open: 0, inProgress: 0, closed: 0 };
     }
+
+    const isSuperAdmin = employeeData.isSuperAdmin === true;
+    const inflightKey = `${clientId}_${employeeData.id}_${isSuperAdmin}_${hasIncidentAdmin}`;
+
+    const existing = this.statsInflight.get(inflightKey);
+    if (existing) {
+      return existing;
+    }
+
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+          body: {
+            operation: 'get_stats',
+            clientId,
+            employeeId: employeeData.id,
+            isSuperAdmin,
+            hasIncidentAdmin,
+          },
+        });
+
+        if (error) throw error;
+        if (!data?.success) throw new Error('Failed to fetch incident stats');
+
+        return data.data as { total: number; open: number; inProgress: number; closed: number };
+      } catch (error) {
+        console.error('Error fetching incident stats:', error);
+        return { total: 0, open: 0, inProgress: 0, closed: 0 };
+      } finally {
+        this.statsInflight.delete(inflightKey);
+      }
+    })();
+
+    this.statsInflight.set(inflightKey, request);
+    return request;
   }
 
   clearCache(clientId?: string, employeeId?: string): void {

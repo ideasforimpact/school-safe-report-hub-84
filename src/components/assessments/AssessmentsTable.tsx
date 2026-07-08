@@ -17,16 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationEllipsis,
-} from '@/components/ui/pagination';
-import { Eye, FileText, AlertCircle, UserCheck, Download, X, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
+import { Eye, FileText, AlertCircle, UserCheck, Download, X } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -559,21 +551,6 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
   const allOnPageSelected = assessments.length > 0 && assessments.every(a => selectedAssessmentIds.includes(a.assessment_id));
   const someOnPageSelected = assessments.some(a => selectedAssessmentIds.includes(a.assessment_id));
 
-  // ── pagination UI helper ───────────────────────────────────────────────────
-  const renderPageNumbers = () => {
-    const pages: (number | 'ellipsis')[] = [];
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (currentPage > 3) pages.push('ellipsis');
-      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i);
-      if (currentPage < totalPages - 2) pages.push('ellipsis');
-      pages.push(totalPages);
-    }
-    return pages;
-  };
-
   // ── early returns ──────────────────────────────────────────────────────────
   if (!clientId) {
     return (
@@ -613,9 +590,6 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
       </div>
     );
   }
-
-  const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalCount);
 
   return (
     <>
@@ -928,63 +902,14 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
                 </Table>
               </div>
 
-              {/* Pagination */}
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-                <p className="text-sm text-gray-500">
-                  Showing {startItem}–{endItem} of {totalCount} assessments
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline" size="sm"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    title="First page"
-                  >
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                        />
-                      </PaginationItem>
-                      {renderPageNumbers().map((p, i) =>
-                        p === 'ellipsis' ? (
-                          <PaginationItem key={`ellipsis-${i}`}>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        ) : (
-                          <PaginationItem key={p}>
-                            <PaginationLink
-                              isActive={p === currentPage}
-                              onClick={() => setCurrentPage(p)}
-                              className="cursor-pointer"
-                            >
-                              {p}
-                            </PaginationLink>
-                          </PaginationItem>
-                        )
-                      )}
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                  <Button
-                    variant="outline" size="sm"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    title="Last page"
-                  >
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+              <TablePaginationBar
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                pageSize={pageSize}
+                itemLabel="assessments"
+                onPageChange={setCurrentPage}
+              />
             </>
           )}
         </div>

@@ -75,10 +75,11 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
       // Save to database if incidentId is provided
       if (incidentId) {
         try {
-          const { error: updateError } = await supabase
-            .from('incidents')
-            .update({ recommended_action: parsed } as never)
-            .eq('id', incidentId);
+          const { data: { session } } = await supabase.auth.getSession();
+          const { error: updateError } = await supabase.functions.invoke('update-incident', {
+            body: { incidentId, updates: { recommended_action: parsed } },
+            headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+          });
 
           if (updateError) {
             console.error('Failed to save recommendation to database:', updateError);

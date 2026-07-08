@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGrievance } from '@/contexts/grievances/GrievanceContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge, BadgeProps } from '@/components/ui/badge';
@@ -6,6 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Eye, Filter, MessageSquare } from 'lucide-react';
 import GrievanceDetailDialog from './GrievanceDetailDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
+
+const PAGE_SIZE = 10;
 
 const GrievancesList = () => {
   const {
@@ -13,11 +17,46 @@ const GrievancesList = () => {
   } = useGrievance();
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const getResponseValue = (submissionId: string, questionText: string) => {
+    const submission = submissions.find(s => s.id === submissionId);
+    if (!submission) return '';
+    const response = submission.responses.find(r => r.question === questionText);
+    return response ? response.answer : '';
+  };
+
   const filteredSubmissions = submissions.filter(submission => {
-    return statusFilter === 'all' || submission.status === statusFilter;
+    if (statusFilter !== 'all' && submission.status !== statusFilter) return false;
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      const heading = getResponseValue(submission.id, 'Grievance Heading');
+      const description = getResponseValue(submission.id, 'Description of Grievance');
+      const matches =
+        submission.submitterName?.toLowerCase().includes(term) ||
+        heading?.toLowerCase().includes(term) ||
+        description?.toLowerCase().includes(term);
+      if (!matches) return false;
+    }
+
+    return true;
   });
-  
+
+  const totalCount = filteredSubmissions.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedSubmissions = filteredSubmissions.slice(
+    (safeCurrentPage - 1) * PAGE_SIZE,
+    safeCurrentPage * PAGE_SIZE
+  );
+
+  // Reset to page 1 whenever the filters narrow/widen the result set.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, searchTerm]);
+
   const getStatusBadgeVariant = (status: string): BadgeProps['variant'] => {
     switch (status) {
       case 'new':
@@ -32,14 +71,7 @@ const GrievancesList = () => {
         return 'default';
     }
   };
-  
-  const getResponseValue = (submissionId: string, questionText: string) => {
-    const submission = submissions.find(s => s.id === submissionId);
-    if (!submission) return '';
-    const response = submission.responses.find(r => r.question === questionText);
-    return response ? response.answer : '';
-  };
-  
+
   const handleViewSubmission = (submissionId: string) => {
     setSelectedSubmission(submissionId);
   };
@@ -57,10 +89,17 @@ const GrievancesList = () => {
     }
     return text.substring(0, maxLength) + '...';
   };
-  
+
   return <div>
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6">
+      <div className="flex flex-wrap items-center gap-4 mb-6">
+        <DebouncedSearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Search by name or grievance..."
+          triggerOnEnter
+          className="w-full max-w-sm"
+        />
         <div className="flex items-center">
           <Filter className="h-4 w-4 mr-2 text-gray-500" />
           <span className="text-sm font-medium mr-2">Status:</span>
@@ -78,7 +117,7 @@ const GrievancesList = () => {
           </Select>
         </div>
       </div>
-      
+
       {filteredSubmissions.length === 0 ? <div className="text-center py-12 bg-gray-50 rounded-lg">
           <div className="flex justify-center mb-4">
             <MessageSquare className="h-12 w-12 text-gray-400" />
@@ -100,9 +139,9 @@ const GrievancesList = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSubmissions.map((submission, index) => <TableRow key={submission.id}>
+              {paginatedSubmissions.map((submission, index) => <TableRow key={submission.id}>
                   <TableCell className="font-medium text-left">
-                    {index + 1}
+                    {(safeCurrentPage - 1) * PAGE_SIZE + index + 1}
                   </TableCell>
                   <TableCell className="text-left">
                     {submission.submitterName}
@@ -127,8 +166,16 @@ const GrievancesList = () => {
                 </TableRow>)}
             </TableBody>
           </Table>
+          <TablePaginationBar
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={PAGE_SIZE}
+            itemLabel="grievances"
+            onPageChange={setCurrentPage}
+          />
         </div>}
-      
+
       {selectedSubmission && <GrievanceDetailDialog submissionId={selectedSubmission} onClose={() => setSelectedSubmission(null)} />}
     </div>;
 };

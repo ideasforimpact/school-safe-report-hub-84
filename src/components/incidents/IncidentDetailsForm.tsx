@@ -338,6 +338,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         <AssignmentSection
           owner={formData.owner || ''}
           onSelectChange={onSelectChange}
+          employees={employees}
         />
 
         {/* Supporting Files */}

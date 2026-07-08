@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { incidentReferenceService } from "./incidentReferenceService";
+import { invokeIncidentConfig } from "@/components/incident/incidentConfigurationEdgeService";
 
 export interface CategoryItem {
   id: string;
@@ -78,23 +79,13 @@ export const categoryService = {
       if (!clientId) {
         throw new Error('Client ID is required');
       }
-      let query = supabase
-        .from('incident_categories')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('name');
 
-      if (clientTypeId) {
-        query = query.eq('client_type_id', clientTypeId);
-      }
-
-      const { data: categories, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      return categories as CategoryItem[];
+      return await invokeIncidentConfig<CategoryItem[]>({
+        resource: 'categories',
+        operation: 'list',
+        clientId,
+        clientTypeId,
+      });
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error(`Failed to fetch categories: ${error.message}`);
@@ -229,26 +220,14 @@ export const categoryService = {
       if (!clientId) {
         throw new Error('Client ID is required');
       }
-      
-      let query = supabase
-        .from('incident_subcategories')
-        .select('*')
-        .eq('client_id', clientId);
-      
-      if (categoryId) {
-        query = query.eq('category_id', categoryId);
-      }
 
-      if (clientTypeId) {
-        query = query.eq('client_type_id', clientTypeId);
-      }
-      const { data: subcategories, error } = await query.order('name');
-
-      if (error) {
-        throw error;
-      }
-
-      return subcategories as SubcategoryItem[];
+      return await invokeIncidentConfig<SubcategoryItem[]>({
+        resource: 'subcategories',
+        operation: 'list',
+        clientId,
+        clientTypeId,
+        categoryId,
+      });
     } catch (error) {
       console.error('Error fetching subcategories:', error);
       toast.error(`Failed to fetch subcategories: ${error.message}`);

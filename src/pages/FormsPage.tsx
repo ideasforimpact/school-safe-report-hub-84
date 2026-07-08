@@ -29,6 +29,7 @@ import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from "@/lib/Dateformat";
 import Loader from '@/components/common/Loader';
 import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const FormsPage = () => {
@@ -840,61 +841,14 @@ const Content = (
                 </TableBody>
               </Table>
         {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              >
-                «
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                ‹ Prev
-              </Button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
-                const pageNum = start + i;
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={pageNum === currentPage ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next ›
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                »
-              </Button>
-            </div>
-          </div>
-        )}
+        <TablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={submissionsTotal}
+          pageSize={PAGE_SIZE}
+          itemLabel="grievances"
+          onPageChange={setCurrentPage}
+        />
 
         {viewSubmission && (
           <Dialog open={!!viewSubmission} onOpenChange={(open) => { if (!open) setViewSubmission(null); }}>

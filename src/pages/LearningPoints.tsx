@@ -1,10 +1,10 @@
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { fetchLearningPoints, LearningPointRecord } from '@/services/learningPointsService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ArrowLeft } from 'lucide-react';
@@ -80,10 +80,10 @@ const LearningPointsPage: React.FC = () => {
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6">
               <div className="w-full md:w-1/3">
                 <label className="block text-sm font-medium mb-1">Search</label>
-                <Input
-                  placeholder="Search by Incident ID, Category, Subcategory, or Learning Points"
+                <DebouncedSearchInput
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={setSearch}
+                  placeholder="Search by Incident ID, Category, Subcategory, or Learning Points"
                 />
               </div>
               <div className="w-full md:w-1/4">
@@ -189,28 +189,14 @@ const LearningPointsPage: React.FC = () => {
               </Table>
             </div>
 
-            <div className="mt-6">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage((p) => Math.max(1, p - 1)); }} />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }).slice(0, 5).map((_, idx) => {
-                    const page = idx + 1;
-                    return (
-                      <PaginationItem key={page}>
-                        <PaginationLink href="#" isActive={currentPage === page} onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}>
-                          {page}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  })}
-                  <PaginationItem>
-                    <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage((p) => Math.min(totalPages, p + 1)); }} />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+            <TablePaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              itemLabel="learning points"
+              onPageChange={setCurrentPage}
+            />
           </CardContent>
         </Card>
       </div>

@@ -36,18 +36,12 @@ export const contributingFactorService = {
         throw new Error('Client ID is required');
       }
 
-      let query = supabase
-        .from('contributing_factors')
-        .select('id, name, description, weight, client_id')
-        .eq('client_id', clientId);
-
-      if (clientTypeId) {
-        query = query.eq('client_type_id', clientTypeId);
-      }
-
-      const { data, error } = await query.order('name');
-      if (error) throw error;
-      return (data ?? []) as ContributingFactorItem[];
+      return await invokeIncidentConfig<ContributingFactorItem[]>({
+        resource: 'contributingFactors',
+        operation: 'list',
+        clientId,
+        clientTypeId,
+      });
     } catch (error) {
       console.error('Error fetching contributing factors:', error);
       return [];

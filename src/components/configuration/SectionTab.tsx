@@ -78,19 +78,13 @@ export const SectionTab = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          sections.map(async (section) => {
-            const refInfo = await incidentReferenceService.checkSectionReferences(section.id, clientId);
-            return { id: section.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          sections.map((section) => ({ type: 'section' as const, id: section.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setSectionReferences(map);
       } catch (error) {
         console.error('Error preloading section reference info:', error);
@@ -440,8 +434,9 @@ export const SectionTab = ({
             )}
           </div>
           <div className="w-48">
-            <Select value={filterCampusId} onValueChange={(value) => {
-              setFilterCampusId(value);
+            <Select value={filterCampusId || 'all'} onValueChange={(value) => {
+              const campusId = value === 'all' ? '' : value;
+              setFilterCampusId(campusId);
               // Reset class filter if campus changes
               if (filterClassId && !availableClassesForFilter.some(cls => cls.id === filterClassId)) {
                 setFilterClassId('');
@@ -451,7 +446,7 @@ export const SectionTab = ({
                 <SelectValue placeholder={`Filter by ${s.campus.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{`All ${s.campusPlural.toLowerCase()}`}</SelectItem>
+                <SelectItem value="all">{`All ${s.campusPlural.toLowerCase()}`}</SelectItem>
                 {campuses.map((campus) => (
                   <SelectItem key={campus.id} value={campus.id}>
                     {campus.name}
@@ -461,16 +456,16 @@ export const SectionTab = ({
             </Select>
           </div>
           <div className="w-48">
-            <Select 
-              value={filterClassId} 
-              onValueChange={setFilterClassId}
+            <Select
+              value={filterClassId || 'all'}
+              onValueChange={(value) => setFilterClassId(value === 'all' ? '' : value)}
               disabled={!filterCampusId && availableClassesForFilter.length > 10}
             >
               <SelectTrigger>
                 <SelectValue placeholder={`Filter by ${s.grade.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{`All ${s.gradePlural.toLowerCase()}`}</SelectItem>
+                <SelectItem value="all">{`All ${s.gradePlural.toLowerCase()}`}</SelectItem>
                 {availableClassesForFilter.map((classItem) => (
                   <SelectItem key={classItem.id} value={classItem.id}>
                     {classItem.name}

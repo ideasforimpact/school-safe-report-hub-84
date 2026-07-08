@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { incidentReferenceService } from "./incidentReferenceService";
+import { invokeIncidentConfig } from "@/components/incident/incidentConfigurationEdgeService";
 
 export interface ReportTypeItem {
   id: string;
@@ -37,27 +38,17 @@ export const reportTypeService = {
     }
   },
 
-  // Get report types filtered by client type key
+  // Get report types filtered by client type key. No clientId is passed here —
+  // same as before this used implicit RLS scoping by the logged-in user; the
+  // edge function resolves clientId from the caller's auth token the same way.
   getReportTypes: async (activeOnly: boolean = false, clientTypeId?: string) => {
     try {
-      let query = supabase
-        .from('incident_report_types')
-        .select('*');
-        
-      if (activeOnly) {
-        query = query.eq('is_active', true);
-      }
-      if (clientTypeId) {
-        query = query.eq('client_type_id', clientTypeId);
-      }
-      const { data, error } = await query.order('name');
-      
-      if (error) {
-        console.error('Error fetching report types:', error);
-        return [];
-      }
-
-      return data as ReportTypeItem[];
+      return await invokeIncidentConfig<ReportTypeItem[]>({
+        resource: 'reportTypes',
+        operation: 'list',
+        clientTypeId,
+        activeOnly,
+      });
     } catch (error) {
       console.error('Error fetching report types:', error);
       return [];

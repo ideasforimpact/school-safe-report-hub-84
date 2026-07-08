@@ -104,19 +104,13 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          priorities.map(async (priority) => {
-            const refInfo = await incidentReferenceService.checkPriorityReferences(priority.id, clientId);
-            return { id: priority.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          priorities.map((priority) => ({ type: 'priority' as const, id: priority.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setPriorityReferences(map);
       } catch (error) {
         console.error('Error preloading priority reference info:', error);

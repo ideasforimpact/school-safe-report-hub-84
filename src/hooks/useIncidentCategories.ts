@@ -1,57 +1,92 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { categoryService, CategoryItem, SubcategoryItem } from '@/services/incident/categoryService';
+import { invokeIncidentConfig } from '@/components/incident/incidentConfigurationEdgeService';
+import { ContributingFactorItem } from '@/services/incident/contributingFactorService';
+import { ReportTypeItem } from '@/services/incident/reportTypeService';
+import { PriorityItem } from '@/services/incident/priorityService';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
+
+interface ListAllResult {
+  categories: CategoryItem[];
+  subcategories: SubcategoryItem[];
+  priorities: PriorityItem[];
+  reportTypes: ReportTypeItem[];
+  contributingFactors: ContributingFactorItem[];
+}
 
 export function useIncidentCategories() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [subcategoryMappings, setSubcategoryMappings] = useState<Record<string, SubcategoryItem[]>>({});
+  // Populated alongside categories/subcategories by the same listAll call — lets
+  // IncidentConfigurationContent seed its Report Types/Priorities/Contributing
+  // Factors tabs from this one fetch instead of three separate edge-function calls.
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactorItem[]>([]);
+  const [reportTypes, setReportTypes] = useState<ReportTypeItem[]>([]);
+  const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { employeeData, user } = useAuth();
 
   // Load categories and subcategories on mount
   const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? undefined;
 
+  // Dedupes overlapping calls (e.g. React.StrictMode's dev double-invoke)
+  // without blocking legitimate re-fetches after create/update/delete.
+  const inflightRef = useRef<Promise<void> | null>(null);
+
   // Single edge-function call fetches all incident config data from the server
   const loadData = useCallback(async () => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
+    if (inflightRef.current) return inflightRef.current;
 
-    try {
-      setLoading(true);
-      if (!employeeData?.clientId || !clientTypeId) {
+    const request = (async () => {
+      if (!employeeData?.clientId) {
         toast.error('Client information not available');
         return;
       }
 
-      const [categoriesData, subcategoriesData] = await Promise.all([
-        categoryService.getCategories(employeeData.clientId, clientTypeId),
-        categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId),
-      ]);
-
-      setCategories(categoriesData);
-      
-      // Group subcategories by category_id
-      const mappings: Record<string, SubcategoryItem[]> = {};
-      subcategoriesData.forEach(sub => {
-        if (sub.category_id) {
-          if (!mappings[sub.category_id]) {
-            mappings[sub.category_id] = [];
-          }
-          mappings[sub.category_id].push(sub);
+      try {
+        setLoading(true);
+        if (!employeeData?.clientId || !clientTypeId) {
+          toast.error('Client information not available');
+          return;
         }
-      });
-      
-      setSubcategoryMappings(mappings);
-    } catch (error) {
-      console.error('Error loading categories and subcategories:', error);
-      toast.error('Failed to load categories and subcategories');
-    } finally {
-      setLoading(false);
-    }
+
+        const result = await invokeIncidentConfig<ListAllResult>({
+          resource: 'categories', // ignored by listAll, kept for type-shape consistency
+          operation: 'listAll',
+          clientId: employeeData.clientId,
+          clientTypeId,
+        });
+
+        setCategories(result.categories);
+        setContributingFactors(result.contributingFactors);
+        setReportTypes(result.reportTypes);
+        setPriorities(result.priorities);
+
+        // Group subcategories by category_id
+        const mappings: Record<string, SubcategoryItem[]> = {};
+        result.subcategories.forEach(sub => {
+          if (sub.category_id) {
+            if (!mappings[sub.category_id]) {
+              mappings[sub.category_id] = [];
+            }
+            mappings[sub.category_id].push(sub);
+          }
+        });
+
+        setSubcategoryMappings(mappings);
+      } catch (error) {
+        console.error('Error loading categories and subcategories:', error);
+        toast.error('Failed to load categories and subcategories');
+      } finally {
+        setLoading(false);
+        inflightRef.current = null;
+      }
+    })();
+
+    inflightRef.current = request;
+    return request;
   }, [employeeData?.clientId, clientTypeId]);
 
   useEffect(() => {
@@ -280,6 +315,9 @@ export function useIncidentCategories() {
   return {
     categories,
     subcategoryMappings,
+    contributingFactors,
+    reportTypes,
+    priorities,
     loading,
     addCategory,
     updateCategory,

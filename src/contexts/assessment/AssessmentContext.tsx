@@ -22,13 +22,17 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
   const { user } = useAuth();
   const location = useLocation();
   const isUsersRoute = location.pathname === '/users';
+  // /settings hosts every configuration tab behind the same URL, so matching
+  // the bare pathname fired this fetch no matter which tab was open. Require
+  // the Assessment Configuration tab specifically (SettingsPage mirrors the
+  // active tab into ?tab=) — the other route prefixes are single-purpose pages
+  // and don't need this narrowing.
+  const settingsTab = new URLSearchParams(location.search).get('tab');
   const isAssessmentRoute =
     location.pathname.startsWith('/assessments') ||
     location.pathname.startsWith('/backoffice/assessments') ||
-    location.pathname.startsWith('/settings');
-  
+    (location.pathname.startsWith('/settings') && settingsTab === 'assessment');
 
-  
   // Set up template management
   const { 
     templates, 

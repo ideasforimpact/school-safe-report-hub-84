@@ -26,9 +26,19 @@ export const useIncidentDetail = (incidentId?: string) => {
     // If already in-flight for the same key, skip — state will be set by the active request
     if (detailInflight.has(key)) return;
 
-    setIsLoading(true);
+    // Only show the blocking loader (and clear the current incident) on the very
+    // first load. Background reloads — e.g. the realtime subscription firing
+    // after ANY update to this incident, including one this page itself just
+    // made (closing, editing, saving an AI recommendation) — used to clear
+    // `incident` to null and flash the whole page back to "Loading incident
+    // details...", which remounted IncidentHeader and reset any open dialog
+    // (e.g. AI Recommended Actions showing a result then immediately closing).
+    // A background refresh should update the data quietly once it arrives.
+    if (!forceRefresh) {
+      setIsLoading(true);
+      setIncident(null);
+    }
     setError(null);
-    setIncident(null);
 
     let resolveDone!: () => void;
     const done = new Promise<void>(r => { resolveDone = r; });

@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { incidentReferenceService } from "./incidentReferenceService";
+import { invokeIncidentConfig } from "@/components/incident/incidentConfigurationEdgeService";
 
 export interface PriorityItem {
   id: string;
@@ -39,28 +40,17 @@ export const priorityService = {
     }
   },
 
-  // Get priorities filtered by client type key
+  // Get priorities filtered by client type key. No clientId is passed here —
+  // same as before this used implicit RLS scoping by the logged-in user; the
+  // edge function resolves clientId from the caller's auth token the same way.
   getPriorities: async (activeOnly: boolean = false, clientTypeId?: string) => {
     try {
-      let query = supabase
-        .from('incident_priorities')
-        .select('*');
-        
-      if (activeOnly) {
-        query = query.eq('is_active', true);
-      }
-
-      if (clientTypeId) {
-        query = query.eq('client_type_id', clientTypeId);
-      }
-      const { data, error } = await query.order('weight');
-      
-      if (error) {
-        console.error('Error fetching priorities:', error);
-        return [];
-      }
-
-      return data as PriorityItem[];
+      return await invokeIncidentConfig<PriorityItem[]>({
+        resource: 'priorities',
+        operation: 'list',
+        clientTypeId,
+        activeOnly,
+      });
     } catch (error) {
       console.error('Error fetching priorities:', error);
       return [];

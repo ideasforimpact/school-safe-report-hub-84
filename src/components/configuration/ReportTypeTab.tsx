@@ -98,19 +98,13 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          reportTypes.map(async (type) => {
-            const refInfo = await incidentReferenceService.checkReportTypeReferences(type.id, clientId);
-            return { id: type.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          reportTypes.map((type) => ({ type: 'reportType' as const, id: type.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setReportTypeReferences(map);
       } catch (error) {
         console.error('Error preloading report type reference info:', error);

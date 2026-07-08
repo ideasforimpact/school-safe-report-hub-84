@@ -32,7 +32,23 @@ const TablePaginationBar: React.FC<TablePaginationBarProps> = ({
     if (totalPages <= 5) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    return [1, 2, 'ellipsis', totalPages - 1, totalPages];
+
+    const pages: (number | 'ellipsis')[] = [];
+
+    // Show prev, current, next as a sliding window
+    if (currentPage - 1 >= 1) pages.push(currentPage - 1);
+    pages.push(currentPage);
+    if (currentPage + 1 <= totalPages) pages.push(currentPage + 1);
+
+    // Ellipsis when there is a gap before the last two pages
+    const lastVisible = pages[pages.length - 1] as number;
+    if (lastVisible < totalPages - 2) pages.push('ellipsis');
+
+    // Last two pages (only if not already shown above)
+    if (totalPages - 1 > currentPage + 1) pages.push(totalPages - 1);
+    if (totalPages > currentPage + 1) pages.push(totalPages);
+
+    return pages;
   };
 
   if (totalPages <= 1) return null;

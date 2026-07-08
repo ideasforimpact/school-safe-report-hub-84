@@ -20,7 +20,7 @@ import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentForm
 import AssignmentSection from './AssignmentSection';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
-import { Student } from '@/types/student';
+import { useStudents } from '@/contexts/StudentContext';
 import { formatFileSize } from '@/utils/fileUtils';
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 import { DESCRIPTION_MAX_LENGTH } from '../constants';
@@ -66,6 +66,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, employeeData } = useAuth();
+  const { students } = useStudents();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get form configuration data from the new hook
@@ -282,15 +283,19 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
         priority_id: formData.priorityId,
         assigned_to: formData.owner || null,
         people_involved: filteredPeople as unknown as Json,
-        updated_at: new Date().toISOString()
       };
 
       console.log('Updating incident:', { incidentId: id, updates });
 
-      const { error } = await supabase
-        .from('incidents')
-        .update(updates)
-        .eq('id', id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('You must be logged in to edit incidents');
+      }
+
+      const { error } = await supabase.functions.invoke('update-incident', {
+        body: { incidentId: id, updates },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
 
       if (error) {
         console.error('Error updating incident:', error);
@@ -637,7 +642,8 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                 incidentForNotification,
                 updater,
                 'Incident details have been updated',
-                employeeData
+                employeeData,
+                assignee
               );
               console.log('Update notification result:', result);
             } else {
@@ -675,8 +681,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
       </div>
     );
   }
-
-  const students: Student[] = [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

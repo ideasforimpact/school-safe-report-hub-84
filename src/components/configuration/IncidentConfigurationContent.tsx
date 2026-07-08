@@ -38,10 +38,16 @@ const IncidentConfigurationContent = () => {
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const clientTypeId = employeeData?.clientType?.id || user?.clientType?.id;
 
-  // Use the existing hook for categories and subcategories
+  // Use the existing hook for categories and subcategories — it now fetches all
+  // 5 Incident Configuration resources (categories, subcategories, contributing
+  // factors, report types, priorities) in a single edge-function call (listAll),
+  // instead of each sub-tab firing its own separate request.
   const {
     categories,
     subcategoryMappings,
+    contributingFactors: hookContributingFactors,
+    reportTypes: hookReportTypes,
+    priorities: hookPriorities,
     loading: categoriesLoading,
     addCategory,
     updateCategory,
@@ -52,55 +58,21 @@ const IncidentConfigurationContent = () => {
     loadData,
   } = useIncidentCategories();
 
-  // Fetch contributing factors
+  // Seed local state (which the add/update/delete/toggle handlers below update
+  // optimistically) from the hook's fetch. Kept as separate local state rather
+  // than reading the hook's arrays directly so those handlers don't need to change.
   useEffect(() => {
-    const clientId = employeeData?.clientId;
-    if (!clientId || !clientTypeId) return;
-    async function fetchContributingFactors() {
-      try {
-        const factors = await contributingFactorService.getContributingFactors(clientId, clientTypeId);
-        setContributingFactors(factors);
-      } catch (error) {
-        console.error('Exception fetching contributing factors:', error);
-        toast.error('An unexpected error occurred');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchContributingFactors();
-  }, [employeeData?.clientId, clientTypeId]);
+    setContributingFactors(hookContributingFactors);
+    setLoading(false);
+  }, [hookContributingFactors]);
 
-  // Fetch report types
   useEffect(() => {
-    if (!clientTypeId) return;
-    async function fetchReportTypes() {
-      try {
-        const data = await reportTypeService.getReportTypes(false, clientTypeId);
-        setReportTypes(data as ReportType[]);
-      } catch (error) {
-        console.error('Exception fetching report types:', error);
-        toast.error('An unexpected error occurred');
-      }
-    }
+    setReportTypes(hookReportTypes as ReportType[]);
+  }, [hookReportTypes]);
 
-    fetchReportTypes();
-  }, [clientTypeId]);
-
-  // Fetch priorities
   useEffect(() => {
-    if (!clientTypeId) return;
-    async function fetchPriorities() {
-      try {
-        const data = await priorityService.getPriorities(false, clientTypeId);
-        setPriorities(data as PriorityItem[]);
-      } catch (error) {
-        console.error('Exception fetching priorities:', error);
-        toast.error('An unexpected error occurred');
-      }
-    }
-
-    fetchPriorities();
-  }, [clientTypeId]);
+    setPriorities(hookPriorities as PriorityItem[]);
+  }, [hookPriorities]);
 
   // Handle contributing factors operations
   const handleAddContributingFactor = async (name: string, description: string, weight: string) => {

@@ -32,50 +32,7 @@ const BackofficeImportConfiguration = () => {
   const triggerImport = async (clientId: string) => {
     setLoading(true);
     try {
-      const categories = (categoriesTemplateJson as Record<string, unknown>)?.categories;
-      const contributing_factors = (contributingFactorsTemplateJson as Record<string, unknown>)?.contributing_factors;
-      const report_types = (reportTypesTemplateJson as Record<string, unknown>)?.report_types;
-      const priorities = (prioritiesTemplateJson as Record<string, unknown>)?.priorities;
-      const forms = [formTemplateJson]; // Wrap single form template in array
-      const assessment_templates = assessmentTemplatesJson; // Assessment templates array
-      const edu_resources = eduResourcesJson; // Edu resources array
-
-      // Frontend validation before invoking
-      const missing: string[] = [];
-      if (!Array.isArray(categories) || categories.length === 0) missing.push('categories');
-      if (!Array.isArray(contributing_factors) || contributing_factors.length === 0) missing.push('contributing_factors');
-      if (!Array.isArray(report_types) || report_types.length === 0) missing.push('report_types');
-      if (!Array.isArray(priorities) || priorities.length === 0) missing.push('priorities');
-      if (!Array.isArray(forms) || forms.length === 0) missing.push('forms');
-      if (!Array.isArray(assessment_templates) || assessment_templates.length === 0) missing.push('assessment_templates');
-      if (!Array.isArray(edu_resources) || edu_resources.length === 0) missing.push('edu_resources');
-      if (missing.length > 0) {
-        toast.error(`Missing template(s): ${missing.join(', ')}`);
-        setLoading(false);
-        return;
-      }
-      const payload = {
-        client_id: clientId,
-        categories,
-        contributing_factors,
-        report_types,
-        priorities,
-        forms,
-        assessment_templates,
-        edu_resources
-      };
-       console.log('Sending payload with forms, assessments, and edu resources:', { 
-        client_id: selectedClient, 
-        formsCount: forms.length,
-        forms: forms.map(f => ({ title: f.title, fieldsCount: f.fields?.length || 0 })),
-        assessmentTemplatesCount: assessment_templates.length,
-        assessmentTemplates: assessment_templates.map(a => ({ title: a.title, questionsCount: a.questions?.length || 0 })),
-        eduResourcesCount: edu_resources.length
-      });
-
-      const { data, error } = await supabase.functions.invoke('import-configuration', {
-        body: payload
-      });
+      const { data, error } = await runImportConfiguration(clientId);
       if (error) throw error;
       if (data?.status === 'failed') {
         toast.error('Import completed with errors');
@@ -83,8 +40,7 @@ const BackofficeImportConfiguration = () => {
         toast.success('Import completed — all 3 client types imported');
       }
       await fetchClientsAndLogs();
-      setSelectedClient('');
-    } catch (e) {
+    } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to import');
     } finally {
       setLoading(false);
@@ -164,5 +120,3 @@ const BackofficeImportConfiguration = () => {
 };
 
 export default BackofficeImportConfiguration;
-
-
