@@ -338,6 +338,11 @@ const incidentAnalyticsStats = useMemo(() => {
     fetchIncidents(filters, true);
   }, [fetchIncidents, filters]);
 
+  const refreshIncidents = useCallback(async () => {
+    // Refresh incidents with current filters
+    await fetchIncidents(filters, true);
+  }, [fetchIncidents, filters]);
+
   const dbCategoryOptions = useMemo(
     () => {
       if (config?.categories) return Array.from(new Set(config.categories.map((c) => c.name).filter(Boolean))).sort();
@@ -448,10 +453,7 @@ const incidentAnalyticsStats = useMemo(() => {
             pagination={pagination}
             onPageChange={goToPage}
             onPageSizeChange={changePageSize}
-            onRefreshIncidents={async () => {
-              // Refresh incidents with current filters
-              await fetchIncidents(filters, true);
-            }}
+            onRefreshIncidents={refreshIncidents}
           />
         </div>
       </div>

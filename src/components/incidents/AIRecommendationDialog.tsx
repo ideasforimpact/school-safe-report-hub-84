@@ -150,7 +150,14 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
       setError(null);
       setResult(null);
     }
-  }, [open, incident, incidentJson, callEdgeFunction]);
+    // Run only when the dialog opens/closes. `incident`, `incidentJson`, and
+    // `callEdgeFunction` are read from the closure captured at that moment -
+    // including them here would re-run this effect (and re-call the edge
+    // function) whenever those references churn, e.g. `callEdgeFunction`
+    // changes identity because the parent's `onRefresh` callback is
+    // recreated after each refetch, causing an infinite reload loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleRefreshClick = () => {
     setShowConsentDialog(true);
