@@ -56,7 +56,12 @@ const PublicFormPage = () => {
       return [] as FormField[];
     }
   };
-
+  
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email);
+  };
+  
   const getClientTypeKeyFromRelation = (relation: any): string | null => {
     if (Array.isArray(relation)) return relation[0]?.key ?? null;
     return relation?.key ?? null;
@@ -416,8 +421,7 @@ const PublicFormPage = () => {
           
           // Additional validation for email format
           if (field.type === 'email' || (field.id?.toLowerCase() === 'email' || (field.label || '').toLowerCase().includes('email'))) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(value.toString().trim())) {
+            if (!isValidEmail(value.toString().trim())) {
               toast.error('Please enter a valid email address');
               return false;
             }
@@ -541,6 +545,9 @@ const PublicFormPage = () => {
               maxLength={50}
               required={isRequired}
             />
+            {formData[field.id] && !isValidEmail(formData[field.id]) && (
+              <p className="text-xs text-red-500">Please enter a valid email address</p>
+            )}
           </div>
         );
 
