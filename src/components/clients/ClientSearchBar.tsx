@@ -1,6 +1,6 @@
 
 import React from 'react';
-import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import DebouncedSearchInput from '@/components/backoffice/DebouncedSearchInput';
 
 interface ClientSearchBarProps {
   value: string;
