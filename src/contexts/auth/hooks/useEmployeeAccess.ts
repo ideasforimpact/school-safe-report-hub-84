@@ -88,6 +88,10 @@ export const useEmployeeAccess = () => {
     }
     return null;
   }, [employeeData]);
+  // Get client type id if available
+  const getClientTypeId = useCallback(() => {
+    return employeeData?.clientType?.id ?? null;
+  }, [employeeData]);
 
   return {
     employee,
@@ -95,6 +99,7 @@ export const useEmployeeAccess = () => {
     isVerifiedEmployee,
     getEmployeeId,
     getClientId,
+    getClientTypeId,
     isAdmin,
     isSuperAdmin
   };

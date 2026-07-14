@@ -15,10 +15,11 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
 import { Employee } from '@/types/employeeVerification';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
-import { formatDepartment } from '@/lib/formatUtils';
+import { formatDepartment, capitalizeWords } from '@/lib/formatUtils';
 import { aggregatePersonalInfo } from './utils/personalInfoUtils';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface EmployeesListProps {
   employees: Employee[];
@@ -55,6 +56,81 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
     onPayload: handleDocumentsRealtime,
   });
 
+  // Render documents information for each employee using priority-based status
+  const renderDocumentsInfo = (employee: Employee) => {
+    const documents = employee.documents || [];
+    
+    // Group by verification status
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress');
+    const total = documents.length;
+
+    if (total === 0) {
+      return (
+        <div className="flex items-center">
+          <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-gray-100 text-gray-800 border-gray-200">
+            <FileX className="h-3.5 w-3.5 text-gray-600" />
+            No Documents
+          </Badge>
+        </div>
+      );
+    }
+
+    // Drivers must have a verified Driving License before the overall status
+    // can show "Verified" — having some other document (e.g. Aadhar) verified
+    // isn't enough on its own for this department.
+    const isDriver = (employee.department || '').toLowerCase() === 'driver';
+    const hasVerifiedLicense = documents.some(
+      doc => doc.documentTypeName === 'driving_license' &&
+        (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed')
+    );
+
+    // Priority-based status logic (same as VerificationStatusSummary)
+    // Priority: Failed > Pending > Verified
+    // If ANY document failed → Show "Failed"
+    // If no failures but ANY pending → Show "Pending"
+    // If ALL documents verified → Show "Verified"
+    const getOverallStatus = () => {
+      if (failed.length > 0) {
+        return {
+          status: 'Failed',
+          icon: XCircle,
+          iconColor: 'text-red-600',
+          badgeClass: 'bg-red-100 text-red-800 border-red-200'
+        };
+      } else if (pending.length > 0 || (isDriver && !hasVerifiedLicense)) {
+        return {
+          status: 'Pending',
+          icon: Clock,
+          iconColor: 'text-amber-600',
+          badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        };
+      } else {
+        return {
+          status: 'Verified',
+          icon: CheckCircle,
+          iconColor: 'text-emerald-600',
+          badgeClass: 'bg-green-100 text-green-800 border-green-200'
+        };
+      }
+    };
+
+    const { status, icon: StatusIcon, iconColor, badgeClass } = getOverallStatus();
+
+    // Debug log to check what's being rendered in list
+    console.log('EmployeesList - Rendering status:', status, 'with icon:', StatusIcon.name);
+
+    return (
+      <div className="flex items-center">
+        <Badge className={`gap-1 px-2 py-1 font-medium text-xs ${badgeClass}`}>
+          <StatusIcon className="h-3.5 w-3.5" />
+          {status}
+        </Badge>
+      </div>
+    );
+  };
+
   const getDocumentBadge = (status: Employee['documents'][number]['verificationStatus']) => {
     if (status === 'verified' || status === 'completed') {
       return <Badge className="bg-green-100 text-green-700 border-green-200">Verified</Badge>;
@@ -68,46 +144,6 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
   const formatDocumentName = (name?: string) => {
     if (!name) return 'Document';
     return name.split('_').filter(Boolean).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-  };
-
-  const renderDocumentsInfo = (employee: Employee) => {
-    const documents = employee.documents || [];
-    const failed = documents.filter(d => d.verificationStatus === 'failed');
-    const pending = documents.filter(d => d.verificationStatus === 'pending' || d.verificationStatus === 'in-progress');
-    const verified = documents.filter(d => d.verificationStatus === 'verified' || d.verificationStatus === 'completed');
-    const total = documents.length;
-
-    if (total === 0) {
-      return (
-        <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-gray-100 text-gray-800 border-gray-200">
-          <FileX className="h-3.5 w-3.5 text-gray-600" />
-          No Documents
-        </Badge>
-      );
-    }
-
-    if (failed.length > 0) {
-      return (
-        <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-red-100 text-red-800 border-red-200">
-          <XCircle className="h-3.5 w-3.5 text-red-600" />
-          Failed
-        </Badge>
-      );
-    }
-    if (pending.length > 0) {
-      return (
-        <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-yellow-100 text-yellow-800 border-yellow-200">
-          <Clock className="h-3.5 w-3.5 text-amber-600" />
-          Pending
-        </Badge>
-      );
-    }
-    return (
-      <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-green-100 text-green-800 border-green-200">
-        <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-        Verified
-      </Badge>
-    );
   };
 
   if (isLoading) {
@@ -146,7 +182,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
                 const isInactive = employee.status === false;
                 
                 // Prepare truncated name for display with full value on hover
-                const fullName = employee.name || '';
+                const fullName = capitalizeWords(employee.name);
                 const displayName =
                   fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
 
@@ -155,9 +191,32 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
                 const aggregatedPersonalInfo = aggregatePersonalInfo(documents);
                 const hasDifferentDobs = aggregatedPersonalInfo.dob.differentValues.length > 0;
 
+                const isDriverEmployee = (employee.department || '').toLowerCase() === 'driver';
+
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
-                    <TableCell>{employee.employeeId}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{employee.employeeId}</span>
+                        {isDriverEmployee && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-blue-300 bg-blue-50 text-xs font-semibold text-blue-700 cursor-default">
+                                  D
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                className="relative bg-slate-800 text-white border-slate-800 px-3 py-1.5 text-sm after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-2 after:w-2 after:rotate-45 after:bg-slate-800"
+                              >
+                                Driver
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell
                       title={fullName}
                       className="max-w-xs truncate"

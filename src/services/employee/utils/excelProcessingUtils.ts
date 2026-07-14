@@ -17,7 +17,23 @@ import { RawEmployeeData } from '../types/importTypes';
  * that are valid in names/addresses (unicode letters etc.). It only removes
  * formatting noise. Validation rules elsewhere are unchanged.
  */
-export const sanitizeCellValue = (value: unknown): string => {
+/**
+ * Canonicalize a PAN number the same way the Add/Edit User forms do as the
+ * user types (strip non-alphanumeric, uppercase, cap at 10 chars).
+ *
+ * IMPORTANT: only call this on a value that has already passed
+ * `getProfessionalOtherDetailsFieldErrors`'s PAN format check (i.e. after
+ * the Verify step). Applying it earlier — e.g. while parsing the raw Excel
+ * cell — would silently truncate/clean an invalid value (such as an
+ * over-length PAN with trailing junk characters) into something that
+ * *looks* well-formed, hiding the exact error Verify is supposed to catch.
+ * For an already-valid PAN this is a no-op; it exists purely so the stored
+ * value matches the canonical upper-case form manual entry always produces.
+ */
+export const normalizePanNumber = (value: string): string =>
+  (value || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10);
+
+export const sanitizeCellValue = (value: any): string => {
   if (value === undefined || value === null) return '';
   return String(value)
     // Strip invisible / formatting characters that copy-paste from
@@ -166,10 +182,13 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               if (typeof value === "string" && value.includes("/")) {
                 const parts = value.split("/");
                 if (parts.length === 3) {
-                  const trimmed = parts.map(v => v.trim());
-                  const d = trimmed[0];
-                  const m = trimmed[1];
-                  let y = trimmed[2];
+                  // Excel/CSV exports render dates in this app's locale as
+                  // M/D/YYYY (e.g. "7/9/2026" = July 9), not D/M/YYYY —
+                  // parsing this as day-first silently shifts the date
+                  // (e.g. "7/9/2026" would become September 7 instead of
+                  // July 9), which can turn a past date into a "future"
+                  // one and trigger false date-range validation errors.
+                  let [m, d, y] = parts.map(v => v.trim());
 
                   if (y.length === 2) y = "20" + y;
 
@@ -252,7 +271,10 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
             };
             
             const mappedData: RawEmployeeData = {
-              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']),
+              // Uppercased at parse time to match Add/Edit User, whose employee ID
+              // input uppercases on every keystroke — this keeps import, dedup
+              // checks, and storage all consistent with the same casing.
+              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']).toUpperCase(),
               firstName: getFieldValue(['First Name', 'FirstName', 'firstName', 'first_name', 'First name', 'FIRSTNAME', 'Name', 'First', 'Given Name']),
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),
@@ -394,10 +416,13 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               if (typeof value === "string" && value.includes("/")) {
                 const parts = value.split("/");
                 if (parts.length === 3) {
-                  const trimmed = parts.map(v => v.trim());
-                  const d = trimmed[0];
-                  const m = trimmed[1];
-                  let y = trimmed[2];
+                  // Excel/CSV exports render dates in this app's locale as
+                  // M/D/YYYY (e.g. "7/9/2026" = July 9), not D/M/YYYY —
+                  // parsing this as day-first silently shifts the date
+                  // (e.g. "7/9/2026" would become September 7 instead of
+                  // July 9), which can turn a past date into a "future"
+                  // one and trigger false date-range validation errors.
+                  let [m, d, y] = parts.map(v => v.trim());
 
                   if (y.length === 2) y = "20" + y; // Convert 25 → 2025
 
@@ -492,7 +517,10 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
 
             // Fix email mapping with enhanced detection
             const mappedData: RawEmployeeData = {
-              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']),
+              // Uppercased at parse time to match Add/Edit User, whose employee ID
+              // input uppercases on every keystroke — this keeps import, dedup
+              // checks, and storage all consistent with the same casing.
+              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']).toUpperCase(),
               firstName: getFieldValue(['First Name', 'FirstName', 'firstName', 'first_name', 'First name', 'FIRSTNAME', 'Name', 'First', 'Given Name']),
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),

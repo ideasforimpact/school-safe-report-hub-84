@@ -90,6 +90,7 @@ interface AssessmentRow {
   score: number | null;
   answers: unknown;
   client_id: string;
+  is_reworked?: boolean;
   creator: PersonName | null;
   assignee: PersonName | null;
   template: { questions: unknown } | null;
@@ -140,7 +141,7 @@ async function handleList(body: RequestBody): Promise<Response> {
       .from("assessments")
       .select(
         `id,assessment_id,name,status,target_completion_date,created_by,assigned_to,` +
-        `template_id,created_at,score,answers,client_id,` +
+        `template_id,created_at,score,answers,client_id,is_reworked,` +
         `creator:employees!assessments_created_by_fkey(first_name,last_name),` +
         `assignee:employees!assessments_assigned_to_fkey(first_name,last_name),` +
         `template:assessment_templates(questions)`,
@@ -263,7 +264,8 @@ async function handleGet(body: RequestBody): Promise<Response> {
     .from("assessments")
     .select(
       `id,assessment_id,name,status,target_completion_date,created_at,score,answers,` +
-      `completed_on,closure_comments,rework_comments,created_by,assigned_to,template_id,` +
+      `completed_on,closure_comments,closure_attachment,is_reworked,rework_comments,rework_attachments,` +
+      `submit_comment,submit_attachment,created_by,assigned_to,template_id,` +
       `creator:employees!assessments_created_by_fkey(first_name,last_name),` +
       `assignee:employees!assessments_assigned_to_fkey(first_name,last_name),` +
       `completed_by_employee:employees!assessments_completed_by_fkey(first_name,last_name),` +
@@ -300,9 +302,10 @@ async function handleEmployees(body: any): Promise<Response> {
 
   const { data, error } = await supabaseClient
     .from("employees")
-    .select(`id,first_name,last_name,email,department,employee_departments:department(id,department_name)`)
+    .select(`id,first_name,last_name,email,aadhar_verified_name,department,employee_departments:department(id,department_name)`)
     .eq("client_id", client_id)
     .eq("status", true)
+    .eq("is_secondary_super_admin", false)
     .not("email", "is", null)
     .order("first_name");
 
@@ -364,9 +367,10 @@ async function handleCreateForm(body: any): Promise<Response> {
   const [employeesResult, namesResult] = await Promise.all([
     supabaseClient
       .from("employees")
-      .select(`id,first_name,last_name,email,department,employee_departments:department(id,department_name)`)
+      .select(`id,first_name,last_name,email,aadhar_verified_name,department,employee_departments:department(id,department_name)`)
       .eq("client_id", client_id)
       .eq("status", true)
+      .eq("is_secondary_super_admin", false)
       .not("email", "is", null)
       .order("first_name"),
     supabaseClient

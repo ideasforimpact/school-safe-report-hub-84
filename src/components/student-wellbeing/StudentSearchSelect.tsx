@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/auth';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types/student';
+import AddStudentDialog from '@/components/students/AddStudentDialog';
 
 // De-duplicate identical student-management invocations (handles React StrictMode double-effect in dev)
 type StudentMgmtInvokeResult = Awaited<ReturnType<typeof supabase.functions.invoke>>;
@@ -52,7 +53,7 @@ const invokeStudentList = async (clientId: string) => {
   _studentMgmtInflight.set(key, request);
   return request;
 };
- 
+
 export interface StudentOption {
   id: string;
   name: string;
@@ -89,6 +90,8 @@ export function StudentSearchSelect({
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [isSearchingAPI, setIsSearchingAPI] = useState(false);
   const [open, setOpen] = useState(false);
+  const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
+  const [studentNameToAdd, setStudentNameToAdd] = useState('');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   /** When integration is off: only open dropdown after user clicks the input, not on auto-focus when dialog opens */
@@ -96,50 +99,50 @@ export function StudentSearchSelect({
  
   const clientId = employeeData?.clientId;
  
-  useEffect(() => {
+  const fetchStudents = useCallback(async () => {
     if (isIntegrationEnabled || !clientId) {
       setFetchedStudents([]);
       return;
     }
-    let cancelled = false;
     setIsLoadingStudents(true);
-    invokeStudentList(clientId)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.error(error);
-          setFetchedStudents([]);
-          return;
-        }
-        const studentList: RawStudentRecord[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.students)
-            ? data.students
-            : [];
-        setFetchedStudents(
-          studentList.map((s) => ({
-            id: s.id,
-            studentId: s.student_id,
-            name: s.name,
-            grade: s.grade,
-            section: s.section,
-            campus: s.campus,
-            createdAt: new Date(s.created_at),
-            updatedAt: new Date(s.updated_at),
-            grade_id: s.grade_id ?? null,
-            section_id: s.section_id ?? null,
-            campus_id: s.campus_id ?? null,
-          }))
-        );
-      })
-      .catch((e) => {
-        if (!cancelled) { console.error(e); setFetchedStudents([]); }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingStudents(false);
-      });
-    return () => { cancelled = true; };
-  }, [clientId, isIntegrationEnabled, refreshKey]);
+    try {
+      const { data, error } = await invokeStudentList(clientId);
+      if (error) {
+        console.error(error);
+        setFetchedStudents([]);
+        return;
+      }
+      const studentList: RawStudentRecord[] = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.students)
+          ? data.students
+          : [];
+      setFetchedStudents(
+        studentList.map((s) => ({
+          id: s.id,
+          studentId: s.student_id,
+          name: s.name,
+          grade: s.grade,
+          section: s.section,
+          campus: s.campus,
+          createdAt: new Date(s.created_at),
+          updatedAt: new Date(s.updated_at),
+          grade_id: s.grade_id ?? null,
+          section_id: s.section_id ?? null,
+          campus_id: s.campus_id ?? null,
+        }))
+      );
+    } catch (e) {
+      console.error(e);
+      setFetchedStudents([]);
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  }, [clientId, isIntegrationEnabled]);
+
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents, refreshKey]);
  
   const searchStudentsAPI = useCallback(async (term: string): Promise<StudentOption[]> => {
     if (!term || term.length < 3 || !clientId) return [];
@@ -248,6 +251,12 @@ export function StudentSearchSelect({
     : '';
 
   const options = open ? searchResults : [];
+  const trimmedSearchQuery = searchQuery.trim();
+  const canAddStudent =
+    !isIntegrationEnabled &&
+    trimmedSearchQuery.length >= 3 &&
+    !isSearchingAPI &&
+    options.length === 0;
 
   const handleFocus = () => {
     if (userClickedInputRef.current) {
@@ -256,53 +265,108 @@ export function StudentSearchSelect({
     }
   };
 
+  const handleAddStudentClick = () => {
+    setStudentNameToAdd(trimmedSearchQuery);
+    setIsAddStudentDialogOpen(true);
+    setOpen(false);
+  };
+
+  const handleStudentAdded = async (newStudent: Student) => {
+    const studentOption: StudentOption = {
+      id: newStudent.id,
+      name: newStudent.name,
+      student_id: newStudent.studentId,
+      section_id: newStudent.section_id ?? null,
+      grade_id: newStudent.grade_id ?? null,
+      section_name: newStudent.section ?? null,
+      grade_name: newStudent.grade ?? null,
+      is_external: false,
+    };
+
+    onChange(studentOption);
+    setSearchQuery('');
+    setSearchResults([]);
+    setStudentNameToAdd('');
+    setOpen(false);
+    await fetchStudents();
+  };
+
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
-      <Input
-        value={open ? searchQuery : displayValue}
-        onMouseDown={() => {
-          userClickedInputRef.current = true;
-        }}
-        onChange={(e) => {
-          setSearchQuery(e.target.value);
-          setOpen(true);
-          if (!e.target.value) onChange(null);
-        }}
-        onFocus={handleFocus}
-        placeholder={isLoadingStudents ? 'Loading students...' : placeholder}
-        disabled={disabled || isLoadingStudents}
-        className="pr-8"
-      />
-      <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-      {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-          {isIntegrationEnabled && searchQuery.length > 0 && searchQuery.length < 3 && (
-            <div className="px-3 py-2 text-sm text-gray-500">Type at least 3 characters</div>
-          )}
-          {isIntegrationEnabled && searchQuery.length >= 3 && isSearchingAPI && (
-            <div className="px-3 py-2 text-sm text-gray-500">Searching...</div>
-          )}
-          {!isSearchingAPI && options.length === 0 && searchQuery.length >= (isIntegrationEnabled ? 3 : 0) && (
-            <div className="px-3 py-2 text-sm text-gray-500">No results found</div>
-          )}
-          {!isSearchingAPI &&
-            options.map((opt) => (
+    <>
+      <div className={`relative ${className}`} ref={containerRef}>
+        <Input
+          value={open ? searchQuery : displayValue}
+          onMouseDown={() => {
+            userClickedInputRef.current = true;
+          }}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setOpen(true);
+            if (!e.target.value) onChange(null);
+          }}
+          onFocus={handleFocus}
+          placeholder={isLoadingStudents ? 'Loading students...' : placeholder}
+          disabled={disabled || isLoadingStudents}
+          className="pr-8"
+        />
+        <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        {open && (
+          <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+            {isIntegrationEnabled && searchQuery.length > 0 && searchQuery.length < 3 && (
+              <div className="px-3 py-2 text-sm text-gray-500">Type at least 3 characters</div>
+            )}
+            {isIntegrationEnabled && searchQuery.length >= 3 && isSearchingAPI && (
+              <div className="px-3 py-2 text-sm text-gray-500">Searching...</div>
+            )}
+            {!isSearchingAPI && options.length === 0 && searchQuery.length >= (isIntegrationEnabled ? 3 : 0) && (
+              <div className="px-3 py-2 text-sm text-gray-500">No results found</div>
+            )}
+            {!isSearchingAPI &&
+              options.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className="flex w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onChange(opt);
+                    setSearchQuery('');
+                    setOpen(false);
+                  }}
+                >
+                  {opt.student_id ? `${opt.name} (${opt.student_id})` : opt.name}
+                </button>
+              ))}
+            {canAddStudent && (
               <button
-                key={opt.id}
                 type="button"
-                className="flex w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                className="flex w-full items-center px-3 py-2 text-left text-sm font-medium text-blue-600 hover:bg-blue-50 border-t"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  onChange(opt);
-                  setSearchQuery('');
-                  setOpen(false);
-                }}
+                onClick={handleAddStudentClick}
               >
-                {opt.student_id ? `${opt.name} (${opt.student_id})` : opt.name}
+                <Plus className="mr-2 h-4 w-4" />
+                Add Student
               </button>
-            ))}
-        </div>
-      )}
-    </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <AddStudentDialog
+        open={isAddStudentDialogOpen}
+        onOpenChange={(dialogOpen) => {
+          setIsAddStudentDialogOpen(dialogOpen);
+          if (!dialogOpen) {
+            setStudentNameToAdd('');
+          }
+        }}
+        peopleInvolved={
+          studentNameToAdd
+            ? { name: studentNameToAdd, role: 'Student', notes: '' }
+            : null
+        }
+        onStudentAdded={handleStudentAdded}
+      />
+    </>
   );
 }

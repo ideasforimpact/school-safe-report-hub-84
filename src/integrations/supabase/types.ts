@@ -123,6 +123,7 @@ export type Database = {
           assessment_id: number
           assigned_to: string | null
           client_id: string | null
+          closure_attachment: Json | null
           closure_comments: string | null
           completed_by: string | null
           completed_on: string | null
@@ -130,10 +131,14 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_reworked: boolean
           name: string
+          rework_attachments: Json | null
           rework_comments: string | null
           score: number | null
           status: string
+          submit_comment: string | null
+          submit_attachment: Json | null
           target_completion_date: string | null
           template_id: string | null
           updated_at: string
@@ -143,6 +148,7 @@ export type Database = {
           assessment_id?: number
           assigned_to?: string | null
           client_id?: string | null
+          closure_attachment?: Json | null
           closure_comments?: string | null
           completed_by?: string | null
           completed_on?: string | null
@@ -150,10 +156,14 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_reworked?: boolean
           name: string
+          rework_attachments?: Json | null
           rework_comments?: string | null
           score?: number | null
           status?: string
+          submit_comment?: string | null
+          submit_attachment?: Json | null
           target_completion_date?: string | null
           template_id?: string | null
           updated_at?: string
@@ -163,6 +173,7 @@ export type Database = {
           assessment_id?: number
           assigned_to?: string | null
           client_id?: string | null
+          closure_attachment?: Json | null
           closure_comments?: string | null
           completed_by?: string | null
           completed_on?: string | null
@@ -170,10 +181,14 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_reworked?: boolean
           name?: string
+          rework_attachments?: Json | null
           rework_comments?: string | null
           score?: number | null
           status?: string
+          submit_comment?: string | null
+          submit_attachment?: Json | null
           target_completion_date?: string | null
           template_id?: string | null
           updated_at?: string
@@ -1095,6 +1110,7 @@ export type Database = {
       }
       employees: {
         Row: {
+          aadhar_verified_name: string | null
           client_id: string | null
           created_at: string
           department: string
@@ -1111,6 +1127,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          aadhar_verified_name?: string | null
           client_id?: string | null
           created_at?: string
           department: string
@@ -1127,6 +1144,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          aadhar_verified_name?: string | null
           client_id?: string | null
           created_at?: string
           department?: string

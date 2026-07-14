@@ -451,9 +451,10 @@ async function getFormData(supabase: any, clientId: string) {
   const [employeesResult, rolesResult] = await Promise.all([
     supabase
       .from('employees')
-      .select('id, first_name, last_name')
+      .select('id, first_name, last_name, aadhar_verified_name')
       .eq('client_id', clientId)
       .eq('status', true)
+      .eq('is_secondary_super_admin', false)
       .order('first_name', { ascending: true }),
     supabase
       .from('committee_member_roles')
@@ -462,9 +463,20 @@ async function getFormData(supabase: any, clientId: string) {
       .order('sort_order', { ascending: true }),
   ]);
 
-  const employees = (employeesResult.data || []).map((e: any) => ({
+  let employeeRows = employeesResult.data || [];
+  if (employeeRows.length === 0) {
+    const { data: fallbackEmployees } = await supabase
+      .from('employees')
+      .select('id, first_name, last_name, aadhar_verified_name')
+      .eq('client_id', clientId)
+      .eq('is_secondary_super_admin', false)
+      .order('first_name', { ascending: true });
+    employeeRows = fallbackEmployees || [];
+  }
+
+  const employees = employeeRows.map((e: any) => ({
     id: e.id,
-    name: `${e.first_name || ''} ${e.last_name || ''}`.trim() || 'Unnamed Employee',
+    name: e.aadhar_verified_name || `${e.first_name || ''} ${e.last_name || ''}`.trim() || 'Unnamed Employee',
   }));
 
   return {
@@ -938,12 +950,12 @@ async function hydrateEvents(supabase: any, clientId: string, events: any[]) {
     ])
   );
   const { data: employees } = employeeIds.length
-    ? await supabase.from('employees').select('id, first_name, last_name').in('id', employeeIds)
+    ? await supabase.from('employees').select('id, first_name, last_name, aadhar_verified_name').in('id', employeeIds)
     : { data: [] };
 
   const employeeName = new Map<string, string>();
   (employees || []).forEach((emp: any) => {
-    employeeName.set(emp.id, `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Unknown Employee');
+    employeeName.set(emp.id, emp.aadhar_verified_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Unknown Employee');
   });
 
   const participantsMap = new Map<string, string[]>();

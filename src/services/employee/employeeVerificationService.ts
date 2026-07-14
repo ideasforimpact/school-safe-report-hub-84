@@ -117,9 +117,10 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
     const employee: Employee = {
       id: rec.id,
       employeeId: rec.employee_id || '',
-      name: `${rec.first_name || ''} ${rec.last_name || ''}`.trim(),
+      name: rec.aadhar_verified_name || `${rec.first_name || ''} ${rec.last_name || ''}`.trim(),
       firstName: rec.first_name || '',
       lastName: rec.last_name || '',
+      aadharVerifiedName: rec.aadhar_verified_name || undefined,
       email: rec.email || '',
       phone: rec.phone || '',
       designation: rec.designation || '',

@@ -1137,6 +1137,15 @@ serve(async (req) => {
               .from('employee_documents')
               .update(updateData)
               .eq('id', documentId);
+
+            // Store verified Aadhaar name on the employee record
+            const aadharVerifiedName = (apiData.full_name || apiData.name || '').trim() || null;
+            if (aadharVerifiedName && employeeId) {
+              await supabase
+                .from('employees')
+                .update({ aadhar_verified_name: aadharVerifiedName })
+                .eq('id', employeeId);
+            }
           }
           return new Response(
             JSON.stringify({ 

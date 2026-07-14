@@ -78,7 +78,6 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   const [localCommentFiles, setLocalCommentFiles] = useState<FileItem[]>([]);
   const [localIsSubmitting, setLocalIsSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [currentIncident, setCurrentIncident] = useState(incident);
   const [isRefreshingIncident, setIsRefreshingIncident] = useState(false);
 
   // Function to refresh incident details after comment submission
@@ -113,8 +112,8 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   const userName = authUser ? formatUserFullName(authUser) : 'Unknown User';
   const userId = authUser?.id || 'unknown';
 
-  // Use currentIncident instead of incident for display
-  const displayIncident = currentIncident;
+  // Use incident prop for display
+  const displayIncident = incident;
 
   // Determine if user can upload documents (admin users)
   const canUploadDocuments = isAdmin && !isReadOnly;

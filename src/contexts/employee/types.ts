@@ -24,7 +24,7 @@ export interface Employee {
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'full-time' | 'consultant' | 'intern';
 
 // Include both formats to ensure compatibility
-export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 
+export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'driver' | 'management' |
                             'it' | 'hr' | 'finance' | 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 
                             'Other' | 'Teaching' | 'Administrative' | 'Support';
 

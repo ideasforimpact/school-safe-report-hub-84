@@ -250,7 +250,7 @@ async function getDepartmentId(supabaseClient: any, department: string): Promise
  
   return departmentData.id;
 }
-
+ 
 async function insertEmployeePersonalDetails(
   supabaseClient: any,
   employeeId: string,
@@ -269,7 +269,7 @@ async function insertEmployeePersonalDetails(
   if (!resolvedClientId) {
     throw new Error(`Missing client_id for employee personal details upsert: ${employeeId}`);
   }
-
+ 
   const nestedPersonal = employee.personalDetails || {};
   const normalizeOptional = (value: any) => {
     if (value === undefined || value === null) return null;
@@ -291,17 +291,17 @@ async function insertEmployeePersonalDetails(
   qualification: normalizeOptional(nestedPersonal.qualification ?? employee.qualification),
     updated_at: new Date().toISOString(),
 };
-
+ 
   const { error } = await supabaseClient
     .from('employee_personal_details')
     .upsert(personalDetails, { onConflict: 'employee_id' });
-
+ 
   if (error) {
     console.error('Error inserting employee personal details:', error);
     throw error;
   }
 }
-
+ 
 async function insertEmployeeOtherDetails(
   supabaseClient: any,
   employeeId: string,
@@ -320,7 +320,7 @@ async function insertEmployeeOtherDetails(
   if (!resolvedClientId) {
     throw new Error(`Missing client_id for employee other details upsert: ${employeeId}`);
   }
-
+ 
   const nestedProfessional = employee.professionalOtherDetails || {};
   const normalizeOptional = (value: any) => {
     if (value === undefined || value === null) return null;
@@ -338,22 +338,22 @@ async function insertEmployeeOtherDetails(
   biometric_user_id: normalizeOptional(nestedProfessional.biometricUserId ?? employee.biometricUserId),
     updated_at: new Date().toISOString(),
 };
-
+ 
   const { error } = await supabaseClient
     .from('employee_other_details')
     .upsert(otherDetails, { onConflict: 'employee_id' });
-
+ 
   if (error) {
     console.error('Error inserting employee other details:', error);
     throw error;
   }
 }
-
+ 
 function sanitizeFilename(filename: string): string {
   const lastDotIndex = filename.lastIndexOf('.');
   const name = lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
   const extension = lastDotIndex > 0 ? filename.substring(lastDotIndex) : '';
-
+ 
   const sanitizedName = name
     .replace(/ /g, '_')
     .replace(/[()]/g, '_')
@@ -361,10 +361,10 @@ function sanitizeFilename(filename: string): string {
     .replace(/[[\]{}#%^&*+=|<>?/\\]/g, '_')
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '');
-
+ 
   return sanitizedName + extension;
 }
-
+ 
 async function uploadEmployeeProfileDocuments(
   supabaseClient: any,
   clientId: string,
@@ -372,20 +372,20 @@ async function uploadEmployeeProfileDocuments(
   documents: any[]
 ) {
   if (!Array.isArray(documents) || documents.length === 0) return [];
-
+ 
   const bucketName = 'employee_profile_documents';
   const now = new Date().toISOString();
   const processedDocuments: any[] = [];
-
+ 
   for (const doc of documents) {
     if (!doc || !doc.key) continue;
-
+ 
     const normalizedDoc = {
       key: doc.key,
       fileName: doc.fileName || 'document',
       uploadedAt: doc.uploadedAt || now,
     } as any;
-
+ 
     const fileData = typeof doc.fileData === 'string' ? doc.fileData : '';
     if (!fileData) {
       const existingPath =
@@ -396,7 +396,7 @@ async function uploadEmployeeProfileDocuments(
       });
       continue;
     }
-
+ 
     let bytes: Uint8Array;
     try {
       const binary = atob(fileData);
@@ -406,28 +406,28 @@ async function uploadEmployeeProfileDocuments(
       console.error('Invalid base64 document payload:', error);
       throw new Error(`Invalid file data for ${doc.key}`);
     }
-
+ 
     const safeFileName = sanitizeFilename(String(doc.fileName || 'document'));
     const storagePath = `${clientId}/${employeeKey}/${doc.key}/${Date.now()}_${safeFileName}`;
-
+ 
     const { error: uploadError } = await supabaseClient.storage
       .from(bucketName)
       .upload(storagePath, bytes, {
         upsert: false,
         contentType: doc.contentType || 'application/octet-stream',
       });
-
+ 
     if (uploadError) {
       console.error(`Failed to upload ${doc.key}:`, uploadError);
       throw new Error(`Failed to upload ${doc.key}`);
     }
-
+ 
     processedDocuments.push({
       ...normalizedDoc,
       filePath: storagePath,
     });
   }
-
+ 
   // Store only the compact shape in employees.documents and keep one row per doc key.
   const byKey = new Map<string, { key: string; fileName: string; filePath?: string; uploadedAt: string }>();
   for (const doc of processedDocuments) {
@@ -436,7 +436,7 @@ async function uploadEmployeeProfileDocuments(
     const fileName = String(doc?.fileName || 'document').trim() || 'document';
     const filePath = (doc?.filePath || doc?.file_path || '').trim() || undefined;
     const uploadedAt = String(doc?.uploadedAt || now);
-
+ 
     byKey.set(key, {
       key,
       fileName,
@@ -444,7 +444,7 @@ async function uploadEmployeeProfileDocuments(
       uploadedAt,
     });
   }
-
+ 
   return Array.from(byKey.values());
 }
  
@@ -472,30 +472,44 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
     .map(e => e.employeeId)
     .filter((id: string | undefined) => !!id);
  
-  let existingEmployees: any[] | null = null;
+  let existingEmployees: any[] = [];
   let fetchError: any = null;
 
-  if (emails.length > 0 || employeeIds.length > 0) {
-    const query = supabaseClient
-      .from("employees")
-      .select("email, employee_id")
-      .eq("client_id", clientId);
+  try {
+    const [emailResult, employeeIdResult] = await Promise.all([
+      emails.length
+        ? supabaseClient
+            .from("employees")
+            .select("email, employee_id")
+            .eq("client_id", clientId)
+            .in("email", emails)
+        : Promise.resolve({ data: [], error: null }),
 
-    const conditions: string[] = [];
-    if (emails.length > 0) {
-      conditions.push(`email.in.(${emails.join(",")})`);
-    }
-    if (employeeIds.length > 0) {
-      conditions.push(`employee_id.in.(${employeeIds.join(",")})`);
-    }
+      employeeIds.length
+        ? supabaseClient
+            .from("employees")
+            .select("email, employee_id")
+            .eq("client_id", clientId)
+            .in("employee_id", employeeIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
-    if (conditions.length > 0) {
-      const { data, error } = await query.or(conditions.join(","));
-      existingEmployees = data;
-      fetchError = error;
-    }
+    if (emailResult.error) throw emailResult.error;
+    if (employeeIdResult.error) throw employeeIdResult.error;
+
+    const uniqueEmployees = new Map();
+
+    [...(emailResult.data || []), ...(employeeIdResult.data || [])].forEach(
+      (emp) => {
+        uniqueEmployees.set(`${emp.email}-${emp.employee_id}`, emp);
+      }
+    );
+
+    existingEmployees = [...uniqueEmployees.values()];
+  } catch (error) {
+    fetchError = error;
   }
- 
+
   if (fetchError) {
     console.error("Duplicate check failed:", fetchError);
     return new Response(
@@ -581,10 +595,10 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
     const employeeId = insertedEmployees[i]?.id;
  
     if (!employeeId) continue;
-
+ 
     await insertEmployeePersonalDetails(supabaseClient, employeeId, clientId, emp);
     await insertEmployeeOtherDetails(supabaseClient, employeeId, clientId, emp);
-
+ 
     if (Array.isArray(emp.moduleAccessPayload)) {
       await handleEmployeeModuleAccess(supabaseClient, employeeId, emp.moduleAccessPayload);
     }
@@ -621,6 +635,7 @@ async function handleGetEmployee(supabaseClient: any, requestData: any) {
     .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
     .eq('id', employeeId)
     .eq('client_id', clientId)
+    .eq('is_secondary_super_admin', false) // Secondary super admins are hidden from employee verification
     .maybeSingle();
 
   if (error) {
@@ -1027,7 +1042,8 @@ async function handleFindByEmployeeId(supabaseClient: any, requestData: any) {
   let query = supabaseClient
     .from('employees')
     .select('id, employee_id, first_name, last_name, status')
-    .eq('employee_id', employeeId);
+    .eq('employee_id', employeeId)
+    .eq('is_secondary_super_admin', false);
 
   if (clientId) query = query.eq('client_id', clientId);
 
@@ -1137,7 +1153,7 @@ async function handleCreate(supabaseClient: any, employee: any) {
       .eq('email', employee.email)
       .eq('client_id', clientId)
       .maybeSingle();
-
+ 
     if (emailCheckError) {
       console.error("Error checking for existing employee email:", emailCheckError);
       return new Response(
@@ -1148,9 +1164,9 @@ async function handleCreate(supabaseClient: any, employee: any) {
         }
       );
     }
-
+ 
     console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmailEmployee);
-
+ 
     if (existingEmailEmployee) {
       const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
       return new Response(
@@ -1213,7 +1229,7 @@ async function handleCreate(supabaseClient: any, employee: any) {
     employee.employeeId || employee.id,
     Array.isArray(employee.documents) ? employee.documents : []
   );
-
+ 
   // Create employee record
   const employeeData = {
     employee_id: employee.employeeId,
@@ -1283,7 +1299,7 @@ async function handleCreate(supabaseClient: any, employee: any) {
   }
  
   console.log("Employee created successfully:", newEmployee);
-
+ 
   await insertEmployeePersonalDetails(supabaseClient, newEmployee.id, clientId, employee);
   await insertEmployeeOtherDetails(supabaseClient, newEmployee.id, clientId, employee);
  
@@ -1316,7 +1332,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
       .eq('client_id', clientId)
       .neq('id', employee.id)
       .maybeSingle();
-
+ 
     if (emailCheckError) {
       console.error("Error checking for existing employee email:", emailCheckError);
       return new Response(
@@ -1327,9 +1343,9 @@ async function handleUpdate(supabaseClient: any, employee: any) {
         }
       );
     }
-
+ 
     console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmailEmployee);
-
+ 
     if (existingEmailEmployee) {
       const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
       return new Response(
@@ -1395,7 +1411,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
     employee.employeeId || employee.id,
     Array.isArray(employee.documents) ? employee.documents : []
   );
-
+ 
   // Update employee record (nullable employee_type and department)
   const updateData: any = {
     first_name: employee.firstName,
@@ -1470,7 +1486,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   }
  
   console.log("Employee updated successfully:", updatedEmployee);
-
+ 
   await insertEmployeePersonalDetails(supabaseClient, employee.id, clientId, employee);
   await insertEmployeeOtherDetails(supabaseClient, employee.id, clientId, employee);
  

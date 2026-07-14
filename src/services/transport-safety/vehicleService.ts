@@ -32,6 +32,9 @@ interface VehicleRow {
   provider?: string | null;
   status_code?: string | null;
   rc_status?: string | null;
+  vehicle_chasi_number?: string | null;
+  vehicle_engine_number?: string | null;
+  vehicle_owner_name?: string | null;
   vehicle_challans?: VehicleChallans | null;
 }
 
@@ -116,6 +119,9 @@ function mapVehicle(v: VehicleRow): Vehicle {
     provider: v.provider,
     statusCode: v.status_code,
     rcStatus: v.rc_status,
+    vehicleChasiNumber: v.vehicle_chasi_number ?? null,
+    vehicleEngineNumber: v.vehicle_engine_number ?? null,
+    vehicleOwnerName: v.vehicle_owner_name ?? null,
     vehicleChallans: v.vehicle_challans
       ? {
           id: v.vehicle_challans.id,

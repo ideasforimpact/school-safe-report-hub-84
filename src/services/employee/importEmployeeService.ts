@@ -4,7 +4,8 @@ import { ModulePermissions } from '@/contexts/auth/types';
 import { parseEmployeeFile } from './utils/excelProcessingUtils';
 import { validateExcelData } from './utils/excelValidationUtils';
 import { processEmployeeData, showImportResultNotifications } from './importProcessingService';
-import { isValidEmployeeType, isValidDepartment, isValidStatus } from './utils/employeeValidationUtils';
+import { isValidDepartment, isValidStatus } from './utils/employeeValidationUtils';
+import { canonicalizeEmployeeType } from '@/constant/employeeConstant';
 import { toast } from 'sonner';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { iModule } from '@/pages/UserManagement';
@@ -77,9 +78,10 @@ export const processEmployeeExcel = async (
       return {
         ...emp,
         email,
-        employeeType: (emp.employeeType != null && String(emp.employeeType).trim() !== '' && isValidEmployeeType(String(emp.employeeType)))
-          ? String(emp.employeeType)
-          : undefined,
+        employeeType:
+          emp.employeeType != null && String(emp.employeeType).trim() !== ''
+            ? canonicalizeEmployeeType(String(emp.employeeType)) ?? undefined
+            : undefined,
        department:(
           emp.department != null &&
           String(emp.department).trim() !== '' &&
@@ -87,7 +89,7 @@ export const processEmployeeExcel = async (
         )
           ? String(emp.department).toLowerCase().trim()
           : undefined,
-        status: isValidStatus(String(emp.status)) ? String(emp.status) : 'active',
+        status: isValidStatus(String(emp.status).toLowerCase().trim()) ? String(emp.status).toLowerCase().trim() : 'active',
         modulePermissions: defaultModulePermissions,
         moduleAccessPayload, // Add module access payload
         clientId // Make sure clientId is included

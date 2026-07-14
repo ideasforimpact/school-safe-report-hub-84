@@ -176,7 +176,7 @@ export function getFrontendTemplate(module: NotificationModule, type: Notificati
   
   if (module === 'assessment') {
     // Return assessment templates from separate file
-    if (type === 'assessment_assigned' || type === 'assessment_submitted' || type === 'assessment_completed' || 
+    if (type === 'assessment_assigned' || type === 'assessment_reassigned' || type === 'assessment_submitted' || type === 'assessment_completed' ||
         type === 'assessment_rework_required' || type === 'assessment_due_5_days' || type === 'assessment_overdue') {
       return getAssessmentTemplate(type);
     }

@@ -13,6 +13,7 @@ import {
 } from '@/services/employeeNameHelpers';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 import { formatDate } from "@/lib/Dateformat";
+import { capitalizeWords } from '@/lib/formatUtils';
 interface EmployeeDetailsProps {
   employee: Employee;
   documents?: VerificationDocument[];
@@ -94,7 +95,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
 
 
   // Prepare truncated name for card display (limit 200 chars with tooltip)
-  const fullName = employee.name || '';
+  const fullName = capitalizeWords(employee.name);
   const displayName =
     fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
 
@@ -120,7 +121,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
               )}
             </div>
             <p className="text-gray-500 text-left">
-              {employeeTypeLabel} · {departmentLabel}
+              {employeeTypeLabel ? `${employeeTypeLabel} · ` : ''}{departmentLabel}
             </p>
           </div>
           {aadharProfileImage && (
@@ -165,15 +166,15 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Department</p>
-            <p className="font-medium text-left">{departmentLabel}</p>
+            <p className="font-medium text-left">{departmentLabel || 'Not Specified'}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Designation</p>
-            <p className="font-medium text-left">{employee.designation || ''}</p>
+            <p className="font-medium text-left">{capitalizeWords(employee.designation)}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Employee Type</p>
-            <p className="font-medium text-left">{employeeTypeLabel}</p>
+            <p className="font-medium text-left">{employeeTypeLabel || 'Not Specified'}</p>
           </div>
           <div className="md:col-span-2">
             <p className="text-sm text-gray-500 text-left">Address</p>

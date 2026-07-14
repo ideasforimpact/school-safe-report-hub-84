@@ -7,6 +7,23 @@ import { useAuth } from '@/contexts/auth';
 import { fetchStudentsByClientId } from '@/services/student/fetchStudentService';
 import { useLocation } from 'react-router-dom';
 
+// supabase.functions.invoke() only sets error.message to a generic
+// "Edge Function returned a non-2xx status code" for HTTP errors - the actual
+// { error: "..." } body the edge function sent back lives on error.context
+// (the raw Response) and has to be read separately.
+async function getEdgeFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  const err = error as { context?: Response; message?: string } | null;
+  if (err?.context && typeof err.context.json === 'function') {
+    try {
+      const body = await err.context.json();
+      if (body?.error) return String(body.error);
+    } catch {
+      // Response body wasn't JSON - fall back to the generic message below.
+    }
+  }
+  return err?.message || fallback;
+}
+
 interface StudentContextType {
   students: Student[];
   totalStudents: number;
@@ -134,7 +151,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       return data;
     } catch (error) {
       console.error('Error adding student:', error);
-      toast.error('Failed to add student');
+      toast.error(await getEdgeFunctionErrorMessage(error, 'Failed to add student'));
       throw error;
     }
   };
@@ -168,7 +185,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       return data;
     } catch (error) {
       console.error('Error updating student:', error);
-      toast.error('Failed to update student');
+      toast.error(await getEdgeFunctionErrorMessage(error, 'Failed to update student'));
       throw error;
     }
   };

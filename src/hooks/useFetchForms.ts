@@ -40,6 +40,7 @@ export const useFetchForms = () => {
   const isBackoffice = location.pathname.startsWith('/backoffice');
   const { client } = useClient();
   const clientId = isBackoffice ? client?.id : (employeeData?.clientId || user?.clientId);
+  const clientTypeId = isBackoffice ? client?.clientTypeId : employeeData?.clientType?.id;
 
   const fetchForms = async (clientId: string) => {
     try {
@@ -49,7 +50,7 @@ export const useFetchForms = () => {
       console.log('Fetching forms for client:', clientId);
 
       const { data, error } = await supabase.functions.invoke('fetch-forms', {
-        body: { client_id: clientId }
+        body: { client_id: clientId, client_type_id: clientTypeId }
       });
 
       if (error) {
@@ -86,7 +87,7 @@ export const useFetchForms = () => {
       setLoading(true);
       setError(null);
     }
-  }, [user, clientId]);
+  }, [user, clientId, clientTypeId]);
 
   const refetch = () => {
     if (clientId) {

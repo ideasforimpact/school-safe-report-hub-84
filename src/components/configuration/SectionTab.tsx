@@ -492,9 +492,9 @@ export const SectionTab = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{s.section} Name</TableHead>
-              <TableHead>{s.grade}</TableHead>
               <TableHead>{s.campus}</TableHead>
+              <TableHead>{s.grade}</TableHead>
+              <TableHead>{s.section} Name</TableHead>
               {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -517,9 +517,9 @@ export const SectionTab = ({
             ) : (
               paginatedSections.map((section) => (
                 <TableRow key={section.id}>
-                  <TableCell>{section.name}</TableCell>
-                  <TableCell>{getClassName(section.classId)}</TableCell>
                   <TableCell>{section.campusId ? getCampusName(section.campusId) : 'Not assigned'}</TableCell>
+                  <TableCell>{getClassName(section.classId)}</TableCell>
+                  <TableCell>{section.name}</TableCell>
                   {canCreate && (
                   <TableCell>
                     <div className="flex gap-2">

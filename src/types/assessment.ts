@@ -14,6 +14,7 @@ export interface QuestionFile {
 export interface AssessmentQuestion {
   id: string;
   text: string;
+  correctAnswer?: string;
   allowComments: boolean;
   allowAttachments: boolean;
   required: boolean;
@@ -56,7 +57,7 @@ export interface AssessmentResponse {
 
 export interface QuestionResponse {
   questionId: string;
-  answer: boolean; // Yes/No
+  answer: string; // e.g. "yes", "no"
   comment: string | null;
   attachments: FileAttachment[] | null;
 }

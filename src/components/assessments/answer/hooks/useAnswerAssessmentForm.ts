@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AssessmentQuestion, QuestionResponse } from '@/types/assessment';
+import { calculateAssessmentScore } from '@/utils/assessmentScoring';
 
 type Answer = QuestionResponse;
 
@@ -141,9 +142,7 @@ export const useAnswerAssessmentForm = () => {
     
     try {
       // Calculate score
-      const totalQuestions = questions.length;
-      const yesAnswers = answers.filter(a => a.answer === true).length;
-      const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
+      const score = calculateAssessmentScore(questions, answers as any);
 
       // Convert answers to a format compatible with JSONB
       const answersData = answers.map(answer => ({

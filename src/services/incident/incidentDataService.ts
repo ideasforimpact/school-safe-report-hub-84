@@ -88,15 +88,20 @@ class IncidentDataService {
     }
   }
 
-  private async getCategoryId(clientId: string, categoryName: string): Promise<string | null> {
+  private async getCategoryId(clientId: string, categoryName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('incident_categories')
         .select('id')
         .eq('name', categoryName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up category ID for "${categoryName}":`, error);
         return null;
@@ -109,15 +114,20 @@ class IncidentDataService {
     }
   }
 
-  private async getSubcategoryId(clientId: string, subcategoryName: string): Promise<string | null> {
+  private async getSubcategoryId(clientId: string, subcategoryName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('incident_subcategories')
         .select('id')
         .eq('name', subcategoryName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up subcategory ID for "${subcategoryName}":`, error);
         return null;
@@ -130,15 +140,20 @@ class IncidentDataService {
     }
   }
 
-  private async getPriorityId(clientId: string, priorityName: string): Promise<string | null> {
+  private async getPriorityId(clientId: string, priorityName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('incident_priorities')
         .select('id')
         .eq('name', priorityName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up priority ID for "${priorityName}":`, error);
         return null;
@@ -151,15 +166,20 @@ class IncidentDataService {
     }
   }
 
-  private async getLocationId(clientId: string, locationName: string): Promise<string | null> {
+  private async getLocationId(clientId: string, locationName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('campuses')
         .select('id')
         .eq('name', locationName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up location ID for "${locationName}":`, error);
         return null;
@@ -172,15 +192,20 @@ class IncidentDataService {
     }
   }
 
-  private async getFacilityId(clientId: string, facilityName: string): Promise<string | null> {
+  private async getFacilityId(clientId: string, facilityName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('facilities')
         .select('id')
         .eq('name', facilityName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up facility ID for "${facilityName}":`, error);
         return null;
@@ -259,11 +284,13 @@ class IncidentDataService {
 
     try {
       console.log('🚀 Invoking fetch-incidents edge function...');
+      const clientTypeId: string | undefined = employeeData?.clientType?.id;
       const { data, error } = await supabase.functions.invoke('fetch-incidents', {
         body: {
           clientId,
           employeeId: employeeData.id,
           isSuperAdmin: employeeData.isSuperAdmin === true || hasIncidentAdmin === true,
+          clientTypeId,
           page,
           pageSize,
           search: filters.search || '',
@@ -272,6 +299,7 @@ class IncidentDataService {
           status: filters.status || '',
           priority: filters.priority || '',
           location: filters.location || '',
+          facility: filters.facility || '',
           dateFrom: filters.dateFrom || '',
           dateTo: filters.dateTo || ''
         },

@@ -2,7 +2,6 @@ import React, { useCallback } from 'react';
 import { IncidentRelatedConfig } from '@/pages/configuration/IncidentRelatedConfig';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ContributingFactorItem, contributingFactorService } from '@/services/incident/contributingFactorService';
 import { reportTypeService } from '@/services/incident/reportTypeService';
@@ -77,53 +76,51 @@ const IncidentConfigurationContent = () => {
   // Handle contributing factors operations
   const handleAddContributingFactor = async (name: string, description: string, weight: string) => {
     try {
-      const { data, error } = await supabase
-        .from('contributing_factors')
-        .insert([
-          { name, description: description || null, weight },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding contributing factor:', error);
-        toast.error('Failed to add contributing factor');
+      if (!employeeData?.clientId) {
+        toast.error('Client information not available');
         return;
       }
+      const data = await contributingFactorService.addContributingFactor(
+        name,
+        description,
+        weight,
+        employeeData.clientId,
+        clientTypeId
+      );
 
       setContributingFactors([...contributingFactors, data]);
       toast.success('Contributing factor added successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception adding contributing factor:', error);
-      toast.error('An unexpected error occurred');
+      toast.error(error?.message || 'Failed to add contributing factor');
     }
   };
 
   const handleUpdateContributingFactor = async (id: string, name: string, description: string, weight: string) => {
     try {
-      const { error } = await supabase
-        .from('contributing_factors')
-        .update({ name, description: description || null, weight })
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error updating contributing factor:', error);
-        toast.error('Failed to update contributing factor');
+      if (!employeeData?.clientId) {
+        toast.error('Client information not available');
         return;
       }
 
+      const data = await contributingFactorService.updateContributingFactor(
+        id,
+        name,
+        description,
+        weight,
+        employeeData.clientId
+      );
+
       setContributingFactors(
         contributingFactors.map(factor =>
-          factor.id === id
-            ? { ...factor, name, description: description || null, weight }
-            : factor
+          factor.id === id ? data : factor
         )
       );
       
       toast.success('Contributing factor updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception updating contributing factor:', error);
-      toast.error('An unexpected error occurred');
+      toast.error(error?.message || 'Failed to update contributing factor');
     }
   };
 
@@ -143,53 +140,32 @@ const IncidentConfigurationContent = () => {
   // Handle report types operations
   const handleAddReportType = async (name: string, description: string) => {
     try {
-      const { data, error } = await supabase
-        .from('incident_report_types')
-        .insert([
-          { name, description: description || null }
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding report type:', error);
-        toast.error('Failed to add report type');
-        return;
-      }
+      const data = await reportTypeService.addReportType(
+        name,
+        description || null,
+        employeeData?.clientId,
+        clientTypeId
+      );
 
       setReportTypes([...reportTypes, data]);
       toast.success('Report type added successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception adding report type:', error);
-      toast.error('An unexpected error occurred');
+      toast.error(error?.message || 'Failed to add report type');
     }
   };
 
   const handleUpdateReportType = async (id: string, name: string, description: string) => {
     try {
-      const { error } = await supabase
-        .from('incident_report_types')
-        .update({ name, description: description || null })
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error updating report type:', error);
-        toast.error('Failed to update report type');
-        return;
-      }
+      const data = await reportTypeService.updateReportType(id, name, description || null);
 
       setReportTypes(
-        reportTypes.map(type =>
-          type.id === id
-            ? { ...type, name, description: description || null }
-            : type
-        )
+        reportTypes.map(type => (type.id === id ? data : type))
       );
-      
       toast.success('Report type updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception updating report type:', error);
-      toast.error('An unexpected error occurred');
+      toast.error(error?.message || 'Failed to update report type');
     }
   };
 
@@ -208,82 +184,49 @@ const IncidentConfigurationContent = () => {
 
   const handleToggleReportTypeStatus = async (id: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('incident_report_types')
-        .update({ is_active: isActive })
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error toggling report type status:', error);
-        toast.error(`Failed to ${isActive ? 'activate' : 'deactivate'} report type`);
-        return;
-      }
+      const data = await reportTypeService.toggleReportTypeStatus(id, isActive);
 
       setReportTypes(
-        reportTypes.map(type =>
-          type.id === id
-            ? { ...type, is_active: isActive }
-            : type
-        )
+        reportTypes.map(type => (type.id === id ? data : type))
       );
-      
       toast.success(`Report type ${isActive ? 'activated' : 'deactivated'} successfully`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception toggling report type status:', error);
-      toast.error('An unexpected error occurred');
+      toast.error(error?.message || `Failed to ${isActive ? 'activate' : 'deactivate'} report type`);
     }
   };
 
   // Handle priorities operations
   const handleAddPriority = async (name: string, description: string, color: string, weight: number) => {
     try {
-      const { data, error } = await supabase
-        .from('incident_priorities')
-        .insert([
-          { name, description: description || null, color, weight }
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding priority:', error);
-        toast.error('Failed to add priority');
-        return;
-      }
+      const data = await priorityService.addPriority(
+        name,
+        description || null,
+        color || null,
+        weight ?? 0,
+        employeeData?.clientId,
+        clientTypeId
+      );
 
       setPriorities([...priorities, data]);
       toast.success('Priority added successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception adding priority:', error);
-      toast.error('An unexpected error occurred');
+      toast.error(error?.message || 'Failed to add priority');
     }
   };
 
   const handleUpdatePriority = async (id: string, name: string, description: string, color: string, weight: number) => {
     try {
-      const { error } = await supabase
-        .from('incident_priorities')
-        .update({ name, description: description || null, color, weight })
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error updating priority:', error);
-        toast.error('Failed to update priority');
-        return;
-      }
+      const data = await priorityService.updatePriority(id, name, description || null, color || null, weight ?? 0);
 
       setPriorities(
-        priorities.map(priority =>
-          priority.id === id
-            ? { ...priority, name, description: description || null, color, weight }
-            : priority
-        )
+        priorities.map(priority => (priority.id === id ? data : priority))
       );
-      
       toast.success('Priority updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception updating priority:', error);
-      toast.error('An unexpected error occurred');
+      toast.error(error?.message || 'Failed to update priority');
     }
   };
 
@@ -302,29 +245,15 @@ const IncidentConfigurationContent = () => {
 
   const handleTogglePriorityStatus = async (id: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('incident_priorities')
-        .update({ is_active: isActive })
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error toggling priority status:', error);
-        toast.error(`Failed to ${isActive ? 'activate' : 'deactivate'} priority`);
-        return;
-      }
+      const data = await priorityService.togglePriorityStatus(id, isActive);
 
       setPriorities(
-        priorities.map(priority =>
-          priority.id === id
-            ? { ...priority, is_active: isActive }
-            : priority
-        )
+        priorities.map(priority => (priority.id === id ? data : priority))
       );
-      
       toast.success(`Priority ${isActive ? 'activated' : 'deactivated'} successfully`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception toggling priority status:', error);
-      toast.error('An unexpected error occurred');
+      toast.error(error?.message || `Failed to ${isActive ? 'activate' : 'deactivate'} priority`);
     }
   };
 

@@ -73,6 +73,7 @@ export const useInsightsData = () => {
 
         // Get client ID from available sources
         let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+        const clientTypeId = employeeState.employeeData?.clientType?.id || authEmployeeData?.clientType?.id;
 
         if (!clientId && user?.email) {
           const { data: empData, error } = await supabase
@@ -92,10 +93,19 @@ export const useInsightsData = () => {
         }
 
         // Fetch reference data in parallel
+        let categoriesQuery = supabase.from('incident_categories').select('*').eq('client_id', clientId);
+        let subcategoriesQuery = supabase.from('incident_subcategories').select('*').eq('client_id', clientId);
+        let reportTypesQuery = supabase.from('incident_report_types').select('*').eq('client_id', clientId);
+        if (clientTypeId) {
+          categoriesQuery = categoriesQuery.eq('client_type_id', clientTypeId);
+          subcategoriesQuery = subcategoriesQuery.eq('client_type_id', clientTypeId);
+          reportTypesQuery = reportTypesQuery.eq('client_type_id', clientTypeId);
+        }
+
         const [categoriesData, subcategoriesData, reportTypesData, locationsData] = await Promise.all([
-          supabase.from('incident_categories').select('*').eq('client_id', clientId),
-          supabase.from('incident_subcategories').select('*').eq('client_id', clientId),
-          supabase.from('incident_report_types').select('*').eq('client_id', clientId),
+          categoriesQuery,
+          subcategoriesQuery,
+          reportTypesQuery,
           supabase.from('incidents').select('location_id, facility_id').eq('client_id', clientId)
         ]);
 

@@ -1,9 +1,8 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, ArrowLeft, Save, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Printer, Save, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AssessmentQuestion } from '@/types/assessment';
 
@@ -24,8 +23,11 @@ interface AssessmentAnswerFooterProps {
   progress: number;
   totalQuestions: number;
   answeredQuestions: number;
-  template: TemplateWithQuestions;
-  answers: AnswerEntry[];
+  template: any;
+  answers: any[];
+  generalComment: string;
+  generalAttachments: any[];
+  onPrint: () => void;
 }
 
 const AssessmentAnswerFooter = ({ 
@@ -37,10 +39,11 @@ const AssessmentAnswerFooter = ({
   totalQuestions, 
   answeredQuestions,
   template,
-  answers
+  answers,
+  generalComment,
+  generalAttachments,
+  onPrint
 }: AssessmentAnswerFooterProps) => {
-  const navigate = useNavigate();
-  
   // Check if all required questions are answered
   const checkAllRequiredAnswered = () => {
     if (!template?.questions) return false;
@@ -58,25 +61,28 @@ const AssessmentAnswerFooter = ({
   };
 
   const allRequiredAnswered = checkAllRequiredAnswered();
-  const canSubmit = allRequiredAnswered && !submitting && !saving;
+  const hasGeneralComment = generalComment.trim().length > 0;
+  const hasGeneralAttachment = generalAttachments.length > 0;
+  const canSubmit = allRequiredAnswered && hasGeneralComment && hasGeneralAttachment && !submitting && !saving;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.6 }}
+      className="print:hidden"
     >
       <Card className="bg-white border-gray-200 shadow-lg">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <Button
               variant="outline"
-              onClick={() => navigate('/assessments')}
+              onClick={onPrint}
               className="flex items-center gap-2 order-1 sm:order-none"
               disabled={submitting || saving}
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Assessments
+              <Printer className="h-4 w-4" />
+              Print
             </Button>
             
             <div className="flex flex-col sm:flex-row gap-3 order-2 sm:order-none">
@@ -99,7 +105,7 @@ const AssessmentAnswerFooter = ({
                     : 'bg-gray-400 text-gray-200 cursor-not-allowed'
                 }`}
               >
-                {allRequiredAnswered ? (
+                {canSubmit ? (
                   <CheckCircle className="h-4 w-4" />
                 ) : (
                   <AlertTriangle className="h-4 w-4" />
@@ -108,17 +114,19 @@ const AssessmentAnswerFooter = ({
               </Button>
             </div>
           </div>
-          
-          {!allRequiredAnswered && (
+
+          {/* {(!allRequiredAnswered || !hasGeneralComment || !hasGeneralAttachment) && (
             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <div className="flex items-center gap-2 text-amber-800">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="text-sm font-medium">
-                  Answer all required questions to submit ({answeredQuestions}/{totalQuestions} answered)
+                  {!allRequiredAnswered && `Answer all required questions to submit (${answeredQuestions}/${totalQuestions} answered)`}
+                  {allRequiredAnswered && !hasGeneralComment && 'A general comment is required to submit'}
+                  {allRequiredAnswered && hasGeneralComment && !hasGeneralAttachment && 'A general attachment is required to submit'}
                 </span>
               </div>
             </div>
-          )}
+          )} */}
         </CardContent>
       </Card>
     </motion.div>
