@@ -41,14 +41,14 @@ export interface AuthContextType {
   logout: (reason?: LogoutReason, message?: string) => Promise<void>;
   isAdmin: boolean;
   isSaasOwner: boolean;
-  addUser: (userData: any) => void;
+  addUser: (userData: Omit<UserWithPassword, 'id' | 'isActive'> & { isActive?: boolean }) => void;
   updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
   deactivateUser: (id: string) => void;
   reactivateUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   authError: string | null;
-  handleUserAuthentication: (user: any) => Promise<void>;
+  handleUserAuthentication: (user: User) => Promise<void>;
   employeeData: EmployeeData | null;
   setUser: (user: User | null) => void;
   isProcessingAuth: boolean; // Add processing state
@@ -187,5 +187,5 @@ export interface AuthState {
 
 export interface AuthAction {
   type: string;
-  payload?: any;
+  payload?: unknown;
 }

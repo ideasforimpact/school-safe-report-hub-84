@@ -1,4 +1,5 @@
 import React from 'react';
+import { Incident } from '@/contexts/IncidentContext';
 import ResolutionRateCard from './cards/ResolutionRateCard';
 import ResponseTimeCard from './cards/ResponseTimeCard';
 import WorkloadCard from './cards/WorkloadCard';
@@ -11,7 +12,7 @@ import {
 } from '@/utils/insights/advancedMetrics';
 
 interface InsightsSummaryCardsProps {
-  filteredIncidents: any[];
+  filteredIncidents: Incident[];
   categoryData: Array<{name: string, value: number}>;
   statusData: Array<{name: string, value: number}>;
   facilityData: Array<{name: string, value: number}>;

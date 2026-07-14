@@ -104,9 +104,9 @@ export const getEmployeeModuleAccessItems = async (employeeId: string): Promise<
       const moduleKey = item.module_id;
       
       // Safely handle the level property which can be Json type from database
-      let levelObject: { is_admin?: boolean; [key: string]: any } = {};
+      let levelObject: { is_admin?: boolean; [key: string]: unknown } = {};
       if (item.level && typeof item.level === 'object' && !Array.isArray(item.level)) {
-        levelObject = item.level as { is_admin?: boolean; [key: string]: any };
+        levelObject = item.level as { is_admin?: boolean; [key: string]: unknown };
       }
       
       return {

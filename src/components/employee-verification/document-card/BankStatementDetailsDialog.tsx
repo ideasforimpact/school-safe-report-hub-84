@@ -21,10 +21,29 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface BankStatementData {
+  ifsc_details?: Record<string, unknown>;
+  account_number?: string;
+  account_holder_name?: string;
+  bank_name?: string;
+  centre?: string;
+  address?: string;
+  Center?: string;
+  Address?: string;
+  [key: string]: unknown;
+}
+
+interface BankStatementDetails {
+  success?: boolean;
+  status_code?: number;
+  message?: string;
+  data?: BankStatementData;
+}
+
 interface BankStatementDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  statementDetails: any;
+  statementDetails: BankStatementDetails;
   documentId?: string;
   onVerificationUpdate?: () => void;
   readOnly?: boolean;
@@ -78,7 +97,7 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
   };
 
   // Helper function to format field values
-  const formatFieldValue = (value: any) => {
+  const formatFieldValue = (value: unknown) => {
     if (value === null || value === undefined) {
       return '—';
     }

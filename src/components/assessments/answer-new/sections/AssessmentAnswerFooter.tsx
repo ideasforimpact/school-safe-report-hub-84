@@ -5,6 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, ArrowLeft, Save, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { AssessmentQuestion } from '@/types/assessment';
+
+interface AnswerEntry {
+  questionId: string;
+  answer: boolean | undefined;
+}
+
+interface TemplateWithQuestions {
+  questions?: AssessmentQuestion[];
+}
 
 interface AssessmentAnswerFooterProps {
   onSubmit: () => void;
@@ -14,8 +24,8 @@ interface AssessmentAnswerFooterProps {
   progress: number;
   totalQuestions: number;
   answeredQuestions: number;
-  template: any;
-  answers: any[];
+  template: TemplateWithQuestions;
+  answers: AnswerEntry[];
 }
 
 const AssessmentAnswerFooter = ({ 
@@ -39,9 +49,9 @@ const AssessmentAnswerFooter = ({
       ? template.questions
       : [];
     
-    const requiredQuestions = questions.filter((q: any) => q.required);
-    
-    return requiredQuestions.every((requiredQ: any) => {
+    const requiredQuestions = questions.filter((q) => q.required);
+
+    return requiredQuestions.every((requiredQ) => {
       const answer = answers.find(a => a.questionId === requiredQ.id);
       return answer?.answer !== undefined;
     });

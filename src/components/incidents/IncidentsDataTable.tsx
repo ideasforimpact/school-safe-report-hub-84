@@ -7,15 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle } from 'lucide-react';
 import { usePagination } from '@/hooks/usePagination';
-import { 
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { useMemo } from 'react';
 import Loader from '../common/Loader';
 
@@ -49,8 +41,6 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
     setCurrentPage,
     totalPages,
     paginatedItems,
-    goToNextPage,
-    goToPreviousPage
   } = usePagination(sortedIncidents, 10);
 
   const handleRowClick = (incidentId: string) => {
@@ -222,65 +212,14 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
         </Table>
       </div>
       
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="border-t border-gray-200 px-6 py-4">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious 
-                  onClick={goToPreviousPage}
-                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                />
-              </PaginationItem>
-              
-              {/* Page numbers */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                // Show first page, last page, current page, and pages around current page
-                if (
-                  page === 1 || 
-                  page === totalPages || 
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <PaginationItem key={page}>
-                      <PaginationLink
-                        onClick={() => setCurrentPage(page)}
-                        isActive={currentPage === page}
-                        className="cursor-pointer"
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                } else if (
-                  page === currentPage - 2 || 
-                  page === currentPage + 2
-                ) {
-                  return (
-                    <PaginationItem key={page}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  );
-                }
-                return null;
-              })}
-              
-              <PaginationItem>
-                <PaginationNext 
-                  onClick={goToNextPage}
-                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-          
-          {/* Results info */}
-          <div className="text-sm text-gray-500 mt-2 text-center">
-            Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, sortedIncidents.length)} of {sortedIncidents.length} incidents
-          </div>
-        </div>
-      )}
+      <TablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={sortedIncidents.length}
+        pageSize={10}
+        itemLabel="incidents"
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };

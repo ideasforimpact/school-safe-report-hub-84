@@ -23,21 +23,21 @@ const BulkTemplateUpload = () => {
     }
   };
 
-  const validateTemplateData = (data: any) => {
+  const validateTemplateData = (data: unknown) => {
     // Basic validation for templates
     if (!Array.isArray(data)) {
       return { valid: false, message: 'Uploaded file must contain an array of templates' };
     }
-    
+
     for (let i = 0; i < data.length; i++) {
       const template = data[i];
       if (!template.title || !template.description || !template.questions || !Array.isArray(template.questions)) {
-        return { 
-          valid: false, 
-          message: `Template at index ${i} is missing required fields: title, description, or questions array` 
+        return {
+          valid: false,
+          message: `Template at index ${i} is missing required fields: title, description, or questions array`
         };
       }
-      
+
       // Validate questions
       for (let j = 0; j < template.questions.length; j++) {
         const question = template.questions[j];
@@ -49,7 +49,7 @@ const BulkTemplateUpload = () => {
         }
       }
     }
-    
+
     return { valid: true, message: '' };
   };
 

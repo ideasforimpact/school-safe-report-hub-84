@@ -21,7 +21,7 @@ const EditStudentDialog = ({ open, onOpenChange, student }: EditStudentDialogPro
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { updateStudent } = useStudents();
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: Partial<Student>) => {
     if (!student) return;
     
     setIsSubmitting(true);

@@ -78,19 +78,13 @@ export const SectionTab = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          sections.map(async (section) => {
-            const refInfo = await incidentReferenceService.checkSectionReferences(section.id, clientId);
-            return { id: section.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          sections.map((section) => ({ type: 'section' as const, id: section.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setSectionReferences(map);
       } catch (error) {
         console.error('Error preloading section reference info:', error);
@@ -288,11 +282,11 @@ export const SectionTab = ({
       );
     }
     
-    if (filterCampusId && filterCampusId !== 'all') {
+    if (filterCampusId) {
       filtered = filtered.filter(section => section.campusId === filterCampusId);
     }
-
-    if (filterClassId && filterClassId !== 'all') {
+    
+    if (filterClassId) {
       filtered = filtered.filter(section => section.classId === filterClassId);
     }
     
@@ -316,7 +310,7 @@ export const SectionTab = ({
 
   // Get classes filtered by selected campus for the class filter dropdown
   const availableClassesForFilter = useMemo(() => {
-    if (filterCampusId && filterCampusId !== 'all') {
+    if (filterCampusId) {
       return classes.filter(cls => cls.campusId === filterCampusId);
     }
     return classes;
@@ -440,8 +434,9 @@ export const SectionTab = ({
             )}
           </div>
           <div className="w-48">
-            <Select value={filterCampusId} onValueChange={(value) => {
-              setFilterCampusId(value);
+            <Select value={filterCampusId || 'all'} onValueChange={(value) => {
+              const campusId = value === 'all' ? '' : value;
+              setFilterCampusId(campusId);
               // Reset class filter if campus changes
               if (filterClassId && !availableClassesForFilter.some(cls => cls.id === filterClassId)) {
                 setFilterClassId('');
@@ -461,9 +456,9 @@ export const SectionTab = ({
             </Select>
           </div>
           <div className="w-48">
-            <Select 
-              value={filterClassId} 
-              onValueChange={setFilterClassId}
+            <Select
+              value={filterClassId || 'all'}
+              onValueChange={(value) => setFilterClassId(value === 'all' ? '' : value)}
               disabled={!filterCampusId && availableClassesForFilter.length > 10}
             >
               <SelectTrigger>

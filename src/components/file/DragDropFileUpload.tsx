@@ -121,7 +121,7 @@ const DragDropFileUpload: React.FC<DragDropFileUploadProps> = ({
     }
 
     setIsUploading(false);
-  }, [files, maxFiles, onFilesChange]);
+  }, [files, maxFiles, onFilesChange, excludeFiles]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

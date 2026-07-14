@@ -40,7 +40,13 @@ serve(async (req) => {
     }
 
     // Parse and validate request body
-    let body: any;
+    interface AuthInfoRequestBody {
+      supabase_token?: string;
+      email?: string;
+      [key: string]: unknown;
+    }
+
+    let body: AuthInfoRequestBody;
     try {
       body = await req.json();
     } catch {

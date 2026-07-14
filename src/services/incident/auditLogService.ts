@@ -13,7 +13,7 @@ export interface AuditLogEntry {
   changed_at: string;
   change_type: string;
   description: string | null;
-  changes: any[] | null;
+  changes: unknown[] | null;
   created_at: string;
 }
 
@@ -27,46 +27,56 @@ export interface FormattedAuditEntry {
   userId: string;
   date: Date;
   details?: string;
-  changes?: any[];
+  changes?: unknown[];
 }
 
+export interface AuditLogFetchResult {
+  entries: AuditLogEntry[];
+  // Pre-resolved by the edge function (one batched query per lookup type across
+  // every entry) so formatAuditLogEntries below no longer does a direct DB call
+  // per entry per changed field.
+  userNames: Record<string, string>;
+  fieldValues: Record<string, string>;
+}
+
+const auditLogInflight = new Map<string, Promise<AuditLogFetchResult>>();
+
 // Fetch audit log entries for a specific incident (RLS handles client filtering automatically)
-export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLogEntry[]> => {
+export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLogFetchResult> => {
   try {
     console.log('=== AUDIT LOG SERVICE DEBUG ===');
     console.log('Fetching audit trail for incident:', incidentId);
-    
-    // RLS policies now handle client filtering automatically - no need for manual checks
-    const { data, error } = await supabase
-      .from('incident_audit_log')
-      .select(`
-        id,
-        incident_id,
-        client_id,
-        field_changed,
-        old_value,
-        new_value,
-        changed_by,
-        changed_at,
-        change_type,
-        description,
-        changes,
-        created_at
-      `)
-      .eq('incident_id', incidentId)
-      .order('changed_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching audit log:', error);
-      throw new Error(`Failed to fetch audit log: ${error.message}`);
+    let request = auditLogInflight.get(incidentId);
+    if (!request) {
+      request = (async () => {
+        const clientId = await getActiveClientId();
+        const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+          body: { operation: 'get_audit_log', incidentId, clientId },
+        });
+
+        if (error) throw error;
+        if (!data?.success) throw new Error('Failed to fetch audit log');
+
+        return {
+          entries: (data.data || []) as unknown[],
+          userNames: (data.userNames || {}) as Record<string, string>,
+          fieldValues: (data.fieldValues || {}) as Record<string, string>,
+        };
+      })();
+
+      auditLogInflight.set(incidentId, request);
+      request.finally(() => auditLogInflight.delete(incidentId));
     }
+
+    const { entries: data, userNames, fieldValues } = await request;
 
     console.log('Audit entries found:', data?.length || 0);
     console.log('Audit entries:', data);
     console.log('=== END AUDIT LOG SERVICE DEBUG ===');
 
     // Transform the data to ensure proper types
-    const transformedData: AuditLogEntry[] = (data || []).map(entry => ({
+    const transformedData: AuditLogEntry[] = (data as AuditLogEntry[] || []).map(entry => ({
       id: entry.id,
       incident_id: entry.incident_id,
       client_id: entry.client_id,
@@ -77,123 +87,43 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
       changed_at: entry.changed_at,
       change_type: entry.change_type,
       description: entry.description,
-      changes: Array.isArray(entry.changes) ? entry.changes : 
+      changes: Array.isArray(entry.changes) ? entry.changes :
                (entry.changes ? [entry.changes] : null),
       created_at: entry.created_at
     }));
 
-    return transformedData;
+    return { entries: transformedData, userNames, fieldValues };
   } catch (error) {
     console.error('Error in fetchIncidentAuditLog:', error);
     throw error;
   }
 };
 
-// Helper function to get user name from employee data using user_id
-const getUserName = async (userId: string): Promise<string> => {
-  try {
-    console.log('Looking up user name for user_id:', userId);
-    
-    // First try to look up by user_id (for newer entries). Multi-client
-    // users have N rows with the same user_id — for display purposes any
-    // of them yields the same name, so .limit(1).maybeSingle() is fine.
-    const { data: employee, error } = await supabase
-      .from('employees')
-      .select('first_name, last_name')
-      .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle();
-
-    if (employee && !error) {
-      const fullName = `${employee.first_name} ${employee.last_name}`;
-      console.log('Found employee name by user_id:', fullName);
-      return fullName;
-    }
-
-    // Fallback: try to look up by employee id (for older entries or edge function entries)
-    console.log('User not found by user_id, trying by employee id:', userId);
-    const { data: employeeById, error: errorById } = await supabase
-      .from('employees')
-      .select('first_name, last_name')
-      .eq('id', userId)
-      .single();
-
-    if (employeeById && !errorById) {
-      const fullName = `${employeeById.first_name} ${employeeById.last_name}`;
-      console.log('Found employee name by employee id:', fullName);
-      return fullName;
-    }
-
-    console.log('Employee not found by either user_id or employee id:', userId);
-    return 'Unknown User';
-  } catch (error) {
-    console.error('Error fetching user name:', error);
-    return 'Unknown User';
-  }
+// Looks up the display name from the userNames map the edge function already
+// batch-resolved for every entry on this page (see get_audit_log in
+// fetch-incidents) — was previously a per-entry direct `employees` query.
+const getUserName = (userId: string, userNames: Record<string, string>): string => {
+  return userNames[userId] || 'Unknown User';
 };
 
+// DB-backed lookup fields — resolved via the fieldValues map the edge function
+// already batch-fetched (one query per field type across every entry, instead
+// of one query per entry per field). Everything else (people_involved,
+// documents, date) is pure formatting with no DB dependency, unchanged below.
+const DB_LOOKUP_FIELDS = new Set([
+  'status_id', 'priority_id', 'category_id', 'subcategory_id', 'type_id', 'assigned_to', 'facility_id',
+]);
+
 // Helper function to resolve field values to human-readable names
-const resolveFieldValue = async (fieldName: string, value: string): Promise<string> => {
+const resolveFieldValue = (fieldName: string, value: string, fieldValues: Record<string, string>): string => {
   if (!value) return 'None';
-  
+
   try {
+    if (DB_LOOKUP_FIELDS.has(fieldName)) {
+      return fieldValues[`${fieldName}:${value}`] || value;
+    }
+
     switch (fieldName) {
-      case 'status_id':
-        const { data: status } = await supabase
-          .from('incident_status')
-          .select('name')
-          .eq('id', value)
-          .single();
-        return status?.name || value;
-        
-      case 'priority_id':
-        const { data: priority } = await supabase
-          .from('incident_priorities')
-          .select('name')
-          .eq('id', value)
-          .single();
-        return priority?.name || value;
-        
-      case 'category_id':
-        const { data: category } = await supabase
-          .from('incident_categories')
-          .select('name')
-          .eq('id', value)
-          .single();
-        return category?.name || value;
-        
-      case 'subcategory_id':
-        const { data: subcategory } = await supabase
-          .from('incident_subcategories')
-          .select('name')
-          .eq('id', value)
-          .single();
-        return subcategory?.name || value;
-        
-      case 'type_id':
-        const { data: type } = await supabase
-          .from('incident_report_types')
-          .select('name')
-          .eq('id', value)
-          .single();
-        return type?.name || value;
-        
-      case 'assigned_to':
-        const { data: assignee } = await supabase
-          .from('employees')
-          .select('first_name, last_name')
-          .eq('id', value)
-          .single();
-        return assignee ? `${assignee.first_name} ${assignee.last_name}` : value;
-        
-      case 'facility_id':
-        const { data: facility } = await supabase
-          .from('facilities')
-          .select('name')
-          .eq('id', value)
-          .single();
-        return facility?.name || value;
-        
       case 'people_involved':
         try {
           const people = JSON.parse(value);
@@ -209,7 +139,7 @@ const resolveFieldValue = async (fieldName: string, value: string): Promise<stri
           console.error('Error parsing people_involved:', error);
           return value;
         }
-        
+
       case 'documents':
         try {
           const documents = JSON.parse(value);
@@ -221,7 +151,7 @@ const resolveFieldValue = async (fieldName: string, value: string): Promise<stri
           console.error('Error parsing documents:', error);
           return value;
         }
-        
+
       case 'date':
         try {
           const date = new Date(value);
@@ -237,7 +167,7 @@ const resolveFieldValue = async (fieldName: string, value: string): Promise<stri
           console.error('Error parsing date:', error);
           return value;
         }
-        
+
       default:
         return value;
     }
@@ -272,7 +202,11 @@ const formatFieldName = (fieldName: string): string => {
 };
 
 // Convert raw audit log entries to formatted activities
-export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<FormattedAuditEntry[]> => {
+export const formatAuditLogEntries = async (
+  entries: AuditLogEntry[],
+  userNames: Record<string, string> = {},
+  fieldValues: Record<string, string> = {}
+): Promise<FormattedAuditEntry[]> => {
   console.log('=== FORMATTING AUDIT ENTRIES ===');
   console.log('Formatting audit entries count:', entries.length);
   console.log('Raw entries to format:', entries);
@@ -282,7 +216,7 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
   for (const entry of entries) {
     try {
       console.log('Processing audit entry:', entry);
-      const userName = await getUserName(entry.changed_by);
+      const userName = getUserName(entry.changed_by, userNames);
       console.log('User name for entry:', userName);
       
       // Determine activity type based on field and change type
@@ -292,7 +226,7 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
       if (entry.change_type === 'field_update') {
         if (entry.field_changed === 'status_id' && entry.changes) {
           // Check changes array for status updates
-          const statusChange = entry.changes.find((change: any) => change.field === 'status_id');
+          const statusChange = entry.changes.find((change: Record<string, unknown>) => change.field === 'status_id');
           if (statusChange) {
             entityType = 'status';
             if (statusChange.new_value === 'closed') {
@@ -321,8 +255,8 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
           const fieldName = formatFieldName(change.field);
           
           // Resolve old and new values to human-readable names
-          const oldValue = change.old_value ? await resolveFieldValue(change.field, change.old_value) : 'None';
-          const newValue = change.new_value ? await resolveFieldValue(change.field, change.new_value) : 'None';
+          const oldValue = change.old_value ? resolveFieldValue(change.field, change.old_value, fieldValues) : 'None';
+          const newValue = change.new_value ? resolveFieldValue(change.field, change.new_value, fieldValues) : 'None';
           
           if (oldValue !== 'None' && newValue !== 'None') {
             // Special handling for people involved and documents to show actual changes
@@ -332,19 +266,19 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
                 const newItems = JSON.parse(change.new_value || '[]');
                 
                 // Find what was added and removed
-                const added = newItems.filter((newItem: any) => {
+                const added = newItems.filter((newItem: Record<string, unknown>) => {
                   if (change.field === 'people_involved') {
-                    return !oldItems.some((oldItem: any) => oldItem.name === newItem.name);
+                    return !oldItems.some((oldItem: Record<string, unknown>) => oldItem.name === newItem.name);
                   } else {
-                    return !oldItems.some((oldItem: any) => oldItem.name === newItem.name);
+                    return !oldItems.some((oldItem: Record<string, unknown>) => oldItem.name === newItem.name);
                   }
                 });
-                
-                const removed = oldItems.filter((oldItem: any) => {
+
+                const removed = oldItems.filter((oldItem: Record<string, unknown>) => {
                   if (change.field === 'people_involved') {
-                    return !newItems.some((newItem: any) => newItem.name === oldItem.name);
+                    return !newItems.some((newItem: Record<string, unknown>) => newItem.name === oldItem.name);
                   } else {
-                    return !newItems.some((newItem: any) => newItem.name === oldItem.name);
+                    return !newItems.some((newItem: Record<string, unknown>) => newItem.name === oldItem.name);
                   }
                 });
                 
@@ -352,7 +286,7 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
                 const changes = [];
                 
                 if (removed.length > 0) {
-                  const removedStr = removed.map((item: any) => {
+                  const removedStr = removed.map((item: Record<string, unknown>) => {
                     if (change.field === 'people_involved') {
                       return `${item.role} (${item.name})`;
                     } else {
@@ -361,9 +295,9 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
                   }).join(', ');
                   changes.push(`Removed "${removedStr}"`);
                 }
-                
+
                 if (added.length > 0) {
-                  const addedStr = added.map((item: any) => {
+                  const addedStr = added.map((item: Record<string, unknown>) => {
                     if (change.field === 'people_involved') {
                       return `${item.role} (${item.name})`;
                     } else {
@@ -402,8 +336,8 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
             fieldNames.push(fieldName);
             
             if (change.old_value && change.new_value) {
-              const oldValue = await resolveFieldValue(change.field, change.old_value);
-              const newValue = await resolveFieldValue(change.field, change.new_value);
+              const oldValue = resolveFieldValue(change.field, change.old_value, fieldValues);
+              const newValue = resolveFieldValue(change.field, change.new_value, fieldValues);
               changeDescriptions.push(`${fieldName}: "${oldValue}" → "${newValue}"`);
             }
           }
@@ -417,14 +351,14 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
       } else if (!details && entry.change_type === 'field_update') {
         const fieldName = formatFieldName(entry.field_changed);
         if (entry.old_value && entry.new_value) {
-          const oldValue = await resolveFieldValue(entry.field_changed, entry.old_value);
-          const newValue = await resolveFieldValue(entry.field_changed, entry.new_value);
+          const oldValue = resolveFieldValue(entry.field_changed, entry.old_value, fieldValues);
+          const newValue = resolveFieldValue(entry.field_changed, entry.new_value, fieldValues);
           details = `${fieldName} changed from "${oldValue}" to "${newValue}"`;
         } else if (entry.new_value) {
-          const newValue = await resolveFieldValue(entry.field_changed, entry.new_value);
+          const newValue = resolveFieldValue(entry.field_changed, entry.new_value, fieldValues);
           details = `${fieldName} set to "${newValue}"`;
         } else if (entry.old_value) {
-          const oldValue = await resolveFieldValue(entry.field_changed, entry.old_value);
+          const oldValue = resolveFieldValue(entry.field_changed, entry.old_value, fieldValues);
           details = `${fieldName} removed (was "${oldValue}")`;
         } else {
           details = `${fieldName} updated`;
@@ -471,7 +405,7 @@ export const logAuditEntry = async (
   newValue?: string,
   changeType: string = 'action',
   description?: string,
-  changes?: any[]
+  changes?: Record<string, unknown>[]
 ): Promise<string | null> => {
   try {
     // Get client_id from JWT app_metadata (Feature 3). The audit log row

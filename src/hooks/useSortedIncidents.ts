@@ -24,11 +24,12 @@ export function useSortedIncidents(incidents: Incident[]) {
           return sortDirection === 'asc'
             ? a.category.localeCompare(b.category)
             : b.category.localeCompare(a.category);
-        case 'priority':
+        case 'priority': {
           const priorityOrder = { 'Critical': 3, 'High': 2, 'Medium': 1, 'Low': 0 };
           const priorityA = priorityOrder[a.priority as keyof typeof priorityOrder] || 1;
           const priorityB = priorityOrder[b.priority as keyof typeof priorityOrder] || 1;
           return sortDirection === 'asc' ? priorityA - priorityB : priorityB - priorityA;
+        }
         case 'facility':
           return sortDirection === 'asc'
             ? (a.facility || '').localeCompare(b.facility || '')

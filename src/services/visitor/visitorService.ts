@@ -1,9 +1,21 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+
+// `visitors` and `visitor_kyc` are not yet in the generated Database types, so queries
+// against them go through an untyped client rather than casting individual calls to `any`.
+const visitorsClient = supabase as unknown as SupabaseClient;
+
+interface RawEvidenceFile {
+  name?: string;
+  path?: string;
+  url?: string;
+  type?: string;
+}
 
 // Helper function to transform stored paths to full URLs when fetching
 // This ensures URLs are generated based on the current Supabase URL
 function transformEvidenceFiles(
-  evidenceFiles: any[],
+  evidenceFiles: RawEvidenceFile[],
   supabaseUrl: string
 ): Array<{ name: string; path: string; url: string; type: string }> {
   if (!Array.isArray(evidenceFiles)) {
@@ -12,7 +24,7 @@ function transformEvidenceFiles(
 
   const BUCKET_NAME = 'visitors_evidence';
 
-  return evidenceFiles.map((file: any) => {
+  return evidenceFiles.map((file) => {
     // If file already has a URL, check if it's a valid path-based structure
     // Otherwise, construct URL from path
     let url = file.url;
@@ -103,7 +115,7 @@ export const visitorService = {
 
       // Build query to fetch visitors with nested KYC details and count
       // Using type assertion because visitors table may not be in generated types yet
-      let query = (supabase as any)
+      let query = visitorsClient
         .from('visitors')
         .select(`
           id,
@@ -155,7 +167,7 @@ export const visitorService = {
       }
 
       // Transform the data to ensure visitor_kyc is always an array and transform evidence files
-      const visitors: Visitor[] = (data || []).map((visitor: any) => ({
+      const visitors: Visitor[] = (data || []).map((visitor) => ({
         ...visitor,
         visitor_kyc: Array.isArray(visitor.visitor_kyc) ? visitor.visitor_kyc : [],
         evidence_files: transformEvidenceFiles(
@@ -193,7 +205,7 @@ export const visitorService = {
         throw new Error('Client ID is required');
       }
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await visitorsClient
         .from('visitors')
         .select(`
           id,
@@ -272,7 +284,7 @@ export const visitorService = {
   }): Promise<Visitor> {
     try {
       // Insert visitor record
-      const { data: visitor, error: visitorError } = await (supabase as any)
+      const { data: visitor, error: visitorError } = await visitorsClient
         .from('visitors')
         .insert({
           name: visitorData.name,
@@ -303,7 +315,7 @@ export const visitorService = {
           document_no: kyc.document_no
         }));
 
-        const { error: kycError } = await (supabase as any)
+        const { error: kycError } = await visitorsClient
           .from('visitor_kyc')
           .insert(kycRecords);
 
@@ -341,7 +353,7 @@ export const visitorService = {
   ): Promise<Visitor> {
     try {
       // Update visitor record
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.mobile_no !== undefined) updateData.mobile_no = updates.mobile_no;
       if (updates.purpose !== undefined) updateData.purpose = updates.purpose;
@@ -350,7 +362,7 @@ export const visitorService = {
       if (updates.vehicle_no !== undefined) updateData.vehicle_no = updates.vehicle_no;
       if (updates.vehicle_type !== undefined) updateData.vehicle_type = updates.vehicle_type;
 
-      const { error: visitorError } = await (supabase as any)
+      const { error: visitorError } = await visitorsClient
         .from('visitors')
         .update(updateData)
         .eq('id', visitorId)
@@ -363,7 +375,7 @@ export const visitorService = {
       // Update KYC details if provided
       if (updates.kyc_details !== undefined) {
         // Delete existing KYC records
-        const { error: deleteError } = await (supabase as any)
+        const { error: deleteError } = await visitorsClient
           .from('visitor_kyc')
           .delete()
           .eq('visitor_id', visitorId)
@@ -383,7 +395,7 @@ export const visitorService = {
             document_no: kyc.document_no
           }));
 
-          const { error: kycError } = await (supabase as any)
+          const { error: kycError } = await visitorsClient
             .from('visitor_kyc')
             .insert(kycRecords);
 
@@ -407,7 +419,7 @@ export const visitorService = {
   async deleteVisitor(visitorId: string, clientId: string): Promise<void> {
     try {
       // Delete KYC records first (due to foreign key constraint)
-      const { error: kycError } = await (supabase as any)
+      const { error: kycError } = await visitorsClient
         .from('visitor_kyc')
         .delete()
         .eq('visitor_id', visitorId)
@@ -418,7 +430,7 @@ export const visitorService = {
       }
 
       // Delete visitor record
-      const { error: visitorError } = await (supabase as any)
+      const { error: visitorError } = await visitorsClient
         .from('visitors')
         .delete()
         .eq('id', visitorId)
@@ -438,7 +450,7 @@ export const visitorService = {
    */
   async markVisitorAsExited(visitorId: string, clientId: string, employeeId: string): Promise<Visitor> {
     try {
-      const { error } = await (supabase as any)
+      const { error } = await visitorsClient
         .from('visitors')
         .update({ is_exit: true })
         .eq('id', visitorId)

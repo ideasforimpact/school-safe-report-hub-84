@@ -1,44 +1,50 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  fetchEmployeeDepartmentsShared,
+  type EmployeeDepartmentOption,
+} from '@/services/employee/employeeReferenceDataShared';
 
-export interface EmployeeDepartmentOption {
-  id: string;
-  department_name: string;
-  created_at?: string;
-  updated_at?: string;
-}
+export type { EmployeeDepartmentOption };
 
-export function useEmployeeDepartments() {
+export function useEmployeeDepartments(enabled: boolean = true) {
   const [employeeDepartments, setEmployeeDepartments] = useState<EmployeeDepartmentOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchEmployeeDepartments() {
+    if (!enabled) {
+      setEmployeeDepartments([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
       try {
         setLoading(true);
         setError(null);
-
-        const { data, error: fetchError } = await supabase
-          .from('employee_departments')
-          .select('*')
-          .order('department_name', { ascending: true });
-
-        if (fetchError) {
-          throw fetchError;
+        const data = await fetchEmployeeDepartmentsShared();
+        if (!cancelled) {
+          setEmployeeDepartments(data);
         }
-
-        setEmployeeDepartments(data || []);
       } catch (err) {
-        console.error('Error fetching employee departments:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch employee departments');
+        if (!cancelled) {
+          console.error('Error fetching employee departments:', err);
+          setError(err instanceof Error ? err.message : 'Failed to fetch employee departments');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    }
+    })();
 
-    fetchEmployeeDepartments();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
 
   return { employeeDepartments, loading, error };
 }

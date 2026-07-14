@@ -17,7 +17,11 @@ interface VerificationStatusBadgeProps {
   documentLogs?: Array<{
     timestamp: string;
     action: string;
-    response: any;
+    response: {
+      success?: boolean;
+      status_code?: number;
+      [key: string]: unknown;
+    };
     notes?: string;
   }>;
   documentId?: string;

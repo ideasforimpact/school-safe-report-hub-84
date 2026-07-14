@@ -2,7 +2,7 @@
  * Common types for SafeSchool Auth Service
  */
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   status: 'success' | 'error';
   code: string;
   message: string;
@@ -39,7 +39,7 @@ export interface AuthInfoResponse {
     client_id?: string;
     is_super_admin: boolean;
     role?: string;
-    permissions?: any;
+    permissions?: unknown;
   };
 }
 
@@ -62,8 +62,8 @@ export interface VerifyResponse {
     sub: string;
     email: string;
     role?: string;
-    permissions?: any;
-    [key: string]: any;
+    permissions?: unknown;
+    [key: string]: unknown;
   };
 }
 
@@ -71,10 +71,10 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role?: string;
-  permissions?: any;
+  permissions?: unknown;
   iss: string;
   iat: number;
   exp: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 

@@ -105,7 +105,7 @@ export interface CommitteeEventPayload {
 
 // ─── Central invoker ──────────────────────────────────────────────────────────
 
-async function invokeCommittee<T = any>(action: string, payload: Record<string, any> = {}): Promise<T> {
+async function invokeCommittee<T = unknown>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
   const { data, error } = await supabase.functions.invoke(`committee-management/${action}`, {
     body: payload,
   });
@@ -195,7 +195,7 @@ export const fetchCommitteeDefaults = async (): Promise<CommitteeDefault[]> => {
 
 export const fetchCommitteeMemberRoles = async (): Promise<CommitteeMemberRole[]> => {
   const { data, error } = await supabase
-    .from('committee_member_roles' as any)
+    .from('committee_member_roles' as const)
     .select('id, name, sort_order, active')
     .eq('active', true)
     .order('sort_order', { ascending: true });
@@ -294,7 +294,7 @@ export const fetchEventsPageData = async (
   const inflight = eventsPageInflight.get(key);
   if (inflight) return inflight;
 
-  const request = invokeCommittee<{ committee: any; events: any[]; members: any[] }>(
+  const request = invokeCommittee<{ committee: Committee; events: CommitteeEvent[]; members: CommitteeMember[] }>(
     'get_events_page_data',
     { client_id: clientId, committee_id: committeeId },
   ).then((data) => ({

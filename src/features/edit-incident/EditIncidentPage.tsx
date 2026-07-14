@@ -33,7 +33,7 @@ const EditIncidentPage = () => {
   // this one feature.
   const [pendingDemo, setPendingDemo] = useState<NextScenarioResult | null>(null);
 
-  const handleFormSubmit = (updatedFormData: any, updatedPeople: Person[]) => {
+  const handleFormSubmit = (updatedFormData: Record<string, unknown>, updatedPeople: Person[]) => {
     handleSubmit({
       formData: updatedFormData,
       peopleInvolved: updatedPeople

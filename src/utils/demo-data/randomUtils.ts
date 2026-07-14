@@ -26,7 +26,7 @@ export const generateRandomDate = (): Date => {
   ];
   
   // Create weighted array of days
-  let weightedDays: number[] = [];
+  const weightedDays: number[] = [];
   for (const period of periods) {
     for (let day = period.start; day <= period.end; day++) {
       // Add the day multiple times based on weight

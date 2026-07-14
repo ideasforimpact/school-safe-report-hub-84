@@ -5,10 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
 import VehicleTypeIcon from './VehicleTypeIcon';
-import { usePagination } from '@/hooks/usePagination';
+import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { cn } from '@/lib/utils';
 import { 
   getDocumentStatus, 
@@ -36,20 +37,10 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
     const shouldHideWriteActions = isReadOnly || isReadOnlySwitchedContext;
 
-    const sortedVehicles = React.useMemo(() => {
-      return [...vehicles].sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0).getTime();
-        const dateB = new Date(b.createdAt || 0).getTime();
-        return dateB - dateA;
-      });
-    }, [vehicles]);
+    const { currentPage, setCurrentPage, totalPages, totalCount, pageSize } = useTransportSafety();
 
-    const {
-      paginatedItems,
-      currentPage,
-      setCurrentPage,
-      totalPages
-    } = usePagination(sortedVehicles, 10);
+    // Vehicles are already sorted and paginated from the server
+    const paginatedItems = vehicles;
 
   const getDocumentIcon = (status: string) => {
     switch (status) {
@@ -266,20 +257,14 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
         </Table>
       </div>
       
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
-            Previous
-          </Button>
-          <div className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>
-            Next
-          </Button>
-        </div>
-      )}
+      <TablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        itemLabel="vehicles"
+        onPageChange={setCurrentPage}
+      />
 
     </div>
   );

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertDialog, AlertDialogContent, 
+import { AlertDialog, AlertDialogContent,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle } 
+  AlertDialogTitle }
 from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,12 +17,12 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { X, Plus } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData } from '@/store/employeeSelectors';
 import { useClient } from '@/contexts/ClientContext';
 import { SOP_VALIDATION } from '@/constant/sopValidation';
+import { useSopCategories, useCreateOrUpdateSop } from '@/hooks/sop/useSopQueries';
 
 interface ProcedureStep {
   id: string;
@@ -60,18 +60,24 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
   const { client } = useClient();
-  
+
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<boolean>(false); // false = inactive, true = active
+  const [status, setStatus] = useState<boolean>(false);
   const [procedureSteps, setProcedureSteps] = useState<ProcedureStep[]>([
     { id: '1', step: '' },
   ]);
   const [importantNotes, setImportantNotes] = useState('');
-  const [categories, setCategories] = useState<SOPCategory[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingCategories, setLoadingCategories] = useState(false);
+
+  const clientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
+
+  // ─── React Query hooks ──────────────────────────────────────────────────────
+  const { data: categoriesData } = useSopCategories(clientId, open);
+  const categories: SOPCategory[] = categoriesData || [];
+
+  const createOrUpdateMutation = useCreateOrUpdateSop();
+  const loading = createOrUpdateMutation.isPending;
 
   // Populate form when editing
   useEffect(() => {
@@ -81,7 +87,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
       setDescription(editingSOP.description || '');
       setStatus(editingSOP.status || false);
       setImportantNotes(editingSOP.important_notes || '');
-      
+
       // Convert procedure steps array to ProcedureStep format
       if (editingSOP.procedure_steps && editingSOP.procedure_steps.length > 0) {
         setProcedureSteps(
@@ -103,36 +109,6 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
       setImportantNotes('');
     }
   }, [open, editingSOP]);
-
-  // Fetch categories when dialog opens
-  useEffect(() => {
-    if (open) {
-      fetchCategories();
-    }
-  }, [open]);
-
-  const fetchCategories = async () => {
-    setLoadingCategories(true);
-    try {
-      const { data, error } = await supabase
-        .from('sop_categories' as any)
-        .select('id, category_name')
-        .order('category_name', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching categories:', error);
-        toast.error('Failed to load categories');
-        return;
-      }
-
-      setCategories((data || []) as unknown as SOPCategory[]);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
-    } finally {
-      setLoadingCategories(false);
-    }
-  };
 
   const handleAddStep = () => {
     const newId = String(Date.now());
@@ -162,33 +138,33 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
   // Validation for form fields
   const isFormValid = useMemo(() => {
     // Title validation
-    const titleValid = title.trim().length >= SOP_VALIDATION.title.min && 
+    const titleValid = title.trim().length >= SOP_VALIDATION.title.min &&
                        title.trim().length <= SOP_VALIDATION.title.max &&
                        !hasSpecialCharacters(title.trim());
-    
+
     // Category validation
     const categoryValid = categoryId !== '';
-    
+
     // Description validation
-    const descriptionValid = description.trim().length >= SOP_VALIDATION.description.min && 
+    const descriptionValid = description.trim().length >= SOP_VALIDATION.description.min &&
                              description.trim().length <= SOP_VALIDATION.description.max &&
                              !hasSpecialCharacters(description.trim());
-    
+
     // Procedure steps validation - at least one step with valid length and no special characters
     const stepsValid = procedureSteps.some(step => {
       const trimmed = step.step.trim();
-      return trimmed.length >= SOP_VALIDATION.procedureStep.min && 
+      return trimmed.length >= SOP_VALIDATION.procedureStep.min &&
              trimmed.length <= SOP_VALIDATION.procedureStep.max &&
              !hasSpecialCharacters(trimmed);
     });
-    
+
     return titleValid && categoryValid && descriptionValid && stepsValid;
   }, [title, categoryId, description, procedureSteps]);
 
   // Validation for important notes (optional but if filled, must be valid)
   const importantNotesValid = useMemo(() => {
     if (!importantNotes.trim()) return true; // Optional field
-    return importantNotes.trim().length >= SOP_VALIDATION.importantNotes.min && 
+    return importantNotes.trim().length >= SOP_VALIDATION.importantNotes.min &&
            importantNotes.trim().length <= SOP_VALIDATION.importantNotes.max;
   }, [importantNotes]);
 
@@ -235,7 +211,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
     const validSteps = procedureSteps
       .filter(step => {
         const trimmed = step.step.trim();
-        if (trimmed.length < SOP_VALIDATION.procedureStep.min || 
+        if (trimmed.length < SOP_VALIDATION.procedureStep.min ||
             trimmed.length > SOP_VALIDATION.procedureStep.max) {
           return false;
         }
@@ -264,99 +240,42 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
       }
     }
 
-    setLoading(true);
+    const employeeId = employeeData?.id || null;
 
-    try {
-      // Get client_id and employee_id (both mandatory)
-      const clientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
-      const employeeId = employeeData?.id || null;
-
-      if (!clientId) {
-        toast.error('Missing client information. Please refresh and try again.');
-        setLoading(false);
-        return;
-      }
-
-      if (!employeeId) {
-        toast.error('Missing employee information. Please re-login and try again.');
-        setLoading(false);
-        return;
-      }
-
-      // Check for duplicate SOP title (case-insensitive, within same client)
-      const { data: existingSOPs, error: checkError } = await supabase
-        .from('sop' as any)
-        .select('id, title')
-        .eq('client_id', clientId)
-        .ilike('title', trimmedTitle);
-
-      if (checkError) {
-        console.error('Error checking for duplicate SOP:', checkError);
-      } else if (existingSOPs && existingSOPs.length > 0) {
-        // If editing, allow if it's the same SOP
-        if (editingSOP && existingSOPs && existingSOPs.some((s: any) => s.id === editingSOP.id)) {
-          // Same SOP, allow update
-        } else {
-          // Duplicate found
-          toast.error(`An SOP with the title "${trimmedTitle}" already exists`);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Call edge function to create or update SOP
-      const functionName = editingSOP ? 'update-sop' : 'create-sop';
-      const requestBody: any = {
-        title: trimmedTitle,
-        category_id: categoryId,
-        description: trimmedDescription || null,
-        status: status,
-        procedure_steps: validSteps,
-        important_notes: importantNotes.trim() || null,
-        client_id: clientId,
-        employee_id: employeeId,
-      };
-
-      // Add sop_id for update
-      if (editingSOP) {
-        requestBody.sop_id = editingSOP.id;
-      }
-
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: requestBody,
-      });
-
-      if (error) {
-        console.error('Error creating SOP:', error);
-        toast.error('Failed to create SOP');
-        return;
-      }
-
-      if (data && data.error) {
-        toast.error(data.error || 'Failed to create SOP');
-        return;
-      }
-
-      toast.success(editingSOP ? 'SOP updated successfully' : 'SOP created successfully');
-      
-      // Reset form
-      setTitle('');
-      setCategoryId('');
-      setDescription('');
-      setStatus(false);
-      setProcedureSteps([{ id: '1', step: '' }]);
-      setImportantNotes('');
-      
-      onOpenChange(false);
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (error) {
-      console.error('Error creating SOP:', error);
-      toast.error('Failed to create SOP');
-    } finally {
-      setLoading(false);
+    if (!clientId) {
+      toast.error('Missing client information. Please refresh and try again.');
+      return;
     }
+    if (!employeeId) {
+      toast.error('Missing employee information. Please re-login and try again.');
+      return;
+    }
+
+    const body: Record<string, unknown> = {
+      title: trimmedTitle,
+      category_id: categoryId,
+      description: trimmedDescription || null,
+      status,
+      procedure_steps: validSteps,
+      important_notes: importantNotes.trim() || null,
+      client_id: clientId,
+      employee_id: employeeId,
+    };
+    if (editingSOP) body.sop_id = editingSOP.id;
+
+    createOrUpdateMutation.mutate(body, {
+      onSuccess: () => {
+        setTitle('');
+        setCategoryId('');
+        setDescription('');
+        setStatus(false);
+        setProcedureSteps([{ id: '1', step: '' }]);
+        setImportantNotes('');
+      
+        onOpenChange(false);
+        onSuccess?.();
+      },
+    });
   };
 
   const handleCancel = () => {
@@ -415,7 +334,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             </Label>
             <Select value={categoryId} onValueChange={setCategoryId} required>
               <SelectTrigger>
-                <SelectValue placeholder={loadingCategories ? "Loading..." : "Select category"} />
+                <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((category) => (
@@ -479,10 +398,10 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             <div className="space-y-2">
               {procedureSteps.map((step, index) => {
                 const stepValue = step.step.trim();
-                const stepValid = stepValue.length >= SOP_VALIDATION.procedureStep.min && 
+                const stepValid = stepValue.length >= SOP_VALIDATION.procedureStep.min &&
                                  stepValue.length <= SOP_VALIDATION.procedureStep.max;
                 const showStepError = stepValue.length > 0 && !stepValid;
-                
+
                 return (
                   <div key={step.id} className="flex items-start gap-2">
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white font-semibold text-sm flex-shrink-0 mt-1">
@@ -576,8 +495,8 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={loading || !isFormValid || !importantNotesValid}
             >
               {loading ? (editingSOP ? 'Updating...' : 'Creating...') : (editingSOP ? 'Update SOP' : 'Create SOP')}

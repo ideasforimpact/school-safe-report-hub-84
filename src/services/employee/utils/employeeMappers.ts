@@ -1,5 +1,5 @@
 
-import { Employee } from '@/contexts/employee/types';
+import { Employee, EmployeeType, DepartmentType } from '@/contexts/employee/types';
 
 // Interface to represent the database record structure
 interface DbEmployeeRecord {
@@ -46,8 +46,8 @@ export const mapDbRecordToEmployee = (dbRecord: DbEmployeeRecord): Employee => {
     firstName: dbRecord.first_name,
     lastName: dbRecord.last_name,
     email: dbRecord.email,
-    employeeType: employeeTypeValue as any,
-    department: departmentValue as any,
+    employeeType: employeeTypeValue as EmployeeType,
+    department: departmentValue as DepartmentType,
     joiningDate: dbRecord.joining_date,
     status: dbRecord.status ? 'active' : 'inactive', // Convert boolean to string status
     clientId: dbRecord.client_id,

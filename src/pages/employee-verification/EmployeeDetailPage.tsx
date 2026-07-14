@@ -50,23 +50,27 @@ const EmployeeDetailPage = () => {
   // DigiLocker return handling states
   const [isProcessingDigiLocker, setIsProcessingDigiLocker] = useState(false);
   const [aadharDialogOpen, setAadharDialogOpen] = useState(false);
-  const [aadharVerificationData, setAadharVerificationData] = useState<any>(null);
+  const [aadharVerificationData, setAadharVerificationData] = useState<{ timestamp: string; action: string; response: unknown; documentId: string } | null>(null);
+  const realtimeDebounceRef = React.useRef<NodeJS.Timeout | null>(null);
+  // Ref so the debounced callback always calls the latest refetchDocuments without needing it in deps
+  const refetchDocumentsRef = React.useRef<() => Promise<void>>(async () => {});
+  // Ref guard: set synchronously before async starts to prevent concurrent initial loads
+  const initialLoadStartedRef = React.useRef(false);
+  // Tracks the last time refetchDocuments ran (any trigger). Automatic callers (realtime,
+  // post-verification callbacks) are suppressed within a 3s cooldown window so that a
+  // single verification that makes multiple DB writes only results in one network call.
+  const lastRefetchTimeRef = React.useRef<number>(0);
+  const REFETCH_COOLDOWN_MS = 3000;
+  // Cooldown: after a realtime-triggered refetch, suppress further ones for 3s.
+  // Verification edge functions make multiple sequential DB updates (status, personal info, audit log)
+  // each of which fires the realtime — the cooldown coalesces them all into one fetch.
+  const lastRealtimeRefetchRef = React.useRef<number>(0);
+  const REALTIME_REFETCH_COOLDOWN_MS = 3000;
+
   const handleEmployeeDocsUpdate = useCallback(
-    async (payload: any) => {
-
-      const newDoc = payload.new;
-      const oldDoc = payload.old;
-
-      const docToCheck = newDoc || oldDoc;
-
-      if (!docToCheck) return;
-
-      if (docToCheck.employee_id !== employeeId) {
-        console.log("Skipping event: employee mismatch");
-        return;
-      }
-
-      await refetchDocuments();
+    (payload: { new?: { employee_id?: string }; old?: { employee_id?: string } }) => {
+      const docToCheck = payload.new || payload.old;
+      if (!docToCheck || docToCheck.employee_id !== employeeId) return;
 
     },
     [employeeId]
@@ -148,7 +152,7 @@ const EmployeeDetailPage = () => {
             });
 
             // Refresh documents to show updated status (with DigiLocker data)
-            await refetchDocuments();
+            await refetchDocumentsRef.current();
             
             // Show the Aadhaar details dialog for user to approve/reject
             setAadharDialogOpen(true);
@@ -156,10 +160,10 @@ const EmployeeDetailPage = () => {
             throw new Error(data.error || "Verification failed");
           }
 
-        } catch (err: any) {
+        } catch (err) {
           console.error("DigiLocker return handling error:", err);
           sonnerToast.error("Verification Error", {
-            description: err.message || "Failed to complete verification"
+            description: err instanceof Error ? err.message : "Failed to complete verification"
           });
         } finally {
           setIsProcessingDigiLocker(false);
@@ -173,7 +177,7 @@ const EmployeeDetailPage = () => {
         navigate(location.pathname, { replace: true });
       }
     }
-  }, [location, documents, navigate, employeeId]);
+  }, [location, documents, navigate]);
 
   // Define all callback functions
   const handleAddDocument = useCallback(() => {
@@ -314,7 +318,7 @@ const EmployeeDetailPage = () => {
     };
     
     loadData();
-  }, [employeeId, clientId, initialLoadComplete, loadEmployeeData, fetchDocumentStatuses, toast]);
+  }, [employeeId, clientId, initialLoadComplete, loadEmployeeData, fetchDocumentStatuses, fetchEmployees, toast]);
 
   // Handle DigiLocker return after documents are loaded
   useEffect(() => {

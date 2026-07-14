@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    let body: any = {}
+    let body: Record<string, unknown> = {}
     try {
       const contentType = req.headers.get('content-type') || ''
       if (contentType.includes('application/json')) {
@@ -431,7 +431,7 @@ async function fetchAllEmployees() {
     // Fetch employees who have relevant documents (across all clients)
     // Split into chunks if too many IDs to avoid query size limits
     const chunkSize = 1000
-    const allEmployees: any[] = []
+    const allEmployees: Record<string, unknown>[] = []
     
     for (let i = 0; i < employeeIdsWithRelevantDocs.length; i += chunkSize) {
       const chunk = employeeIdsWithRelevantDocs.slice(i, i + chunkSize)

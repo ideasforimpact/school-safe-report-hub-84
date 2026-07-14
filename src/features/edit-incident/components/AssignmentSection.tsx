@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { User } from '@/types/incident';
-import { Employee } from '@/contexts/employee/types';
+import { Employee, EmployeeType, DepartmentType } from '@/contexts/employee/types';
 import {
   Select,
   SelectContent,
@@ -46,8 +46,8 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
           firstName: emp.first_name || '',
           lastName: emp.last_name || '',
           email: emp.email || '',
-          employeeType: emp.employee_type as any || 'permanent',
-          department: emp.department as any || 'admin',
+          employeeType: (emp.employee_type as EmployeeType) || 'permanent',
+          department: (emp.department as DepartmentType) || 'admin',
           joiningDate: emp.joining_date || new Date().toISOString(),
           status: 'active',
           createdAt: emp.created_at || new Date().toISOString(),

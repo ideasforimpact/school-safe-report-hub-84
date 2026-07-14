@@ -26,7 +26,7 @@ const AddStudentDialog = ({ open, onOpenChange, peopleInvolved, onStudentAdded }
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { addStudent, students } = useStudents();
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     setIsSubmitting(true);
     try {
       // addStudent returns the newly added student

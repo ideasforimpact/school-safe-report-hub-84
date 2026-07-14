@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -147,7 +147,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
     return null;
   };
 
-  const getFormErrors = (
+  const getFormErrors = useCallback((
     form: TrustedVehicleFormData,
     index: number
   ): Partial<Record<keyof TrustedVehicleFormData, string>> => {
@@ -225,7 +225,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
     }
 
     return formErrors;
-  };
+  }, [existingVehicleNumbersNormalized, forms, mode]);
 
   const validateForm = (form: TrustedVehicleFormData, index: number): boolean => {
     const formErrors = getFormErrors(form, index);
@@ -285,7 +285,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
     }
   };
 
-  const updateForm = (index: number, field: keyof TrustedVehicleFormData, value: any) => {
+  const updateForm = (index: number, field: keyof TrustedVehicleFormData, value: TrustedVehicleFormData[keyof TrustedVehicleFormData]) => {
     const updatedForms = forms.map((form, i) =>
       i === index ? { ...form, [field]: value } : form
     );
@@ -416,7 +416,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
       Object.keys(errors).length > 0;
 
     return hasStoredErrors;
-  }, [loading, clientId, employeeId, forms, errors, existingVehicleNumbersNormalized, mode]);
+  }, [loading, clientId, employeeId, forms, errors, getFormErrors]);
 
   const handleSave = async () => {
     if (!clientId || !employeeId) {
@@ -536,9 +536,9 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
       ]);
       setErrors({});
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving trusted vehicles:', error);
-      toast.error(error?.message || 'Failed to save trusted vehicles');
+      toast.error(error instanceof Error ? error.message : 'Failed to save trusted vehicles');
     } finally {
       setLoading(false);
     }

@@ -97,7 +97,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
     try {
       setIsRefreshing(true);
       // Trigger parent component to refresh comments
-      await addComment(incident.id, {} as any);
+      await addComment(incident.id, {} as Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>);
     } catch (error) {
       console.error('Error refreshing comments:', error);
     } finally {

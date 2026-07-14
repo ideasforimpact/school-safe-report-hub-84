@@ -168,12 +168,12 @@ const EmployeeManagement = () => {
       // We don't need to show success toast here - it's handled in the service
       // This prevents duplicate toast messages
       return newEmployee; // Return the new employee to match the expected return type
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to add employee:", error);
-      
+
       // Don't show generic error toast if specific error was already handled
       // Only show error toast if it's not already handled (like duplicate email)
-      if (!error.code || error.code !== "DUPLICATE_EMAIL") {
+      if (!(error instanceof Error && 'code' in error) || (error as Error & { code?: string }).code !== "DUPLICATE_EMAIL") {
         toast.error("Failed to add employee");
       }
       

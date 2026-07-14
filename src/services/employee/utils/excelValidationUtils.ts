@@ -79,7 +79,7 @@ export const isValidPhone = (phone: string): boolean => {
 };
 
 // Joining date must be a valid date
-export const isValidDate = (value: any): boolean => {
+export const isValidDate = (value: unknown): boolean => {
   if (!value) return false;
 
   if (value instanceof Date) {
@@ -365,7 +365,7 @@ export const getEmployeeIdFieldErrors = (employeeId?: string): string[] => {
   return messages;
 };
 
-export const validateExcelData = async (data: any[], clientId?: string): Promise<{ errors: string[]; warnings: string[] }> => {
+export const validateExcelData = async (data: Record<string, unknown>[], clientId?: string): Promise<{ errors: string[]; warnings: string[] }> => {
   const errors: string[] = [];
   const warnings: string[] = [];
   if (!Array.isArray(data) || data.length === 0) {
@@ -646,7 +646,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
         row.moduleAccessPayload.forEach((m: string) => moduleCandidates.push(String(m)));
       } else {
         // array-of-objects: prefer .name or .module_id or .key
-        row.moduleAccessPayload.forEach((m: any) => {
+        row.moduleAccessPayload.forEach((m: { name?: string; module_id?: string; key?: string }) => {
           if (m?.name) moduleCandidates.push(String(m.name));
           else if (m?.module_id) moduleCandidates.push(String(m.module_id));
           else if (m?.key) moduleCandidates.push(String(m.key));
@@ -658,7 +658,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     const moduleCell =
       row.Module ?? row.module ?? row['Module(s)'] ?? row['Assigned Module'] ?? row['assigned_module'] ?? '';
     if (moduleCell && typeof moduleCell === 'string' && moduleCell.trim()) {
-      const parts = moduleCell.split(/[,;|\/]/).map((p: string) => p.trim()).filter(Boolean);
+      const parts = moduleCell.split(/[,;|/]/).map((p: string) => p.trim()).filter(Boolean);
       moduleCandidates.push(...parts);
     }
 

@@ -6,6 +6,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type ComplianceFileEntry = {
+  path: string;
+  parentFolderId?: string | null;
+  fileName: string;
+  contentType?: string | null;
+  size?: number | null;
+  uploaded_at: string;
+};
+
+type ComplianceFolderFiles = {
+  folder_name?: string | null;
+  files: ComplianceFileEntry[];
+};
+
 type Job = {
   clientId: string;
   employeeId?: string | null;
@@ -75,7 +89,7 @@ serve(async (req) => {
 
           // Keep existing behaviour of logging into the folder's files column
           // so we preserve audit history, but do NOT rely on this for UI.
-          let nextFiles: any;
+          let nextFiles: ComplianceFolderFiles[] | ComplianceFileEntry[];
           if (Array.isArray(folderRow.files) && folderRow.files[0]?.files && Array.isArray(folderRow.files[0].files)) {
             const inner = folderRow.files[0].files ?? [];
             nextFiles = [

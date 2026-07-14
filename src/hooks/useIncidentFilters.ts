@@ -141,7 +141,7 @@ export const useIncidentFilters = (incidents: Incident[]) => {
     });
   }, [incidents, filters]);
 
-  const handleFilterChange = (field: keyof FilterState, value: any) => {
+  const handleFilterChange = (field: keyof FilterState, value: FilterState[keyof FilterState]) => {
     setFilters(prev => ({
       ...prev,
       [field]: value

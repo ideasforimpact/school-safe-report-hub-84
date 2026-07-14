@@ -2,10 +2,11 @@
 import React from 'react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { EmployeeData } from '@/store/types';
 
 interface EmployeeDataProviderProps {
   children: (props: {
-    employeeData: any;
+    employeeData: EmployeeData | null;
     isLoading: boolean;
     error: string | null;
     isAdmin: boolean;

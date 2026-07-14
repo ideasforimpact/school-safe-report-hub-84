@@ -11,13 +11,20 @@ import {
 
 const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey())
 
+interface ContributingFactor {
+  id: string
+  category?: string
+  description?: string
+  weight?: number
+}
+
 interface CloseIncidentRequest {
   client_id: string
   incident_id: string
   root_cause_analysis: string
   learning_points?: string
   action_taken: string
-  contributing_factor: any[]
+  contributing_factor: ContributingFactor[]
   attachments?: Array<{
     name: string
     type?: string
@@ -27,12 +34,21 @@ interface CloseIncidentRequest {
   deleted_attachment_ids?: string[]
 }
 
+interface CloseableIncident {
+  id: string
+  created_by: string | null
+  assigned_to: string | null
+  client_id: string
+  ticket_id: string
+  status_id: string
+}
+
 // Helper function to check incident close permissions
 async function checkClosePermissions(
   incidentId: string,
   employeeId: string,
   clientId: string
-): Promise<{ canClose: boolean; incident: any }> {
+): Promise<{ canClose: boolean; incident: CloseableIncident | null }> {
   // Get the incident details with creator and assigned user
   const { data: incident, error: incidentError } = await supabase
     .from('incidents')
@@ -92,7 +108,7 @@ async function checkClosePermissions(
     // Check if incidents module is enabled and has admin access
     hasIncidentAdmin =
       clientModules?.some(
-        (clientModule: any) =>
+        (clientModule: { module?: { name?: string }, access_level?: { isAdmin?: boolean }, enabled?: boolean }) =>
           clientModule.module?.name?.toLowerCase() === 'incidents' &&
           clientModule.access_level?.isAdmin === true &&
           clientModule.enabled === true
@@ -121,7 +137,7 @@ async function checkClosePermissions(
     // Check if user has incident admin access
     hasIncidentAdmin =
       employeeModules?.some(
-        (empModule: any) =>
+        (empModule: { module?: { name?: string }, level?: { is_admin?: boolean } }) =>
           empModule.module?.name?.toLowerCase() === 'incidents' &&
           empModule.level?.is_admin === true
       ) || false

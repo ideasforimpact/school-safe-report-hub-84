@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Search, Eye, Download, Edit, Trash, Upload, X, Loader2, FileText } from 'lucide-react';
 import ResourcePreviewDialog from '@/components/edusafe/ResourcePreviewDialog';
 import { EduSafeProvider } from '@/contexts/edusafe/EduSafeContext';
-import { EduSafeResource } from '@/types/eduSafeTypes';
+import { EduSafeResource, ResourceCategory } from '@/types/eduSafeTypes';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -301,7 +301,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       id: resource.id,
       title: resource.title,
       description: resource.description || '',
-      category: resource.category as any,
+      category: resource.category as ResourceCategory,
       tags: Array.isArray(resource.tags) ? resource.tags : [],
       uploadDate: resource.created_at,
       uploaderId: resource.uploaded_by || '',
@@ -314,7 +314,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         id: `file-${resource.id}`,
         name: resource.document_url.split('/').pop() || resource.title,
         type: 'application/pdf',
-        size: (resource as any).file_size || 0,
+        size: (resource as BackofficeEduSafeResource & { file_size?: number }).file_size || 0,
         base64: resource.document_url,
       },
     };
@@ -333,7 +333,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         fileUrl.startsWith('edusafe-resources/') ||
         fileUrl.startsWith('/edusafe-resources/')
       ) {
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+        const base = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
         const normalizedBase = base.replace(/\/$/, '');
         const normalizedPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
         fileUrl = `${normalizedBase}${normalizedPath}`;
@@ -583,7 +583,7 @@ useRealTimeSubHook({
                   id="title"
                   value={formData.title}
                   onChange={(e) => {
-                    let value = e.target.value;
+                    const value = e.target.value;
                     if (value.startsWith(' ')) return;
                     setFormData({ ...formData, title: value });
                     setTitleError(validateTitle(value));
@@ -607,7 +607,7 @@ useRealTimeSubHook({
                   id="description"
                   value={formData.description}
                   onChange={(e) => {
-                    let value = e.target.value;
+                    const value = e.target.value;
                     if (value.startsWith(' ')) return;
                     setFormData({ ...formData, description: value });
                   }}
@@ -649,7 +649,7 @@ useRealTimeSubHook({
                       id="tags"
                       value={newTag}
                       onChange={(e) => {
-                        let value = e.target.value;
+                        const value = e.target.value;
                         if (value.startsWith(' ')) return;
                         setNewTag(value);
                         setTagError(validateTag(value));
@@ -805,7 +805,7 @@ useRealTimeSubHook({
                   id="edit-description"
                   value={formData.description}
                   onChange={(e) => {
-                    let value = e.target.value;
+                    const value = e.target.value;
                     if (value.startsWith(' ')) return;
                     setFormData({ ...formData, description: value });
                   }}
@@ -847,7 +847,7 @@ useRealTimeSubHook({
                       id="edit-tags"
                       value={newTag}
                       onChange={(e) => {
-                        let value = e.target.value;
+                        const value = e.target.value;
                         if (value.startsWith(' ')) return;
                         setNewTag(value);
                         setTagError(validateTag(value));

@@ -17,7 +17,7 @@ interface QuestionResponseItemProps {
   question: AssessmentQuestion;
   response?: QuestionResponse;
   index: number;
-  onChange: (questionId: string, field: string, value: any) => void;
+  onChange: (questionId: string, field: keyof QuestionResponse, value: QuestionResponse[keyof QuestionResponse]) => void;
   readOnly?: boolean;
 }
 

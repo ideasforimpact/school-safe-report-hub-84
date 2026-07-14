@@ -1,10 +1,57 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/auth';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types/student';
+
+// De-duplicate identical student-management invocations (handles React StrictMode double-effect in dev)
+type StudentMgmtInvokeResult = Awaited<ReturnType<typeof supabase.functions.invoke>>;
+const _studentMgmtInflight = new Map<string, Promise<StudentMgmtInvokeResult>>();
+const _studentMgmtRecent = new Map<string, { at: number; value: StudentMgmtInvokeResult }>();
+const STUDENT_MGMT_DEDUPE_MS = 1200;
+
+/** Raw student record as returned by the student-management edge function's "list" path */
+interface RawStudentRecord {
+  id: string;
+  student_id?: string;
+  name: string;
+  grade?: string;
+  section?: string;
+  campus?: string;
+  created_at: string;
+  updated_at: string;
+  grade_id?: string | null;
+  section_id?: string | null;
+  campus_id?: string | null;
+}
+
+/** Raw student record as returned by the search-students edge function */
+interface RawSearchStudentRecord {
+  id: string;
+  name: string;
+  student_id?: string;
+  section_id?: string | null;
+  grade_id?: string | null;
+  sections?: { name?: string | null } | null;
+  grades?: { name?: string | null } | null;
+  is_external?: boolean;
+}
+const invokeStudentList = async (clientId: string) => {
+  const key = `list:${clientId}`;
+  const now = Date.now();
+  const recent = _studentMgmtRecent.get(key);
+  if (recent && now - recent.at < STUDENT_MGMT_DEDUPE_MS) return recent.value;
+  const existing = _studentMgmtInflight.get(key);
+  if (existing) return existing;
+  const request = supabase.functions
+    .invoke('student-management', { body: { client_id: clientId }, headers: { path: 'list' } })
+    .then((res) => { _studentMgmtRecent.set(key, { at: Date.now(), value: res }); return res; })
+    .finally(() => { _studentMgmtInflight.delete(key); });
+  _studentMgmtInflight.set(key, request);
+  return request;
+};
  
 export interface StudentOption {
   id: string;
@@ -49,43 +96,50 @@ export function StudentSearchSelect({
  
   const clientId = employeeData?.clientId;
  
-  const fetchStudents = useCallback(async () => {
+  useEffect(() => {
     if (isIntegrationEnabled || !clientId) {
       setFetchedStudents([]);
       return;
     }
-    try {
-      setIsLoadingStudents(true);
-      const { data, error } = await supabase
-        .from('students')
-        .select('id, student_id, name, grade, section, grade_id, section_id')
-        .eq('client_id', clientId);
-      if (error) throw error;
-      setFetchedStudents(
-        (data || []).map((s) => ({
-          id: s.id,
-          studentId: s.student_id,
-          name: s.name,
-          grade: s.grade ?? '',
-          section: s.section ?? '',
-          campus: '',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          grade_id: s.grade_id ?? null,
-          section_id: s.section_id ?? null,
-        }))
-      );
-    } catch (e) {
-      console.error(e);
-      setFetchedStudents([]);
-    } finally {
-      setIsLoadingStudents(false);
-    }
-  }, [clientId, isIntegrationEnabled]);
- 
-  useEffect(() => {
-    fetchStudents();
-  }, [refreshKey, fetchStudents]);
+    let cancelled = false;
+    setIsLoadingStudents(true);
+    invokeStudentList(clientId)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error(error);
+          setFetchedStudents([]);
+          return;
+        }
+        const studentList: RawStudentRecord[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.students)
+            ? data.students
+            : [];
+        setFetchedStudents(
+          studentList.map((s) => ({
+            id: s.id,
+            studentId: s.student_id,
+            name: s.name,
+            grade: s.grade,
+            section: s.section,
+            campus: s.campus,
+            createdAt: new Date(s.created_at),
+            updatedAt: new Date(s.updated_at),
+            grade_id: s.grade_id ?? null,
+            section_id: s.section_id ?? null,
+            campus_id: s.campus_id ?? null,
+          }))
+        );
+      })
+      .catch((e) => {
+        if (!cancelled) { console.error(e); setFetchedStudents([]); }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingStudents(false);
+      });
+    return () => { cancelled = true; };
+  }, [clientId, isIntegrationEnabled, refreshKey]);
  
   const searchStudentsAPI = useCallback(async (term: string): Promise<StudentOption[]> => {
     if (!term || term.length < 3 || !clientId) return [];
@@ -104,7 +158,7 @@ export function StudentSearchSelect({
       if (!res.ok) return [];
       const result = await res.json();
       if (!result.success || !Array.isArray(result.data)) return [];
-      return result.data.map((s: any) => ({
+      return (result.data as RawSearchStudentRecord[]).map((s) => ({
         id: s.id,
         name: s.name,
         student_id: s.student_id,

@@ -30,12 +30,21 @@ import { enqueueEmployeeDocumentUpload } from '@/services/employee/employeeDocum
 import GeneralVerificationUploader from './GeneralVerificationUploader';
 import DrugVerifactionUploader from './DrugVerifactionUploader';
 
+interface DocumentFormValues {
+  documentNumber?: string;
+  documentImage?: string;
+  dateOfBirth?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  otherType?: string;
+}
+
 interface DocumentFormProps {
   employeeId: string;
   selectedTypeId: string;
-  files: any[];
+  files: FileItem[];
   isSubmitting: boolean;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: DocumentFormValues) => void;
   onCancel: () => void;
   onFileUploaded: (base64: string) => void;
 }
@@ -244,16 +253,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 variant: 'destructive',
               });
             }, 0);
-            // Best-effort rollback: delete the created document immediately
+            // Best-effort rollback: delete the created document via edge function
             try {
               if (createdDocumentId) {
-                const { error: rollbackErr } = await supabase
-                  .from('employee_documents')
-                  .delete()
-                  .eq('id', createdDocumentId);
-                if (rollbackErr) {
-                  console.error('Immediate rollback failed (createSignedUploadUrl error)', rollbackErr);
-                }
+                await supabase.functions.invoke('employee-documents', {
+                  body: { action: 'purgeDocument', employeeId, documentId: createdDocumentId },
+                });
               }
             } catch (rbErr) {
               console.error('Immediate rollback exception', rbErr);
@@ -274,9 +279,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             contentType: fileItem.type || 'application/octet-stream',
             size: fileItem.size,
           };
-        } catch (err: any) {
+        } catch (err) {
           // Show per-file error toast with specific reason if available
-          const errorMsg = err?.message || 'Unknown storage error';
+          const errorMsg = err instanceof Error ? err.message : 'Unknown storage error';
           setTimeout(() => {
             toast({
               title: 'Upload failed',
@@ -290,9 +295,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       });
 
       const uploadedFiles = await Promise.allSettled(uploadPromises);
+      type UploadedFile = { objectPath: string; fileName: string; contentType: string; size: number };
       const successfulFiles = uploadedFiles
         .filter((r) => r.status === 'fulfilled')
-        .map((r) => (r as PromiseFulfilledResult<any>).value);
+        .map((r) => (r as PromiseFulfilledResult<UploadedFile>).value);
 
       console.log(uploadedFiles,"uploadedFiles");
       
@@ -355,26 +361,21 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       if (onCancel) {
         onCancel();
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error(`Error uploading ${verificationType} files:`, error);
-      // Best-effort rollback: delete the document record if it was created
+      // Best-effort rollback: delete the document record via edge function
       try {
-        const toDeleteId = createdDocumentId || undefined;
-        if (toDeleteId) {
-          const { error: rollbackErr } = await supabase
-            .from('employee_documents')
-            .delete()
-            .eq('id', toDeleteId);
-          if (rollbackErr) {
-            console.error('Rollback failed: could not delete document record', rollbackErr);
-          }
+        if (createdDocumentId) {
+          await supabase.functions.invoke('employee-documents', {
+            body: { action: 'purgeDocument', employeeId, documentId: createdDocumentId },
+          });
         }
       } catch (rbErr) {
         console.error('Rollback exception', rbErr);
       }
       toast({
         title: 'Error',
-        description: error?.message || 'Failed to upload files. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to upload files. Please try again.',
         variant: 'destructive',
       });
       setUploading(false);

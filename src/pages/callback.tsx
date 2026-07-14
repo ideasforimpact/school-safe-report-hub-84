@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getConfiguredModules } from '@/store/employeeSelectors';
+import { Module } from '@/store/types';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 
 export default function AuthCallback() {
@@ -11,7 +12,7 @@ export default function AuthCallback() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
 
-  function redirectUser(configured: any[], navigate: any) {
+  function redirectUser(configured: Module[], navigate: NavigateFunction) {
     if (!configured || configured.length === 0) {
       navigate("/no-access", { replace: true });
       return;
@@ -39,7 +40,7 @@ export default function AuthCallback() {
     if (configured.length > 0) {
       redirectUser(configured, navigate);
     }
-  }, [configured.length, navigate]);
+  }, [configured, navigate]);
 
 
   return (

@@ -4,11 +4,12 @@ import { ReportFooter } from "./ReportFooter";
 import {
   getAssessmentByCategory,
   getAssessmentStats,
+  AssessmentReportRow,
 } from "../utils";
 
 interface Props {
   month: string;
-  assessments: any[];
+  assessments: AssessmentReportRow[];
 }
 
 export const AssessmentPage = ({ month, assessments }: Props) => {
@@ -17,8 +18,8 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
   const categories = getAssessmentByCategory(assessments);
 
   const pendingStatuses = ["New", "Draft"];
-  const pendingList = assessments.filter((a: any) =>
-    pendingStatuses.includes(a.status)
+  const pendingList = assessments.filter((a) =>
+    pendingStatuses.includes(a.status ?? '')
   );
 
   return (
@@ -90,7 +91,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
           </Text>
         </View>
 
-        {categories.map((c: any, i: number) => (
+        {categories.map((c, i: number) => (
           <View key={i} style={styles.tableRow}>
             <Text style={styles.assessmentColCat}>{c.name}</Text>
             <Text style={styles.assessmentCol}>{c.total}</Text>
@@ -126,7 +127,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
             <Text style={{ width: "20%" }}>STATUS</Text>
           </View>
 
-          {pendingList.slice(0, 8).map((a: any, i: number) => (
+          {pendingList.slice(0, 8).map((a, i: number) => (
             <View key={i} style={styles.tableRow}>
               <Text style={{ width: "30%", fontSize: 8 }}>
                 {a.name}

@@ -39,7 +39,7 @@ export const optimizedIncidentService = {
       }
 
       // Transform the joined data to match our IncidentRecord interface
-      const transformedIncidents: IncidentRecord[] = incidents.map((inc: any) => ({
+      const transformedIncidents: IncidentRecord[] = incidents.map((inc: Record<string, unknown>) => ({
         id: inc.id,
         ticket_id: inc.ticket_id,
         type: inc.incident_report_types?.name || 'Unknown',

@@ -1,6 +1,6 @@
 
 import { Client } from '@/contexts/ClientContext';
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 
 /**

@@ -30,7 +30,7 @@ export const useFilterOptions = () => {
   );
 
   const statusOptions = useMemo(() => {
-    const names = (statuses || []).map((s: any) => s.name);
+    const names = (statuses || []).map((s: { name: string }) => s.name);
     return names.includes('Reopen') ? names : [...names, 'Reopen'];
   }, [statuses]);
 

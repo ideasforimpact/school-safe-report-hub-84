@@ -180,9 +180,9 @@ serve(async (req) => {
     }
 
     // 4) Process all comments and upload their attachments
-    const existingParams = (doc.params as Record<string, any>) || {};
-    const history: any[] = existingParams.verification_history || [];
-    const newEntries: any[] = [];
+    const existingParams = (doc.params as Record<string, unknown>) || {};
+    const history: Record<string, unknown>[] = (existingParams.verification_history as Record<string, unknown>[]) || [];
+    const newEntries: Record<string, unknown>[] = [];
 
     for (const comment of commentsArray) {
       const attachmentUrls: string[] = [];

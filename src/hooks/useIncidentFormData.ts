@@ -12,30 +12,30 @@ export interface IncidentFormData {
   facilities: { id: string; name: string; campus_id: string }[];
   priorities: { id: string; name: string; color: string | null }[];
 }
-
-interface CacheEntry {
+interface ConfigCacheEntry {
+  version: string;
   formData: IncidentFormData;
-  employees: any[];
-  statuses: any[];
-  students: any[];
+  employees: Record<string, unknown>[];
+  statuses: Record<string, unknown>[];
+  students: Record<string, unknown>[];
 }
-
-const EMPTY_FORM_DATA: IncidentFormData = {
-  reportTypes: [], categories: [], subcategories: [],
-  locations: [], facilities: [], priorities: [],
-};
-
-// Module-level cache keyed by `clientId::clientTypeId`.
-// Only populated once both IDs are known.
-const configCache = new Map<string, CacheEntry>();
+export const configCache = new Map<string, ConfigCacheEntry>();
 const fetchInflight = new Map<string, Promise<void>>();
+// Version bump — forces a re-fetch after the priorities client_id filter fix
+const CACHE_VERSION = 'v3';
+
+function buildCacheKey(clientId: string, clientTypeId: string): string {
+  return `${clientId}::${clientTypeId}::${CACHE_VERSION}`;
+}
 
 export function clearIncidentFormDataCache(clientId?: string) {
   if (clientId) {
     for (const key of configCache.keys()) {
       if (key.startsWith(`${clientId}::`)) configCache.delete(key);
     }
-    fetchInflight.delete(clientId);
+    for (const key of fetchInflight.keys()) {
+      if (key.startsWith(`${clientId}::`)) fetchInflight.delete(key);
+    }
   } else {
     configCache.clear();
     fetchInflight.clear();
@@ -43,21 +43,36 @@ export function clearIncidentFormDataCache(clientId?: string) {
 }
 
 export function useIncidentFormData() {
-  const { employeeData } = useAuth();
-  const clientId     = employeeData?.clientId    ?? null;
-  const clientTypeId = employeeData?.clientType?.id ?? null;
+  const { employeeData, user } = useAuth();
+  const clientId = employeeData?.clientId || null;
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? null;
+  const cacheKey = clientId && clientTypeId ? buildCacheKey(clientId, clientTypeId) : null;
 
-  // Only build a cache key once both IDs are available
-  const cacheKey = clientId && clientTypeId ? `${clientId}::${clientTypeId}` : null;
-
-  const cached = cacheKey ? configCache.get(cacheKey) : null;
-
-  const [formData,  setFormData]  = useState<IncidentFormData>(cached?.formData  ?? EMPTY_FORM_DATA);
-  const [employees, setEmployees] = useState<any[]>(cached?.employees ?? []);
-  const [statuses,  setStatuses]  = useState<any[]>(cached?.statuses  ?? []);
-  const [students,  setStudents]  = useState<any[]>(cached?.students  ?? []);
-  const [loading,   setLoading]   = useState(cached == null);
-  const [error,     setError]     = useState<string | null>(null);
+  const [formData, setFormData] = useState<IncidentFormData>(() => {
+    const cached = cacheKey ? configCache.get(cacheKey) : undefined;
+    return cached?.formData || {
+      reportTypes: [],
+      categories: [],
+      subcategories: [],
+      locations: [],
+      facilities: [],
+      priorities: []
+    };
+  });
+  const [employees, setEmployees] = useState<Record<string, unknown>[]>(() => {
+    const cached = cacheKey ? configCache.get(cacheKey) : undefined;
+    return cached?.employees || [];
+  });
+  const [statuses, setStatuses] = useState<Record<string, unknown>[]>(() => {
+    const cached = cacheKey ? configCache.get(cacheKey) : undefined;
+    return cached?.statuses || [];
+  });
+  const [students, setStudents] = useState<Record<string, unknown>[]>(() => {
+    const cached = cacheKey ? configCache.get(cacheKey) : undefined;
+    return cached?.students || [];
+  });
+  const [loading, setLoading] = useState(!(cacheKey && configCache.has(cacheKey)));
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Wait until both IDs are resolved
@@ -105,7 +120,8 @@ export function useIncidentFormData() {
         if (!data?.success) throw new Error('Failed to fetch incident form data');
 
         const d = data.data;
-        const entry: CacheEntry = {
+        const entry: ConfigCacheEntry = {
+          version: CACHE_VERSION,
           formData: {
             reportTypes:   d.reportTypes   || [],
             categories:    d.categories    || [],
@@ -125,10 +141,12 @@ export function useIncidentFormData() {
         setEmployees(entry.employees);
         setStatuses(entry.statuses);
         setStudents(entry.students);
-      } catch (err: any) {
-        console.error('Error fetching incident form data:', err);
-        setError(err.message);
-        toast.error('Failed to load incident form data');
+
+        console.log('Successfully fetched and cached combined incident form data');
+      } catch (err) {
+        console.error("Error fetching form data:", err);
+        setError(err instanceof Error ? err.message : String(err));
+        toast.error("Failed to load data from database");
       } finally {
         setLoading(false);
         fetchInflight.delete(cacheKey);

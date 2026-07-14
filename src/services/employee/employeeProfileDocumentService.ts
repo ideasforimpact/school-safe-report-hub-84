@@ -34,10 +34,10 @@ function fileNameFromVerificationUrl(url: string) {
   return name || 'document';
 }
 
-function mapVerificationRows(rows: any[]): VerificationDocumentRow[] {
+function mapVerificationRows(rows: Array<Record<string, unknown> & { document_type?: { name?: string } }>): VerificationDocumentRow[] {
   return (rows || [])
-    .filter((row: any) => row.document_url && String(row.document_url).trim() !== '')
-    .map((row: any) => ({
+    .filter((row) => row.document_url && String(row.document_url).trim() !== '')
+    .map((row) => ({
       id: row.id as string,
       typeLabel: formatVerificationTypeName((row.document_type as { name?: string })?.name || 'Document'),
       documentUrl: row.document_url as string,
@@ -72,8 +72,8 @@ export async function fetchEmployeeProfileDocuments(
   const mergedRows = Array.isArray(data?.mergedDocuments) ? data.mergedDocuments : [];
   if (mergedRows.length > 0) {
     return mergedRows
-      .filter((row: any) => row?.source === 'profile')
-      .map((row: any, index: number) => ({
+      .filter((row: Record<string, unknown>) => row?.source === 'profile')
+      .map((row: Record<string, unknown>, index: number) => ({
         id: `profile-${row.docKey || row.label || row.fileName || index}`,
         label: row.label || 'Document',
         fileName: row.fileName || 'Uploaded file',

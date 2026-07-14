@@ -1,8 +1,7 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ContributingFactor } from '@/types/incident';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Plus } from 'lucide-react';
 import {
   Select,
@@ -11,15 +10,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
-import { useEmployeeStore } from '@/store/EmployeeContext';
 import { DESCRIPTION_MAX_LENGTH } from '@/components/constants';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
+
+interface ContributingFactorOption {
+  id: string;
+  name: string;
+  weight: string;
+}
 
 interface ContributingFactorFormProps {
   currentFactor: {
     category: string;
-    categoryId?: string; // Add UUID of the contributing factor
+    categoryId?: string;
     description: string;
     weight: 'Low' | 'Medium' | 'High';
   };
@@ -31,75 +34,26 @@ interface ContributingFactorFormProps {
   }>>;
   addFactor: () => void;
   contributingFactors: ContributingFactor[];
-}
-
-interface ContributingFactorOption {
-  id: string;
-  name: string;
-  weight: string;
+  factorOptions?: ContributingFactorOption[];
 }
 
 const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
   currentFactor,
   setCurrentFactor,
   addFactor,
-  contributingFactors
+  contributingFactors,
+  factorOptions = []
 }) => {
-  const [factorOptions, setFactorOptions] = useState<ContributingFactorOption[]>([]);
-  const [weightOptions, setWeightOptions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { state } = useEmployeeStore();
-
-  useEffect(() => {
-    const fetchContributingFactors = async () => {
-      try {
-        if (!state.employeeData?.clientId) {
-          console.log('No client ID available');
-          setIsLoading(false);
-          return;
-        }
-
-        const { data: factors, error } = await supabase
-          .from('contributing_factors')
-          .select('id, name, weight')
-          .eq('client_id', state.employeeData.clientId)
-          .order('name');
-
-        if (error) {
-          console.error('Error fetching contributing factors:', error);
-          return;
-        }
-
-        console.log('Fetched contributing factors:', factors);
-        setFactorOptions(factors || []);
-
-        // Extract unique weight values
-        const uniqueWeights = [...new Set(factors?.map(f => f.weight).filter(Boolean) || [])];
-        setWeightOptions(uniqueWeights);
-
-      } catch (error) {
-        console.error('Error in fetchContributingFactors:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchContributingFactors();
-  }, [state.employeeData?.clientId]);
+  // Derive weight options from provided factor options
+  const weightOptions = useMemo(
+    () => [...new Set(factorOptions.map(f => f.weight).filter(Boolean))],
+    [factorOptions]
+  );
 
   // Filter out already selected factor categories (by UUID)
   const availableFactorOptions = factorOptions.filter(
     factor => !contributingFactors.some(cf => cf.id === factor.id)
   );
-
-  if (isLoading) {
-    return (
-      <div className="bg-gray-50 rounded-md p-4 border">
-        <h4 className="text-sm font-medium mb-3">Add New Factor</h4>
-        <div className="text-sm text-gray-500">Loading factor options...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-gray-50 rounded-md p-4 border">
