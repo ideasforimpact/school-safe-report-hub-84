@@ -10,10 +10,25 @@ import { FormField, DEFAULT_GRIEVANCE_FIELDS } from '@/types/formTypes';
 import { toast } from 'sonner';
 import { Loader } from 'lucide-react';
 
+interface FormConfigData {
+  title: string;
+  description: string;
+  fields: FormField[];
+  excluded_fields: string[];
+  client_logo: null;
+}
+
+interface InitialFormData {
+  title?: string;
+  description?: string;
+  fields?: FormField[];
+  excluded_fields?: string[];
+}
+
 interface FormConfigurationProps {
-  onSave: (form: any) => void;
+  onSave: (form: FormConfigData) => void;
   onCancel: () => void;
-  initialForm?: any;
+  initialForm?: InitialFormData;
 }
 
 export const FormConfiguration: React.FC<FormConfigurationProps> = ({ onSave, onCancel, initialForm }) => {

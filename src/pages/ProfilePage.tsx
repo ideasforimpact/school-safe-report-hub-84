@@ -27,7 +27,7 @@ interface ModuleInfo {
   key: string;
   access_level: {
     is_admin?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -286,7 +286,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({ modules, loading }) => {
   );
 };
 
-const AccessLevelBadge: React.FC<{ accessLevel: { is_admin?: boolean; [key: string]: any } | undefined }> = ({ accessLevel }) => {
+const AccessLevelBadge: React.FC<{ accessLevel: { is_admin?: boolean; [key: string]: unknown } | undefined }> = ({ accessLevel }) => {
   const isAdmin = accessLevel?.is_admin === true;
   
   if (!accessLevel || Object.keys(accessLevel).length === 0) {
@@ -308,7 +308,7 @@ const AccessLevelBadge: React.FC<{ accessLevel: { is_admin?: boolean; [key: stri
   return <Badge variant="outline" className="text-gray-600 border-gray-300 bg-gray-50">Regular User</Badge>;
 };
 
-const determineAccessLevel = (accessLevel: { is_admin?: boolean; [key: string]: any } | undefined): string => {
+const determineAccessLevel = (accessLevel: { is_admin?: boolean; [key: string]: unknown } | undefined): string => {
   if (!accessLevel || Object.keys(accessLevel).length === 0) {
     return "Regular User";
   }

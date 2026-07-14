@@ -42,7 +42,7 @@ serve(async (req) => {
       );
     }
 
-    if (!messages || (messages as any[]).length === 0) {
+    if (!messages || (messages as unknown[]).length === 0) {
       return new Response(
         JSON.stringify({ processed: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },

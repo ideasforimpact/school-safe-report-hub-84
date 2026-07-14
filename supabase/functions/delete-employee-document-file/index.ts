@@ -6,6 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type EmployeeDocumentFile = {
+  objectPath: string;
+  [key: string]: unknown;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -41,8 +46,9 @@ serve(async (req) => {
     if (fetchErr) throw fetchErr;
     if (!doc) throw new Error("Document not found");
 
-    const docsFiles: any[] = Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [];
-    const nextFiles = docsFiles.filter((f: any) => f?.objectPath !== objectPath);
+    const docFiles = (doc as { documents_files?: unknown }).documents_files;
+    const docsFiles: EmployeeDocumentFile[] = Array.isArray(docFiles) ? docFiles : [];
+    const nextFiles = docsFiles.filter((f) => f?.objectPath !== objectPath);
 
     const { error: updErr } = await supabase
       .from("employee_documents")

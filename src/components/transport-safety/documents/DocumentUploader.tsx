@@ -10,7 +10,7 @@ interface DocumentUploaderProps {
   vehicleId: string;
   clientId?: string;
   onClose: () => void;
-  onSuccess?: (result: any) => void;
+  onSuccess?: (result: unknown) => void;
   documentName: string;
   disabled: boolean;
   existingDocumentNames: string[];

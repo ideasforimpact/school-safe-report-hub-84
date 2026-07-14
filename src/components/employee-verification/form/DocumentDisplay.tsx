@@ -9,7 +9,7 @@ interface DocumentDisplayProps {
   documentNumber?: string;
   documentImage?: string;
   fileName?: string;
-  params?: any;
+  params?: Record<string, string>;
 }
 
 const DocumentDisplay: React.FC<DocumentDisplayProps> = ({

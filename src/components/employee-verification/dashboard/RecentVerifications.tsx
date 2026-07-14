@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { format, formatDistanceToNow } from 'date-fns';
-import { VerificationDocument } from '@/types/employeeVerification';
+import { VerificationDocument, Employee } from '@/types/employeeVerification';
 import { Badge } from '@/components/ui/badge';
 
 const RecentVerifications = () => {
@@ -209,7 +209,7 @@ const RecentVerifications = () => {
 
 interface ActivityItemProps {
   document: VerificationDocument;
-  employee: any; // Should be the Employee type from your system
+  employee: Employee | undefined;
 }
 
 const ActivityItem = ({ document, employee }: ActivityItemProps) => {

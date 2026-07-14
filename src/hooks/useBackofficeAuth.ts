@@ -15,6 +15,9 @@ import { User, EmployeeData } from '@/contexts/auth/types';
 import { saveAuthState } from '@/store/authPersistence';
 import { getBackofficeDefaultPath } from '@/components/layout/sidebar/sidebarConfig';
 import type { Module } from '@/components/layout/sidebar/sidebarConfig';
+import type { Database } from '@/integrations/supabase/types';
+
+type BackofficeUserUpdate = Database['public']['Tables']['backoffice_users']['Update'];
 // Helper function to create fresh Supabase auth user with email provider
 const createSupabaseAuthUser = async (email: string, password: string): Promise<boolean> => {
   try {
@@ -110,8 +113,9 @@ export const useBackofficeAuth = () => {
         } else if (authError) {
           console.log('Supabase auth failed (expected for local dev), will try custom verification:', authError.message);
         }
-      } catch (authErr: any) {
-        console.log('Supabase auth exception, trying custom verification:', authErr?.message || authErr);
+      } catch (authErr) {
+        const message = authErr instanceof Error ? authErr.message : authErr;
+        console.log('Supabase auth exception, trying custom verification:', message);
       }
 
       // If Supabase auth failed, try custom RPC verification
@@ -187,7 +191,7 @@ export const useBackofficeAuth = () => {
       console.log('Auth user status:', authUser ? `User ID: ${authUser.id}` : 'No auth user (using custom auth)');
       
       // Step 4: Update last_signed_in timestamp
-      const updateData: any = { last_signed_in: new Date().toISOString() };
+      const updateData: BackofficeUserUpdate = { last_signed_in: new Date().toISOString() };
       if (authUser?.id) {
         updateData.auth_user_id = authUser.id;
       }

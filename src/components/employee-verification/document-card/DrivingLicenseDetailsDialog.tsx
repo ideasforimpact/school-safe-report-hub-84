@@ -29,7 +29,7 @@ import {
 interface DrivingLicenseDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  licenseDetails: any;
+  licenseDetails: Record<string, unknown>;
   documentId?: string;
   onVerificationUpdate?: () => void;
   readOnly?: boolean;
@@ -68,7 +68,7 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   const [overrideExpiry, setOverrideExpiry] = useState(false);
   // Prepare profile image source supporting URL or raw base64 string
   const profileImageSrc = (() => {
-    const value = (data as any)?.profile_image || (data as any)?.photo || (data as any)?.image || (data as any)?.image_url;
+    const value = (data as Record<string, unknown>)?.profile_image || (data as Record<string, unknown>)?.photo || (data as Record<string, unknown>)?.image || (data as Record<string, unknown>)?.image_url;
     if (!value || typeof value !== 'string') return undefined;
     if (value.startsWith('http') || value.startsWith('https') || value.startsWith('data:')) return value;
     return `data:image/jpeg;base64,${value}`;
@@ -166,11 +166,11 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('DrivingLicenseDetailsDialog - Exception:', error);
       toast({
         title: "Approval Failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -251,9 +251,9 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('DrivingLicenseDetailsDialog - Rejection error:', error);
-      const errorMessage = error.message || 'Failed to reject document. Please try again.';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to reject document. Please try again.';
       toast({
         title: "Rejection Failed",
         description: errorMessage,

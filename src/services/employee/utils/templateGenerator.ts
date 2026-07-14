@@ -31,7 +31,7 @@ export interface EmployeeTemplateData {
   'PF No'?: string;
   'Resigning / Termination Date'?: string;
   'Biometric User ID'?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

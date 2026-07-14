@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
 export type ApiProvider = string;
@@ -64,6 +63,18 @@ function countProviderFromAudit(events: AuditEvent[], provider: string): { succe
   return { success, failed };
 }
 
+interface RawAuditEvent {
+  ts?: string;
+  date_time?: string;
+  provider?: string;
+  role?: string;
+  result?: string;
+  total_counts_after?: { success?: number; failed?: number };
+  provider_counts_after?: { success?: number; failed?: number };
+  success?: number;
+  error?: number;
+}
+
 function normalizeAuditEvents(existingAudit: unknown): AuditEvent[] {
   if (!existingAudit) return [];
 
@@ -71,7 +82,7 @@ function normalizeAuditEvents(existingAudit: unknown): AuditEvent[] {
   if (Array.isArray(existingAudit)) {
     return existingAudit
       .filter((x) => x && typeof x === "object")
-      .map((x: any) => ({
+      .map((x: RawAuditEvent) => ({
         ts: String(x.ts ?? x.date_time ?? new Date().toISOString()),
         provider: String(x.provider ?? "unknown"),
         role: x.role === "fallback" ? "fallback" : "primary",
@@ -89,7 +100,7 @@ function normalizeAuditEvents(existingAudit: unknown): AuditEvent[] {
 
   // Backward compatibility: old object keyed by timestamp
   if (typeof existingAudit === "object") {
-    const obj = existingAudit as Record<string, any>;
+    const obj = existingAudit as Record<string, RawAuditEvent>;
     return Object.entries(obj).map(([ts, entry]) => ({
       ts,
       provider: String(entry?.provider ?? "unknown"),
@@ -183,8 +194,8 @@ export async function recordEmployeeVerificationApiCall(
     const curProviderSuccess = getNestedNumber(curSuccessObj, "success");
     const curProviderFailed = getNestedNumber(curFailedObj, "failed");
 
-    (nextOtherSuccess as any)[String(provider)] = { success: curProviderSuccess + successInc };
-    (nextOtherFailed as any)[String(provider)] = { failed: curProviderFailed + failedInc };
+    nextOtherSuccess[String(provider)] = { success: curProviderSuccess + successInc };
+    nextOtherFailed[String(provider)] = { failed: curProviderFailed + failedInc };
   }
 
   if (!existing) {

@@ -46,7 +46,7 @@ export const parseCSVFile = (file: File): Promise<RawStudentData[]> => {
         // Parse data rows
         const rawData = lines.slice(1).map((line, index) => {
           const values = line.split(',').map(value => value.trim().replace(/"/g, ''));
-          const row: Record<string, any> = {};
+          const row: Record<string, unknown> = {};
           
           headers.forEach((header, i) => {
             row[header] = values[i] || '';
@@ -97,7 +97,7 @@ export const parseCSVFile = (file: File): Promise<RawStudentData[]> => {
         
         // Transform the data using our header mapping
         const transformedData: RawStudentData[] = rawData.map(row => {
-          const transformed: Record<string, any> = {};
+          const transformed: Record<string, unknown> = {};
           
           Object.entries(row).forEach(([originalHeader, value]) => {
             const mappedHeader = headerMap[originalHeader] || originalHeader;
@@ -154,7 +154,7 @@ export const parseExcelFile = (file: File): Promise<RawStudentData[]> => {
         const sheet = workbook.Sheets[sheetName];
         
         // Convert sheet to JSON with raw header names
-        const rawData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+        const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
         
         if (rawData.length === 0) {
           toast.error('No data found in the Excel/CSV file');
@@ -199,7 +199,7 @@ export const parseExcelFile = (file: File): Promise<RawStudentData[]> => {
         
         // Transform the data using our header mapping
         const transformedData: RawStudentData[] = rawData.map(row => {
-          const transformed: Record<string, any> = {};
+          const transformed: Record<string, unknown> = {};
           
           Object.entries(row).forEach(([originalHeader, value]) => {
             const mappedHeader = headerMap[originalHeader] || originalHeader;
@@ -231,7 +231,7 @@ export const parseExcelFile = (file: File): Promise<RawStudentData[]> => {
 /**
  * Check if all required columns are present in the Excel/CSV file
  */
-export const validateRequiredColumns = (data: Record<string, any>[]): string[] => {
+export const validateRequiredColumns = (data: Record<string, unknown>[]): string[] => {
   const requiredColumns = ['studentId', 'name', 'grade', 'section', 'campus'];
   const missingColumns: string[] = [];
   

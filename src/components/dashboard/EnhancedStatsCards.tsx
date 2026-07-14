@@ -1,16 +1,17 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  AlertTriangle, 
-  FileCheck, 
-  Users, 
-  Truck, 
-  TrendingUp, 
+import {
+  AlertTriangle,
+  FileCheck,
+  Users,
+  Truck,
+  TrendingUp,
   TrendingDown,
   Clock,
   ShieldCheck,
   BarChart3,
-  AlertCircle
+  AlertCircle,
+  LucideIcon,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -24,6 +25,69 @@ import StudentsInvolvedTable from '@/components/incidents/StudentsInvolvedTable'
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+
+type PersonInvolved = { name?: string; role?: string; notes?: string };
+
+interface StatsCard {
+  title: string;
+  value: React.ReactNode;
+  description: string;
+  icon: LucideIcon;
+  color: string;
+  bgColor: string;
+  gradient: string;
+  cardType: string;
+  // trend
+  trend?: number;
+  // incident breakdown
+  showBreakdown?: boolean;
+  totalIncident?: number;
+  openIncidents?: number;
+  closedIncidents?: number;
+  reopenedIncidents?: number;
+  // employee breakdown
+  showEmployeeBreakdown?: boolean;
+  totalEmployees?: number;
+  verifiedEmployees?: number;
+  failedEmployees?: number;
+  pendingEmployees?: number;
+  toBeVerified?: number;
+  // assessment breakdown
+  showAssessmentBreakdown?: boolean;
+  activeAssessments?: number;
+  overdueAssessments?: number;
+  newAssessments?: number;
+  draftAssessments?: number;
+  submittedAssessments?: number;
+  completedAssessments?: number;
+  // custom forms / grievances breakdown
+  showCustomFormsBreakdown?: boolean;
+  formSumitcount?: number;
+  totalCustomForms?: number;
+  formSubmissions30Days?: number;
+  formSubmissions60Days?: number;
+  formSubmissions90Days?: number;
+  // vehicle verification breakdown
+  showVehicleVerificationBreakdown?: boolean;
+  totalVehicles?: number;
+  vehiclesToBeVerified?: number;
+  vehiclesFailedVerification?: number;
+  vehiclesVerified?: number;
+  totalPendingChallanAmount?: number;
+  // vehicle status breakdown
+  showVehicleBreakdown?: boolean;
+  activeVehicles?: number;
+  inactiveVehicles?: number;
+  maintenanceVehicles?: number;
+  // students breakdown
+  showStudentsBreakdown?: boolean;
+  studentsInvolvedByCategory?: Array<{ category: string; count: number }>;
+  // status indicators
+  priority?: string;
+  status?: string;
+  direction?: string;
+  performance?: string;
+}
 
 interface EnhancedStatsCardsProps {
   stats: {
@@ -111,15 +175,17 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
         employeeDataForFiltering,
         hasIncidentAdmin,
         { page: 1, pageSize: 10 },
-        {},
+        { status: 'Open' },
         true
       );
 
-      const studentIncidents = response.data.filter((incident: any) => {
-        const people = incident?.peopleInvolved || incident?.people_involved;
+      const studentIncidents = response.data.filter((incident: IncidentRecord) => {
+        const people: PersonInvolved[] | undefined =
+          incident?.peopleInvolved ??
+          (incident as IncidentRecord & { people_involved?: PersonInvolved[] })?.people_involved;
         return (
           Array.isArray(people) &&
-          people.some((p: any) => (p?.role || '').toLowerCase() === 'student')
+          people.some((p: PersonInvolved) => (p?.role || '').toLowerCase() === 'student')
         );
       });
 
@@ -203,7 +269,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     ((stats.openIncidents <= 5 ? 100 - (stats.openIncidents * 10) : 50) * 0.3)
   );
 
-  const statsCards = [
+  const statsCards: StatsCard[] = [
     {
       title: 'Total Number of Open Incidents',
       value: stats.IncidentRecordsExist ? (<span className="flex items-end gap-1">
@@ -363,7 +429,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
             <Card 
               key={index} 
               className={`bg-gradient-to-br ${card.gradient} border-l-4 border-primary hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
-              onClick={() => handleCardClick((card as any).cardType)}
+              onClick={() => handleCardClick(card.cardType)}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-700">
@@ -376,9 +442,9 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
               <CardContent>
                 <div className={`font-bold ${card.color} mb-2 flex items-center space-x-2`}>
                   <span>{card.value}</span>
-                  {(card as any).trend !== undefined && (
-                    <span className={`text-sm ${(card as any).trend <= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {(card as any).trend >= 0 ? '+' : ''}{(card as any).trend.toFixed(1)}%
+                  {card.trend !== undefined && (
+                    <span className={`text-sm ${card.trend <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {card.trend >= 0 ? '+' : ''}{card.trend.toFixed(1)}%
                     </span>
                   )}
                 </div>
@@ -388,25 +454,25 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                 </p>
 
               {/* Show breakdown for Total Number of Open Incidents card */}
-              {(card as any).showBreakdown && (
+              {card.showBreakdown && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-blue-600 font-medium">Total Incidents:</span>
-                    <span className="font-semibold text-blue-600 ">{(card as any).totalIncident}</span>
+                    <span className="font-semibold text-blue-600 ">{card.totalIncident}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-red-600 font-medium">Closed Incidents:</span>
-                    <span className="font-semibold text-red-600">{(card as any).closedIncidents}</span>
+                    <span className="font-semibold text-red-600">{card.closedIncidents}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-orange-600 font-medium">Reopened Incidents:</span>
-                    <span className="font-semibold text-orange-600">{(card as any).reopenedIncidents}</span>
+                    <span className="font-semibold text-orange-600">{card.reopenedIncidents}</span>
                   </div>
                 </div>
               )}
 
               {/* Show N/A breakdown when no incident data exists */}
-              {!(card as any).showBreakdown && card.value === 'N/A' && card.title === 'Total Number of Open Incidents' && (
+              {!card.showBreakdown && card.value === 'N/A' && card.title === 'Total Number of Open Incidents' && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 font-medium">Closed Incidents:</span>
@@ -419,25 +485,25 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                 </div>
               )}
 
-              {(card as any).showEmployeeBreakdown && (
+              {card.showEmployeeBreakdown && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-blue-600 font-medium">Total Employees:</span>
-                    <span className="font-semibold text-blue-600">{(card as any).totalEmployees}</span>
+                    <span className="font-semibold text-blue-600">{card.totalEmployees}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-orange-600 font-medium">Pending verifications:</span>
-                    <span className="font-semibold text-orange-600">{(card as any).pendingEmployees}</span>
+                    <span className="font-semibold text-orange-600">{card.pendingEmployees}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-red-600 font-medium">Employees failed verification:</span>
-                    <span className="font-semibold text-red-600">{(card as any).failedEmployees}</span>
+                    <span className="font-semibold text-red-600">{card.failedEmployees}</span>
                   </div>
                 </div>
               )}
 
               {/* Show N/A breakdown for employees when no data exists */}
-              {!(card as any).showEmployeeBreakdown && card.value === 'N/A' && card.title === 'Total Safe Employees' && (
+              {!card.showEmployeeBreakdown && card.value === 'N/A' && card.title === 'Total Safe Employees' && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 font-medium">Employees verified:</span>
@@ -450,25 +516,25 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                 </div>
               )}
 
-                    {(card as any).showVehicleVerificationBreakdown && (
+                    {card.showVehicleVerificationBreakdown && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-blue-600 font-medium">Total Vehicles:</span>
-                          <span className="font-semibold text-blue-600">{(card as any).totalVehicles}</span>
+                          <span className="font-semibold text-blue-600">{card.totalVehicles}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-green-600 font-medium">Compliant:</span>
-                          <span className="font-semibold text-green-600">{(card as any).vehiclesVerified}</span>
+                          <span className="font-semibold text-green-600">{card.vehiclesVerified}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-orange-600 font-medium">Pending Challan Amount:</span>
-                          <span className="font-medium text-orange-600">    ₹{(card as any).totalPendingChallanAmount.toLocaleString()}</span>
+                          <span className="font-medium text-orange-600">    ₹{card.totalPendingChallanAmount.toLocaleString()}</span>
                         </div>
                       </div>
                     )}
 
                     {/* Show N/A breakdown for vehicles when no data exists */}
-                    {!(card as any).showVehicleVerificationBreakdown && card.value === 'N/A' && card.title === 'Total Safety Vehicles' && (
+                    {!card.showVehicleVerificationBreakdown && card.value === 'N/A' && card.title === 'Total Safety Vehicles' && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-500 font-medium">Vehicles verified:</span>
@@ -485,42 +551,42 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                       </div>
                     )}
 
-                    {(card as any).showVehicleBreakdown && (
+                    {card.showVehicleBreakdown && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-green-600 font-medium">Active:</span>
-                          <span className="font-semibold text-green-600">{(card as any).activeVehicles}</span>
+                          <span className="font-semibold text-green-600">{card.activeVehicles}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-red-600 font-medium">Inactive:</span>
-                          <span className="font-semibold text-red-600">{(card as any).inactiveVehicles}</span>
+                          <span className="font-semibold text-red-600">{card.inactiveVehicles}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-yellow-600 font-medium">Maintenance:</span>
-                          <span className="font-semibold text-yellow-600">{(card as any).maintenanceVehicles}</span>
+                          <span className="font-semibold text-yellow-600">{card.maintenanceVehicles}</span>
                         </div>
                       </div>
                     )}
 
-                    {(card as any).showCustomFormsBreakdown && (
+                    {card.showCustomFormsBreakdown && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-green-600 font-medium">Acknowledged:</span>
-                          <span className="font-semibold text-green-600">{(card as any).formSumitcount}</span>
+                          <span className="font-semibold text-green-600">{card.formSumitcount}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600 font-medium">Last 30 days:</span>
-                          <span className="font-semibold text-gray-600">{(card as any).formSubmissions30Days}</span>
+                          <span className="font-semibold text-gray-600">{card.formSubmissions30Days}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-blue-600 font-medium">Last 60 days:</span>
-                          <span className="font-semibold text-blue-600">{(card as any).formSubmissions60Days}</span>
+                          <span className="font-semibold text-blue-600">{card.formSubmissions60Days}</span>
                         </div>
                       </div>
                     )}
 
                     {/* Show N/A breakdown for grievances when no data exists */}
-                    {!(card as any).showCustomFormsBreakdown && card.value === 'N/A' && card.title === 'Number Of Open Grievances' && (
+                    {!card.showCustomFormsBreakdown && card.value === 'N/A' && card.title === 'Number Of Open Grievances' && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-500 font-medium">Last 30 days:</span>
@@ -533,33 +599,33 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                       </div>
                     )}
 
-                    {(card as any).showAssessmentBreakdown && (
+                    {card.showAssessmentBreakdown && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-red-600 font-medium">New:</span>
-                          <span className="font-semibold text-red-600">{(card as any).newAssessments}</span>
+                          <span className="font-semibold text-red-600">{card.newAssessments}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-red-600 font-medium">Overdue:</span>
-                          <span className="font-semibold text-red-600">{(card as any).overdueAssessments}</span>
+                          <span className="font-semibold text-red-600">{card.overdueAssessments}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600 font-medium">Draft:</span>
-                          <span className="font-semibold text-gray-600">{(card as any).draftAssessments}</span>
+                          <span className="font-semibold text-gray-600">{card.draftAssessments}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-orange-600 font-medium">Submitted:</span>
-                          <span className="font-semibold text-orange-600">{(card as any).submittedAssessments}</span>
+                          <span className="font-semibold text-orange-600">{card.submittedAssessments}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-green-600 font-medium">Completed:</span>
-                          <span className="font-semibold text-green-600">{(card as any).completedAssessments}</span>
+                          <span className="font-semibold text-green-600">{card.completedAssessments}</span>
                         </div>
                       </div>
                     )}
 
                     {/* Show N/A breakdown for assessments when no data exists */}
-                    {!(card as any).showAssessmentBreakdown && card.value === 'N/A' && card.title === 'Active Assessments' && (
+                    {!card.showAssessmentBreakdown && card.value === 'N/A' && card.title === 'Active Assessments' && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-500 font-medium">New:</span>
@@ -572,9 +638,9 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                       </div>
                     )}
 
-                    {(card as any).showStudentsBreakdown && (
+                    {card.showStudentsBreakdown && (
                       <div className="space-y-2">
-                        {(card as any).studentsInvolvedByCategory.map((item: any, index: number) => (
+                        {card.studentsInvolvedByCategory.map((item: { category: string; count: number }, index: number) => (
                           <div key={index} className="flex justify-between items-center text-sm">
                             <span className="text-orange-600 font-medium">{item.category}:</span>
                             <span className="font-semibold text-orange-600">{item.count}</span>
@@ -584,7 +650,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                     )}
 
                     {/* Show N/A breakdown for students when no data exists */}
-                    {!(card as any).showStudentsBreakdown && card.value === 'N/A' && card.title === 'Number of Students Involved' && (
+                    {!card.showStudentsBreakdown && card.value === 'N/A' && card.title === 'Number of Students Involved' && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-500 font-medium">No categories available:</span>
@@ -594,28 +660,28 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                     )}
 
               {/* Status indicators */}
-                {(card as any).priority && (
+                {card.priority && (
                   <div className="text-xs">
-                    <span className={`font-medium ${card.color}`}>{(card as any).priority}</span>
+                    <span className={`font-medium ${card.color}`}>{card.priority}</span>
                   </div>
                 )}
 
-                {(card as any).status && (
+                {card.status && (
                   <div className="text-xs">
-                    <span className={`font-medium ${card.color}`}>{(card as any).status}</span>
+                    <span className={`font-medium ${card.color}`}>{card.status}</span>
                   </div>
                 )}
 
 
-                {(card as any).direction && (
+                {card.direction && (
                   <div className="text-xs">
-                    <span className={`font-medium ${card.color}`}>{(card as any).direction}</span>
+                    <span className={`font-medium ${card.color}`}>{card.direction}</span>
                   </div>
                 )}
 
-                {(card as any).performance && (
+                {card.performance && (
                   <div className="text-xs">
-                    <span className={`font-medium ${card.color}`}>{(card as any).performance}</span>
+                    <span className={`font-medium ${card.color}`}>{card.performance}</span>
                   </div>
                 )}
               </CardContent>

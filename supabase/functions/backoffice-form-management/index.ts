@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts'
 
 const corsHeaders = {
@@ -7,7 +7,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-async function fetchClientLogo(supabaseClient: any, clientId: string): Promise<string | null> {
+interface CustomFormPayload {
+  client_id?: string
+  client_logo?: string | null
+  [key: string]: unknown
+}
+
+async function fetchClientLogo(supabaseClient: SupabaseClient, clientId: string): Promise<string | null> {
   const { data, error } = await supabaseClient
     .from('clients')
     .select('logo')
@@ -17,7 +23,7 @@ async function fetchClientLogo(supabaseClient: any, clientId: string): Promise<s
     console.log('fetchClientLogo (backoffice) error:', error.message)
     return null
   }
-  // @ts-ignore
+  // @ts-expect-error - logo column not present in generated client types
   return data?.logo || null
 }
 
@@ -75,7 +81,11 @@ serve(async (req) => {
   }
 })
 
-async function fetchForms(supabaseClient: any, data: any) {
+interface FetchFormsData {
+  client_id?: string
+}
+
+async function fetchForms(supabaseClient: SupabaseClient, data: FetchFormsData) {
   try {
     const { client_id } = data
     
@@ -101,11 +111,15 @@ async function fetchForms(supabaseClient: any, data: any) {
   }
 }
 
-async function createForm(supabaseClient: any, data: any) {
+interface CreateFormData {
+  form: CustomFormPayload
+}
+
+async function createForm(supabaseClient: SupabaseClient, data: CreateFormData) {
   try {
     const { form } = data
     // If client_logo missing/null, populate from clients.logo based on client_id
-    let payload = { ...form }
+    const payload = { ...form }
     if (payload.client_id && (payload.client_logo === undefined || payload.client_logo === null)) {
       payload.client_logo = await fetchClientLogo(supabaseClient, payload.client_id)
     }
@@ -127,7 +141,12 @@ async function createForm(supabaseClient: any, data: any) {
   }
 }
 
-async function updateForm(supabaseClient: any, data: any) {
+interface UpdateFormData {
+  id: string
+  updates: CustomFormPayload
+}
+
+async function updateForm(supabaseClient: SupabaseClient, data: UpdateFormData) {
   try {
     const { id, updates } = data
     const updatesCopy = { ...updates }
@@ -153,7 +172,11 @@ async function updateForm(supabaseClient: any, data: any) {
   }
 }
 
-async function deleteForm(supabaseClient: any, data: any) {
+interface DeleteFormData {
+  id: string
+}
+
+async function deleteForm(supabaseClient: SupabaseClient, data: DeleteFormData) {
   try {
     const { id } = data
     
@@ -173,7 +196,11 @@ async function deleteForm(supabaseClient: any, data: any) {
   }
 }
 
-async function fetchSubmissions(supabaseClient: any, data: any) {
+interface FetchSubmissionsData {
+  form_id: string
+}
+
+async function fetchSubmissions(supabaseClient: SupabaseClient, data: FetchSubmissionsData) {
   try {
     const { form_id } = data
     
@@ -194,7 +221,13 @@ async function fetchSubmissions(supabaseClient: any, data: any) {
   }
 }
 
-async function updateSubmissionStatus(supabaseClient: any, data: any) {
+interface UpdateSubmissionStatusData {
+  id: string
+  status: string
+  comments?: string
+}
+
+async function updateSubmissionStatus(supabaseClient: SupabaseClient, data: UpdateSubmissionStatusData) {
   try {
     const { id, status, comments } = data
     

@@ -8,12 +8,14 @@ import {
   getVehiclesRequiringAction,
   getChallanSummary,
   getDateCellStyle,
+  VehicleReportRow,
+  ChallanReportRow,
 } from "../utils";
 
 interface Props {
   month: string;
-  vehicles: any[];
-  challans: any[];
+  vehicles: VehicleReportRow[];
+  challans: ChallanReportRow[];
 }
 
 export const VehiclePage = ({ month, vehicles, challans }: Props) => {

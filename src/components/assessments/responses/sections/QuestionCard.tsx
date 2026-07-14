@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { AssessmentQuestion, QuestionResponse } from '@/types/assessment';
+import { AssessmentQuestion, FileAttachment, QuestionResponse } from '@/types/assessment';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -18,7 +18,7 @@ interface QuestionCardProps {
   question: AssessmentQuestion;
   response?: QuestionResponse;
   index: number;
-  onChange: (questionId: string, field: string, value: any) => void;
+  onChange: (questionId: string, field: keyof QuestionResponse, value: QuestionResponse[keyof QuestionResponse]) => void;
   isCompleted?: boolean;
 }
 
@@ -30,7 +30,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   isCompleted = false
 }) => {
   const [showComments, setShowComments] = useState(!!response?.comment);
-  const [files, setFiles] = useState<any[]>(response?.attachments || []);
+  const [files, setFiles] = useState<FileAttachment[]>(response?.attachments || []);
   const [fileError, setFileError] = useState<string | null>(null);
 
   const handleAnswer = (value: string) => {
@@ -76,7 +76,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       return;
     }
 
-    const validFiles: any[] = [];
+    const validFiles: FileAttachment[] = [];
     const errors: string[] = [];
     
     for (const file of selectedFiles) {

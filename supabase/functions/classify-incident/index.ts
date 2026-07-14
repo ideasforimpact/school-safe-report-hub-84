@@ -2,6 +2,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
+interface CategoryInput {
+  name: string;
+  subcategories: Array<{ name: string }>;
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
@@ -108,7 +113,7 @@ ${JSON.stringify(categories)}
       );
     }
 
-    const validCategories = categories.map((c: any) => c.name);
+    const validCategories = (categories as CategoryInput[]).map((c) => c.name);
 
     if (parsedResponse.suggestions) {
       for (const suggestion of parsedResponse.suggestions) {
@@ -119,8 +124,8 @@ ${JSON.stringify(categories)}
           );
         }
 
-        const matchedCategory = categories.find((cat: any) => cat.name === suggestion.category);
-        const validSubcategories = matchedCategory?.subcategories.map((sub: any) => sub.name) || [];
+        const matchedCategory = (categories as CategoryInput[]).find((cat) => cat.name === suggestion.category);
+        const validSubcategories = matchedCategory?.subcategories.map((sub) => sub.name) || [];
 
         for (const sub of suggestion.subcategory) {
           if (!validSubcategories.includes(sub.name)) {

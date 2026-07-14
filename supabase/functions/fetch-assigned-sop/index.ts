@@ -10,6 +10,11 @@ const corsHeaders = {
 interface FetchAssignedSOPRequest {
   client_id: string;
   employee_id: string;
+  search?: string | null;
+  status?: string | null;
+  category_id?: string | null;
+  page?: number;
+  limit?: number;
 }
 
 serve(async (req) => {
@@ -38,7 +43,9 @@ serve(async (req) => {
 
     // Parse request body
     const requestData: FetchAssignedSOPRequest = await req.json()
-    const { client_id, employee_id } = requestData
+    const { client_id, employee_id, search, status, category_id } = requestData
+    const page = Math.max(1, Number(requestData.page || 1));
+    const limit = Math.max(1, Number(requestData.limit || 10));
 
     // Validate required fields
     if (!client_id || !employee_id) {
@@ -76,10 +83,11 @@ serve(async (req) => {
     if (groupIds.length === 0) {
       // Employee is not a member of any groups, return empty array
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           data: [],
-          message: 'No assigned SOPs found - employee is not a member of any groups' 
+          pagination: { total: 0 },
+          message: 'No assigned SOPs found - employee is not a member of any groups'
         }),
         { 
           status: 200, 
@@ -134,18 +142,41 @@ serve(async (req) => {
       }
     });
 
-    const uniqueSops = Array.from(uniqueSopMap.values());
-    const uniqueSopIds = uniqueSops.map((sop: any) => sop.id);
+    let uniqueSops = Array.from(uniqueSopMap.values());
 
     // Extract category IDs and fetch category names
     const categoryIds = [...new Set(uniqueSops.map((sop: any) => sop.category_id).filter(Boolean))];
-    
+
     const { data: categories } = await supabaseClient
       .from('sop_categories')
       .select('id, category_name')
       .in('id', categoryIds);
 
     const categoryMap = new Map((categories || []).map((c: any) => [c.id, c.category_name]));
+
+    // Apply search/status/category filters (the joined query above can't filter on
+    // the embedded `sop` relation directly, so filter the deduplicated list).
+    if (status === 'active') {
+      uniqueSops = uniqueSops.filter((sop: any) => sop.status === true);
+    } else if (status === 'inactive') {
+      uniqueSops = uniqueSops.filter((sop: any) => sop.status === false);
+    }
+
+    if (category_id) {
+      uniqueSops = uniqueSops.filter((sop: any) => sop.category_id === category_id);
+    }
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      uniqueSops = uniqueSops.filter((sop: any) =>
+        (sop.title || '').toLowerCase().includes(searchLower) ||
+        (sop.description || '').toLowerCase().includes(searchLower) ||
+        (categoryMap.get(sop.category_id) || '').toLowerCase().includes(searchLower)
+      );
+    }
+
+    const total = uniqueSops.length;
+    const uniqueSopIds = uniqueSops.map((sop: any) => sop.id);
 
     // Check signoff request status for the employee and get completed_date
     const signoffStatusMap = new Map<string, boolean>();
@@ -249,7 +280,9 @@ serve(async (req) => {
     }
 
     // Format SOPs
-    const formattedSOPs = uniqueSops.map((sop: any) => {
+    const paginationFrom = (page - 1) * limit;
+    const paginationTo = paginationFrom + limit;
+    const formattedSOPs = uniqueSops.slice(paginationFrom, paginationTo).map((sop: any) => {
       const creator = sop.employee_id ? creatorMap.get(sop.employee_id) : null;
       const assignments = assignmentsBySopId.get(sop.id) || [];
 
@@ -332,10 +365,11 @@ serve(async (req) => {
       });
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         data: formattedSOPs,
-        message: 'Assigned SOPs fetched successfully' 
+        pagination: { total },
+        message: 'Assigned SOPs fetched successfully'
       }),
       { 
         status: 200, 

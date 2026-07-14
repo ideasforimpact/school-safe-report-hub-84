@@ -23,6 +23,11 @@ import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// `trusted_vehicle` is not yet in the generated Database types, so queries against it
+// go through an untyped client rather than casting individual calls to `any`.
+const trustedVehicleClient = supabase as unknown as SupabaseClient;
 
 interface TrustedVehicle {
   id: string;
@@ -79,7 +84,7 @@ const TrustedVehiclesPage = () => {
 
     try {
       setLoading(true);
-      const { data, error } = await (supabase as any)
+      const { data, error } = await trustedVehicleClient
         .from('trusted_vehicle')
         .select('*')
         .eq('client_id', employeeData.clientId)
@@ -90,7 +95,7 @@ const TrustedVehiclesPage = () => {
       }
 
       setTrustedVehicles((data || []) as TrustedVehicle[]);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching trusted vehicles:', error);
       toast.error(error?.message || 'Failed to fetch trusted vehicles');
     } finally {
@@ -249,7 +254,7 @@ const TrustedVehiclesPage = () => {
       toast.success('Trusted vehicle deleted successfully');
       setVehicleToDelete(null);
       fetchTrustedVehicles();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting trusted vehicle:', error);
       toast.error(error?.message || 'Failed to delete trusted vehicle');
     } finally {

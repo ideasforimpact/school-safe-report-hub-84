@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import type { TooltipProps } from 'recharts';
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,57 +18,11 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
     queryKey: ['category-impact-analysis', employeeData?.clientId],
     queryFn: async () => {
       if (!employeeData?.clientId) return [];
-
-      // Get incidents with categories and subcategories
-      const { data: incidents } = await supabase
-        .from('incidents')
-        .select(`
-          id,
-          category_id,
-          subcategory_id,
-          incident_categories!inner(id, name),
-          incident_subcategories(id, name)
-        `)
-        .eq('client_id', employeeData.clientId);
-
-      if (!incidents) return [];
-
-      // Group by category
-      const categoryMap = new Map();
-      
-      incidents.forEach(incident => {
-        if (!incident.incident_categories) return;
-        
-        const categoryName = incident.incident_categories.name;
-        
-        if (!categoryMap.has(categoryName)) {
-          categoryMap.set(categoryName, {
-            name: categoryName,
-            value: 0,
-            subcategories: new Map()
-          });
-        }
-        
-        const category = categoryMap.get(categoryName);
-        category.value += 1;
-        
-        // Track subcategories
-        if (incident.incident_subcategories) {
-          const subName = incident.incident_subcategories.name;
-          const currentCount = category.subcategories.get(subName) || 0;
-          category.subcategories.set(subName, currentCount + 1);
-        }
+      const { data, error } = await supabase.functions.invoke('dashboard-stats', {
+        body: { action: 'category_impact', client_id: employeeData.clientId },
       });
-
-      return Array.from(categoryMap.values())
-        .map(category => ({
-          ...category,
-          subcategories: Array.from(category.subcategories.entries())
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 3) // Top 3 subcategories
-        }))
-        .sort((a, b) => b.value - a.value);
+      if (error) throw error;
+      return data?.data ?? [];
     },
     enabled: !!employeeData?.clientId,
   });
@@ -83,9 +39,9 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
     '#1F2937', // Charcoal Slate
   ];
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      const data = payload[0].payload as { name: string; value: number; subcategories?: { name: string; count: number }[] };
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
           <p className="font-semibold">{data.name}</p>
@@ -95,7 +51,7 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
           {data.subcategories && data.subcategories.length > 0 && (
             <div className="mt-2 pt-2 border-t border-border">
               <p className="text-xs font-medium mb-1">Top subcategories:</p>
-              {data.subcategories.map((sub: any, index: number) => (
+              {data.subcategories.map((sub, index) => (
                 <p key={index} className="text-xs text-muted-foreground">
                   • {sub.name}: {sub.count}
                 </p>

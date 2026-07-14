@@ -97,11 +97,11 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error ${isEdit ? 'updating' : 'creating'} module:`, error);
       toast({
         title: "Error",
-        description: error?.message || `Failed to ${isEdit ? 'update' : 'create'} module`,
+        description: (error as Error)?.message || `Failed to ${isEdit ? 'update' : 'create'} module`,
         variant: "destructive",
       });
     } finally {

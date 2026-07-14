@@ -14,11 +14,21 @@ interface ReopenIncidentRequest {
   reopen_reason: string
 }
 
+interface ReopenableIncident {
+  id: string
+  created_by: string | null
+  assigned_to: string | null
+  client_id: string
+  ticket_id: string
+  status_id: string
+  reopen: number | null
+}
+
 // Helper function to check incident reopen permissions
 async function checkReopenPermissions(
   incidentId: string,
   userId: string
-): Promise<{ canReopen: boolean, incident: any, clientId: string }> {
+): Promise<{ canReopen: boolean, incident: ReopenableIncident | null, clientId: string }> {
   // Get the incident details with creator and assigned user
   const { data: incident, error: incidentError } = await supabase
     .from('incidents')
@@ -63,8 +73,8 @@ async function checkReopenPermissions(
     if (clientModulesError) {
       console.error('Error fetching client modules:', clientModulesError)
     } else {
-      hasIncidentAdmin = clientModules?.some((clientModule: any) => 
-        clientModule.module?.name?.toLowerCase() === 'incidents' && 
+      hasIncidentAdmin = clientModules?.some((clientModule: { module?: { name?: string }, access_level?: { isAdmin?: boolean } }) =>
+        clientModule.module?.name?.toLowerCase() === 'incidents' &&
         clientModule.access_level?.isAdmin === true
       ) || false
     }
@@ -82,8 +92,8 @@ async function checkReopenPermissions(
     if (employeeModulesError) {
       console.error('Error fetching employee modules:', employeeModulesError)
     } else {
-      hasIncidentAdmin = employeeModules?.some((empModule: any) => 
-        empModule.module?.name?.toLowerCase() === 'incidents' && 
+      hasIncidentAdmin = employeeModules?.some((empModule: { module?: { name?: string }, level?: { is_admin?: boolean } }) =>
+        empModule.module?.name?.toLowerCase() === 'incidents' &&
         empModule.level?.is_admin === true
       ) || false
     }

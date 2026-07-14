@@ -5,11 +5,12 @@ import {
   getGrievanceStats,
   getGrievanceSourceSummary,
   getCriticalGrievances,
+  GrievanceReportRow,
 } from "../utils";
 
 interface Props {
   month: string;
-  grievancesSummary: any[];
+  grievancesSummary: GrievanceReportRow[];
 }
 
 export const GrievancePage = ({
@@ -102,7 +103,7 @@ export const GrievancePage = ({
           </Text>
         </View>
 
-        {sources.map((s: any, i: number) => (
+        {sources.map((s, i: number) => (
           <View key={i} style={styles.grievanceTableRow}>
             <Text style={styles.grievanceColSource}>{s.name}</Text>
             <Text style={styles.grievanceCol}>{s.total}</Text>
@@ -139,7 +140,7 @@ export const GrievancePage = ({
             <Text style={styles.colStatus}>STATUS</Text>
           </View>
 
-          {critical.slice(0, 8).map((g: any, i: number) => {
+          {critical.slice(0, 8).map((g, i: number) => {
             const isOverdue =
               g.status?.toLowerCase() === "pending" &&
               g.due_date &&

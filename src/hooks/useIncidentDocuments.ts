@@ -4,9 +4,24 @@ import { FileItem } from '@/types/fileTypes';
 import { incidentDocumentService, IncidentDocument } from '@/services/incident/incidentDocumentService';
 import { toast } from 'sonner';
 
-export const useIncidentDocuments = (incidentId?: string) => {
+function convertRawDocuments(rawDocs: Record<string, unknown>[]): IncidentDocument[] {
+  return rawDocs.map((doc) => ({
+    id: (doc.id as string) || '',
+    name: (doc.name as string) || '',
+    type: (doc.type as string) || '',
+    size: (doc.size as number) || 0,
+    url: ((doc.url as string) || (doc.path as string)) || '',
+    path: (doc.path as string) || '',
+    uploadedAt: (doc.uploadedAt as string) || new Date().toISOString(),
+    source: 'incident',
+  }));
+}
+
+export const useIncidentDocuments = (incidentId?: string, initialRawDocuments?: Record<string, unknown>[]) => {
   const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
-  const [documents, setDocuments] = useState<IncidentDocument[]>([]);
+  const [documents, setDocuments] = useState<IncidentDocument[]>(() =>
+    initialRawDocuments?.length ? convertRawDocuments(initialRawDocuments) : []
+  );
   const [isUploading, setIsUploading] = useState(false);
 
   // Handle file selection for upload

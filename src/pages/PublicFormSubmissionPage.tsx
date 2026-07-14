@@ -11,6 +11,12 @@ import { toast } from '@/hooks/use-toast';
 import { isCaptchaVerified, requireCaptchaVerification } from '@/utils/captchaUtils';
 import { FormField } from '@/types/formTypes';
 
+// The API response isn't strictly validated against FormField, so tolerate the legacy
+// `field_label` key some records still use in place of `label`.
+interface RawFormField extends FormField {
+  field_label?: string;
+}
+
 const PublicFormSubmissionPage = () => {
   const { formId } = useParams<{ formId: string }>();
   const { form, loading, error } = usePublicForm(formId);
@@ -20,7 +26,7 @@ const PublicFormSubmissionPage = () => {
   // Normalize fields to ensure email/phone types are enforced
   const normalizedFields: FormField[] = useMemo(() => {
     const fields = form?.fields || [];
-    return fields.map((f: any) => {
+    return fields.map((f: RawFormField) => {
       const idLower = (f.id || '').toString().toLowerCase();
       const labelLower = (f.label || f.field_label || '').toString().toLowerCase();
       const isPhone = idLower.includes('phone') || idLower.includes('mobile') || /(phone|mobile)/.test(labelLower);
@@ -80,7 +86,7 @@ const PublicFormSubmissionPage = () => {
     return null; // Component will redirect via useEffect
   }
 
-  const handleFormSubmit = async (data: Record<string, any>) => {
+  const handleFormSubmit = async (data: Record<string, unknown>) => {
     if (isSubmitting) return;
     
     setIsSubmitting(true);

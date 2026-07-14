@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,28 +28,28 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
   const [visitor, setVisitor] = useState<Visitor | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (open && visitorId && clientId) {
-      fetchVisitorDetails();
-    } else {
-      setVisitor(null);
-    }
-  }, [open, visitorId, clientId]);
-
-  const fetchVisitorDetails = async () => {
+  const fetchVisitorDetails = useCallback(async () => {
     if (!visitorId || !clientId) return;
 
     try {
       setLoading(true);
       const data = await visitorService.getVisitorById(visitorId, clientId);
       setVisitor(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching visitor details:', error);
-      toast.error(error?.message || 'Failed to fetch visitor details');
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch visitor details');
     } finally {
       setLoading(false);
     }
-  };
+  }, [visitorId, clientId]);
+
+  useEffect(() => {
+    if (open && visitorId && clientId) {
+      fetchVisitorDetails();
+    } else {
+      setVisitor(null);
+    }
+  }, [open, visitorId, clientId, fetchVisitorDetails]);
 
   const handleViewFile = (file: { path?: string; url?: string; name: string }) => {
     try {
@@ -64,8 +64,8 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
       } else {
         throw new Error('No file URL available');
       }
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to open file');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to open file');
     }
   };
 
@@ -121,8 +121,8 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
       window.URL.revokeObjectURL(blobUrl);
       
       toast.success(`Downloading ${fileName}`);
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to download file');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to download file');
     }
   };
 

@@ -4,18 +4,27 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { AssessmentQuestion, QuestionResponse } from '@/types/assessment';
 
-interface Answer {
-  questionId: string;
-  answer: boolean | undefined;
-  comment?: string;
+type Answer = QuestionResponse;
+
+interface AssessmentTemplate {
+  id: string;
+  title: string;
+  description?: string;
+  type?: string;
+  questions: AssessmentQuestion[];
 }
 
-interface Question {
+interface Assessment {
   id: string;
-  text: string;
-  required?: boolean;
-  allowComments?: boolean;
+  name: string;
+  status: string;
+  target_completion_date?: string;
+  created_by: string;
+  assigned_to: string;
+  template?: AssessmentTemplate;
+  answers?: QuestionResponse[];
 }
 
 export const useAnswerAssessmentForm = () => {
@@ -26,8 +35,8 @@ export const useAnswerAssessmentForm = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [assessment, setAssessment] = useState(null);
-  const [template, setTemplate] = useState(null);
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [template, setTemplate] = useState<AssessmentTemplate | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [submitting, setSubmitting] = useState(false);
   
@@ -44,46 +53,33 @@ export const useAnswerAssessmentForm = () => {
       try {
         setLoading(true);
         
-        // Fetch assessment by assessment_id instead of id
-        const { data: assessmentData, error: assessmentError } = await supabase
-          .from('assessments')
-          .select('*')
-          .eq('assessment_id', parseInt(assessmentId))
-          .eq('client_id', clientId)
-          .single();
+        const { data: responseData, error: fetchError } = await supabase
+        .functions.invoke('list-assessments', {
+          body: { assessment_id: parseInt(assessmentId), 
+          client_id: clientId },
+          headers: { path: 'get' },
+        });
 
-        if (assessmentError) {
-          throw new Error('Assessment not found');
-        }
+        if (fetchError) throw new Error('Assessment not found');
+
+        const assessmentData = responseData?.assessment;
+        if (!assessmentData) throw new Error('Assessment not found');
 
         setAssessment(assessmentData);
 
-        // Fetch template
-        if (assessmentData.template_id) {
-          const { data: templateData, error: templateError } = await supabase
-            .from('assessment_templates')
-            .select('*')
-            .eq('id', assessmentData.template_id)
-            .eq('client_id', clientId)
-            .single();
+        if (assessmentData.template) {
+          setTemplate(assessmentData.template);
 
-          if (templateError) {
-            throw new Error('Template not found');
-          }
-
-          setTemplate(templateData);
-          
-          // Parse questions from JSONB and initialize answers array
-          const questions = Array.isArray(templateData.questions) 
-            ? (templateData.questions as unknown as Question[])
+          const questions = Array.isArray(assessmentData.template.questions)
+            ? (assessmentData.template.questions as unknown as AssessmentQuestion[])
             : [];
-            
-          const initialAnswers = questions.map((question: Question) => ({
+
+          const initialAnswers = questions.map((question: AssessmentQuestion) => ({
             questionId: question.id,
             answer: undefined,
             comment: ''
           }));
-          
+
           setAnswers(initialAnswers);
         }
         
@@ -98,10 +94,10 @@ export const useAnswerAssessmentForm = () => {
     fetchAssessmentData();
   }, [assessmentId, clientId]);
 
-  const handleAnswerChange = (questionId: string, field: string, value: any) => {
-    setAnswers(prev => 
-      prev.map(answer => 
-        answer.questionId === questionId 
+  const handleAnswerChange = (questionId: string, field: keyof Answer, value: Answer[keyof Answer]) => {
+    setAnswers(prev =>
+      prev.map(answer =>
+        answer.questionId === questionId
           ? { ...answer, [field]: value }
           : answer
       )
@@ -112,7 +108,7 @@ export const useAnswerAssessmentForm = () => {
     if (!template?.questions) return 0;
     
     const questions = Array.isArray(template.questions) 
-      ? (template.questions as unknown as Question[])
+      ? (template.questions as unknown as AssessmentQuestion[])
       : [];
     
     const answeredQuestions = answers.filter(answer => answer.answer !== undefined).length;
@@ -124,11 +120,11 @@ export const useAnswerAssessmentForm = () => {
     
     // Parse questions from JSONB
     const questions = Array.isArray(template.questions) 
-      ? (template.questions as unknown as Question[])
+      ? (template.questions as unknown as AssessmentQuestion[])
       : [];
     
     // Check if all required questions are answered
-    const unansweredRequired = questions.some((question: Question) => {
+    const unansweredRequired = questions.some((question: AssessmentQuestion) => {
       if (question.required) {
         const answer = answers.find(a => a.questionId === question.id);
         return answer?.answer === undefined;
@@ -156,16 +152,26 @@ export const useAnswerAssessmentForm = () => {
         comment: answer.comment || ''
       }));
 
-      // Update assessment status, score, and answers using assessment_id
-      const { error: updateError } = await supabase
-        .from('assessments')
-        .update({ 
-          status: 'Submitted',
-          score: score,
-          answers: answersData as any
-        })
-        .eq('assessment_id', parseInt(assessmentId!))
-        .eq('client_id', clientId);
+      const { error: updateError } = await supabase.functions.invoke('save-assessment-draft/submit-assessment', {
+        body: {
+          assessment_id: parseInt(assessmentId!),
+          client_id: clientId,
+          score,
+          answers: answersData,
+          performed_by: {
+            id: employeeData?.id || user?.id || '',
+            first_name: employeeData?.firstName || '',
+            last_name: employeeData?.lastName || '',
+            email: employeeData?.email || user?.email || '',
+          },
+          assessment_info: {
+            id: assessment.id,
+            name: assessment.name,
+            created_by: assessment.created_by,
+            assigned_to: assessment.assigned_to,
+          },
+        },
+      });
 
       if (updateError) {
         throw updateError;

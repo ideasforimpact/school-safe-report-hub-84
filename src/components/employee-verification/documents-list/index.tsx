@@ -47,7 +47,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   const [govPopupOpen, setGovPopupOpen] = useState(false);
   const [selectedGovType, setSelectedGovType] =
     useState<GovernmentDocumentType>("aadhar");
-  const [selectedGovData, setSelectedGovData] = useState<any>(null);
+  const [selectedGovData, setSelectedGovData] = useState<Record<string, unknown> | null>(null);
   const handleViewDocument = (documentImage: string) => {
     if (!documentImage) {
       toast({
@@ -145,13 +145,13 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 
     const normalized = normalizeApiData(
       governmentData,
-      docType as any
+      docType as GovernmentDocumentType
     );
 
     setSelectedDocumentId(doc.id);
-    setSelectedGovType(docType as any);
+    setSelectedGovType(docType as GovernmentDocumentType);
     setSelectedGovData(normalized);
-    setIsViewMode(true);        
+    setIsViewMode(true);
     setGovPopupOpen(true);
   };
 
@@ -282,9 +282,9 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         setIsManualConsentOpen(false);
         setConsentSuccess(null);
       }, 900);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Manual verification error:', error);
-      toast({ title: 'Verification Failed', description: error.message || 'Failed to verify document.', variant: 'destructive' });
+      toast({ title: 'Verification Failed', description: error instanceof Error ? error.message : 'Failed to verify document.', variant: 'destructive' });
     } finally {
       setIsProcessing(false);
     }
@@ -334,9 +334,9 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         setIsManualConsentOpen(false);
         setConsentSuccess(null);
       }, 900);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Rejection error:', error);
-      toast({ title: 'Rejection Failed', description: error.message || 'Failed to reject document.', variant: 'destructive' });
+      toast({ title: 'Rejection Failed', description: error instanceof Error ? error.message : 'Failed to reject document.', variant: 'destructive' });
     } finally {
       setIsProcessing(false);
     }
@@ -427,7 +427,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 
           const normalized = normalizeApiData(
             rawGovernmentData,
-            docType as any
+            docType as GovernmentDocumentType
           );
 
           console.log("🟢 Normalized Data:", normalized);

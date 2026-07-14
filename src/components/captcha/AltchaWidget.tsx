@@ -4,11 +4,20 @@ import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 're
 import 'altcha'
 
 interface AltchaProps {
-	onStateChange?: (ev: Event | CustomEvent) => void
+	onStateChange?: (ev: AltchaStateChangeEvent) => void
 	// Optional props to configure
 	challengeurl?: string
 	test?: boolean
 	className?: string
+}
+
+declare module 'react' {
+	// eslint-disable-next-line @typescript-eslint/no-namespace -- module augmentation requires the namespace keyword, no ES module form exists
+	namespace JSX {
+		interface IntrinsicElements {
+			'altcha-widget': AltchaWidgetReact & { class?: string }
+		}
+	}
 }
 
 const AltchaWidget = forwardRef<{ value: string | null }, AltchaProps>(({ onStateChange, challengeurl, test = true, className }, ref) => {
@@ -24,29 +33,29 @@ const AltchaWidget = forwardRef<{ value: string | null }, AltchaProps>(({ onStat
 	}, [value])
 
 	useEffect(() => {
-		const handleStateChange = (ev: Event | CustomEvent) => {
+		const handleStateChange = (ev: Event) => {
 			if ('detail' in ev) {
 				// payload contains the base64 solution
 				// when state becomes verified
-				// @ts-ignore
-				setValue(ev.detail?.payload || null)
-				onStateChange?.(ev)
+				const stateChangeEvent = ev as AltchaStateChangeEvent
+				setValue(stateChangeEvent.detail?.payload || null)
+				onStateChange?.(stateChangeEvent)
 			}
 		}
 
 		const { current } = widgetRef
 		if (current) {
-			current.addEventListener('statechange', handleStateChange as any)
-			return () => current.removeEventListener('statechange', handleStateChange as any)
+			current.addEventListener('statechange', handleStateChange)
+			return () => current.removeEventListener('statechange', handleStateChange)
 		}
 	}, [onStateChange])
 
 	return (
 		// Configure challengeurl in production and remove test
 		<altcha-widget
-			ref={widgetRef as any}
-			class={className as any}
-			style={{ '--altcha-max-width': '100%' } as any}
+			ref={widgetRef as React.RefObject<HTMLElement>}
+			class={className}
+			style={{ '--altcha-max-width': '100%' }}
 			{...(challengeurl ? { challengeurl } : {})}
 			{...(test ? { test: true, debug: true } : {})}
 		></altcha-widget>
@@ -54,12 +63,3 @@ const AltchaWidget = forwardRef<{ value: string | null }, AltchaProps>(({ onStat
 })
 
 export default AltchaWidget
-
-// Allow TSX to accept the web component tag
-declare global {
-	namespace JSX {
-		interface IntrinsicElements {
-			'altcha-widget': any
-		}
-	}
-} 

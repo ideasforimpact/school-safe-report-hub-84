@@ -137,13 +137,13 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
   }
 
   // Determine if this is a DigiLocker response or old format response
-  const isDigiLockerResponse = (response: any): response is DigiLockerResponse => {
-    return response.data?.aadhaar_xml_data !== undefined;
+  const isDigiLockerResponse = (response: AadharResponse | DigiLockerResponse): response is DigiLockerResponse => {
+    return (response as DigiLockerResponse).data?.aadhaar_xml_data !== undefined;
   };
 
-  const response = aadharDetails.response as any;
-  let data: any;
-  let address: any = {};
+  const response = aadharDetails.response;
+  let data: Record<string, unknown>;
+  let address: Record<string, string | undefined> = {};
   let formattedAddress = '';
 
   // Many providers nest the payload as response.data.data; normalize once here

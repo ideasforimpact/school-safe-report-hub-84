@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, Loader2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -68,7 +68,8 @@ const HeaderIcons = () => {
   const currentModuleName = useMemo(() => getModuleNameFromPath(location.pathname), [location.pathname]);
   const isUnsupportedModule = !SUPPORTED_NOTIFICATION_MODULES.has(currentModuleName);
   const skipNotifications = isBackofficeRoute || isBackofficeUser || isUnsupportedModule;
-
+  const fetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -203,9 +204,11 @@ const HeaderIcons = () => {
       )
       .subscribe();
 
+    const debounceHandle = fetchDebounceRef.current;
     return () => {
       supabase.removeChannel(recipientChannel);
       supabase.removeChannel(notificationChannel);
+      if (debounceHandle) clearTimeout(debounceHandle);
     };
   }, [employeeData?.id, currentModuleName, fetchFirstPage, skipNotifications]);
 

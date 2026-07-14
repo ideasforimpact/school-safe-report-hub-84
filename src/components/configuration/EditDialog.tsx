@@ -111,12 +111,16 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     }
   }, [dialogOpen, value]);
 
-  // Reset form when dialog closes
+  // Reset form when dialog closes.
+  // `initialValues` is intentionally omitted below: callers pass a new object literal on every
+  // render, so including it would reset formData on every parent re-render (wiping in-progress
+  // edits) instead of only when the dialog closes.
   useEffect(() => {
     if (!dialogOpen) {
       setFormData(initialValues);
     }
-  }, [dialogOpen]); // Removed initialValues from dependency array to prevent infinite re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen]);
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));

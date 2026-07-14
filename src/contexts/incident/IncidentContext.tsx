@@ -98,7 +98,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
   } = useIncidentActions(incidents, asyncNoOp, activities, setActivities, users);
 
   // Wrapper functions
-  const addIncident = async (incidentData: any) => {
+  const addIncident = async (incidentData: Parameters<typeof originalAddIncident>[0]) => {
     const result = await originalAddIncident(incidentData);
     return result;
   };

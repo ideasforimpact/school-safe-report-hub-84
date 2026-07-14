@@ -1,18 +1,12 @@
 
 import React from 'react';
 import AnswerQuestionCard from '../components/AnswerQuestionCard';
-
-interface Question {
-  id: string;
-  text: string;
-  required?: boolean;
-  allowComments?: boolean;
-}
+import { AssessmentQuestion, QuestionResponse } from '@/types/assessment';
 
 interface AnswerAssessmentQuestionsProps {
-  questions: Question[];
-  answers: any[];
-  onAnswerChange: (questionId: string, field: string, value: any) => void;
+  questions: AssessmentQuestion[];
+  answers: QuestionResponse[];
+  onAnswerChange: (questionId: string, field: keyof QuestionResponse, value: QuestionResponse[keyof QuestionResponse]) => void;
 }
 
 const AnswerAssessmentQuestions = ({ questions, answers, onAnswerChange }: AnswerAssessmentQuestionsProps) => {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/Dateformat';
 import { History, FilePlus, FileText, FileX, Eye, Trash2, Check, Info, Calendar } from 'lucide-react';
@@ -22,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { VehicleDocument } from '@/types/transportSafety';
+import { Vehicle, VehicleDocument, VehicleVerificationData } from '@/types/transportSafety';
 import DocumentUploader from '../documents/DocumentUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -31,20 +30,40 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import VerificationDetailsDialog from '../VerificationDetailsDialog';
-import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
+import { getVehicleChallans, getVehicleDocuments } from '@/services/transport-safety/vehicleService';
 import { VehicleChallans } from '@/types/transportSafety';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { Json } from '@/integrations/supabase/types';
 
 interface VehicleTabsProps {
   vehicleId: string;
+  vehicle: Vehicle;
 }
 
-const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
-  const { getVehicle } = useTransportSafety();
+// Challan snapshot shape varies by provider; only the fields this component
+// reads are named, the rest is preserved via the index signature.
+interface ChallanSnapshot {
+  process_id?: string;
+  bothFallback?: boolean;
+  parent_process_id?: string;
+  success?: boolean;
+  [key: string]: unknown;
+}
+
+interface VerificationDetailsData {
+  challanSnapshot: ChallanSnapshot;
+  challanError: string | null;
+}
+
+interface UploadSuccessResult {
+  documentData?: UploadedDocument;
+}
+
+const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [showVerificationDetails, setShowVerificationDetails] = React.useState(false);
-  const [selectedVerificationData, setSelectedVerificationData] = React.useState<any>(null);
-  const [vehicleChallans, setVehicleChallans] = React.useState<VehicleChallans | null>(null);
+  const [selectedVerificationData, setSelectedVerificationData] = React.useState<VerificationDetailsData | null>(null);
+  const [vehicleChallans, setVehicleChallans] = React.useState<VehicleChallans | null>(vehicle.vehicleChallans || null);
   const [showAddDocumentDialog, setShowAddDocumentDialog] = React.useState(false);
   const [showFilePreview, setShowFilePreview] = React.useState(false);
   const [selectedDocument, setSelectedDocument] = React.useState<VehicleDocument | null>(null);
@@ -59,7 +78,6 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const isUploadDisabled = !documentName || documentName.trim().length === 0;
   const existingDocumentNames = uploadedDocuments.map(d => d.name.toLowerCase());
 
-  const vehicle = getVehicle(vehicleId);
   const handleCloseDialog = () => {
     setShowAddDocumentDialog(false);
     setDocumentName("");
@@ -67,91 +85,47 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   };
   // Fetch uploaded documents from the database
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async (force: boolean = false) => {
     if (!vehicleId) return;
     
     setIsLoadingDocuments(true);
     try {
-      const { data, error } = await supabase
-        .from('vehicle_documents')
-        .select('*')
-        .eq('vehicle_id', vehicleId)
-        .maybeSingle(); // Use maybeSingle() instead of single() to handle no rows gracefully
-        
-      if (error) {
-        console.error('Error fetching documents:', error);
-        toast({
-          title: 'Error fetching documents',
-          description: 'There was an error fetching your documents',
-          variant: 'destructive',
-        });
-      }
-      
-      if (data && data.documents) {
-        // Safely transform the data using type assertion after validation
-        const rawDocuments = Array.isArray(data.documents) ? data.documents : [];
-        
-        // Transform and validate each document
-        const transformedDocuments: UploadedDocument[] = rawDocuments
-          .filter((doc: any) => 
-            doc && 
-            typeof doc.name === 'string' && 
-            typeof doc.type === 'string' && 
-            typeof doc.uploadedAt === 'string' &&
-            Array.isArray(doc.files)
-          )
-          .map((doc: any) => ({
-            name: doc.name,
-            type: doc.type,
-            uploadedAt: doc.uploadedAt,
-            files: Array.isArray(doc.files) 
-              ? doc.files.map((file: any) => ({
-                  name: file.name || 'Unnamed file',
-                  path: file.path || '',
-                  url: file.url || '',
-                  uploadedAt: file.uploadedAt || doc.uploadedAt
-                }))
-              : []
-          }));
-          
-        setUploadedDocuments(transformedDocuments);
-      }
+      setUploadedDocuments(await getVehicleDocuments(vehicleId, vehicle.clientId, { force }));
     } catch (error) {
       console.error('Error fetching documents:', error);
+      toast({
+        title: 'Error fetching documents',
+        description: 'There was an error fetching your documents',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoadingDocuments(false);
     }
-  };
+  }, [vehicle.clientId, vehicleId]);
 
   useEffect(() => {
     fetchDocuments();
-  }, [vehicleId]);
+  }, [fetchDocuments]);
 
-  // Fetch vehicle_challans (history) for this vehicle
   const fetchVehicleChallansForHistory = useCallback(async () => {
     if (!vehicleId) return;
     try {
       const challans = await getVehicleChallans(vehicleId);
-      console.log(challans, "challansApi1214");
       setVehicleChallans(challans);
     } catch (error) {
       console.error("Error fetching vehicle_challans:", error);
     }
   }, [vehicleId]);
 
-  useEffect(() => {
-    fetchVehicleChallansForHistory();
-  }, [fetchVehicleChallansForHistory]);
-
   const handleDocumentUpdate = useCallback(async () => {
-    await fetchDocuments();
+    await fetchDocuments(true);
   }, [fetchDocuments]);
   const verificationHistory = React.useMemo(() => {
     const log = vehicleChallans?.challan_history_log;
 
     if (!log || typeof log !== 'object') return [];
 
-    const entries = Object.entries(log).map(([date, snapshot]: [string, any]) => ({
+    const entries = Object.entries(log).map(([date, snapshot]: [string, ChallanSnapshot]) => ({
       date,
       snapshot, // full challan snapshot from DB
     }));
@@ -226,12 +200,12 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   // const verificationHistory = getVerificationHistory();
   
   // Format verification data - remove internal/noisy fields
-  const formatVerificationData = (data: any) => {
+  const formatVerificationData = (data: VehicleVerificationData[] | null | undefined) => {
     if (!data || !Array.isArray(data)) return [];
-    
+
     // Filter out fields we don't want to show in the details popup
     return data
-      .filter((item: any) => {
+      .filter((item) => {
         const fieldName = String(item.field || '').toLowerCase();
         // Skip verification_log, last_response, status, challan_details, response metadata,
         // less info, and any client identifiers
@@ -251,9 +225,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         
         return true;
       })
-      .map((item: any) => {
+      .map((item) => {
         // Format the field label
-        let label = item.field.replace(/_/g, ' ')
+        const label = item.field.replace(/_/g, ' ')
                           .split(' ')
                           .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                           .join(' ');
@@ -266,7 +240,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       });
   };
   
-  const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
+  const viewVerificationDetails = (entry: { date: string; snapshot: ChallanSnapshot }) => {
     const challanSnapshot = entry.snapshot;
 
     const challanError =
@@ -317,7 +291,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   };
 
   // Handle successful upload
-  const handleUploadSuccess = (result: any) => {
+  const handleUploadSuccess = (result: UploadSuccessResult) => {
     console.log('Upload success:', result);
     
     // Use documentData for the newly uploaded file, not the entire result array
@@ -389,22 +363,23 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         }
         
         if (currentData && Array.isArray(currentData.documents)) {
-          const updatedDocuments = currentData.documents.filter(
-            (doc: any) => doc.uploadedAt !== document.uploadedAt
+          const documents = currentData.documents as unknown as UploadedDocument[];
+          const updatedDocuments = documents.filter(
+            (doc) => doc.uploadedAt !== document.uploadedAt
           );
           
           const { error: updateError } = await supabase
             .from('vehicle_documents')
-            .update({ documents: updatedDocuments })
+            .update({ documents: updatedDocuments as unknown as Json })
             .eq('vehicle_id', vehicleId);
-            
+
           if (updateError) {
             console.error('Error updating documents:', updateError);
             return;
           }
-          
+
           // Update local state to reflect deletion
-          setUploadedDocuments(prev => 
+          setUploadedDocuments(prev =>
             prev.filter(doc => doc.uploadedAt !== document.uploadedAt)
           );
         }
@@ -422,11 +397,12 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         }
         
         if (currentData && Array.isArray(currentData.documents)) {
-          const updatedDocuments = currentData.documents.map((doc: any) => {
+          const documents = currentData.documents as unknown as UploadedDocument[];
+          const updatedDocuments = documents.map((doc) => {
             if (doc.uploadedAt === document.uploadedAt) {
               return {
                 ...doc,
-                files: doc.files.filter((_: any, idx: number) => idx !== fileIndex)
+                files: doc.files.filter((_, idx) => idx !== fileIndex)
               };
             }
             return doc;
@@ -434,9 +410,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           
           const { error: updateError } = await supabase
             .from('vehicle_documents')
-            .update({ documents: updatedDocuments })
+            .update({ documents: updatedDocuments as unknown as Json })
             .eq('vehicle_id', vehicleId);
-            
+
           if (updateError) {
             console.error('Error updating documents:', updateError);
             return;

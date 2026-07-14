@@ -1,5 +1,25 @@
 import { supabase } from '@/integrations/supabase/client';
 
+// De-duplicate identical fetch-student-wellbeing-records invocations (handles React StrictMode double-effect in dev)
+type WellbeingInvokeResult = Awaited<ReturnType<typeof supabase.functions.invoke>>;
+const _wellbeingInflight = new Map<string, Promise<WellbeingInvokeResult>>();
+const _wellbeingRecent = new Map<string, { at: number; value: WellbeingInvokeResult }>();
+const WELLBEING_DEDUPE_MS = 1200;
+const invokeWellbeingFetch = async (body: Record<string, unknown>) => {
+  const key = JSON.stringify(body);
+  const now = Date.now();
+  const recent = _wellbeingRecent.get(key);
+  if (recent && now - recent.at < WELLBEING_DEDUPE_MS) return recent.value;
+  const existing = _wellbeingInflight.get(key);
+  if (existing) return existing;
+  const request = supabase.functions
+    .invoke('fetch-student-wellbeing-records', { method: 'POST', body })
+    .then((res) => { _wellbeingRecent.set(key, { at: Date.now(), value: res }); return res; })
+    .finally(() => { _wellbeingInflight.delete(key); });
+  _wellbeingInflight.set(key, request);
+  return request;
+};
+
 export type StudentWellbeingStatus = 'open' | 'closed' | 'under_observation';
 
 export interface StudentWellbeingConsultation {
@@ -62,24 +82,45 @@ export interface StudentWellbeingSummary {
   closed: number;
 }
 
+export interface PaginationInfo {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
 export interface FetchStudentWellbeingResult {
   success: boolean;
   records: StudentWellbeingRecord[];
   summary: StudentWellbeingSummary;
+  pagination: PaginationInfo;
+}
+
+export interface FetchStudentWellbeingParams {
+  clientId: string;
+  employeeId?: string;
+  academicYear?: string;
+  page?: number;
+  search?: string;
+  status?: string;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  exportAll?: boolean;
 }
 
 export async function fetchStudentWellbeingRecords(
-  clientId: string,
-  employeeId?: string,
-  academicYear?: string
+  params: FetchStudentWellbeingParams
 ): Promise<FetchStudentWellbeingResult> {
-  const { data, error } = await supabase.functions.invoke('fetch-student-wellbeing-records', {
-    method: 'POST',
-    body: {
-      clientId,
-      employeeId: employeeId ?? null,
-      academicYear: academicYear ?? null,
-    },
+  const { data, error } = await invokeWellbeingFetch({
+    clientId: params.clientId,
+    employeeId: params.employeeId ?? null,
+    academicYear: params.academicYear ?? null,
+    page: params.page ?? 1,
+    search: params.search ?? '',
+    status: params.status ?? 'all',
+    dateFrom: params.dateFrom ?? null,
+    dateTo: params.dateTo ?? null,
+    exportAll: params.exportAll ?? false,
   });
 
   if (error) {
@@ -98,6 +139,12 @@ export async function fetchStudentWellbeingRecords(
       openCases: 0,
       underObservation: 0,
       closed: 0,
+    },
+    pagination: data?.pagination ?? {
+      page: 1,
+      pageSize: 10,
+      totalCount: 0,
+      totalPages: 1,
     },
   };
 }

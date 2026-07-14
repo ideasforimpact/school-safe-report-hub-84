@@ -85,7 +85,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onClose }) => {
     });
   };
 
-  const handleQuestionChange = (questionId: string, field: keyof FormQuestion, value: any) => {
+  const handleQuestionChange = (questionId: string, field: keyof FormQuestion, value: FormQuestion[keyof FormQuestion]) => {
     setForm({
       ...form,
       questions: form.questions.map(q => 

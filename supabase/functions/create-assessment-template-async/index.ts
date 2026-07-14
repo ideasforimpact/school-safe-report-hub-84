@@ -46,7 +46,7 @@ serve(async (req) => {
 
     // Optionally trigger the consumer immediately
     try {
-      await (supabase as any).functions.invoke('async-assessment-file-upload', {
+      await supabase.functions.invoke('async-assessment-file-upload', {
         body: { jobId }
       });
     } catch (invokeError) {

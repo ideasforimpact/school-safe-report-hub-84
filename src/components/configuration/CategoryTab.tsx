@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -25,9 +25,6 @@ import {
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { EditDialog } from './EditDialog';
 import { CategoryItem } from '@/services/incident/categoryService';
-import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
-import { useAuth } from '@/contexts/auth/useAuth';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface CategoryTabProps {
   categories: CategoryItem[];
@@ -61,46 +58,6 @@ export const CategoryTab = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [categoryReferences, setCategoryReferences] = useState<Record<string, IncidentReferenceCheck>>({});
-  const { employeeData } = useAuth();
-
-  // Pre-load reference info so we can disable delete button for linked categories
-  useEffect(() => {
-    const clientId = employeeData?.clientId || employeeData?.client_id;
-    if (!clientId || categories.length === 0) {
-      setCategoryReferences({});
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchReferences = async () => {
-      try {
-        const results = await Promise.all(
-          categories.map(async (category) => {
-            const refInfo = await incidentReferenceService.checkCategoryReferences(category.id, clientId);
-            return { id: category.id, refInfo };
-          })
-        );
-
-        if (isCancelled) return;
-
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
-        setCategoryReferences(map);
-      } catch (error) {
-        console.error('Error preloading category reference info:', error);
-      }
-    };
-
-    fetchReferences();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [categories, employeeData]);
 
   const handleCategoryAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,9 +77,9 @@ export const CategoryTab = ({
       setIsAdding(true);
       await addCategory(newCategory.trim());
       setNewCategory('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error in handleCategoryAdd:', error);
-      setError(error.message || 'Failed to add category');
+      setError(error instanceof Error ? error.message : 'Failed to add category');
     } finally {
       setIsAdding(false);
     }
@@ -150,10 +107,10 @@ export const CategoryTab = ({
         console.log('Component: Delete completed successfully');
         setIsDeleteDialogOpen(false);
         setCategoryToDelete(null);
-      } catch (error: any) {
+      } catch (error) {
         console.error('Component: Error in confirmCategoryDelete:', error);
         // Show the specific error message to the user
-        setDeleteError(error.message || 'Failed to delete category');
+        setDeleteError(error instanceof Error ? error.message : 'Failed to delete category');
         // Don't close the dialog on error - let user see the error message
       } finally {
         setIsDeleting(false);
@@ -190,9 +147,9 @@ export const CategoryTab = ({
         console.log("Updating category:", editingCategory.id, "with name:", updatedName.trim());
         await updateCategory(editingCategory.id, updatedName.trim());
         handleEditClose();
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error in handleEditSave:', error);
-        setError(error.message || 'Failed to update category');
+        setError(error instanceof Error ? error.message : 'Failed to update category');
       } finally {
         setIsUpdating(false);
       }
@@ -279,61 +236,15 @@ export const CategoryTab = ({
                         <Pencil className="h-4 w-4" />
                       </Button>
                       
-                      {(() => {
-                        const refInfo = categoryReferences[category.id];
-                        const isLinked = refInfo?.hasReferences;
-
-                        // When linked, we visually disable the button and show a tooltip.
-                        // We avoid the native `disabled` attribute so that TooltipTrigger still works.
-                        if (isLinked) {
-                          const message =
-                            refInfo?.message ||
-                            `This category is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
-
-                          return (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      aria-disabled="true"
-                                      className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
-                                      // No onClick when linked
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent 
-                                  side="left" 
-                                  align="center" 
-                                  sideOffset={8} 
-                                  className="max-w-xs whitespace-normal text-left"
-                                >
-                                  <p className="text-xs leading-snug text-left">
-                                    {message}
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          );
-                        }
-
-                        // Not linked → regular enabled delete button
-                        return (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleCategoryDelete(category)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            disabled={isRefreshing}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        );
-                      })()}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleCategoryDelete(category)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        disabled={isRefreshing}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                     )}
                   </TableCell>

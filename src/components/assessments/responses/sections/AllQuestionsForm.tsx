@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 interface AllQuestionsFormProps {
   questions: AssessmentQuestion[];
   questionResponses: QuestionResponse[];
-  onChange: (questionId: string, field: string, value: any) => void;
+  onChange: (questionId: string, field: keyof QuestionResponse, value: QuestionResponse[keyof QuestionResponse]) => void;
   isCompleted: boolean;
   progressPercentage: number;
 }

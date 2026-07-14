@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployee } from '@/contexts/employee/EmployeeContext';
@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, FileUp, RefreshCw, AlertCircle, Search, Users, X } from 'lucide-react';
+import { UserPlus, FileUp, RefreshCw, AlertCircle, Users, X } from 'lucide-react';
 import { User } from '@/contexts/auth/types';
 import { 
   Employee,
@@ -34,15 +34,16 @@ import {
 } from '@/services/auth/userManagementService';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
-import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
-import { getEmployeeModuleAccessItems, getModuleAccessForUser, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
+import { getModuleAccessForUser } from '@/services/employee/employeeModuleService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
 import { incidentReferenceService } from '@/services/incident/incidentReferenceService';
 import Loader from '@/components/common/Loader';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 // Import the necessary types from auth context
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 
@@ -84,6 +85,7 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
   employeeId?: string;
   employeeType?: EmployeeType; 
+  departmentId?: string;
   department?: DepartmentType;
   joiningDate?: string;
   documents?: Array<{
@@ -114,7 +116,17 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
     biometricUserId?: string;
   };
   cpd_entries?: CpdEntryForUser[];
+  incidentReference?: { hasReferences: boolean; count: number; message: string };
   // No need to explicitly define role here since we're extending from User
+}
+
+// Fields some employee-list responses attach to an EmployeeUser that aren't part of its
+// formal shape (naming has drifted between the edge function and legacy local-storage paths).
+interface EmployeeUserWithExtras extends EmployeeUser {
+  designation?: string;
+  is_cpd_involved?: boolean;
+  isCpdInvolved?: boolean;
+  profileDocuments?: EmployeeUser['documents'];
 }
 
 export interface iModule {
@@ -131,9 +143,78 @@ export interface iModule {
 interface UserManagementProps {
   embedded?: boolean;
 }
-type DepartmentRow = {
+
+// Shape of a raw moduleAccessItems entry attached to an employee-list row.
+interface RawEmployeeModuleAccessItem {
+  modules?: { name?: string } | null;
+  module_id: string;
+  level?: unknown;
+}
+
+// Shape of a row returned by the `employee-management` edge function's `list` operation.
+interface RawEmployeeListItem {
   id: string;
-  department_name: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  designation?: string;
+  employee_id?: string;
+  employee_type?: { type_name?: string } | null;
+  department?: { id?: string; department_name?: string } | string | null;
+  joining_date?: string;
+  status?: boolean;
+  createdAt?: string;
+  client_id?: string;
+  clientId?: string;
+  is_super_admin?: boolean;
+  isSuperAdmin?: boolean;
+  isCpdInvolved?: boolean;
+  personalDetails?: EmployeeUser['personalDetails'];
+  professionalOtherDetails?: EmployeeUser['professionalOtherDetails'];
+  incidentReference?: EmployeeUser['incidentReference'];
+  cpd_entries?: CpdEntryForUser[];
+  moduleAccessItems?: RawEmployeeModuleAccessItem[];
+}
+
+interface EmployeeListResponse {
+  employees?: RawEmployeeListItem[];
+  total?: number;
+}
+
+type EmployeeListInvokeResponse = { data: EmployeeListResponse | null; error: { message?: string } | null };
+
+// De-duplicate identical edge invocations (helps React StrictMode double-effect in dev).
+const employeeListInflight = new Map<string, Promise<EmployeeListInvokeResponse>>();
+const employeeListRecent = new Map<string, { at: number; value: EmployeeListInvokeResponse }>();
+const EMPLOYEE_LIST_DEDUPE_MS = 1200;
+const invokeEmployeeList = async (payload: Record<string, unknown>): Promise<EmployeeListInvokeResponse> => {
+  const key = JSON.stringify(payload);
+  const recent = employeeListRecent.get(key);
+  const now = Date.now();
+  if (recent && now - recent.at < EMPLOYEE_LIST_DEDUPE_MS) {
+    return recent.value;
+  }
+
+  const existing = employeeListInflight.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const request = supabase.functions
+    .invoke<EmployeeListResponse>('employee-management', {
+      body: JSON.stringify(payload),
+    })
+    .then((res) => {
+      employeeListRecent.set(key, { at: Date.now(), value: res });
+      return res;
+    })
+    .finally(() => {
+      employeeListInflight.delete(key);
+    });
+
+  employeeListInflight.set(key, request);
+  return request;
 };
 
 // Main UserManagement component
@@ -189,11 +270,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const [currentUser, setCurrentUser] = useState<EmployeeUser | null>(null);
   // Initialize loading to true - will be set to false after data is loaded
   const [isLoading, setIsLoading] = useState(true);
-  const [employeeUsers, setEmployeeUsers] = useState<EmployeeUser[]>([]);
-  const [cpdDomains, setCpdDomains] = useState<{ id: string; name: string }[]>([]);
+  const [employeeUsers, setEmployeeUsers] = useState<EmployeeUserWithExtras[]>([]);
   
   // Search and filter states
-  const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [joiningDateFrom, setJoiningDateFrom] = useState('');
   const [joiningDateTo, setJoiningDateTo] = useState('');
@@ -201,7 +280,13 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   // Get clientId from employee data or user context
   const clientId = state.employeeData?.clientId || user?.clientId;
   const [departmentFilter, setDepartmentFilter] = useState('all');
-  const [departmentOptions, setDepartmentOptions] = useState<DepartmentRow[]>([]);
+  const { employeeDepartments: departmentOptions } = useEmployeeDepartments();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [filtersVersion, setFiltersVersion] = useState(0);
+  const isFirstFilterRender = useRef(true);
 
   // Log the clientId for debugging
   useEffect(() => {
@@ -209,29 +294,6 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     console.log("UserManagement - Current user data:", user);
     console.log("UserManagement - ClientId being used:", clientId);
   }, [employeeData, user, clientId]);
-  const fetchDepartments = async () => {
-    if (!clientId) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('employee_departments' as any)
-        .select('id, department_name')
-        .order('department_name', { ascending: true });
-      
-      if (error) throw error;
-      
-      setDepartmentOptions(data as any);
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-      toast.error('Failed to load departments');
-    }
-  };
-
-  useEffect(() => {
-    if (clientId) {
-      fetchDepartments();
-    }
-  }, [clientId]);
   // Default form data for the user forms - Using only moduleAccessPayload
   const [formData, setFormData] = useState<{
     firstName: string;
@@ -323,62 +385,18 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     }
   }, [clientId]);
 
-  // Fetch employees from Supabase and map them to User format
+
+  // Reset page and bump version when filters change (skips initial mount)
   useEffect(() => {
-    // Only fetch if we have a clientId
-    if (clientId) {
-      fetchEmployeesList();
+    if (isFirstFilterRender.current) {
+      isFirstFilterRender.current = false;
+      return;
     }
-  }, [clientId]);
+    setCurrentPage(1);
+    setFiltersVersion((v) => v + 1);
+  }, [debouncedSearchQuery, statusFilter, departmentFilter, joiningDateFrom, joiningDateTo]);
 
-  // Filter users based on search and filters
-  const filteredUsers = React.useMemo(() => {
-    try {
-      const normalizeToDate = (value?: string) => {
-        if (!value) return '';
-        const date = new Date(value);
-        if (isNaN(date.getTime())) return '';
-        return date.toISOString().split('T')[0];
-      };
-
-      return employeeUsers.filter(user => {
-        // Search filter
-        const searchLower = searchQuery.toLowerCase();
-        const matchesSearch = 
-          user.firstName?.toLowerCase().includes(searchLower) ||
-          user.lastName?.toLowerCase().includes(searchLower) ||
-          user.email?.toLowerCase().includes(searchLower) ||
-          user.employeeId?.toLowerCase().includes(searchLower) ||
-          `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchLower);
-
-        // Status filter
-        const matchesStatus = 
-          statusFilter === 'all' || 
-          (statusFilter === 'active' && user.isActive) ||
-          (statusFilter === 'inactive' && !user.isActive);
-
-        const selectedDept = departmentOptions.find(
-          d => d.id === departmentFilter
-        );
-        
-        const matchesDepartment =
-          departmentFilter === 'all' ||
-          user.department === selectedDept?.department_name;
-
-        const normalizedJoiningDate = normalizeToDate(user.joiningDate);
-        const matchesJoiningDateFrom = !joiningDateFrom || (normalizedJoiningDate !== '' && normalizedJoiningDate >= joiningDateFrom);
-        const matchesJoiningDateTo = !joiningDateTo || (normalizedJoiningDate !== '' && normalizedJoiningDate <= joiningDateTo);
-        const matchesJoiningDate = matchesJoiningDateFrom && matchesJoiningDateTo;
-
-        return matchesSearch && matchesStatus && matchesDepartment && matchesJoiningDate;
-      });
-    } catch (error) {
-      console.error('Error filtering users:', error);
-      return employeeUsers; // Return all users if filtering fails
-    }
-  }, [employeeUsers, searchQuery, statusFilter, departmentFilter, joiningDateFrom, joiningDateTo]);
-
-  const fetchEmployeesList = async () => {
+  const fetchEmployeesList = useCallback(async (page: number = 1, signal?: AbortSignal) => {
     // Add clientId restriction check
     if (!clientId) {
       console.warn("Cannot fetch employees: No clientId available");
@@ -389,78 +407,78 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
     try {
       setIsLoading(true);
-      // Fetch CPD domains for tabs and cpd_entries for attaching to users
-      const [employeeData, domainsRes, entriesRes] = await Promise.all([
-        getAllEmployeesFromApi(clientId),
-        supabase.from('cpd_domain').select('id, name').eq('active', true).order('name'),
-        supabase
-          .from('cpd_entries')
-          .select('id, employee_id, title, domain_id, hour, captured_date, category, cpd_learning')
-          .eq('client_id', clientId)
-          .eq('active', true),
-      ]);
-
-      const domainsList = (domainsRes.data ?? []) as { id: string; name: string }[];
-      if (domainsList.length) {
-        setCpdDomains(domainsList);
-      } else {
-        setCpdDomains([]);
-      }
-
-      const domainNameById: Record<string, string> = {};
-      domainsList.forEach((d) => {
-        domainNameById[d.id] = d.name;
+      const { data: paginatedRes, error: paginatedError } = await invokeEmployeeList({
+        operation: 'list',
+        clientId,
+        page,
+        pageSize,
+        filters: {
+          search: debouncedSearchQuery,
+          status: statusFilter as 'all' | 'active' | 'inactive',
+          departmentId: departmentFilter,
+          joiningDateFrom,
+          joiningDateTo,
+        },
       });
 
-      const allCpdEntries = (entriesRes.data ?? []).map((row: any) => ({
-        id: row.id,
-        title: row.title ?? '',
-        domain_id: row.domain_id ?? '',
-        domain_name: domainNameById[row.domain_id] ?? '',
-        hour: row.hour ?? null,
-        captured_date: row.captured_date ?? null,
-        category: row.category ?? null,
-        cpd_learning: row.cpd_learning ?? null,
-        employee_id: row.employee_id,
-      }));
+      if (paginatedError) {
+        throw paginatedError;
+      }
+
+      if (signal?.aborted) {
+        return;
+      }
+
+      const employeeData: RawEmployeeListItem[] = paginatedRes?.employees || [];
+      setTotalUsers(Number(paginatedRes?.total || 0));
 
       console.log(employeeData, "employeeData124");
 
       if (employeeData && employeeData.length > 0) {
-        // Process each employee to get their module access items and CPD entries
-        const processedUsers = await Promise.all(employeeData.map(async employee => {
-          const moduleAccessItems = await getModuleAccessForUser({
-            id: employee.id,
-            isSuperAdmin: employee.isSuperAdmin,
-            clientId: employee.clientId
+        const processedUsers = employeeData.map((employee) => {
+          const departmentObj = employee.department && typeof employee.department === 'object' ? employee.department : undefined;
+          const departmentString = typeof employee.department === 'string' ? employee.department : undefined;
+          const moduleAccessItems: ModuleAccessItem[] = (employee.moduleAccessItems || [])
+            .filter((item) => item.modules?.name)
+            .map((item) => {
+            let levelObject: { is_admin?: boolean; [key: string]: boolean | string | number | null | undefined } = {};
+            if (item.level && typeof item.level === 'object' && !Array.isArray(item.level)) {
+              levelObject = item.level as { is_admin?: boolean; [key: string]: boolean | string | number | null | undefined };
+            }
+            return {
+              name: item.modules?.name ?? '',
+              key: item.module_id,
+              module_id: item.module_id,
+              employeeId: employee.id,
+              level: levelObject,
+              enabled: true,
+            };
           });
-          const cpd_entries = allCpdEntries
-            .filter((e: any) => e.employee_id === employee.id)
-            .map(({ employee_id: _, ...rest }: any) => rest);
           return {
             id: employee.id,
-            firstName: employee.firstName,
-            lastName: employee.lastName,
+            firstName: employee.first_name,
+            lastName: employee.last_name,
             email: employee.email,
-            phone: (employee as any).phone,
-            designation: (employee as any).designation,
-            documents: (employee as any).profileDocuments || [],
-            employeeId: employee.employeeId,
-            employeeType: employee.employeeType as any,
-            department: employee.department as any,
-            joiningDate: employee.joiningDate,
+            phone: employee.phone,
+            designation: employee.designation,
+            employeeId: employee.employee_id,
+            employeeType: employee.employee_type?.type_name as EmployeeType,
+            departmentId: departmentObj?.id,
+            department: (departmentObj?.department_name || departmentString || '') as DepartmentType,
+            joiningDate: employee.joining_date,
             isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
-            clientId: employee.clientId,
-            isSuperAdmin: employee.isSuperAdmin,
+            clientId: employee.client_id || employee.clientId,
+            isSuperAdmin: employee.is_super_admin ?? employee.isSuperAdmin,
             is_cpd_involved: employee.isCpdInvolved ?? false,
             personalDetails: employee.personalDetails || {},
             professionalOtherDetails: employee.professionalOtherDetails || {},
             moduleAccessPayload: moduleAccessItems,
-            cpd_entries,
+            incidentReference: employee.incidentReference || { hasReferences: false, count: 0, message: '' },
+            cpd_entries: employee.cpd_entries || [],
             role: 'user' as const
           };
-        }));
+        });
 
         setEmployeeUsers(processedUsers);
         console.log("Fetched employees:", processedUsers);
@@ -469,13 +487,26 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         setEmployeeUsers([]);
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
       console.error("Error fetching employees:", error);
       toast.error("Failed to fetch employee data");
       setEmployeeUsers([]);
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [clientId, pageSize, debouncedSearchQuery, statusFilter, departmentFilter, joiningDateFrom, joiningDateTo]);
+
+  // Fetch employees — triggered by page changes or filter version bumps
+  useEffect(() => {
+    if (!clientId) return;
+    const ac = new AbortController();
+    fetchEmployeesList(currentPage, ac.signal);
+    return () => ac.abort();
+  }, [clientId, currentPage, filtersVersion, fetchEmployeesList]);
 
   // Handler for adding a new user - Uses only moduleAccessPayload
   const handleAddUser = async (submittedFormData?: typeof formData) => {
@@ -514,14 +545,14 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       
       // In a real app, we'd validate the form data here
       const updatedUsers = await addNewUser(
-        [] as any,
-        { 
-          ...currentFormData, 
+        [],
+        {
+          ...currentFormData,
           clientId: currentFormData.clientId || clientId,
           password: 'defaultPassword123',
           isActive: true,
           // Add required modulePermissions property to satisfy interface
-          modulePermissions: {} as any,
+          modulePermissions: {},
           // Default role
           role: 'user' as const
         }
@@ -583,8 +614,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                 throw error;
               }
 
-              if(data?.hasOwnProperty("error")){
-                 toast.error(data?.error);
+              if (data && 'error' in data) {
+                 toast.error(data.error);
               }
               else{
                   console.log("Employee created via edge function:", data);
@@ -596,7 +627,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               // Fall back to the context function if the edge function fails
               await addEmployee({
                 ...employeeData,
-              } as any); // Cast as any to bypass type checking
+              } as unknown as Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>);
               
               console.log("Employee created via context function");
               toast.success("Employee record created via local storage");
@@ -640,61 +671,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
   // Function to refresh the employees list after changes
   const refreshEmployeesList = async () => {
-    // Add clientId restriction check
-    if (!clientId) {
-      console.warn("Cannot refresh employees: No clientId available");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      // Pass clientId to filter employees by client
-      const employeeData = await getAllEmployeesFromApi(clientId);
-      
-      if (employeeData && employeeData.length > 0) {
-        const processedUsers = await Promise.all(employeeData.map(async employee => {
-          // Get module access items (handles both super admin and regular employees)
-          const moduleAccessItems = await getModuleAccessForUser({
-            id: employee.id,
-            isSuperAdmin: employee.isSuperAdmin,
-            clientId: employee.clientId
-          });
-          
-          return {
-            id: employee.id,
-            firstName: employee.firstName,
-            lastName: employee.lastName,
-            email: employee.email,
-            employeeId: employee.employeeId,
-            employeeType: employee.employeeType as any,
-            department: employee.department as any,
-            joiningDate: employee.joiningDate,
-            isActive: employee.status === true,
-            createdAt: employee.createdAt || new Date().toISOString(),
-            clientId: employee.clientId,
-            isSuperAdmin: employee.isSuperAdmin,
-            phone: employee.phone,
-            designation: employee.designation,
-            documents: (employee as any).profileDocuments || [],
-            is_cpd_involved: employee.isCpdInvolved ?? false,
-            personalDetails: employee.personalDetails || {},
-            professionalOtherDetails: employee.professionalOtherDetails || {},
-            // Store module access items directly
-            moduleAccessPayload: moduleAccessItems,
-            // Add default role property to satisfy User interface
-            role: 'user' as const
-          };
-        }));
-
-        setEmployeeUsers(processedUsers);
-        console.log("Refreshed employees list:", processedUsers);
-      }
-    } catch (error) {
-      console.error("Error refreshing employees:", error);
-      toast.error("Failed to refresh employee data");
-    } finally {
-      setIsLoading(false);
-    }
+    await fetchEmployeesList(currentPage);
   };
 
   // Handler for updating an existing user - Simplified to just refresh the list
@@ -768,7 +745,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const handleDeactivateUser = async (userId: string) => {
     try {
       setIsLoading(true);
-      const updatedUsers = deactivateExistingUser([] as any, userId);
+      const updatedUsers = deactivateExistingUser([], userId);
       if (updatedUsers) {
         try {
           const { data, error } = await supabase.functions.invoke('employee-management', {
@@ -805,7 +782,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const handleReactivateUser = async (userId: string) => {
     try {
       setIsLoading(true);
-      const updatedUsers = reactivateExistingUser([] as any, userId);
+      const updatedUsers = reactivateExistingUser([], userId);
       if (updatedUsers) {
         try {
           const { data, error } = await supabase.functions.invoke('employee-management', {
@@ -893,7 +870,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
   // Clear all filters
   const clearAllFilters = () => {
-    setSearchQuery('');
+    setDebouncedSearchQuery('');
     setStatusFilter('all');
     setDepartmentFilter('all');
     setJoiningDateFrom('');
@@ -902,7 +879,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
   // Get active filters count
   const activeFiltersCount = [
-    searchQuery ? 1 : 0,
+    debouncedSearchQuery ? 1 : 0,
     statusFilter !== 'all' ? 1 : 0,
     departmentFilter !== 'all' ? 1 : 0,
     joiningDateFrom ? 1 : 0,
@@ -1000,7 +977,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={fetchEmployeesList}
+            onClick={() => fetchEmployeesList(currentPage)}
             disabled={isLoading}
             title="Refresh employee list"
           >
@@ -1012,17 +989,13 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         <CardContent className="pb-4">
           <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full mb-4">
             {/* Search Bar */}
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by name, email, employee ID, or address..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-10"
-                />
-              </div>
-            </div>
+            <DebouncedSearchInput
+              value={debouncedSearchQuery}
+              onChange={(val) => setDebouncedSearchQuery(val)}
+              placeholder="Search by name, email, employee ID..."
+              className="flex-1 max-w-md"
+              triggerOnEnter
+            />
             
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
@@ -1050,7 +1023,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                   <SelectItem value="all">All Departments</SelectItem>
 
                   {departmentOptions.map((dept) => (
-                    <SelectItem value={dept.id}>
+                    <SelectItem key={dept.id} value={dept.id}>
                       {dept.department_name
                         ? dept.department_name.charAt(0).toUpperCase() +
                           dept.department_name.slice(1)
@@ -1095,28 +1068,31 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             </div>
           </div>
           
-          {/* User count after search and filters */}
-          <div className="mb-6">
-            <p className="text-sm text-gray-600">
-              Showing {filteredUsers.length} of {employeeUsers.length} users
-            </p>
-          </div>
-          
           {isLoading ? (
             <Loader text="Loading employees..." />
           ) : (
             <div>
-              {filteredUsers && filteredUsers.length > 0 ? (
+              {employeeUsers && employeeUsers.length > 0 ? (
                 <UserList 
-                  users={filteredUsers}
-                  onEditClick={(user) => {
-                    if (isReadOnlySwitchedContext) {
-                      return;
-                    }
+                  users={employeeUsers}
+                  onEditClick={async (user) => {
                     // Use latest user from list by id so we always show fresh data (e.g. after a save)
-                    const latestUser = employeeUsers.find((u: any) => u.id === user.id) ?? user;
-                    const cpdValue = (latestUser as any).is_cpd_involved ?? (latestUser as any).isCpdInvolved ?? false;
+                    const latestUser = employeeUsers.find((u) => u.id === user.id) ?? (user as EmployeeUserWithExtras);
+                    const cpdValue = latestUser.is_cpd_involved ?? latestUser.isCpdInvolved ?? false;
                     setCurrentUser(latestUser);
+                    let moduleAccessPayload = latestUser.moduleAccessPayload || [];
+                    if (!moduleAccessPayload.length) {
+                      try {
+                        moduleAccessPayload = await getModuleAccessForUser({
+                          id: latestUser.id,
+                          isSuperAdmin: latestUser.isSuperAdmin,
+                          clientId: latestUser.clientId
+                        });
+                      } catch (error) {
+                        console.error("Failed to load module access for edit:", error);
+                        toast.error("Failed to load module permissions");
+                      }
+                    }
 
                     // Format joiningDate to YYYY-MM-DD format for date input
                     let formattedJoiningDate = latestUser.joiningDate || '';
@@ -1137,13 +1113,13 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       firstName: latestUser.firstName,
                       lastName: latestUser.lastName,
                       email: latestUser.email,
-                      phone: (latestUser as any).phone,
-                      designation: (latestUser as any).designation,
+                      phone: latestUser.phone,
+                      designation: latestUser.designation,
                       documents:
-                        (latestUser as any).documents ||
-                        (latestUser as any).profileDocuments ||
+                        latestUser.documents ||
+                        latestUser.profileDocuments ||
                         [],
-                      tags: ((latestUser as any).designation || '')
+                      tags: (latestUser.designation || '')
                         .split(',')
                         .map((tag: string) => tag.trim())
                         .filter(Boolean)
@@ -1153,7 +1129,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       department: latestUser.department,
                       joiningDate: formattedJoiningDate,
                       clientId: latestUser.clientId || clientId,
-                      moduleAccessPayload: latestUser.moduleAccessPayload || [],
+                      moduleAccessPayload,
                       is_cpd_involved: cpdValue,
                       personalDetails: latestUser.personalDetails || {
                         residenceAddress: '',
@@ -1182,7 +1158,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                   onDeleteUser={handleDeleteUser}
                   onDeactivateUser={async (id) => {
                     try {
-                      await deactivateExistingUser([] as any, id);
+                      await deactivateExistingUser([], id);
                       await refreshEmployeesList();
                       // toast.success("User deactivated successfully");
                     } catch (error) {
@@ -1192,7 +1168,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                   }}
                   onReactivateUser={async (id) => {
                     try {
-                      await reactivateExistingUser([] as any, id);
+                      await reactivateExistingUser([], id);
                       await refreshEmployeesList();
                       // toast.success("User reactivated successfully");
                     } catch (error) {
@@ -1203,10 +1179,16 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                   hasAdminAccess={hasUserManagementAdminAccess}
                   canEditUsers={!isReadOnlySwitchedContext}
                   onRefresh={refreshEmployeesList}
+                  currentPage={currentPage}
+                  totalItems={totalUsers}
+                  itemsPerPage={pageSize}
+                  onPageChange={setCurrentPage}
                 />
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  {searchQuery || statusFilter !== 'all' ? 'No users found matching your filters.' : 'No users found.'}
+                  {debouncedSearchQuery || statusFilter !== 'all' || departmentFilter !== 'all' || joiningDateFrom || joiningDateTo
+                    ? 'No users found matching your filters.'
+                    : 'No users found.'}
                 </div>
               )}
             </div>

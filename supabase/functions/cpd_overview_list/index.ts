@@ -134,7 +134,7 @@ serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      employeeFilterIds = (employees ?? []).map((e: any) => e.id);
+      employeeFilterIds = (employees ?? []).map((e: { id: string }) => e.id);
     } else if (employeeId) {
       // Non-super admin: only include this employee if they have is_cpd_involved = true
       const { data: emp, error: empError } = await supabase
@@ -215,7 +215,7 @@ serve(async (req) => {
       );
     }
 
-    const entries = (cpdEntriesRows ?? []) as any as (CpdEntryRow & {
+    const entries = (cpdEntriesRows ?? []) as (CpdEntryRow & {
       captured_date?: string | null;
     })[];
 
@@ -232,8 +232,34 @@ serve(async (req) => {
       entriesByEmployee[entry.employee_id].push(entry);
     }
 
+    type EmployeeResult = {
+      employee_id: string;
+      employee_name: string;
+      department_name: string | null;
+      cpd_entries: {
+        id: string;
+        title: string;
+        domain_name: string;
+        hours: number;
+        captured_date: string | null;
+        category: unknown;
+        cpd_learning: unknown;
+        document_urls: unknown[];
+      }[];
+      obtained_cpd: number;
+      total_cpd: number;
+      status: "In Progress" | "At Risk" | "Compliant";
+      core_values_hours: number;
+      knowledge_hours: number;
+      growth_hours: number;
+      core_values_threshold: number;
+      knowledge_threshold: number;
+      growth_threshold: number;
+      domain_hours: Record<string, number>;
+    };
+
     // Build response rows
-    const employeesResult: any[] = [];
+    const employeesResult: EmployeeResult[] = [];
     let compliantCount = 0;
     let atRiskCount = 0;
 
@@ -241,9 +267,14 @@ serve(async (req) => {
       const info = employeesById[empId];
       if (!info) continue;
 
-      const empEntries = (entriesByEmployee[empId] ?? []) as (CpdEntryRow & {
+      type FullCpdEntry = CpdEntryRow & {
         captured_date?: string | null;
-      })[];
+        category?: unknown;
+        cpd_learning?: unknown;
+        document_urls?: unknown[];
+      };
+
+      const empEntries = (entriesByEmployee[empId] ?? []) as FullCpdEntry[];
 
       let obtainedCpd = 0;
       let coreValuesHours = 0;

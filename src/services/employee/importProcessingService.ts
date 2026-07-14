@@ -375,7 +375,23 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
 /**
  * Transform database employee data to match frontend Employee type
  */
-const transformEmployeeData = (dbEmployee: any): Employee => {
+interface BulkImportEmployeeResponse {
+  id: string;
+  employee_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  employee_type: string;
+  department: string;
+  joining_date: string;
+  status: string;
+  modulePermissions?: ModulePermissions;
+  client_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const transformEmployeeData = (dbEmployee: BulkImportEmployeeResponse): Employee => {
   // Default module permissions that will be applied if not provided in the database record
   const defaultModulePermissions: ModulePermissions = {
     superAdmin: false,

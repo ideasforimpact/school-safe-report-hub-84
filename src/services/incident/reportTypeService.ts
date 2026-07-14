@@ -1,8 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { getActiveClientId } from "@/services/auth/getActiveClientId";
 import { toast } from "sonner";
 import { incidentReferenceService } from "./incidentReferenceService";
+import { invokeIncidentConfig } from "@/components/incident/incidentConfigurationEdgeService";
 
 export interface ReportTypeItem {
   id: string;
@@ -32,34 +32,24 @@ export const reportTypeService = {
       }
 
       return data && data.length > 0;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking duplicate report type:', error);
       return false;
     }
   },
 
-  // Get report types filtered by client type key
+  // Get report types filtered by client type key. No clientId is passed here —
+  // same as before this used implicit RLS scoping by the logged-in user; the
+  // edge function resolves clientId from the caller's auth token the same way.
   getReportTypes: async (activeOnly: boolean = false, clientTypeId?: string) => {
     try {
-      let query = supabase
-        .from('incident_report_types')
-        .select('*');
-        
-      if (activeOnly) {
-        query = query.eq('is_active', true);
-      }
-      if (clientTypeId) {
-        query = query.eq('client_type_id', clientTypeId);
-      }
-      const { data, error } = await query.order('name');
-      
-      if (error) {
-        console.error('Error fetching report types:', error);
-        return [];
-      }
-
-      return data as ReportTypeItem[];
-    } catch (error: any) {
+      return await invokeIncidentConfig<ReportTypeItem[]>({
+        resource: 'reportTypes',
+        operation: 'list',
+        clientTypeId,
+        activeOnly,
+      });
+    } catch (error) {
       console.error('Error fetching report types:', error);
       return [];
     }
@@ -75,13 +65,24 @@ export const reportTypeService = {
 
       let finalClientId = clientId;
 
-      // If clientId not provided, get it from JWT app_metadata (Feature 3).
+      // If clientId not provided, get it from current user's employee record
       if (!finalClientId) {
-        const resolved = await getActiveClientId();
-        if (!resolved) {
-          throw new Error('Active client not found');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
         }
-        finalClientId = resolved;
+
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('client_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (employeeError || !employee) {
+          throw new Error('Employee record not found');
+        }
+
+        finalClientId = employee.client_id;
       }
 
       // Check for duplicate
@@ -109,7 +110,7 @@ export const reportTypeService = {
       }
 
       return data as ReportTypeItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding report type:', error);
       throw error;
     }
@@ -123,14 +124,24 @@ export const reportTypeService = {
         throw new Error('Report type name cannot be empty');
       }
 
-      // Get client_id for duplicate check (Feature 3: JWT app_metadata).
-      const clientId = await getActiveClientId();
-      if (!clientId) {
-        throw new Error('Active client not found');
+      // Get client_id for duplicate check
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('client_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (employeeError || !employee) {
+        throw new Error('Employee record not found');
       }
 
       // Check for duplicate (excluding current record)
-      const isDuplicate = await reportTypeService.checkDuplicateReportType(trimmedName, clientId, id);
+      const isDuplicate = await reportTypeService.checkDuplicateReportType(trimmedName, employee.client_id, id);
       if (isDuplicate) {
         throw new Error('A report type with this name already exists');
       }
@@ -157,7 +168,7 @@ export const reportTypeService = {
       }
 
       return data as ReportTypeItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating report type:', error);
       throw error;
     }
@@ -166,14 +177,24 @@ export const reportTypeService = {
   // Delete report type - RLS handles client validation automatically
   deleteReportType: async (id: string) => {
     try {
-      // Get client_id for reference check (Feature 3: JWT app_metadata).
-      const clientId = await getActiveClientId();
-      if (!clientId) {
-        throw new Error('Active client not found');
+      // Get client_id for reference check
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('client_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (employeeError || !employee) {
+        throw new Error('Employee record not found');
       }
 
       // Check if report type is referenced by incidents
-      const referenceCheck = await incidentReferenceService.checkReportTypeReferences(id, clientId);
+      const referenceCheck = await incidentReferenceService.checkReportTypeReferences(id, employee.client_id);
       
       if (referenceCheck.hasReferences) {
         throw new Error(referenceCheck.message);
@@ -190,7 +211,7 @@ export const reportTypeService = {
       }
 
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting report type:', error);
       throw error;
     }
@@ -201,14 +222,24 @@ export const reportTypeService = {
     try {
       // If deactivating, check if report type is referenced by incidents
       if (!isActive) {
-        // Get client_id for reference check (Feature 3: JWT app_metadata).
-        const clientId = await getActiveClientId();
-        if (!clientId) {
-          throw new Error('Active client not found');
+        // Get client_id for reference check
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('client_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (employeeError || !employee) {
+          throw new Error('Employee record not found');
         }
 
         // Check if report type is referenced by incidents
-        const referenceCheck = await incidentReferenceService.checkReportTypeReferences(id, clientId);
+        const referenceCheck = await incidentReferenceService.checkReportTypeReferences(id, employee.client_id);
         
         if (referenceCheck.hasReferences) {
           // Replace "delete" with "deactivate" in the error message
@@ -238,7 +269,7 @@ export const reportTypeService = {
       }
 
       return data as ReportTypeItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error toggling report type status:', error);
       throw error;
     }

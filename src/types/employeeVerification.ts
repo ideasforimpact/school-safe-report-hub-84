@@ -91,14 +91,14 @@ export interface VerificationDocument {
   employee_docs_log?: Array<{
     timestamp: string;
     action: string;
-    response: any;
+    response: unknown;
     notes?: string;
   }>;
   details?: {
     address?: string;
     name?: string;
     dob?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   params?: {
     DOB?: string;
@@ -109,7 +109,7 @@ export interface VerificationDocument {
       timestamp: string;
       verified_by: string;
     }>;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   // Cron-related fields
   cronActivate?: boolean;
@@ -119,11 +119,11 @@ export interface VerificationDocument {
     timestamp: string;
     action: string;
     status: string;
-    details?: any;
+    details?: unknown;
     error?: string;
   }>;
   // New API response tracking fields
-  apiResponseData?: any;
+  apiResponseData?: unknown;
   apiVerificationStatus?: 'pending' | 'completed' | 'failed' | null;
   apiVerificationDate?: string;
   apiVerificationMethod?: string;
@@ -149,7 +149,7 @@ export interface VerificationDocument {
   lastOtpGenerated?: string; // Timestamp when OTP was last generated
   createdAt: string;
   updatedAt: string;
-  audit?: Record<string, any>;
+  audit?: Record<string, unknown>;
 }
 
 export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id' | 'manual' | 'other_documents';
@@ -157,5 +157,5 @@ export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'p
 export interface VerificationResult {
   success: boolean;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
