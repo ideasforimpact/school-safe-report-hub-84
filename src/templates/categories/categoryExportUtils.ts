@@ -41,7 +41,7 @@ export const downloadCategoriesJSON = async (clientId: string, clientName?: stri
     .select('id,name,description,category_id')
     .eq('client_id', clientId);
 
-  const map: Record<string, any[]> = {};
+  const map: Record<string, { id: string; name: string; description: string | null; category_id: string; client_id: string }[]> = {};
   (subcategories || []).forEach(s => {
     map[s.category_id] = map[s.category_id] || [];
     map[s.category_id].push({ id: s.id, name: s.name, description: s.description, category_id: s.category_id, client_id: '' });

@@ -38,7 +38,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
 
   // Helper function to check if document has comments
   const hasVerificationHistory = (): boolean => {
-    const verificationHistory = (document.params as any)?.verification_history;
+    const verificationHistory = document.params?.verification_history;
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
 
@@ -46,7 +46,6 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
   const showCommentsIcon = document.documentTypeName?.toLowerCase() === 'other' && hasVerificationHistory();
 
   const handleCommentsClick = () => {
-    const verificationHistory = (document.params as any)?.verification_history || [];
     setCommentsDialogOpen(true);
     
     toast({
@@ -123,7 +122,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
       <DocumentCommentsDialog
         open={commentsDialogOpen}
         onOpenChange={setCommentsDialogOpen}
-        verificationHistory={(document.params as any)?.verification_history || []}
+        verificationHistory={document.params?.verification_history || []}
         documentId={document.id}
       />
     </>

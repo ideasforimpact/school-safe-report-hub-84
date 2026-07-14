@@ -7,13 +7,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
+import { Incident } from '@/types/incident';
 
 type AIRecommendationDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  incidentJson: any | null; // raw payload object
+  incidentJson: Record<string, unknown> | null; // raw payload object
   incidentId?: string; // incident ID to save the recommendation
-  incident?: any | null; // full incident object with recommended_action
+  incident?: Incident | null; // full incident object with recommended_action
   onRefresh?: () => void | Promise<void>; // Callback to refresh incident list after saving
 };
 
@@ -74,10 +75,11 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
       // Save to database if incidentId is provided
       if (incidentId) {
         try {
-          const { error: updateError } = await (supabase as any)
-            .from('incidents')
-            .update({ recommended_action: parsed })
-            .eq('id', incidentId);
+          const { data: { session } } = await supabase.auth.getSession();
+          const { error: updateError } = await supabase.functions.invoke('update-incident', {
+            body: { incidentId, updates: { recommended_action: parsed } },
+            headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+          });
 
           if (updateError) {
             console.error('Failed to save recommendation to database:', updateError);
@@ -93,26 +95,25 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
               await onRefresh();
             }
           }
-        } catch (dbError: any) {
+        } catch (dbError) {
           console.error('Database save error:', dbError);
           // Don't throw - we still want to show the result
         }
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error('Error calling edge function:', e);
-      setError(e?.message || 'Failed to generate AI recommendation');
+      setError(e instanceof Error ? e.message : 'Failed to generate AI recommendation');
     } finally {
       setIsLoading(false);
     }
-  }, [incidentJson, incidentId, toast, getClientId, getEmployeeId]);
+  }, [incidentJson, incidentId, toast, getClientId, getEmployeeId, onRefresh]);
 
   React.useEffect(() => {
     if (open) {
       // Check if incident has existing recommended_action
       // Check multiple possible field names for compatibility
-      const existingRecommendation = incident?.recommended_action 
-        || incident?.recommendedAction 
-        || (incident as any)?.recommended_action;
+      const existingRecommendation = incident?.recommended_action
+        || incident?.recommendedAction;
       
       console.log('Checking for existing recommendation:', {
         hasIncident: !!incident,
@@ -150,7 +151,14 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
       setError(null);
       setResult(null);
     }
-  }, [open, incident, incidentJson, callEdgeFunction]);
+    // Run only when the dialog opens/closes. `incident`, `incidentJson`, and
+    // `callEdgeFunction` are read from the closure captured at that moment -
+    // including them here would re-run this effect (and re-call the edge
+    // function) whenever those references churn, e.g. `callEdgeFunction`
+    // changes identity because the parent's `onRefresh` callback is
+    // recreated after each refetch, causing an infinite reload loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleRefreshClick = () => {
     setShowConsentDialog(true);

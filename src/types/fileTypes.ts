@@ -33,12 +33,12 @@ export const formatSupabaseUrl = (url: string): string => {
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
   if (trimmed.startsWith('data:')) return trimmed;
 
-  const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL as string | undefined;
+  const base = import.meta.env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL as string | undefined;
 
   if (!base || typeof base !== 'string') return trimmed;
 
   const normalizedBase = base.replace(/\/$/, '');
-  let path = trimmed.replace(/^\/+/, '');
+  const path = trimmed.replace(/^\/+/, '');
 
   if (path.includes('employee_other_documents/')) {
     const after = path.split('employee_other_documents/')[1] || path;

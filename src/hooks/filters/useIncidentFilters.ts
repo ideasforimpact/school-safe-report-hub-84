@@ -73,7 +73,7 @@ export const useIncidentFilters = (incidents: Incident[]) => {
     return true;
   });
 
-  const updateFilter = useCallback((key: keyof FilterState, value: any) => {
+  const updateFilter = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setFilters(prev => ({
       ...prev,
       [key]: value

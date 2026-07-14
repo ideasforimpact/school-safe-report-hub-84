@@ -6,16 +6,16 @@ import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
 import { toast } from 'sonner';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
 import { useAuth } from '@/contexts/auth/useAuth';
-import { reportTypeService } from '@/services/incident/reportTypeService';
-import { priorityService } from '@/services/incident/priorityService';
+import { reportTypeService, ReportTypeItem } from '@/services/incident/reportTypeService';
+import { priorityService, PriorityItem } from '@/services/incident/priorityService';
 import Loader from '@/components/common/Loader';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
-  const [reportTypes, setReportTypes] = useState<any[]>([]);
-  const [priorities, setPriorities] = useState<any[]>([]);
+  const [reportTypes, setReportTypes] = useState<ReportTypeItem[]>([]);
+  const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { employeeData } = useAuth();
   const clientTypeId = employeeData?.clientType?.id;
@@ -102,9 +102,9 @@ const IncidentConfiguration = () => {
       await reportTypeService.deleteReportType(id);
       setReportTypes(reportTypes.filter(type => type.id !== id));
       toast.success('Report type deleted successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception deleting report type:', error);
-      const errorMessage = error?.message || 'Failed to delete report type';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete report type';
       toast.error(errorMessage);
     }
   };
@@ -153,9 +153,9 @@ const IncidentConfiguration = () => {
       await priorityService.deletePriority(id);
       setPriorities(priorities.filter(priority => priority.id !== id));
       toast.success('Priority deleted successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception deleting priority:', error);
-      const errorMessage = error?.message || 'Failed to delete priority';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete priority';
       toast.error(errorMessage);
     }
   };

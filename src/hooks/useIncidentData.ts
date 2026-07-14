@@ -167,14 +167,14 @@ export const useIncidentData = () => {
       console.log(`Successfully fetched ${transformedIncidents.length} incidents (page ${response.currentPage} of ${response.totalPages})`);
       console.log(`Access level: ${isSuperAdmin ? 'Super Admin (all incidents)' : 'Regular User (filtered incidents)'}`);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching incidents:', error);
-      setError(error.message);
+      setError(error instanceof Error ? error.message : String(error));
       toast.error('Failed to load incidents. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin, isSuperAdmin]);
+  }, [user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin, isSuperAdmin]);
 
   const refetchIncidents = useCallback(async () => {
     await fetchIncidents(true, pagination.currentPage, pagination.pageSize); // Force refresh

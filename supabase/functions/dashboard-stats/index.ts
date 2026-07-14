@@ -12,7 +12,7 @@ const corsHeaders = {
 const normalizeChallanStatus = (status?: string): string =>
   String(status || '').trim().toUpperCase();
 
-const dedupeChallans = (challans: any[]): any[] => {
+const dedupeChallans = (challans: Record<string, unknown>[]): Record<string, unknown>[] => {
   if (!Array.isArray(challans)) return [];
 
   const hasValue = (value: unknown): boolean => {
@@ -21,31 +21,31 @@ const dedupeChallans = (challans: any[]): any[] => {
     return String(value).trim() !== '';
   };
 
-  const mergeChallan = (base: any, incoming: any) => {
+  const mergeChallan = (base: Record<string, unknown>, incoming: Record<string, unknown>) => {
     const merged = { ...base };
 
     Object.entries(incoming || {}).forEach(([key, value]) => {
-      const existing = (merged as any)[key];
+      const existing = merged[key];
       if (!hasValue(existing) && hasValue(value)) {
-        (merged as any)[key] = value;
+        merged[key] = value;
       }
     });
 
     return merged;
   };
 
-  const getDedupKey = (challan: any): string => {
+  const getDedupKey = (challan: Record<string, unknown>): string => {
     const challanNumber = String(challan?.challan_number || challan?.challan_no || '').trim().toUpperCase();
     if (challanNumber) return `number:${challanNumber}`;
 
     const challanDate = String(challan?.challan_date_time || challan?.challan_date || '').trim();
     const amount = String(challan?.amount ?? challan?.challan_amount ?? '').trim();
-    const status = normalizeChallanStatus(challan?.challan_status);
+    const status = normalizeChallanStatus(challan?.challan_status as string | undefined);
     return `fallback:${challanDate}|${amount}|${status}`;
   };
 
-  const deduped = new Map<string, any>();
-  challans.forEach((challan: any) => {
+  const deduped = new Map<string, Record<string, unknown>>();
+  challans.forEach((challan: Record<string, unknown>) => {
     const key = getDedupKey(challan);
     const existing = deduped.get(key);
     deduped.set(key, existing ? mergeChallan(existing, challan) : challan);
@@ -62,16 +62,86 @@ serve(async (req) => {
   try {
     const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey())
 
-    const { client_id, employee_id, is_super_admin } = await req.json()
-    
+    const { client_id, employee_id, is_super_admin, action } = await req.json()
+
     if (!client_id) {
       return new Response(
         JSON.stringify({ error: 'client_id is required' }),
-        { 
+        {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400 
+          status: 400
         }
       )
+    }
+
+    if (action === 'facility_risk_matrix') {
+      const { data: incidents, error } = await supabase
+        .from('incidents')
+        .select('id, facility_id, priority_id, facilities!inner(id, name), incident_priorities!inner(id, name, weight)')
+        .eq('client_id', client_id);
+      if (error) throw error;
+
+      const facilityMap = new Map<string, Record<string, number>>();
+      for (const inc of incidents ?? []) {
+        const f = (inc as Record<string, unknown>).facilities as { name: string } | null;
+        const p = (inc as Record<string, unknown>).incident_priorities as { name: string; weight?: number } | null;
+        if (!f || !p) continue;
+        if (!facilityMap.has(f.name)) {
+          facilityMap.set(f.name, { Critical: 0, High: 0, Medium: 0, Low: 0, total: 0, riskScore: 0 });
+        }
+        const row = facilityMap.get(f.name);
+        row[p.name] = (row[p.name] || 0) + 1;
+        row.total += 1;
+        row.riskScore += p.weight || 1;
+      }
+
+      const result = Array.from(facilityMap.entries())
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => b.riskScore - a.riskScore);
+
+      return new Response(JSON.stringify({ data: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    if (action === 'category_impact') {
+      const { data: incidents, error } = await supabase
+        .from('incidents')
+        .select('id, category_id, subcategory_id, incident_categories!inner(id, name), incident_subcategories(id, name)')
+        .eq('client_id', client_id);
+      if (error) throw error;
+
+      const categoryMap = new Map<string, any>();
+      for (const inc of incidents ?? []) {
+        const cat = (inc as any).incident_categories;
+        if (!cat) continue;
+        if (!categoryMap.has(cat.name)) {
+          categoryMap.set(cat.name, { name: cat.name, value: 0, subcategories: new Map() });
+        }
+        const row = categoryMap.get(cat.name);
+        row.value += 1;
+        const sub = (inc as any).incident_subcategories;
+        if (sub?.name) {
+          row.subcategories.set(sub.name, (row.subcategories.get(sub.name) || 0) + 1);
+        }
+      }
+
+      const result = Array.from(categoryMap.values())
+        .map(c => ({
+          name: c.name,
+          value: c.value,
+          subcategories: Array.from(c.subcategories.entries())
+            .map(([name, count]: [string, number]) => ({ name, count }))
+            .sort((a: any, b: any) => b.count - a.count)
+            .slice(0, 3),
+        }))
+        .sort((a, b) => b.value - a.value);
+
+      return new Response(JSON.stringify({ data: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
     }
 
     // Validate IP whitelist
@@ -302,12 +372,15 @@ serve(async (req) => {
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
 
-    // Get all unacknowledged form submissions for the client
+    // Get all pending form submissions for the client.
+    // Filtered by status (not acknowledged_at) to match the Grievances module's own
+    // pending count in fetch-form-submissions — the two columns can drift out of sync,
+    // and status is the field the module treats as authoritative.
     const { data: allUnacknowledgedSubmissions, error: allSubmissionsError } = await supabase
       .from('form_submissions')
       .select('id, created_at')
       .eq('client_id', client_id)
-      .is('acknowledged_at', null)
+      .eq('status', 'pending')
 
     if (allSubmissionsError) {
       console.error('Error fetching all unacknowledged submissions:', allSubmissionsError)
@@ -316,7 +389,7 @@ serve(async (req) => {
       .from('form_submissions')
       .select('id', { count: 'exact', head: true })
       .eq('client_id', client_id)
-      .not('acknowledged_at', 'is', null)
+      .eq('status', 'acknowledged')
     
     if (acknowledgedError) {
       console.error('Error fetching acknowledged submissions:', acknowledgedError)

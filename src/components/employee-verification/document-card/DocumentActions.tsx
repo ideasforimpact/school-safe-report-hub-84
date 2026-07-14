@@ -142,11 +142,11 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       });
 
       onVerificationUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Processing error:', error);
       toast({
         title: 'API Check Failed',
-        description: error.message || 'Failed to process document. Please try again.',
+        description: (error instanceof Error && error.message) || 'Failed to process document. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -196,9 +196,9 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         setManualConsentOpen(false);
         setConsentSuccess(null);
       }, 900);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Manual verification error:', error);
-      toast({ title: 'Verification Failed', description: error.message || 'Failed to verify document.', variant: 'destructive' });
+      toast({ title: 'Verification Failed', description: (error instanceof Error && error.message) || 'Failed to verify document.', variant: 'destructive' });
     } finally {
       setIsVerifying(false);
     }
@@ -246,9 +246,9 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         setManualConsentOpen(false);
         setConsentSuccess(null);
       }, 900);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Rejection error:', error);
-      toast({ title: 'Rejection Failed', description: error.message || 'Failed to reject document.', variant: 'destructive' });
+      toast({ title: 'Rejection Failed', description: (error instanceof Error && error.message) || 'Failed to reject document.', variant: 'destructive' });
     } finally {
       setIsVerifying(false);
     }

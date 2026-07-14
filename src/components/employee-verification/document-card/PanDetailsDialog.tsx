@@ -20,10 +20,25 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface PanData {
+  pan_number?: string;
+  full_name?: string;
+  masked_aadhaar?: string;
+  gender?: string;
+  dob?: string;
+  aadhaar_linked?: boolean;
+  status?: string;
+  profile_image?: string;
+}
+
 interface PanDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  panDetails: any;
+  panDetails: {
+    data?: PanData;
+    profile_image?: string;
+    [key: string]: unknown;
+  };
   documentId?: string;
   onVerificationUpdate?: () => void;
   readOnly?: boolean;
@@ -69,7 +84,7 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
   
   // Render profile image if provided by provider
   const profileImageSrc = (() => {
-    const value = (panDetails?.data as any)?.profile_image || (panDetails as any)?.profile_image;
+    const value = panDetails?.data?.profile_image || panDetails?.profile_image;
     if (!value || typeof value !== 'string') return undefined;
     if (value.startsWith('http') || value.startsWith('https') || value.startsWith('data:')) return value;
     return `data:image/jpeg;base64,${value}`;

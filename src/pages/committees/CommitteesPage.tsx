@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
-import { Users, User, Plus, Search, Pencil, Eye, CalendarPlus, List, X, Trash2 } from 'lucide-react';
+import { Users, User, Plus, Pencil, Eye, CalendarPlus, List, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,17 +29,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts';
-import { supabase } from '@/integrations/supabase/client';
 import SearchMultiSelect, { SearchMultiSelectOption } from '@/components/common/SearchMultiSelect';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
@@ -58,7 +52,8 @@ import {
   createCommitteeEvent,
   deleteCommitteeAttachment,
   fetchCommitteeById,
-  fetchCommitteeMemberRoles,
+  fetchCommitteeFormData,
+  fetchAllCommitteeMembers,
   fetchCommitteeMembers,
   fetchCommittees,
   updateCommittee,
@@ -105,8 +100,10 @@ const CommitteesPage = () => {
   const [committeeMemberIdsByCommittee, setCommitteeMemberIdsByCommittee] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [memberFilterId, setMemberFilterId] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 10 as const;
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCommittee, setEditingCommittee] = useState<Committee | null>(null);
@@ -148,36 +145,29 @@ const CommitteesPage = () => {
   const [committeeEvents, setCommitteeEvents] = useState<CommitteeEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
 
-  const loadCommittees = useCallback(async () => {
+  const loadCommittees = useCallback(async (page: number, search: string) => {
     if (!clientId) {
       setCommittees([]);
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
-      const data = await fetchCommittees(clientId);
-      const committeesSortedByUpdatedDate = [...data].sort((a, b) => {
-        const aTime = new Date(a.updated_at).getTime();
-        const bTime = new Date(b.updated_at).getTime();
-        return bTime - aTime;
-      });
-      setCommittees(committeesSortedByUpdatedDate);
-      if (committeesSortedByUpdatedDate.length === 0) {
+      const result = await fetchCommittees({ clientId, page, pageSize, search });
+      setCommittees(result.committees);
+      setTotalPages(result.totalPages);
+      setTotalCount(result.totalCount);
+
+      if (result.committees.length === 0) {
         setCommitteeMemberIdsByCommittee({});
       } else {
-        const memberEntries = await Promise.all(
-          committeesSortedByUpdatedDate.map(async (committee) => {
-            try {
-              const members = await fetchCommitteeMembers(committee.id, clientId);
-              return [committee.id, members.map((member) => member.employee_id)] as const;
-            } catch {
-              return [committee.id, []] as const;
-            }
-          })
-        );
-        setCommitteeMemberIdsByCommittee(Object.fromEntries(memberEntries));
+        const allMembers = await fetchAllCommitteeMembers(clientId);
+        const membersByCommittee: Record<string, string[]> = {};
+        for (const member of allMembers) {
+          if (!membersByCommittee[member.committee_id]) membersByCommittee[member.committee_id] = [];
+          membersByCommittee[member.committee_id].push(member.employee_id);
+        }
+        setCommitteeMemberIdsByCommittee(membersByCommittee);
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to load committees');
@@ -188,95 +178,36 @@ const CommitteesPage = () => {
     }
   }, [clientId]);
 
-  const loadEmployees = useCallback(async () => {
-    if (!clientId) {
-      setEmployees([]);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('employees')
-      .select('id, first_name, last_name')
-      .eq('client_id', clientId)
-      .eq('status', true)
-      .order('first_name', { ascending: true });
-
-    if (error) {
-      setEmployees([]);
-      return;
-    }
-
-    // Some clients store employee status in non-boolean formats. Fallback to all employees.
-    const employeeRowsSource =
-      (data || []).length > 0
-        ? (data || [])
-        : (
-            await supabase
-              .from('employees')
-              .select('id, first_name, last_name')
-              .eq('client_id', clientId)
-              .order('first_name', { ascending: true })
-          ).data || [];
-
-    const rows = employeeRowsSource.map((employee: any) => ({
-      id: employee.id,
-      name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'Unnamed Employee',
-    }));
-    setEmployees(rows);
+  // Load employees + member roles from the edge function — cached after first call, so
+  // clicking create/edit multiple times only fires one network request ever.
+  const loadDialogData = useCallback(async () => {
+    if (!clientId) return;
+    const formData = await fetchCommitteeFormData(clientId);
+    setEmployees(formData.employees);
+    setMemberRoles(formData.memberRoles);
   }, [clientId]);
 
-  const loadMemberRoles = useCallback(async () => {
-    try {
-      const roles = await fetchCommitteeMemberRoles();
-      setMemberRoles(roles);
-    } catch {
-      setMemberRoles([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadCommittees();
-    loadEmployees();
-    loadMemberRoles();
-  }, [loadCommittees, loadEmployees, loadMemberRoles]);
-
-  const filteredCommittees = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    return committees.filter((committee) => {
-      const matchesCommitteeName =
-        query.length === 0 ||
-        committee.name.toLowerCase().includes(query) ||
-        (committee.description || '').toLowerCase().includes(query);
-      const memberIds = committeeMemberIdsByCommittee[committee.id] || [];
-      const matchesMember = memberFilterId === 'all' || memberIds.includes(memberFilterId);
-      return matchesCommitteeName && matchesMember;
-    });
-  }, [committees, searchTerm, committeeMemberIdsByCommittee, memberFilterId]);
-
-  const activeCommitteeFilterCount = useMemo(() => {
-    let count = 0;
-    if (searchTerm.trim()) count += 1;
-    if (memberFilterId !== 'all') count += 1;
-    return count;
-  }, [searchTerm, memberFilterId]);
-
-  const pageSize = 10;
-  const totalPages = filteredCommittees.length > 0 ? Math.ceil(filteredCommittees.length / pageSize) : 1;
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * pageSize;
-  const paginatedCommittees = filteredCommittees.slice(startIndex, startIndex + pageSize);
-
-  useEffect(() => {
+  // Reset to page 1 when search changes. DebouncedSearchInput debounces the
+  // keystrokes itself before calling this.
+  const handleSearchChange = (value: string) => {
     setCurrentPage(1);
-  }, [searchTerm, memberFilterId]);
-
-  const goToPreviousPage = () => {
-    setCurrentPage((prev) => Math.max(1, prev - 1));
+    setSearchTerm(value);
   };
 
-  const goToNextPage = () => {
-    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
-  };
+  useEffect(() => {
+    loadCommittees(currentPage, searchTerm);
+  }, [loadCommittees, currentPage, searchTerm]);
+
+  // Employee names (for the members hover card) are cached after first load — load them
+  // on page init rather than waiting for the user to open the create/edit dialog, otherwise
+  // the member list shows "Member names unavailable" until a dialog has been opened once.
+  useEffect(() => {
+    loadDialogData();
+  }, [loadDialogData]);
+
+  const activeCommitteeFilterCount = searchTerm.trim() ? 1 : 0;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
 
   const resetForm = () => {
     setName('');
@@ -300,6 +231,7 @@ const CommitteesPage = () => {
       return;
     }
     resetForm();
+    loadDialogData();
     setOpenDialog(true);
   };
 
@@ -311,6 +243,7 @@ const CommitteesPage = () => {
     setEditingCommittee(committee);
     setName(committee.name);
     setDescription(committee.description || '');
+    loadDialogData();
     if (clientId) {
       try {
         const [members, committeeDetails] = await Promise.all([
@@ -418,7 +351,7 @@ const CommitteesPage = () => {
 
       setOpenDialog(false);
       resetForm();
-      await loadCommittees();
+      await loadCommittees(currentPage, searchTerm);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save committee');
     } finally {
@@ -695,15 +628,13 @@ const CommitteesPage = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Filter by committee name..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+            <DebouncedSearchInput
+              value={searchTerm}
+              onChange={handleSearchChange}
+              placeholder="Filter by committee name..."
+              delay={400}
+              className="w-full max-w-sm"
+            />
             {activeCommitteeFilterCount > 0 && (
               <Button
                 type="button"
@@ -711,7 +642,8 @@ const CommitteesPage = () => {
                 className="inline-flex items-center gap-2"
                 onClick={() => {
                   setSearchTerm('');
-                  setMemberFilterId('all');
+                  setDebouncedSearch('');
+                  setCurrentPage(1);
                 }}
               >
                 <X className="h-4 w-4" />
@@ -737,7 +669,7 @@ const CommitteesPage = () => {
 
           {loading ? (
             <Loader text="Loading committees..."/>
-          ) : filteredCommittees.length === 0 ? (
+          ) : committees.length === 0 ? (
             <div className="text-center py-12 text-gray-500">No committees found</div>
           ) : (
             <div className="overflow-x-auto rounded-md border border-gray-200">
@@ -753,7 +685,7 @@ const CommitteesPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedCommittees.map((committee) => (
+                  {committees.map((committee) => (
                     <TableRow key={committee.id}>
                       <TableCell className="font-medium">{committee.name}</TableCell>
                       <TableCell>{renderMembersIndicator(committee)}</TableCell>
@@ -809,37 +741,16 @@ const CommitteesPage = () => {
             </div>
           )}
         </div>
-        {filteredCommittees.length > pageSize && (
-          <div className="flex justify-center mt-4 pb-6">
-            <Pagination>
-              <PaginationContent className="flex items-center gap-3">
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={goToPreviousPage}
-                    className={
-                      safeCurrentPage === 1
-                        ? 'pointer-events-none opacity-50'
-                        : 'cursor-pointer'
-                    }
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                    {safeCurrentPage} of {totalPages}
-                  </span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={goToNextPage}
-                    className={
-                      safeCurrentPage === totalPages
-                        ? 'pointer-events-none opacity-50'
-                        : 'cursor-pointer'
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+        {totalCount > pageSize && (
+          <div className="pb-6">
+            <TablePaginationBar
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              itemLabel="committees"
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>

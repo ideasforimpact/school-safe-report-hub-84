@@ -3,52 +3,17 @@ import { AssessmentAuditLogEntry, AssessmentAuditLogEntryWithUser } from '@/type
 
 export const assessmentAuditLogService = {
   async getAuditLogs(assessmentId: string): Promise<AssessmentAuditLogEntryWithUser[]> {
-    // First get the audit logs
-    const { data: auditData, error: auditError } = await supabase
-      .from('assessment_audit_log')
-      .select('*')
-      .eq('assessment_id', assessmentId)
-      .order('changed_at', { ascending: false });
+    const { data, error } = await supabase.functions.invoke('list-assessments', {
+      body: { assessment_id: assessmentId },
+      headers: { path: 'audit-logs' },
+    });
 
-    if (auditError) {
-      console.error('Failed to fetch assessment audit logs:', auditError);
-      throw auditError;
+    if (error) {
+      console.error('Failed to fetch assessment audit logs:', error);
+      throw error;
     }
 
-    if (!auditData || auditData.length === 0) {
-      return [];
-    }
-
-    // Get unique user IDs
-    const userIds = [...new Set(auditData.map(log => log.changed_by).filter(Boolean))];
-
-    // Fetch user details
-    const { data: userData, error: userError } = await supabase
-      .from('employees')
-      .select('user_id, first_name, last_name, email')
-      .in('user_id', userIds);
-
-    if (userError) {
-      console.warn('Failed to fetch user details:', userError);
-    }
-
-    // Create a user lookup map
-    const userMap = new Map();
-    if (userData) {
-      userData.forEach(user => {
-        userMap.set(user.user_id, {
-          first_name: user.first_name,
-          last_name: user.last_name,
-          email: user.email
-        });
-      });
-    }
-
-    // Combine audit logs with user data
-    return auditData.map(log => ({
-      ...log,
-      changed_by_user: log.changed_by ? userMap.get(log.changed_by) : undefined
-    })) as AssessmentAuditLogEntryWithUser[];
+    return (data?.logs || []) as AssessmentAuditLogEntryWithUser[];
   },
 
   async createAuditLog(entry: Omit<AssessmentAuditLogEntry, 'id' | 'changed_at'>): Promise<string> {

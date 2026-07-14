@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { getEmployeeByUserIdFromApi } from '@/services/employee/employeeRetrievalService';
@@ -12,7 +12,7 @@ export const useSupabaseAuth = () => {
   const [loading, setLoading] = useState(true);
   const location = useLocation();
 
-  const fetchEmployeeData = async (userId: string) => {
+  const fetchEmployeeData = useCallback(async (userId: string) => {
     try {
       const employee = await getEmployeeByUserIdFromApi(userId, location.pathname);
       
@@ -34,7 +34,7 @@ export const useSupabaseAuth = () => {
       console.error('Error fetching employee data:', error);
       setEmployeeData(null);
     }
-  };
+  }, [location.pathname]);
 
   useEffect(() => {
     // Get initial session
@@ -68,7 +68,7 @@ export const useSupabaseAuth = () => {
     );
 
     return () => subscription.unsubscribe();
-  }, [location.pathname]);
+  }, [location.pathname, fetchEmployeeData]);
 
   return {
     user,

@@ -48,7 +48,7 @@ serve(async (req) => {
     // Server-driven immediate processing: invoke the consumer after enqueue.
     // This keeps queue durability while providing near real-time UX.
     try {
-      await (supabaseAdmin as any).functions.invoke('backoffice-document-verification-queue-consumer', {
+      await supabaseAdmin.functions.invoke('backoffice-document-verification-queue-consumer', {
         body: { qty: 25, vt: 30 },
       });
     } catch (consumeErr) {

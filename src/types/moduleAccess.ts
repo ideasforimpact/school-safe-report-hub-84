@@ -6,7 +6,7 @@ export interface ModuleAccessItem {
   module_id: string;
   level?: {
     is_admin?: boolean;
-    [key: string]: any;
+    [key: string]: boolean | string | number | null | undefined;
   };
   enabled: boolean,
 }

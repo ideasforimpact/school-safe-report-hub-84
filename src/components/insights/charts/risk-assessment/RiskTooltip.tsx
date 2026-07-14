@@ -3,9 +3,18 @@ import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { getRiskColor, getRiskLevel } from './riskUtils';
 
+interface RiskTooltipPayloadEntry {
+  payload: {
+    name: string;
+    frequency: number;
+    severity: number;
+    count: number;
+  };
+}
+
 interface RiskTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: RiskTooltipPayloadEntry[];
 }
 
 const RiskTooltip: React.FC<RiskTooltipProps> = ({ active, payload }) => {

@@ -116,8 +116,8 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
       toast.success('Signoff request submitted successfully');
       onOpenChange(false);
       onSuccess?.();
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to submit signoff request');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to submit signoff request');
     } finally {
       setSubmitting(false);
     }

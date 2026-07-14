@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -102,6 +102,8 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   const [studentIdValidationMessage, setStudentIdValidationMessage] = useState<string>('');
   
   const debouncedStudentId = useDebounce(studentIdInput, 500);
+  const lastValidatedId = useRef<string | null>(null);
+  const fetchStructureInProgress = useRef(false);
   const { employeeData } = useAuth();
   
   // Prepare default values with peopleInvolved data if available
@@ -151,6 +153,12 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         return;
       }
 
+      // Avoid duplicate validation for the same ID
+      if (debouncedStudentId === lastValidatedId.current) {
+        return;
+      }
+
+      lastValidatedId.current = debouncedStudentId;
       setIsCheckingStudentId(true);
       try {
         const exists = await checkStudentIdExists(debouncedStudentId, employeeData.clientId);
@@ -195,47 +203,26 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   // after submit/save when defaultValues may change, which was causing a
   // brief "Loading educational structure data..." flash.
     const fetchEducationalStructure = useCallback(async () => {
-      if (!employeeData?.clientId) {
-        console.log('No client ID available, skipping data fetch');
-        setDataLoading(false);
+      if (!employeeData?.clientId || fetchStructureInProgress.current) {
+        console.log('Skipping educational structure fetch: No clientId or fetch already in progress');
+        if (!employeeData?.clientId) setDataLoading(false);
         return;
       }
 
+      fetchStructureInProgress.current = true;
       setDataLoading(true);
       try {
         console.log('Fetching educational structure for client:', employeeData.clientId);
         
-        const clientTypeId = employeeData.clientType?.id;
-
-        // Fetch campuses filtered by client_id and client_type_id
-        let campusQuery = supabase
-          .from('campuses')
-          .select('id, name')
-          .eq('client_id', employeeData.clientId);
-        if (clientTypeId) campusQuery = campusQuery.eq('client_type_id', clientTypeId);
-        const { data: campusData, error: campusError } = await campusQuery;
-
-        if (campusError) throw campusError;
-
-        // Fetch grades filtered by client_id and client_type_id
-        let gradeQuery = supabase
-          .from('grades')
-          .select('id, name, campus_id')
-          .eq('client_id', employeeData.clientId);
-        if (clientTypeId) gradeQuery = gradeQuery.eq('client_type_id', clientTypeId);
-        const { data: gradeData, error: gradeError } = await gradeQuery;
-
-        if (gradeError) throw gradeError;
-
-        // Fetch sections filtered by client_id and client_type_id
-        let sectionQuery = supabase
-          .from('sections')
-          .select('id, name, grade_id')
-          .eq('client_id', employeeData.clientId);
-        if (clientTypeId) sectionQuery = sectionQuery.eq('client_type_id', clientTypeId);
-        const { data: sectionData, error: sectionError } = await sectionQuery;
+        // Use consolidated edge function instead of multiple direct queries
+        const { data, error } = await supabase.functions.invoke('student-management', {
+          body: { client_id: employeeData.clientId },
+          headers: { path: 'get-form-data' }
+        });
         
-        if (sectionError) throw sectionError;
+        if (error) throw error;
+        
+        const { campuses: campusData, grades: gradeData, sections: sectionData } = data;
         
         console.log('Fetched data:', { campusData, gradeData, sectionData });
         
@@ -296,13 +283,14 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         toast.error('Failed to load educational structure data');
       } finally {
         setDataLoading(false);
+        fetchStructureInProgress.current = false;
       }
     }, [employeeData?.clientId, defaultValues, form]);
 
     useEffect(() => {
       fetchEducationalStructure();
     }, [fetchEducationalStructure]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
 
   // Filter grades based on selected campus
   useEffect(() => {
@@ -335,7 +323,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   // Filter sections based on selected grade
   useEffect(() => {
     if (selectedGrade) {
-      const gradeObj = grades.find(g => g.name === selectedGrade);
+      const gradeObj = filteredGrades.find(g => g.name === selectedGrade);
       if (gradeObj) {
         setSelectedGradeId(gradeObj.id);
         form.setValue('gradeId', gradeObj.id);
@@ -354,7 +342,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
       setSelectedGradeId('');
       form.setValue('gradeId', '');
     }
-  }, [selectedGrade, grades, sections, form, defaultValues]);
+  }, [selectedGrade, grades, sections, form, defaultValues, filteredGrades]);
 
   // Custom form submission handler
   const handleFormSubmit = (data: FormValues) => {
@@ -622,8 +610,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
               Cancel
             </Button>
             <Button 
-              type="button" 
-              onClick={() => form.handleSubmit(handleFormSubmit)()}
+              type="submit" 
               disabled={
                 isSubmitting || 
                 studentIdExists || 
@@ -651,7 +638,6 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
             </Button>
             <Button 
               type="submit" 
-              onClick={() => form.handleSubmit(handleFormSubmit)()}
               disabled={
                 isSubmitting || 
                 studentIdExists || 

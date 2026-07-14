@@ -1,28 +1,25 @@
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 
 interface VehicleSearchBarProps {
   searchQuery: string;
   setSearchQuery: (value: string) => void;
 }
 
-const VehicleSearchBar: React.FC<VehicleSearchBarProps> = ({ 
-  searchQuery, 
-  setSearchQuery 
+const VehicleSearchBar: React.FC<VehicleSearchBarProps> = ({
+  searchQuery,
+  setSearchQuery
 }) => {
   return (
-    <div className="relative w-full md:w-[280px] lg:w-[320px]">
-      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-      <Input
-        placeholder="Search vehicles by registration or model..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="pl-8"
-        maxLength={50}
-      />
-    </div>
+    <DebouncedSearchInput
+      value={searchQuery}
+      onChange={setSearchQuery}
+      placeholder="Search vehicles by registration or model..."
+      className="w-full md:w-[280px] lg:w-[320px]"
+      maxLength={50}
+      triggerOnEnter
+    />
   );
 };
 

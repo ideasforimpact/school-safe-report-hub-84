@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Incident } from '@/contexts/IncidentContext';
 import CategoryChartWrapper from './charts/CategoryChartWrapper';
 import StatusBlocksWrapper from './charts/StatusBlocksWrapper';
 import IncidentTypeChart from './charts/IncidentTypeChart';
@@ -18,7 +19,7 @@ interface OverviewTabProps {
   statusData: Array<{name: string, value: number}>;
   timeSeriesData: Array<{month: string, count: number}>;
   colors: string[];
-  filteredIncidents: any[];
+  filteredIncidents: Incident[];
 }
 
 const OverviewTab: React.FC<OverviewTabProps> = ({

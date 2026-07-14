@@ -32,7 +32,7 @@ export const useRealtimeClientIntegrationSync = () => {
       console.log('[useRealtimeClientIntegrationSync] Refreshing client_integration for client:', clientId);
       
       // Refetch client_integration data using RPC function
-      const { data: integrationData, error: integrationError } = await (supabase as any)
+      const { data: integrationData, error: integrationError } = await (supabase as unknown as { rpc: (fn: string, args: Record<string, string>) => Promise<{ data: ClientIntegration[] | null; error: { message?: string } | null }> })
         .rpc('get_client_integration_for_auth', { p_client_id: clientId });
 
       if (integrationError) {
@@ -43,7 +43,7 @@ export const useRealtimeClientIntegrationSync = () => {
       // Transform the integration data
       const clientIntegration: ClientIntegration[] | null = 
         Array.isArray(integrationData) && integrationData.length > 0
-        ? integrationData.map((item: any) => ({
+        ? integrationData.map((item: ClientIntegration) => ({
             id: item.id,
             client_id: item.client_id,
             target_client_id: item.target_client_id,

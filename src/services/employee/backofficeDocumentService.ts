@@ -26,7 +26,7 @@ export interface UpdateVerificationHistoryRequest {
   documentId: string;
   clientId: string;
   employeeId: string;
-  verificationHistory: any[];
+  verificationHistory: unknown[];
 }
 
 export interface BackofficeManualVerifyRequest {
@@ -244,9 +244,9 @@ export const backofficeDocumentService = {
       };
 
       // Get existing params or initialize - properly type cast the params
-      const existingParams = (document.params as Record<string, any>) || {};
-      const verificationHistory = existingParams.verification_history || [];
-      
+      const existingParams = (document.params as Record<string, unknown>) || {};
+      const verificationHistory = (existingParams.verification_history as unknown[]) || [];
+
       // Add new entry to verification history
       const updatedParams = {
         ...existingParams,
@@ -314,8 +314,8 @@ export const backofficeDocumentService = {
       }
 
       // Get existing params or initialize
-      const existingParams = (document.params as Record<string, any>) || {};
-      
+      const existingParams = (document.params as Record<string, unknown>) || {};
+
       // Update params with new verification history
       const updatedParams = {
         ...existingParams,
@@ -374,7 +374,7 @@ export const backofficeDocumentService = {
       console.log('File uploaded successfully to storage:', data.path);
       
       // Construct the full public URL
-      const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+      const base = (import.meta as Record<string, unknown> & { env?: Record<string, string> }).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
       const normalizedBase = base.replace(/\/$/, '');
       const publicUrl = `${normalizedBase}/employee_other_type_statement/${data.path}`;
       console.log('Generated public URL:', publicUrl);

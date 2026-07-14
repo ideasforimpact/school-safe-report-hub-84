@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { incidentReferenceService } from "./incidentReferenceService";
+import { invokeIncidentConfig } from "@/components/incident/incidentConfigurationEdgeService";
 
 export interface CategoryItem {
   id: string;
@@ -39,7 +40,7 @@ export const categoryService = {
       }
 
       return data && data.length > 0;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking duplicate category:', error);
       return false;
     }
@@ -66,7 +67,7 @@ export const categoryService = {
       }
 
       return data && data.length > 0;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking duplicate subcategory:', error);
       return false;
     }
@@ -78,24 +79,14 @@ export const categoryService = {
       if (!clientId) {
         throw new Error('Client ID is required');
       }
-      let query = supabase
-        .from('incident_categories')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('name');
 
-      if (clientTypeId) {
-        query = query.eq('client_type_id', clientTypeId);
-      }
-
-      const { data: categories, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      return categories as CategoryItem[];
-    } catch (error: any) {
+      return await invokeIncidentConfig<CategoryItem[]>({
+        resource: 'categories',
+        operation: 'list',
+        clientId,
+        clientTypeId,
+      });
+    } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error(`Failed to fetch categories: ${error.message}`);
       return [];
@@ -118,10 +109,11 @@ export const categoryService = {
       if (isDuplicate) {
         throw new Error('A category with this name already exists');
       }
+
       const { data, error } = await supabase
         .from('incident_categories')
         .insert([
-          { name: trimmedName, description: description || null, client_id: clientId, is_active: true, client_type_id: clientTypeId || null }
+          { name: trimmedName, description: description || null, client_id: clientId, client_type_id: clientTypeId || null, is_active: true }
         ])
         .select();
 
@@ -130,7 +122,7 @@ export const categoryService = {
       }
 
       return data[0] as CategoryItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding category:', error);
       toast.error(`Failed to add category: ${error.message}`);
       throw error;
@@ -165,7 +157,7 @@ export const categoryService = {
       }
 
       return data[0] as CategoryItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating category:', error);
       toast.error(`Failed to update category: ${error.message}`);
       throw error;
@@ -215,7 +207,7 @@ export const categoryService = {
 
       console.log('Category deleted successfully');
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting category:', error);
       // Don't show toast here - let the UI component handle the error display
       throw error;
@@ -228,27 +220,15 @@ export const categoryService = {
       if (!clientId) {
         throw new Error('Client ID is required');
       }
-      
-      let query = supabase
-        .from('incident_subcategories')
-        .select('*')
-        .eq('client_id', clientId);
-      
-      if (categoryId) {
-        query = query.eq('category_id', categoryId);
-      }
 
-      if (clientTypeId) {
-        query = query.eq('client_type_id', clientTypeId);
-      }
-      const { data: subcategories, error } = await query.order('name');
-
-      if (error) {
-        throw error;
-      }
-
-      return subcategories as SubcategoryItem[];
-    } catch (error: any) {
+      return await invokeIncidentConfig<SubcategoryItem[]>({
+        resource: 'subcategories',
+        operation: 'list',
+        clientId,
+        clientTypeId,
+        categoryId,
+      });
+    } catch (error) {
       console.error('Error fetching subcategories:', error);
       toast.error(`Failed to fetch subcategories: ${error.message}`);
       return [];
@@ -280,8 +260,8 @@ export const categoryService = {
             category_id: categoryId,
             description: description || null,
             client_id: clientId,
-            is_active: true,
-            client_type_id: clientTypeId || null
+            client_type_id: clientTypeId || null,
+            is_active: true
           }
         ])
         .select();
@@ -291,7 +271,7 @@ export const categoryService = {
       }
 
       return data[0] as SubcategoryItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding subcategory:', error);
       toast.error(`Failed to add subcategory: ${error.message}`);
       throw error;
@@ -332,8 +312,8 @@ export const categoryService = {
         }
       }
 
-      let updateData: any = { name: trimmedName, description: description || null };
-      
+      const updateData: { name: string; description: string | null; category_id?: string } = { name: trimmedName, description: description || null };
+
       if (categoryId) {
         updateData.category_id = categoryId;
       }
@@ -354,7 +334,7 @@ export const categoryService = {
       }
 
       return data[0] as SubcategoryItem;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating subcategory:', error);
       toast.error(`Failed to update subcategory: ${error.message}`);
       throw error;
@@ -385,7 +365,7 @@ export const categoryService = {
       }
 
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting subcategory:', error);
       // Don't show toast here - let the UI component handle the error display
       throw error;

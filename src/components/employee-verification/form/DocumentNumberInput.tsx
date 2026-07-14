@@ -106,7 +106,7 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
           placeholder: 'TN38 20230008943',
           // 22 covers longest old-slash format: F/TN/040/1234567/2004 = 21 chars
           maxLength: 22,
-          format: (val: string) => val.toUpperCase().replace(/[^A-Z0-9\s\/-]/g, ''),
+          format: (val: string) => val.toUpperCase().replace(/[^A-Z0-9\s/-]/g, ''),
           validate: (val: string) =>
             DRIVING_LICENSE_PATTERNS.some(p => p.test(val.toUpperCase()))
         };
@@ -153,7 +153,7 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
     if (documentType === 'aadhar') {
       inputValue = inputValue.replace(/[^\d\s]/g, '');
     } else if (documentType === 'driving_license') {
-      inputValue = inputValue.replace(/[^A-Za-z0-9\s\/-]/g, '');
+      inputValue = inputValue.replace(/[^A-Za-z0-9\s/-]/g, '');
     } else if (documentType === 'pan' || documentType === 'voter_id' || documentType === 'passport') {
       inputValue = inputValue.replace(/[^A-Za-z0-9-]/g, '');
     } else if (documentType === 'bank_account' && fieldType === 'account_number') {

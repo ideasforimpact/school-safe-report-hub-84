@@ -49,7 +49,7 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
   }, [setCurrentPage]);
 
   // Handle mouse events for hover effects
-  const onPieEnter = useCallback((_: any, index: number) => {
+  const onPieEnter = useCallback((_: unknown, index: number) => {
     // Find the actual index in the original data array
     const actualIndex = sortedData.findIndex(item => item === data[index]);
     setActiveIndex(actualIndex);

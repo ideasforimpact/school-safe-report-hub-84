@@ -43,7 +43,7 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const { toast } = useToast();
 
-  const clientId = employee.clientId || (employee as any).client_id;
+  const clientId = employee.clientId || (employee as Employee & { client_id?: string }).client_id;
 
   console.log(employee,"employeeId");
   

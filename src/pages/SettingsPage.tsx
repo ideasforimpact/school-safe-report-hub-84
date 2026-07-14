@@ -9,8 +9,7 @@ import { useAuth } from '@/contexts/auth';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
 import UserManagement from '@/pages/UserManagement';
 import StudentManagement from '@/pages/StudentManagement';
-import { EducationalStructureConfig } from '@/pages/configuration/EducationalStructureConfig';
-import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
+import { EducationalStructureTabContent } from '@/components/configuration/EducationalStructureTabContent';
 import AssessmentConfigurationContent from '@/components/configuration/AssessmentConfigurationContent';
 import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
 import GroupConfigurationContent from '@/components/configuration/GroupConfigurationContent';
@@ -19,30 +18,36 @@ import { useClientIntegration } from '@/hooks/useClientIntegration';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { useLang } from '@/hooks/useLang';
 
+const SETTINGS_TAB_VALUES = ['incident', 'assessment', 'form', 'user', 'group', 'student', 'educational'];
+
 const SettingsPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [clientType, setClientType] = useState<string | null>(null);
-  
-  const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
-          handleAddCampus, handleUpdateCampus, handleDeleteCampus,
-          handleAddClass, handleUpdateClass, handleDeleteClass,
-          handleAddSection, handleUpdateSection, handleDeleteSection,
-          handleAddFacility, handleUpdateFacility, handleDeleteFacility } = useEducationalConfigurationManagement();
-  
+
   // Check if client integration is linked
   const { isClientLinked } = useClientIntegration();
 
-  // Check for tab parameter in URL and set active tab accordingly
-  useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'form') {
-      // Don't change activeTab since that's for educational configuration
-      // The Tabs component will handle the form tab activation
-    }
-  }, [searchParams]);
+  // Mirrors the active tab into the `?tab=` URL param. AssessmentContext reads
+  // this to only fetch assessment templates while this tab is actually open —
+  // without it, `/settings` alone can't distinguish which tab is active, so
+  // opening Incident Configuration (or any other tab) was also firing the
+  // Assessment Configuration tab's template fetch.
+  const initialTabParam = searchParams.get('tab');
+  const [currentTab, setCurrentTab] = useState(
+    SETTINGS_TAB_VALUES.includes(initialTabParam ?? '') ? (initialTabParam as string) : 'incident'
+  );
+
+  const handleTabChange = (value: string) => {
+    setCurrentTab(value);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', value);
+      return next;
+    }, { replace: true });
+  };
 
   // Determine client type from employeeData or user data
   useEffect(() => {
@@ -69,7 +74,6 @@ const SettingsPage = () => {
   }, [employeeData, user]);
 
   const lang = useLang();
-  const defaultTab = searchParams.get('tab') === 'form' ? 'form' : 'incident';
 
   // Show structure tabs for all client types
   const showEducationalTabs = clientType === 'school' || clientType === 'college' || clientType === 'university' || clientType === 'educational' || clientType === 'institute' || clientType === 'work';
@@ -88,7 +92,7 @@ const SettingsPage = () => {
             </div>
           </div>
           
-          <Tabs defaultValue={defaultTab} className="w-full pl-5 pr-[25px]">
+          <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full pl-5 pr-[25px]">
             <TabsList className="mb-6">
               <TabsTrigger value="incident" className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
@@ -198,7 +202,7 @@ const SettingsPage = () => {
                     <Card className="w-full">
                       <CardHeader>
                         <CardTitle>Student Management</CardTitle>
-                        <CardDescription>Manage students in your {clientType === 'school' ? 'school' : 'institution'}</CardDescription>
+                        <CardDescription>Manage students in your institution</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <StudentManagement embedded={true} />
@@ -214,28 +218,7 @@ const SettingsPage = () => {
                       <CardDescription>{lang.structure.pageDescription}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <EducationalStructureConfig 
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        loading={loading}
-                        campuses={campuses}
-                        addCampus={handleAddCampus}
-                        updateCampus={handleUpdateCampus}
-                        deleteCampus={handleDeleteCampus}
-                        classes={classes}
-                        addClass={handleAddClass}
-                        updateClass={handleUpdateClass}
-                        deleteClass={handleDeleteClass}
-                        sections={sections}
-                        addSection={handleAddSection}
-                        updateSection={handleUpdateSection}
-                        deleteSection={handleDeleteSection}
-                        facilities={facilities}
-                        addFacility={handleAddFacility}
-                        updateFacility={handleUpdateFacility}
-                        deleteFacility={handleDeleteFacility}
-                        canCreate={!isReadOnlySwitchedContext}
-                      />
+                      <EducationalStructureTabContent canCreate={!isReadOnlySwitchedContext} />
                     </CardContent>
                   </Card>
                 </TabsContent>

@@ -29,7 +29,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   const navigate = useNavigate();
   const { createTemplate, updateTemplate, getTemplateById, refreshTemplates } = useAssessment();
   const { user, employeeData } = useAuth();
-  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id;
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id;
   
   // Form state
   const [title, setTitle] = useState('');
@@ -210,7 +210,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       if (pendingFilesForQuestion.length > 0) {
         // If there are pending files, completely replace existing files with pending files
         // Convert pending files to QuestionFile format
-        const questionFiles: any[] = pendingFilesForQuestion.map(file => ({
+        const questionFiles: (QuestionFile & { file?: File })[] = pendingFilesForQuestion.map(file => ({
           id: file.id,
           name: file.name,
           size: file.size,
@@ -343,9 +343,9 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       } else {
         navigate('/assessments/templates');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving template:', error);
-      const errorMessage = error.message || (isEditMode ? 'Failed to update template. Please try again.' : 'Failed to create template. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : (isEditMode ? 'Failed to update template. Please try again.' : 'Failed to create template. Please try again.');
       setFormError(errorMessage);
       // Don't show toast error - let the form error handle it
     } finally {

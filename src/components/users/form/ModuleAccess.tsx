@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+import { Module } from '@/store/types';
 import { Badge } from "@/components/ui/badge";
 import { Check, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -45,18 +46,18 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
       const normalize = (s?: string) => String(s || '').trim().toLowerCase();
 
       // Build indexed lookup for configured modules
-      const configuredMap: Record<string, any> = {};
-      (state.configuredModules || []).forEach((m: any) => {
-        configuredMap[normalize(m.module_id)] = m;
+      const configuredMap: Record<string, Module> = {};
+      (state.configuredModules || []).forEach((m: Module) => {
+        configuredMap[normalize(m.id)] = m;
         configuredMap[normalize(m.key)] = m;
         configuredMap[normalize(m.name)] = m;
       });
 
       // Take only enabled defaults
-      const enabledDefaults = (defaultModules || []).filter((d: any) => d.enabled);
+      const enabledDefaults = (defaultModules || []).filter((d) => d.enabled);
 
       // Map each default to configured module → produce correct ModuleAccessItem
-      const mappedDefaults: ModuleAccessItem[] = enabledDefaults.map((d: any) => {
+      const mappedDefaults: ModuleAccessItem[] = enabledDefaults.map((d) => {
         const match =
           configuredMap[normalize(d.module_id)] ||
           configuredMap[normalize(d.key)] ||
@@ -73,7 +74,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
 
       onModuleChange(mappedDefaults);
       hasAppliedDefaultsRef.current = true;
-    }, [state.configuredModules, employeeId, isSuperAdmin, isEditMode]);
+    }, [state.configuredModules, employeeId, isSuperAdmin, isEditMode, onModuleChange]);
 
   // Helper function to check if a module is selected
   const isModuleSelected = (moduleId: string): boolean => {

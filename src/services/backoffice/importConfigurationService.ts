@@ -25,43 +25,52 @@ import institutePriorities from '@/data/import-templates/institute/priorities.js
 import instituteAssessments from '@/data/import-templates/institute/assessment-templates.json';
 import instituteEduResources from '@/data/import-templates/institute/edu-resources.json';
 
-const sharedGrievanceForm = schoolForm as any;
+interface TemplateFile {
+  categories?: unknown[];
+  contributing_factors?: unknown[];
+  report_types?: unknown[];
+  priorities?: unknown[];
+}
 
-const TEMPLATES_BY_TYPE: Record<string, {
-  categories: any[];
-  contributing_factors: any[];
-  report_types: any[];
-  priorities: any[];
-  forms: any[];
-  assessment_templates: any[];
-  edu_resources: any[];
-}> = {
+const asTemplateFile = (x: unknown) => x as TemplateFile;
+
+interface ClientTypeTemplates {
+  categories: unknown[];
+  contributing_factors: unknown[];
+  report_types: unknown[];
+  priorities: unknown[];
+  forms: unknown[];
+  assessment_templates: unknown[];
+  edu_resources: unknown[];
+}
+
+const TEMPLATES_BY_TYPE: Record<string, ClientTypeTemplates> = {
   school: {
-    categories: (schoolCategories as any).categories,
-    contributing_factors: (schoolContribFactors as any).contributing_factors,
-    report_types: (schoolReportTypes as any).report_types,
-    priorities: (schoolPriorities as any).priorities,
+    categories: asTemplateFile(schoolCategories).categories,
+    contributing_factors: asTemplateFile(schoolContribFactors).contributing_factors,
+    report_types: asTemplateFile(schoolReportTypes).report_types,
+    priorities: asTemplateFile(schoolPriorities).priorities,
     forms: [schoolForm],
-    assessment_templates: schoolAssessments as any[],
-    edu_resources: schoolEduResources as any[],
+    assessment_templates: schoolAssessments as unknown[],
+    edu_resources: schoolEduResources as unknown[],
   },
   work: {
-    categories: (workCategories as any).categories,
-    contributing_factors: (workContribFactors as any).contributing_factors,
-    report_types: (workReportTypes as any).report_types,
-    priorities: (workPriorities as any).priorities,
+    categories: asTemplateFile(workCategories).categories,
+    contributing_factors: asTemplateFile(workContribFactors).contributing_factors,
+    report_types: asTemplateFile(workReportTypes).report_types,
+    priorities: asTemplateFile(workPriorities).priorities,
     forms: [],
-    assessment_templates: workAssessments as any[],
-    edu_resources: workEduResources as any[],
+    assessment_templates: workAssessments as unknown[],
+    edu_resources: workEduResources as unknown[],
   },
   institute: {
-    categories: (instituteCategories as any).categories,
-    contributing_factors: (instituteContribFactors as any).contributing_factors,
-    report_types: (instituteReportTypes as any).report_types,
-    priorities: (institutePriorities as any).priorities,
+    categories: asTemplateFile(instituteCategories).categories,
+    contributing_factors: asTemplateFile(instituteContribFactors).contributing_factors,
+    report_types: asTemplateFile(instituteReportTypes).report_types,
+    priorities: asTemplateFile(institutePriorities).priorities,
     forms: [],
-    assessment_templates: instituteAssessments as any[],
-    edu_resources: instituteEduResources as any[],
+    assessment_templates: instituteAssessments as unknown[],
+    edu_resources: instituteEduResources as unknown[],
   },
 };
 

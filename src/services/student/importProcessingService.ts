@@ -1,8 +1,11 @@
 import { toast } from 'sonner';
-import { Student } from '@/types/student';
 import { RawStudentData, ImportResult } from './types/importTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { checkBulkStudentIdDuplicates } from './studentValidationService';
+import type { Database } from '@/integrations/supabase/types';
+
+type StudentInsert = Database['public']['Tables']['students']['Insert'];
+type StudentUpdateRow = StudentInsert & { id: string };
 
 /**
  * Process the raw student data from Excel/CSV and add valid students to the system
@@ -83,8 +86,8 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
     }
     
     // Prepare arrays for bulk operations
-    const studentsToCreate: any[] = [];
-    const studentsToUpdate: any[] = [];
+    const studentsToCreate: StudentInsert[] = [];
+    const studentsToUpdate: StudentUpdateRow[] = [];
     const rowErrors: string[] = [];
     
     // Process each valid row

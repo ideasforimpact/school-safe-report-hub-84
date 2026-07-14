@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FileX, FileCheck, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBadge';
@@ -10,33 +10,26 @@ import {
   getDocumentStatus, 
   getDocumentStatusColor
 } from '@/utils/transport-safety/documentStatusUtils';
-import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
 import ChallanDetailsDialog from '../ChallanDetailsDialog';
 
 interface VehicleDocumentsCardProps {
   vehicle: Vehicle;
 }
 
-const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) => {
-  const { id: vehicleId, documents } = vehicle;
-  const [vehicleChallans, setVehicleChallans] = useState<VehicleChallans | null>(null);
-  const [showChallanDetails, setShowChallanDetails] = useState(false);
-  
-  // Fetch vehicle_challans when component mounts
-  useEffect(() => {
-    const fetchVehicleChallans = async () => {
-      if (vehicleId) {
-        try {
-          const challans = await getVehicleChallans(vehicleId);
-          setVehicleChallans(challans);
-        } catch (error) {
-          console.error('Error fetching vehicle_challans:', error);
-        }
-      }
-    };
+interface RawChallanPayload {
+  challan_details?: { challans?: unknown[] };
+  challan_data?: unknown[];
+}
 
-    fetchVehicleChallans();
-  }, [vehicleId, vehicle.verificationDate, vehicle.verificationStatus]);
+interface ChallanLogEntry {
+  data?: { status_code?: number; data?: RawChallanPayload };
+  provider?: string;
+}
+
+const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) => {
+  const { documents } = vehicle;
+  const [vehicleChallans] = useState<VehicleChallans | null>(vehicle.vehicleChallans || null);
+  const [showChallanDetails, setShowChallanDetails] = useState(false);
   
   // Check if vehicle has verification data
   const hasVerificationData = vehicle.verificationData && vehicle.verificationData.length > 0;
@@ -77,7 +70,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
     if (!logs || typeof logs !== 'object') return null;
 
     const successLogs = Object.entries(logs).filter(
-      ([_, entry]: any) => entry?.data?.status_code === 200
+      ([, entry]: [string, ChallanLogEntry]) => entry?.data?.status_code === 200
     );
 
     if (successLogs.length === 0) return null;
@@ -86,7 +79,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
       ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
     );
 
-    const [timestamp, log]: any = successLogs[0];
+    const [timestamp, log] = successLogs[0] as [string, ChallanLogEntry];
 
     return {
       timestamp,

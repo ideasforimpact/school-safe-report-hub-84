@@ -1,5 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CategoryBreakdown } from '@/hooks/useNewInsightsData';
 
@@ -11,7 +12,7 @@ interface CategoryVerticalChartProps {
 
 interface CategoryTooltipProps {
   active?: boolean;
-  payload?: Array<any>;
+  payload?: Array<Payload<number, string>>;
   label?: string;
 }
 

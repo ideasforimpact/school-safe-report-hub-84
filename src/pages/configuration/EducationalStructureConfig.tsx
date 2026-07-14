@@ -60,7 +60,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
   const lang = useLang();
   const s = lang.structure;
   const { employeeData, user } = useAuth();
-  const clientTypeKey = employeeData?.clientType?.key ?? (user as any)?.clientType?.key;
+  const clientTypeKey = employeeData?.clientType?.key ?? user?.clientType?.key;
   const isWork = clientTypeKey === 'work';
 
   // Keep track of the actual tab value to handle disabled tabs logic

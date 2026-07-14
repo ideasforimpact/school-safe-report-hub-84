@@ -1,3 +1,4 @@
+import type { Database } from '@/integrations/supabase/types';
 
 export interface RawStudentData {
   studentId?: string;
@@ -5,11 +6,11 @@ export interface RawStudentData {
   grade?: string;
   section?: string;
   campus?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ImportResult {
-  addedStudents: any[];
+  addedStudents: Database['public']['Tables']['students']['Row'][];
   successCount: number;
   errorCount: number;
   errors: string[];

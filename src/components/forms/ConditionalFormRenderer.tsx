@@ -9,10 +9,20 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormField } from '@/types/formTypes';
 import { normalizeGrievanceSubmitterFields } from '@/utils/grievanceFormFields';
+interface RendererField {
+  id: string;
+  type: string;
+  label?: string;
+  field_label?: string;
+  required?: boolean;
+  placeholder?: string;
+  options?: string[];
+  maxRating?: number;
+}
 
 interface ConditionalFormRendererProps {
-  fields: FormField[];
-  onSubmit?: (data: Record<string, any>) => void;
+  fields: RendererField[];
+  onSubmit?: (data: Record<string, unknown>) => void;
   isPreview?: boolean;
   isSubmitting?: boolean;
   clientTypeKey?: string | null;
@@ -25,7 +35,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
   isSubmitting = false,
   clientTypeKey = null,
 }) => {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
   const normalizedFields = useMemo(
     () => normalizeGrievanceSubmitterFields(fields, clientTypeKey),
@@ -36,15 +46,15 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
   useEffect(() => {
     const newVisibleFields = new Set<string>();
 
-    normalizedFields.forEach((field: any) => {
+    normalizedFields.forEach((field) => {
       // No conditional logic configured; always show
       newVisibleFields.add(field.id);
     });
 
     setVisibleFields(newVisibleFields);
-  }, [normalizedFields, formData]);
+  }, [normalizedFields]);
 
-  const handleFieldChange = (fieldId: string, value: any) => {
+  const handleFieldChange = (fieldId: string, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       [fieldId]: value
@@ -58,12 +68,15 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
     }
   };
 
-  const renderField = (field: any) => {
+  const renderField = (field: RendererField) => {
     if (!visibleFields.has(field.id)) {
       return null;
     }
 
-    const value = formData[field.id] || '';
+    const rawValue = formData[field.id];
+    const value = rawValue !== undefined && rawValue !== null ? rawValue : '';
+    const stringValue = typeof value === 'string' ? value : '';
+    const arrayValue = Array.isArray(value) ? (value as string[]) : [];
 
     // Normalize legacy field types based on label keywords
     const labelText = (field.label || field.field_label || '').toString().toLowerCase();
@@ -91,16 +104,16 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
               pattern="[0-9]{10}"
               maxLength={10}
               placeholder={field.placeholder}
-              value={value}
+              value={stringValue}
               onKeyDown={(e) => {
                 const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'];
                 if (allowed.includes(e.key)) return;
-                if (!/^[0-9]$/.test(e.key) || String(value).length >= 10) {
+                if (!/^[0-9]$/.test(e.key) || stringValue.length >= 10) {
                   e.preventDefault();
                 }
               }}
-              onBeforeInput={(e: any) => {
-                const data = e?.nativeEvent?.data as string | null;
+              onBeforeInput={(e: React.FormEvent<HTMLInputElement>) => {
+                const data = (e.nativeEvent as InputEvent).data;
                 if (data && !/^\d$/.test(data)) {
                   e.preventDefault();
                 }
@@ -110,7 +123,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
                 }
               }}
               onPaste={(e) => {
-                const text = (e.clipboardData || (window as any).clipboardData).getData('text');
+                const text = e.clipboardData.getData('text');
                 if (!/^\d+$/.test(text)) {
                   e.preventDefault();
                 }
@@ -141,7 +154,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
               inputMode="email"
               autoComplete="email"
               placeholder={field.placeholder}
-              value={value}
+              value={stringValue}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
               disabled={isSubmitting}
@@ -159,7 +172,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
             </Label>
             <Input
               id={field.id}
-              value={value}
+              value={stringValue}
               placeholder={field.placeholder}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
@@ -177,7 +190,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
             </Label>
             <TextareaWithVoice
               id={field.id}
-              value={value}
+              value={stringValue}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
               rows={3}
@@ -194,7 +207,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
             <Select
-              value={value}
+              value={stringValue}
               onValueChange={(val) => handleFieldChange(field.id, val)}
               disabled={isSubmitting}
             >

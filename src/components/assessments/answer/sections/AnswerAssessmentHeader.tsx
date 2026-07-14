@@ -4,10 +4,22 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, FileText } from 'lucide-react';
+import { AssessmentQuestion } from '@/types/assessment';
+
+interface AssessmentSummary {
+  status: string;
+  target_completion_date?: string;
+}
+
+interface TemplateSummary {
+  title: string;
+  description?: string;
+  questions?: AssessmentQuestion[];
+}
 
 interface AnswerAssessmentHeaderProps {
-  assessment: any;
-  template: any;
+  assessment: AssessmentSummary;
+  template: TemplateSummary;
   progress: number;
 }
 

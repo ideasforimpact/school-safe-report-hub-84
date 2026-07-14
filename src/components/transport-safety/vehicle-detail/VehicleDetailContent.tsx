@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
-import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { getVehicleById } from '@/services/transport-safety/vehicleService';
 import { Vehicle } from '@/types/transportSafety';
 import VehicleHeader from './VehicleHeader';
@@ -15,70 +14,50 @@ import Loader from '@/components/common/Loader';
 const VehicleDetailContent: React.FC = () => {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const { user, employeeData } = useAuth();
-  const { getVehicle: getVehicleFromContext, vehicles: contextVehicles } = useTransportSafety();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  // Fetch vehicle from database
-  const fetchVehicle = async () => {
+  useEffect(() => {
     if (!vehicleId || !clientId) {
       setLoading(false);
       setError('Missing vehicle ID or client ID');
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Fetch vehicle directly from database with client_id validation
-      // This ensures that vehicles from other clients cannot be accessed
-      const fetchedVehicle = await getVehicleById(vehicleId, clientId);
-      console.log(fetchedVehicle,"vehiclesDataApi");
-      
-      
-      if (!fetchedVehicle) {
-        setError('Vehicle not found or you do not have access to this vehicle');
-        setVehicle(null);
-      } else {
-        // Double-check that the vehicle belongs to the current client
-        if (fetchedVehicle.clientId !== clientId) {
-          setError('You do not have access to this vehicle');
+    let cancelled = false;
+
+    const fetchVehicle = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const fetchedVehicle = await getVehicleById(vehicleId, clientId);
+
+        if (cancelled) return;
+
+        if (!fetchedVehicle || fetchedVehicle.clientId !== clientId) {
+          setError('Vehicle not found or you do not have access to this vehicle');
           setVehicle(null);
         } else {
           setVehicle(fetchedVehicle);
         }
+      } catch (err) {
+        if (cancelled) return;
+        console.error('Error fetching vehicle:', err);
+        setError('Failed to load vehicle details');
+        setVehicle(null);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (err) {
-      console.error('Error fetching vehicle:', err);
-      setError('Failed to load vehicle details');
-      setVehicle(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  // Initial fetch on mount
-  useEffect(() => {
     fetchVehicle();
-  }, [vehicleId, clientId]);
 
-  // Listen to context updates (from realtime subscription or manual updates)
-  // This ensures the component updates when vehicle is updated via safety check
-  useEffect(() => {
-    if (vehicleId && clientId && contextVehicles.length > 0) {
-      const contextVehicle = getVehicleFromContext(vehicleId);
-      if (contextVehicle && contextVehicle.clientId === clientId) {
-        // Update local state with context vehicle (which has latest data from realtime)
-        // This will trigger when the vehicle is updated in the context after safety check
-        setVehicle(contextVehicle);
-      }
-    }
-  }, [vehicleId, clientId, contextVehicles, getVehicleFromContext]);
+    return () => { cancelled = true; };
+  }, [vehicleId, clientId]);
 
   // Show loading state while data is being fetched
   if (loading) {
@@ -112,7 +91,7 @@ const VehicleDetailContent: React.FC = () => {
         </div>
       </div>
 
-      <VehicleTabs vehicleId={vehicleId!} />
+      <VehicleTabs vehicleId={vehicleId!} vehicle={vehicle} />
     </div>
   );
 };

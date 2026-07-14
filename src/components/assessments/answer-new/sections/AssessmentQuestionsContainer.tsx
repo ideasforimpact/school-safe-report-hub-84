@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { HelpCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { AssessmentQuestion } from '@/types/assessment';
+import { FileItem } from '@/types/fileTypes';
 
 interface Question {
   id: string;
@@ -15,10 +17,21 @@ interface Question {
   allowAttachments?: boolean;
 }
 
+interface AnswerEntry {
+  questionId: string;
+  answer: boolean | undefined;
+  comment?: string;
+  attachments?: FileItem[];
+}
+
+interface TemplateWithQuestions {
+  questions?: AssessmentQuestion[] | unknown;
+}
+
 interface AssessmentQuestionsContainerProps {
-  template: any;
-  answers: any[];
-  onAnswerChange: (questionId: string, field: string, value: any) => void;
+  template: TemplateWithQuestions;
+  answers: AnswerEntry[];
+  onAnswerChange: (questionId: string, field: string, value: boolean | string | FileItem[]) => void;
 }
 
 const AssessmentQuestionsContainer = ({ template, answers, onAnswerChange }: AssessmentQuestionsContainerProps) => {

@@ -25,9 +25,10 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { loadAuthState } from '@/store/authPersistence';
+import type { Json } from '@/integrations/supabase/types';
 
 // Map string icon names to Lucide components
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
   AlertTriangle,
   ClipboardCheck,
@@ -52,7 +53,14 @@ interface ModuleItem {
   label: string;
   path: string;
   allowed: boolean;
-  accessLevel?: any;
+  accessLevel?: Json;
+}
+
+interface PersistedModule {
+  icon?: string;
+  url?: string;
+  name: string;
+  accessLevel?: Json;
 }
 
 let sidebarScrollPosition = 0;
@@ -130,7 +138,7 @@ const ClientModulesList = () => {
     if (sessionStorageModules && sessionStorageModules.length > 0) {
       console.log("Using modules from sessionStorage:", sessionStorageModules);
       
-      const modules = sessionStorageModules.map((module: any) => {
+      const modules = (sessionStorageModules as PersistedModule[]).map((module) => {
         const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
         const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
         

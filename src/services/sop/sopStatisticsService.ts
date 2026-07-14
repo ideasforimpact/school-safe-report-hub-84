@@ -12,7 +12,7 @@ export const getTotalSOPsCount = async (
       return 0;
     }
 
-    let query = (supabase as any)
+    let query = (supabase as unknown as typeof supabase)
       .from('sop')
       .select('id', { count: 'exact', head: true })
       .eq('client_id', clientId);
@@ -49,7 +49,7 @@ export const getTotalEmployeesInvolved = async (
     }
 
     // Step 1: Get all SOP IDs for this client
-    const { data: sops, error: sopsError } = await (supabase as any)
+    const { data: sops, error: sopsError } = await (supabase as unknown as typeof supabase)
       .from('sop')
       .select('id')
       .eq('client_id', clientId);
@@ -66,7 +66,7 @@ export const getTotalEmployeesInvolved = async (
     const sopIds = sops.map((s) => s.id);
 
     // Step 2: Get all assignments with group details for these SOPs
-    const { data: assignedData, error: assignedError } = await (supabase as any)
+    const { data: assignedData, error: assignedError } = await (supabase as unknown as typeof supabase)
       .from('sop_assigned')
       .select(`
         sop_id,
@@ -93,7 +93,7 @@ export const getTotalEmployeesInvolved = async (
     // Step 3: Calculate employee count per SOP and sum them
     const employeeCountBySopId = new Map<string, Set<string>>();
 
-    assignedData.forEach((assignment: any) => {
+    assignedData.forEach((assignment: Record<string, unknown>) => {
       const sopId = assignment.sop_id;
       const group = assignment.group;
 
@@ -108,7 +108,7 @@ export const getTotalEmployeesInvolved = async (
 
       // Add all employees from this group to the SOP's employee set
       const groupEmployees = group.group_employees || [];
-      groupEmployees.forEach((ge: any) => {
+      groupEmployees.forEach((ge: Record<string, unknown>) => {
         if (ge.employee_id) {
           employeeSet.add(ge.employee_id);
         }
@@ -142,7 +142,7 @@ export const getTotalSOPsSignedOff = async (
     }
 
     // Get all SOP IDs for this client
-    const { data: sops, error: sopsError } = await (supabase as any)
+    const { data: sops, error: sopsError } = await (supabase as unknown as typeof supabase)
       .from('sop')
       .select('id')
       .eq('client_id', clientId);
@@ -168,7 +168,7 @@ export const getTotalSOPsSignedOff = async (
 
     for (const sopId of sopIds) {
       // Get unique employees who have signed off for this SOP
-      const { data: signoffRequests, error: signoffError } = await (supabase as any)
+      const { data: signoffRequests, error: signoffError } = await (supabase as unknown as typeof supabase)
         .from('sop_signoff_request')
         .select('employee_id')
         .eq('client_id', clientId)
@@ -184,7 +184,7 @@ export const getTotalSOPsSignedOff = async (
       if (signoffRequests && signoffRequests.length > 0) {
         // Count unique employees who signed off
         const uniqueEmployees = new Set(
-          signoffRequests.map((sr: any) => sr.employee_id).filter(Boolean)
+          signoffRequests.map((sr: Record<string, unknown>) => sr.employee_id).filter(Boolean)
         );
         
         completedCount = uniqueEmployees.size;
@@ -221,7 +221,7 @@ export const getTotalSOPsToBeDone = async (
     }
 
     // Get all SOP IDs for this client
-    const { data: sops, error: sopsError } = await (supabase as any)
+    const { data: sops, error: sopsError } = await (supabase as unknown as typeof supabase)
       .from('sop')
       .select('id')
       .eq('client_id', clientId);
@@ -238,7 +238,7 @@ export const getTotalSOPsToBeDone = async (
     const sopIds = sops.map((s) => s.id);
 
     // Get all assignments with group details for these SOPs
-    const { data: assignedData, error: assignedError } = await (supabase as any)
+    const { data: assignedData, error: assignedError } = await (supabase as unknown as typeof supabase)
       .from('sop_assigned')
       .select(`
         sop_id,
@@ -263,7 +263,7 @@ export const getTotalSOPsToBeDone = async (
     const completedCountBySopId = new Map<string, Set<string>>();
 
     // Process assignments to get assigned employees per SOP
-    assignedData?.forEach((assignment: any) => {
+    assignedData?.forEach((assignment: Record<string, unknown>) => {
       const sopId = assignment.sop_id;
       const group = assignment.group;
 
@@ -275,7 +275,7 @@ export const getTotalSOPsToBeDone = async (
 
       const employeeSet = employeeCountBySopId.get(sopId)!;
       const groupEmployees = group.group_employees || [];
-      groupEmployees.forEach((ge: any) => {
+      groupEmployees.forEach((ge: Record<string, unknown>) => {
         if (ge.employee_id) {
           employeeSet.add(ge.employee_id);
         }
@@ -284,7 +284,7 @@ export const getTotalSOPsToBeDone = async (
 
     // Get completed signoffs per SOP
     for (const sopId of sopIds) {
-      const { data: signoffRequests, error: signoffError } = await (supabase as any)
+      const { data: signoffRequests, error: signoffError } = await (supabase as unknown as typeof supabase)
         .from('sop_signoff_request')
         .select('employee_id')
         .eq('client_id', clientId)
@@ -293,7 +293,7 @@ export const getTotalSOPsToBeDone = async (
 
       if (!signoffError && signoffRequests) {
         const completedSet = new Set<string>(
-          signoffRequests.map((sr: any) => sr.employee_id).filter(Boolean) as string[]
+          signoffRequests.map((sr: Record<string, unknown>) => sr.employee_id).filter(Boolean) as string[]
         );
         completedCountBySopId.set(sopId, completedSet);
       }
@@ -387,7 +387,7 @@ export const getBatchEmployeeSOPStatistics = async (
     console.log('[getBatchEmployeeSOPStatistics] Fetching stats for', employeeIds.length, 'employees with clientId:', clientId);
 
     // Step 1: Get all group memberships for all employees
-    const { data: allEmployeeGroups, error: groupsError } = await (supabase as any)
+    const { data: allEmployeeGroups, error: groupsError } = await (supabase as unknown as typeof supabase)
       .from('group_employees')
       .select('employee_id, group_id')
       .in('employee_id', employeeIds);
@@ -404,7 +404,7 @@ export const getBatchEmployeeSOPStatistics = async (
 
     // Group by employee_id
     const groupsByEmployee = new Map<string, string[]>();
-    (allEmployeeGroups || []).forEach((eg: any) => {
+    (allEmployeeGroups || []).forEach((eg: Record<string, unknown>) => {
       if (!groupsByEmployee.has(eg.employee_id)) {
         groupsByEmployee.set(eg.employee_id, []);
       }
@@ -434,7 +434,7 @@ export const getBatchEmployeeSOPStatistics = async (
     }
 
     // Step 3: Get all SOP assignments for these groups
-    const { data: allAssignedSOPs, error: assignedError } = await (supabase as any)
+    const { data: allAssignedSOPs, error: assignedError } = await (supabase as unknown as typeof supabase)
       .from('sop_assigned')
       .select('sop_id, group_id')
       .eq('client_id', clientId)
@@ -456,7 +456,7 @@ export const getBatchEmployeeSOPStatistics = async (
       sopsByEmployee.set(id, new Set<string>());
     });
 
-    (allAssignedSOPs || []).forEach((assignment: any) => {
+    (allAssignedSOPs || []).forEach((assignment: Record<string, unknown>) => {
       if (!assignment.sop_id || !assignment.group_id) return;
       
       // Find all employees in this group
@@ -485,8 +485,8 @@ export const getBatchEmployeeSOPStatistics = async (
     // Calculate stats for each employee (even if no signoffs)
     employeeIds.forEach(employeeId => {
       const totalSOPs = sopsByEmployee.get(employeeId)?.size || 0;
-      let totalSOPsSignedOff = 0;
-      let totalSOPsToBeDone = totalSOPs;
+      const totalSOPsSignedOff = 0;
+      const totalSOPsToBeDone = totalSOPs;
 
       // If there are SOPs, check for signoffs
       if (totalSOPs > 0 && allSopIds.length > 0) {
@@ -507,7 +507,7 @@ export const getBatchEmployeeSOPStatistics = async (
 
     // Step 6: Get all signoff requests for all employees and SOPs (if there are any SOPs)
     if (allSopIds.length > 0) {
-      const { data: allSignoffRequests, error: signoffError } = await (supabase as any)
+      const { data: allSignoffRequests, error: signoffError } = await (supabase as unknown as typeof supabase)
         .from('sop_signoff_request')
         .select('sop_id, employee_id')
         .eq('client_id', clientId)
@@ -524,7 +524,7 @@ export const getBatchEmployeeSOPStatistics = async (
           signoffsByEmployee.set(id, new Set<string>());
         });
 
-        allSignoffRequests.forEach((sr: any) => {
+        allSignoffRequests.forEach((sr: Record<string, unknown>) => {
           if (sr.employee_id && sr.sop_id) {
             signoffsByEmployee.get(sr.employee_id)?.add(sr.sop_id);
           }
@@ -581,7 +581,7 @@ export const getEmployeeSOPStatistics = async (
     console.log('[getEmployeeSOPStatistics] Starting calculation for clientId:', clientId, 'employeeId:', employeeId);
 
     // Step 1: Find groups this employee belongs to
-    const { data: employeeGroups, error: groupsError } = await (supabase as any)
+    const { data: employeeGroups, error: groupsError } = await (supabase as unknown as typeof supabase)
       .from('group_employees')
       .select('group_id')
       .eq('employee_id', employeeId);
@@ -606,11 +606,11 @@ export const getEmployeeSOPStatistics = async (
       };
     }
 
-    const groupIds = employeeGroups.map((eg: any) => eg.group_id).filter(Boolean);
+    const groupIds = employeeGroups.map((eg: Record<string, unknown>) => eg.group_id).filter(Boolean);
     console.log('[getEmployeeSOPStatistics] Group IDs:', groupIds);
 
     // Step 2: Find SOPs assigned to these groups
-    const { data: assignedSOPs, error: assignedError } = await (supabase as any)
+    const { data: assignedSOPs, error: assignedError } = await (supabase as unknown as typeof supabase)
       .from('sop_assigned')
       .select('sop_id')
       .eq('client_id', clientId)
@@ -637,11 +637,11 @@ export const getEmployeeSOPStatistics = async (
     }
 
     // Step 3: Deduplicate SOP IDs
-    const uniqueSopIds = Array.from(new Set(assignedSOPs.map((as: any) => as.sop_id).filter(Boolean)));
+    const uniqueSopIds = Array.from(new Set(assignedSOPs.map((as: Record<string, unknown>) => as.sop_id).filter(Boolean)));
     const totalSOPs = uniqueSopIds.length;
 
     // Step 4: Count how many SOPs this employee has signed off
-    const { data: signoffRequests, error: signoffError } = await (supabase as any)
+    const { data: signoffRequests, error: signoffError } = await (supabase as unknown as typeof supabase)
       .from('sop_signoff_request')
       .select('sop_id')
       .eq('client_id', clientId)
@@ -659,7 +659,7 @@ export const getEmployeeSOPStatistics = async (
     }
 
     const uniqueSignedOffSopIds = new Set(
-      (signoffRequests || []).map((sr: any) => sr.sop_id).filter(Boolean)
+      (signoffRequests || []).map((sr: Record<string, unknown>) => sr.sop_id).filter(Boolean)
     );
     const totalSOPsSignedOff = uniqueSignedOffSopIds.size;
     const totalSOPsToBeDone = Math.max(0, totalSOPs - totalSOPsSignedOff);

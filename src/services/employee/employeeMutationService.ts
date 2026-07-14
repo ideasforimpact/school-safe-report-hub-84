@@ -71,16 +71,17 @@ export const addEmployeeToApi = async (
       
       // If we don't have data.data, throw an error
       throw new Error("Invalid response from edge function");
-    } catch (edgeFunctionError: any) {
-      // If the edge function call fails or returns an error, 
+    } catch (edgeFunctionError) {
+      // If the edge function call fails or returns an error,
       // we'll log it and fall back to the direct Supabase API
       console.error("Edge function error, falling back to direct API call:", edgeFunctionError);
-      
+
       // If this is a duplicate email or employee ID error we already handled, re-throw it
-      if (edgeFunctionError.code === "DUPLICATE_EMAIL" || edgeFunctionError.code === "DUPLICATE_EMPLOYEE_ID") {
+      const typedError = edgeFunctionError as { code?: string };
+      if (typedError.code === "DUPLICATE_EMAIL" || typedError.code === "DUPLICATE_EMPLOYEE_ID") {
         throw edgeFunctionError;
       }
-      
+
       // Otherwise continue with the fallback approach
     }
 
@@ -171,7 +172,7 @@ export const addEmployeeToApi = async (
     
     // Convert the response back to our Employee type
     return mapDbRecordToEmployee(data);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in addEmployeeToApi:", error);
     
     // Don't show a duplicate error toast - the error has already been shown
@@ -258,11 +259,12 @@ export const updateEmployeeInApi = async (
       }
       
       throw new Error("Invalid response from edge function");
-    } catch (edgeFunctionError: any) {
+    } catch (edgeFunctionError) {
       console.error("Edge function error, falling back to direct API call:", edgeFunctionError);
-      
+
       // If this is a duplicate error we already handled, re-throw it
-      if (edgeFunctionError.code === "DUPLICATE_EMAIL" || edgeFunctionError.code === "DUPLICATE_EMPLOYEE_ID") {
+      const typedEdgeError = edgeFunctionError as { code?: string };
+      if (typedEdgeError.code === "DUPLICATE_EMAIL" || typedEdgeError.code === "DUPLICATE_EMPLOYEE_ID") {
         throw edgeFunctionError;
       }
       
@@ -310,7 +312,7 @@ export const updateEmployeeInApi = async (
     console.error("Error in updateEmployeeInApi:", error);
     
     // Don't show duplicate error toast if already handled
-    if (!(error as any).code || !['DUPLICATE_EMAIL', 'DUPLICATE_EMPLOYEE_ID'].includes((error as any).code)) {
+    if (!(error as { code?: string }).code || !['DUPLICATE_EMAIL', 'DUPLICATE_EMPLOYEE_ID'].includes((error as { code?: string }).code!)) {
       toast.error("Failed to update employee");
     }
     
