@@ -76,7 +76,12 @@ Deno.serve(async (req) => {
       case 'fetchAllClients':
         return await fetchAllClients()
       case 'fetch-clients':
-        return await fetchAllClients()
+        return await fetchAllClients({
+          page: payload.page,
+          pageSize: payload.pageSize,
+          search: payload.search,
+          status: payload.status,
+        })
       case 'fetchEmployeesByClient':
         if (!payload.clientId) {
           return new Response(
@@ -111,14 +116,62 @@ Deno.serve(async (req) => {
   }
 })
 
-async function fetchAllClients() {
-  console.log('🔍 Fetching active clients with service role...')
-  
-  const { data, error } = await supabase
+type ClientStatusFilter = 'active' | 'inactive' | 'all'
+
+interface FetchClientsParams {
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: ClientStatusFilter
+}
+
+const MAX_PAGE_SIZE = 100
+
+// Strips characters that are structurally significant to PostgREST's
+// `.or()` filter syntax (comma separates conditions, parens group them) so a
+// search term can never inject extra filter clauses, then escapes ILIKE's
+// own wildcard characters so a literal "%" or "_" in a client name is
+// matched literally rather than as a wildcard.
+function sanitizeSearchTerm(term: string): string {
+  return term.trim().replace(/[,()]/g, '').replace(/[%_]/g, '\\$&')
+}
+
+async function fetchAllClients(params: FetchClientsParams = {}) {
+  const isPaginated = typeof params.page === 'number' && typeof params.pageSize === 'number'
+  const status: ClientStatusFilter = params.status === 'inactive' || params.status === 'all'
+    ? params.status
+    : 'active'
+
+  console.log('🔍 Fetching clients with service role...', { isPaginated, status, page: params.page, pageSize: params.pageSize })
+
+  let query = supabase
     .from('clients')
-    .select('*')
-    .eq('active', true)
-    .order('name')
+    .select('*', isPaginated ? { count: 'exact' } : undefined)
+
+  if (!isPaginated || status !== 'all') {
+    query = query.eq('active', status === 'inactive' ? false : true)
+  }
+
+  if (isPaginated && params.search && params.search.trim()) {
+    const pattern = `%${sanitizeSearchTerm(params.search)}%`
+    query = query.or(
+      `name.ilike.${pattern},contact_person.ilike.${pattern},email.ilike.${pattern},institution_type.ilike.${pattern}`
+    )
+  }
+
+  query = query.order('name')
+
+  let page = 1
+  let pageSize = MAX_PAGE_SIZE
+  if (isPaginated) {
+    page = Math.max(1, Math.floor(params.page as number))
+    pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(params.pageSize as number)))
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    query = query.range(from, to)
+  }
+
+  const { data, error, count } = await query
 
   if (error) {
     console.error('Error fetching clients:', error)
@@ -147,10 +200,16 @@ async function fetchAllClients() {
     return { ...row, incident_recommended_actions_enabled: incidentRecommendedActionsEnabled }
   })
 
-  console.log('✅ Successfully fetched active clients:', dataWithAi?.length || 0)
+  console.log('✅ Successfully fetched clients:', dataWithAi?.length || 0, 'total:', count)
   return new Response(
-    JSON.stringify({ success: true, data: dataWithAi }),
-    { 
+    JSON.stringify({
+      success: true,
+      data: dataWithAi,
+      total: isPaginated ? (count ?? dataWithAi.length) : dataWithAi.length,
+      page,
+      pageSize,
+    }),
+    {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     }
   )

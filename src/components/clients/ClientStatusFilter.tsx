@@ -11,7 +11,7 @@ interface ClientStatusFilterProps {
 
 const ClientStatusFilter = ({ currentFilter, onFilterChange }: ClientStatusFilterProps) => {
   return (
-    <div className="flex gap-2 mb-4">
+    <div className="flex gap-2">
       <span className="text-sm font-medium text-gray-700 flex items-center mr-2">
         Filter by Status:
       </span>
