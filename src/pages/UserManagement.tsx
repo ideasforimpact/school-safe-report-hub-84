@@ -1162,26 +1162,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                     setIsEditDialogOpen(true);
                   }}
                   onDeleteUser={handleDeleteUser}
-                  onDeactivateUser={async (id) => {
-                    try {
-                      await deactivateExistingUser([], id);
-                      await refreshEmployeesList();
-                      // toast.success("User deactivated successfully");
-                    } catch (error) {
-                      console.error("Error deactivating user:", error);
-                      toast.error("Failed to deactivate user");
-                    }
-                  }}
-                  onReactivateUser={async (id) => {
-                    try {
-                      await reactivateExistingUser([], id);
-                      await refreshEmployeesList();
-                      // toast.success("User reactivated successfully");
-                    } catch (error) {
-                      console.error("Error reactivating user:", error);
-                      toast.error("Failed to reactivate user");
-                    }
-                  }}
+                  onDeactivateUser={handleDeactivateUser}
+                  onReactivateUser={handleReactivateUser}
                   hasAdminAccess={hasUserManagementAdminAccess}
                   canEditUsers={!isReadOnlySwitchedContext}
                   onRefresh={refreshEmployeesList}

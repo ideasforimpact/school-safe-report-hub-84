@@ -33,7 +33,7 @@ serve(async (req) => {
     console.log("Handling operation:", operation);
  
     // Validate client exists for operations that need it
-    if (operation === 'create' || operation === 'update' || operation === 'bulk_import' || operation === 'list') {
+    if (operation === 'create' || operation === 'update' || operation === 'bulk_import' || operation === 'list' || operation === 'check_duplicates') {
       // Extract clientId from different possible locations
       let validationClientId = null;
       
@@ -132,6 +132,10 @@ serve(async (req) => {
         return await handleReactivate(supabaseClient, id);
       case 'bulk_import':
         return await handleBulkImport(supabaseClient, employees, clientId);
+      case 'check_duplicates':
+        return await handleCheckDuplicates(supabaseClient, requestData);
+      case 'get_module_access':
+        return await handleGetModuleAccess(supabaseClient, requestData);
       default:
         console.error("Invalid operation received:", operation);
         return new Response(
@@ -618,6 +622,128 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     }
   );
+}
+
+// Bulk pre-import duplicate check — used by the Import Employees "Verify" step
+// to flag employee IDs / emails that already exist for this client, in one call.
+async function handleCheckDuplicates(supabaseClient: any, requestData: any) {
+  const { clientId, employeeIds, emails } = requestData;
+
+  if (!clientId) {
+    return new Response(
+      JSON.stringify({ error: 'clientId is required' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const validEmployeeIds = [...new Set(
+    (Array.isArray(employeeIds) ? employeeIds : [])
+      .filter((id: unknown): id is string => typeof id === 'string' && id.trim() !== '')
+  )];
+  const validEmails = [...new Set(
+    (Array.isArray(emails) ? emails : [])
+      .filter((email: unknown): email is string => typeof email === 'string' && email.trim() !== '')
+      .map((email: string) => email.trim().toLowerCase())
+  )];
+
+  try {
+    const [idResult, emailResult] = await Promise.all([
+      validEmployeeIds.length
+        ? supabaseClient.from('employees').select('employee_id').eq('client_id', clientId).in('employee_id', validEmployeeIds)
+        : Promise.resolve({ data: [], error: null }),
+      validEmails.length
+        ? supabaseClient.from('employees').select('email').eq('client_id', clientId).in('email', validEmails)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (idResult.error) throw idResult.error;
+    if (emailResult.error) throw emailResult.error;
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        duplicateEmployeeIds: (idResult.data || []).map((row: any) => row.employee_id),
+        duplicateEmails: (emailResult.data || []).map((row: any) => (row.email || '').toLowerCase()),
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error checking duplicates:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Failed to check duplicates' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// Module access for one employee — mirrors the client-side getModuleAccessForUser
+// logic (super admins get all enabled client modules; regular employees get
+// their assigned employee_modules rows), used by the Edit User dialog.
+async function handleGetModuleAccess(supabaseClient: any, requestData: any) {
+  const { employeeId, clientId, isSuperAdmin } = requestData;
+
+  if (!employeeId) {
+    return new Response(
+      JSON.stringify({ error: 'employeeId is required' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  try {
+    if (isSuperAdmin && clientId) {
+      const { data, error } = await supabaseClient
+        .from('client_modules')
+        .select('module_id, modules(name)')
+        .eq('client_id', clientId)
+        .eq('enabled', true);
+
+      if (error) throw error;
+
+      const modules = (data || []).map((item: any) => ({
+        name: item.modules?.name ?? 'Unknown',
+        key: item.module_id,
+        module_id: item.module_id,
+        employeeId,
+        enabled: true,
+        level: { is_admin: true },
+      }));
+
+      return new Response(
+        JSON.stringify({ success: true, modules }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data, error } = await supabaseClient
+      .from('employee_modules')
+      .select('*, modules(id, name)')
+      .eq('employee_id', employeeId);
+
+    if (error) throw error;
+
+    const modules = (data || []).map((item: any) => {
+      const levelObject = item.level && typeof item.level === 'object' && !Array.isArray(item.level) ? item.level : {};
+      return {
+        name: item.modules?.name || 'Unknown Module',
+        key: item.module_id,
+        module_id: item.module_id,
+        employeeId,
+        enabled: true,
+        level: { is_admin: levelObject.is_admin ?? false },
+      };
+    });
+
+    return new Response(
+      JSON.stringify({ success: true, modules }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error fetching module access:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Failed to fetch module access' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 }
 
 async function handleGetEmployee(supabaseClient: any, requestData: any) {

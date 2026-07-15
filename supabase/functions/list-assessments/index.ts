@@ -27,6 +27,7 @@ interface RequestBody {
   employee_id?: string | null;
   include_meta?: boolean;
   assessment_id?: string;
+  client_type_id?: string;
 }
 
 serve(async (req) => {
@@ -404,8 +405,8 @@ async function handleCreateForm(body: any): Promise<Response> {
 
 // ─── templates ───────────────────────────────────────────────────────────────
 
-async function handleTemplates(body: any): Promise<Response> {
-  const { client_id } = body;
+async function handleTemplates(body: RequestBody): Promise<Response> {
+  const { client_id, client_type_id } = body;
 
   if (!client_id) {
     return new Response(
@@ -414,11 +415,16 @@ async function handleTemplates(body: any): Promise<Response> {
     );
   }
 
-  const { data, error } = await supabaseClient
+  let query = supabaseClient
     .from("assessment_templates")
     .select(`id,title,description,category_id,is_active,questions,created_at,created_by,template_categories(id,name,description)`)
-    .eq("client_id", client_id)
-    .order("created_at", { ascending: false });
+    .eq("client_id", client_id);
+
+  if (client_type_id) {
+    query = query.eq("client_type_id", client_type_id);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     return new Response(

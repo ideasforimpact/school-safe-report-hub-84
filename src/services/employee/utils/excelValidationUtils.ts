@@ -1,6 +1,6 @@
 
 import { RawEmployeeData } from '../types/importTypes';
-import { checkBulkEmployeeIdDuplicates,checkBulkEmployeeEmailDuplicates } from '../employeeValidationService';
+import { checkBulkDuplicates } from '../employeeValidationService';
 import {
   EMPLOYEE_DESIGNATION_CONSTANTS,
   EMPLOYEE_ID_CONSTANTS,
@@ -515,45 +515,25 @@ export const validateExcelData = async (data: Record<string, unknown>[], clientI
     });
   }
 
-  // Check for existing employee IDs in the database if clientId is provided
-  if (clientId && employeeIds.length > 0) {
+  // Check for existing employee IDs / emails in the database if clientId is provided
+  if (clientId && (employeeIds.length > 0 || emailsRaw.length > 0)) {
     try {
-      const { duplicates, errors: dbErrors } = await checkBulkEmployeeIdDuplicates(employeeIds, clientId);
+      const { duplicateEmployeeIds, duplicateEmails, errors: dbErrors } = await checkBulkDuplicates(employeeIds, emailsRaw, clientId);
 
-      // Add database errors
       if (dbErrors.length > 0) {
         errors.push(...dbErrors);
       }
 
-      // Add duplicate employee ID errors
-      if (duplicates.length > 0) {
-        duplicates.forEach(id => {
-          warnings.push(`Employee ID '${id}' already exists and will be skipped`);
-        });
-      }
-    } catch (error) {
-      console.error('Error checking bulk employee ID duplicates:', error);
-      errors.push('Error validating employee IDs against existing records');
-    }
-  }
+      duplicateEmployeeIds.forEach(id => {
+        warnings.push(`Employee ID '${id}' already exists and will be skipped`);
+      });
 
-  if (clientId && emailsRaw.length > 0) {
-    try {
-      // remove empties and dedupe before calling DB
-      const uniqueEmails = [...new Set(emailsRaw.filter(e => e && e.trim()))];
-      if (uniqueEmails.length > 0) {
-        const { duplicates: emailDuplicates, errors: emailDbErrors } = await checkBulkEmployeeEmailDuplicates(uniqueEmails, clientId);
-        if (emailDbErrors && emailDbErrors.length > 0) {
-          errors.push(...emailDbErrors);
-        }
-        if (emailDuplicates && emailDuplicates.length > 0) {
-          emailDuplicates.forEach(email => {
-            warnings.push(`Email '${email}' already exists and will be skipped`);
-          });
-        }
-      }
-    } catch (err) {
-      errors.push('Error validating emails against existing records');
+      duplicateEmails.forEach(email => {
+        warnings.push(`Email '${email}' already exists and will be skipped`);
+      });
+    } catch (error) {
+      console.error('Error checking bulk duplicates:', error);
+      errors.push('Error validating employee IDs and emails against existing records');
     }
   }
   // Validate each row

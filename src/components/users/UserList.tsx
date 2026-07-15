@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmployeeUser } from '@/pages/UserManagement';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
@@ -284,8 +283,10 @@ const UserList = ({
     }
   };
 
-  // Handle deactivate user with database update
-  const handleDeactivateUser = async (userId: string, employeeId: string, clientId: string) => {
+  // Handle deactivate user — the actual status update (and clearing the
+  // employee's module/permission grants) happens server-side via the
+  // onDeactivateUser prop, which invokes the employee-management edge function.
+  const handleDeactivateUser = async (userId: string) => {
     if (isReadOnlySwitchedContext) {
       toast.error('Read-only users cannot deactivate users');
       return;
@@ -293,33 +294,10 @@ const UserList = ({
 
     try {
       setIsTableLoading(true);
-      
-      // Update the employee status in the database
-      const { data, error } = await supabase
-        .from('employees')
-        .update({ 
-          status: false, // Set active = 0 (false)
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .eq('client_id', clientId);
-
-      if (error) {
-        console.error('Error deactivating employee:', error);
-        toast.error('Failed to deactivate employee');
-        return;
-      }
-
-      console.log('Employee deactivated successfully:', data);
-      
-      // Call the parent's deactivate function
       await onDeactivateUser(userId);
-      
-      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
-      
     } catch (error) {
       console.error('Error deactivating employee:', error);
       toast.error('Failed to deactivate employee');
@@ -329,8 +307,9 @@ const UserList = ({
     }
   };
 
-  // Handle activate user with database update
-  const handleActivateUser = async (userId: string, employeeId: string, clientId: string) => {
+  // Handle activate user — the actual status update happens server-side via
+  // the onReactivateUser prop, which invokes the employee-management edge function.
+  const handleActivateUser = async (userId: string) => {
     if (isReadOnlySwitchedContext) {
       toast.error('Read-only users cannot activate users');
       return;
@@ -338,33 +317,10 @@ const UserList = ({
 
     try {
       setIsTableLoading(true);
-      
-      // Update the employee status in the database
-      const { data, error } = await supabase
-        .from('employees')
-        .update({ 
-          status: true, // Set active = 1 (true)
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .eq('client_id', clientId);
-
-      if (error) {
-        console.error('Error activating employee:', error);
-        toast.error('Failed to activate employee');
-        return;
-      }
-
-      console.log('Employee activated successfully:', data);
-      
-      // Call the parent's reactivate function
       await onReactivateUser(userId);
-      
-      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
-      
     } catch (error) {
       console.error('Error activating employee:', error);
       toast.error('Failed to activate employee');
@@ -543,7 +499,7 @@ const UserList = ({
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
                           <AlertDialogAction 
                             className="bg-amber-600 hover:bg-amber-700"
-                              onClick={() => handleDeactivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              onClick={() => handleDeactivateUser(user.id)}
                               disabled={isTableLoading}
                           >
                             Deactivate
@@ -574,7 +530,7 @@ const UserList = ({
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
                             <AlertDialogAction 
                               className="bg-green-600 hover:bg-green-700"
-                              onClick={() => handleActivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              onClick={() => handleActivateUser(user.id)}
                               disabled={isTableLoading}
                             >
                               Activate

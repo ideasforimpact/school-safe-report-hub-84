@@ -3,7 +3,7 @@ import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { RawEmployeeData, ImportResult } from './types/importTypes';
 import { supabase } from '@/integrations/supabase/client';
-import { checkEmployeeIdExists } from './employeeValidationService';
+import { checkBulkDuplicates } from './employeeValidationService';
 import { normalizePanNumber } from './utils/excelProcessingUtils';
 import { capitalizeWords } from '@/lib/formatUtils';
 
@@ -35,7 +35,19 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     console.log("Pre-validating Employee IDs for duplicates...");
     const validationErrors: string[] = [];
     const validEmployees: RawEmployeeData[] = [];
-    
+
+    // Look up all Employee IDs in the file at once instead of one request per
+    // row — avoids firing N sequential `employees` lookups against the DB.
+    const employeeIdsInFile = rawData
+      .map(row => row.employeeId)
+      .filter(id => id !== undefined && id !== null && String(id).trim() !== '')
+      .map(id => String(id).trim());
+    let existingEmployeeIds = new Set<string>();
+    if (clientId && employeeIdsInFile.length > 0) {
+      const { duplicateEmployeeIds } = await checkBulkDuplicates(employeeIdsInFile, [], clientId);
+      existingEmployeeIds = new Set(duplicateEmployeeIds);
+    }
+
     for (let i = 0; i < rawData.length; i++) {
       const row = rawData[i];
       
@@ -77,12 +89,9 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         }
         
         // Check if Employee ID already exists for this client
-        if (clientId) {
-          const employeeIdExists = await checkEmployeeIdExists(String(row.employeeId).trim(), clientId);
-          if (employeeIdExists) {
-            validationErrors.push(`Row ${i + 2}: Employee ID '${row.employeeId}' already exists for this client`);
-            continue;
-          }
+        if (clientId && existingEmployeeIds.has(String(row.employeeId).trim())) {
+          validationErrors.push(`Row ${i + 2}: Employee ID '${row.employeeId}' already exists for this client`);
+          continue;
         }
         
         // If we get here, the employee data is valid

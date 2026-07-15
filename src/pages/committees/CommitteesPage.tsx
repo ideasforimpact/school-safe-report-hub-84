@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
-import { Users, User, Plus, Search, Pencil, Eye, CalendarPlus, List, X, Trash2 } from 'lucide-react';
+import { Users, User, Plus, Pencil, Eye, CalendarPlus, List, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,14 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
 import { Label } from '@/components/ui/label';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts';
 import SearchMultiSelect, { SearchMultiSelectOption } from '@/components/common/SearchMultiSelect';
@@ -104,13 +99,11 @@ const CommitteesPage = () => {
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [committeeMemberIdsByCommittee, setCommitteeMemberIdsByCommittee] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 10 as const;
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCommittee, setEditingCommittee] = useState<Committee | null>(null);
@@ -194,21 +187,11 @@ const CommitteesPage = () => {
     setMemberRoles(formData.memberRoles);
   }, [clientId]);
 
-  // Debounce search input — reset to page 1 when search changes.
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      setCurrentPage(1);
-      setDebouncedSearch(value);
-    }, 400);
-  };
-
   useEffect(() => {
     loadCommittees(currentPage, debouncedSearch);
   }, [loadCommittees, currentPage, debouncedSearch]);
 
-  const activeCommitteeFilterCount = searchTerm.trim() ? 1 : 0;
+  const activeCommitteeFilterCount = debouncedSearch.trim() ? 1 : 0;
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
 
@@ -631,22 +614,22 @@ const CommitteesPage = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Filter by committee name..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-              />
-            </div>
+            <DebouncedSearchInput
+              value={debouncedSearch}
+              onChange={(value) => {
+                setCurrentPage(1);
+                setDebouncedSearch(value);
+              }}
+              placeholder="Filter by committee name..."
+              triggerOnEnter
+              className="w-full max-w-sm"
+            />
             {activeCommitteeFilterCount > 0 && (
               <Button
                 type="button"
                 variant="outline"
                 className="inline-flex items-center gap-2"
                 onClick={() => {
-                  setSearchTerm('');
                   setDebouncedSearch('');
                   setCurrentPage(1);
                 }}
@@ -746,31 +729,16 @@ const CommitteesPage = () => {
             </div>
           )}
         </div>
-        {totalCount > pageSize && (
-          <div className="flex justify-center mt-4 pb-6">
-            <Pagination>
-              <PaginationContent className="flex items-center gap-3">
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className={safeCurrentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                    {safeCurrentPage} of {totalPages}
-                  </span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className={safeCurrentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
+        <div className="mx-6 pb-6">
+          <TablePaginationBar
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            itemLabel="committees"
+            onPageChange={setCurrentPage}
+          />
+        </div>
       </div>
 
       <AlertDialog
