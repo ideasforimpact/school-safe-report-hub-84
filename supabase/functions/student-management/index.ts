@@ -319,7 +319,7 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
   }
 
   // Check for either IDs (preferred) or text values (backward compatibility)
-  const hasIds = body.campusId && body.gradeId && body.sectionId;
+  let hasIds = body.campusId && body.gradeId && body.sectionId;
   const hasTextValues = body.campus && body.grade && body.section;
   
   if (!hasIds && !hasTextValues) {
@@ -431,9 +431,16 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
       }
+      // validateEducationalStructure already resolved the matching records - carry
+      // their ids through so the row isn't left with null campus_id/grade_id/section_id
+      // (that previously caused these FKs to silently go missing on text-only requests).
+      body.campusId = isValid.campusId;
+      body.gradeId = isValid.gradeId;
+      body.sectionId = isValid.sectionId;
+      hasIds = true;
     }
   }
-  
+
   // Transform data to match database schema
   const studentData: any = {
     student_id: body.studentId,
@@ -603,7 +610,13 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   }
   
   console.log("Validation successful - all structures found");
-  return { valid: true, error: null };
+  return {
+    valid: true,
+    error: null,
+    campusId: matchingCampus.id,
+    gradeId: matchingGrade.id,
+    sectionId: matchingSection.id,
+  };
 }
 
 async function handleValidateImport(body: any, corsHeaders: Record<string, string>) {
@@ -832,7 +845,7 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
   }
 
   // Detect if ID-based educational structure is being provided
-  const hasIds = body.campusId && body.gradeId && body.sectionId;
+  let hasIds = body.campusId && body.gradeId && body.sectionId;
 
   // If any of the IDs are provided, require all three
   if ((body.campusId || body.gradeId || body.sectionId) && !hasIds) {
@@ -916,8 +929,14 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    // Carry the resolved ids through so this text-only path doesn't leave
+    // campus_id/grade_id/section_id null (or stale) on the updated row.
+    body.campusId = isValid.campusId;
+    body.gradeId = isValid.gradeId;
+    body.sectionId = isValid.sectionId;
+    hasIds = true;
   }
-  
+
   // Transform updates to match database schema
   const updates: Record<string, any> = {};
   if (body.studentId) updates.student_id = body.studentId;
@@ -1056,31 +1075,66 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
   }
 
   console.log(`Processing bulk update for ${students.length} students`);
-  
+
   try {
+    // Resolve campus/grade/section text back to ids (mirrors handleBulkCreate) so a
+    // re-import that changes a student's grade/section text doesn't leave grade_id/
+    // section_id null or stale relative to the new text values.
+    const [campuses, grades, sections] = await Promise.all([
+      supabaseClient.from("campuses").select("id, name").eq("client_id", clientId),
+      supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId),
+      supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId)
+    ]);
+
+    const campusMap = new Map((campuses.data || []).map(c => [c.name.toLowerCase(), c.id]));
+    const gradeMap = new Map((grades.data || []).map(g => [`${g.campus_id}:${g.name.toLowerCase()}`, g.id]));
+    const sectionMap = new Map((sections.data || []).map(s => [`${s.grade_id}:${s.name.toLowerCase()}`, s.id]));
+
     const updatedStudents = [];
     let successCount = 0;
-    
+
     // Process students in batches to avoid potential limitations
     const BATCH_SIZE = 50;
     for (let i = 0; i < students.length; i += BATCH_SIZE) {
       const batch = students.slice(i, i + BATCH_SIZE);
-      
+
       // For each student in batch, prepare update
       for (const student of batch) {
         if (!student.id) {
           console.error("Student ID missing in update request", student);
           continue;
         }
-        
+
         // Extract updates for this student
         const { id, ...updates } = student;
-        
+
         // Add client_id to updates
         if (clientId) {
           updates.client_id = clientId;
         }
-        
+
+        // Resolve ids from the (possibly updated) campus/grade/section text
+        if (updates.campus) {
+          const campusId = campusMap.get(String(updates.campus).toLowerCase());
+          if (campusId) {
+            updates.campus_id = campusId;
+
+            if (updates.grade) {
+              const gradeId = gradeMap.get(`${campusId}:${String(updates.grade).toLowerCase()}`);
+              if (gradeId) {
+                updates.grade_id = gradeId;
+
+                if (updates.section) {
+                  const sectionId = sectionMap.get(`${gradeId}:${String(updates.section).toLowerCase()}`);
+                  if (sectionId) {
+                    updates.section_id = sectionId;
+                  }
+                }
+              }
+            }
+          }
+        }
+
         // Apply update with client_id filter
         let query = supabaseClient
           .from("students")

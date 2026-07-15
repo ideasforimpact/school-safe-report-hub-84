@@ -9,7 +9,8 @@ import { useAuth } from '@/contexts/auth/useAuth';
 const detailInflight = new Map<string, Promise<void>>();
 
 export const useIncidentDetail = (incidentId?: string) => {
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? undefined;
   const [incident, setIncident] = useState<IncidentDetail | null>(null);
   const [contributingFactors, setContributingFactors] = useState<Array<{ id: string; name: string; weight: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,7 +50,8 @@ export const useIncidentDetail = (incidentId?: string) => {
         body: {
           operation: 'get_incident_detail',
           incidentId: id,
-          clientId: employeeData.clientId
+          clientId: employeeData.clientId,
+          clientTypeId
         }
       });
 
@@ -78,7 +80,7 @@ export const useIncidentDetail = (incidentId?: string) => {
       detailInflight.delete(key);
       resolveDone();
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, clientTypeId]);
 
   useEffect(() => {
     if (incidentId) {

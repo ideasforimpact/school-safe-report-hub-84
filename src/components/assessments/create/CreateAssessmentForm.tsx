@@ -17,9 +17,14 @@ import { ArrowLeft, Save, AlertCircle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
-import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import Loader from '@/components/common/Loader';
+import { DemoActionButton } from '@/components/incidents/DemoActionButton';
+import {
+  getNextAssessmentScenario,
+  resolveScenarioForAssessment,
+} from '@/demo_client/assessment/assessmentDemo';
+import { ASSESSMENT_TITLE } from '@/components/constants';
 
 interface EmployeeDepartment {
   id: string;
@@ -33,7 +38,16 @@ interface Employee {
   email: string | null;
   department: string | null;
   employee_departments?: EmployeeDepartment | null;
+  aadhar_verified_name: string | null;
 }
+
+const getEmployeeDisplayName = (employee: {
+  first_name: string | null;
+  last_name: string | null;
+  aadhar_verified_name?: string | null;
+}) =>
+  employee.aadhar_verified_name ||
+  `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim();
 
 interface CreateAssessmentFormProps {
   onCancel?: () => void;
@@ -119,12 +133,44 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   );
 
   const selectedEmployeeDisplay = selectedEmployee
-    ? `${selectedEmployee.first_name ?? ''} ${selectedEmployee.last_name ?? ''} (${selectedEmployee.email ?? ''})`.trim()
-    : '';
+    ? `${getEmployeeDisplayName(selectedEmployee)} (${selectedEmployee.email ?? ''})`.trim()
+    : employeeData && formData.assignedTo === employeeData.id
+      ? `${employeeData.firstName ?? ''} ${employeeData.lastName ?? ''} (${employeeData.email ?? ''})`.trim()
+      : '';
+
+  // Demo Setup: fill name + description + templateId from one of three
+  // pre-canned scenarios, and pre-populate assignedTo with the currently
+  // logged-in user so the demo walkthrough doesn't require manually
+  // searching for an assignee. targetCompletionDate is left untouched so
+  // the user picks it explicitly. Cycles scenarios per click.
+  //
+  // The form is intentionally NOT pre-filled on mount — every field
+  // (Description, Assign To, etc.) stays blank until the user clicks the
+  // sparkle icon. The icon itself is hidden when VITE_IS_DEMO_SETUP is
+  // not 'true' (see DemoActionButton), so this handler is unreachable in
+  // non-demo environments.
+  const handleDemoAssessmentApply = () => {
+    const { scenario, index } = getNextAssessmentScenario();
+    const partial = resolveScenarioForAssessment(scenario, templates, index);
+    const currentEmployeeId = employeeData?.id;
+    setFormData(prev => ({
+      ...prev,
+      ...partial,
+      assignedTo: currentEmployeeId || prev.assignedTo,
+    }));
+    // Clear any in-flight search state so the newly pre-filled assignee
+    // is what the user sees in the input.
+    setSearchQuery('');
+    setIsSearching(false);
+    // Trigger the same name-validation path the user typing would
+    // trigger, so the form's existing duplicate / format checks
+    // re-evaluate against the demo-filled value.
+    setNameError(null);
+  };
 
   // Validation function
   const isValidAssessmentName = (value: string) => {
-    return /^[a-zA-Z0-9\s]{1,25}$/.test(value);
+    return new RegExp(`^[a-zA-Z0-9\\s]{1,${ASSESSMENT_TITLE}}$`).test(value);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -136,9 +182,13 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     if (field === 'name') {
       if (value === '') {
         setNameError(null);
+      } else if (value.length > ASSESSMENT_TITLE) {
+        setNameError(
+          `Assessment name cannot exceed ${ASSESSMENT_TITLE} characters`
+        );
       } else if (!isValidAssessmentName(value)) {
         setNameError(
-          'Assessment name can only contain letters, numbers, and spaces (max 25 characters)'
+          'Assessment name can only contain letters, numbers, and spaces'
         );
       } else if (
         existingAssessments.includes(
@@ -167,7 +217,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
   const filteredEmployees = searchQuery
     ? employees.filter(employee => {
-        const fullName = `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim();
+        const fullName = getEmployeeDisplayName(employee);
         const email = employee.email ?? '';
         const searchTerm = searchQuery.toLowerCase();
         const departmentName =
@@ -339,6 +389,14 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
             Back
           </Button>
           Create Assessment
+          {/* Demo Setup icon — renders only when VITE_IS_DEMO_SETUP=true.
+              Cycles through src/demo_client/assessment/scenarios.json
+              and fills name / description / templateId. assignedTo and
+              targetCompletionDate are intentionally not touched. */}
+          <DemoActionButton
+            onActivate={handleDemoAssessmentApply}
+            label="Fill demo assessment data"
+          />
         </CardTitle>
       </CardHeader>
 
@@ -368,7 +426,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                 }
                 placeholder="Enter assessment name"
                 required
-                maxLength={25}
+                maxLength={ASSESSMENT_TITLE}
                 className={
                   nameError ? 'border-red-500' : ''
                 }
@@ -381,7 +439,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
               )}
 
               <p className="text-xs text-gray-500 text-right">
-                {formData.name.length}/25 characters
+                {formData.name.length}/{ASSESSMENT_TITLE} characters
               </p>
             </div>
 
@@ -508,8 +566,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                             >
                               <div>
                                 <span className="font-medium">
-                                  {employee.first_name ?? ''}{' '}
-                                  {employee.last_name ?? ''}
+                                  {getEmployeeDisplayName(employee)}
                                 </span>
                                 <span className="text-gray-500 ml-1">
                                   ({employee.email ?? ''})

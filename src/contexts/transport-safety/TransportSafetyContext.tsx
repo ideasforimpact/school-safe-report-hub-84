@@ -256,6 +256,16 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     }
   };
 
+  // Local-only patch: merge fields into the in-memory vehicle without a DB write
+  // or toast. vehicle-unmask already persisted the row; this makes the new column
+  // values visible instantly to every consumer (RUN-again popup, history popup,
+  // info card) instead of waiting on a realtime refresh.
+  const patchVehicleLocal = (id: string, updates: Partial<Vehicle>) => {
+    setVehicles(prev =>
+      prev.map(vehicle => (vehicle.id === id ? { ...vehicle, ...updates } : vehicle))
+    );
+  };
+
   const deleteVehicle = async (id: string) => {
     try {
       const vehicleToDelete = vehicles.find(v => v.id === id);
@@ -402,6 +412,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
         setTypeFilter,
         addVehicle,
         updateVehicle,
+        patchVehicleLocal,
         deleteVehicle,
         getVehicle,
         addDocument,

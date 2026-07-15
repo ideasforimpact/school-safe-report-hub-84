@@ -27,6 +27,19 @@ async function fetchClientLogo(supabaseClient: SupabaseClient, clientId: string)
   return data?.logo || null
 }
 
+async function fetchClientTypeId(supabaseClient: any, clientId: string): Promise<string | null> {
+  const { data, error } = await supabaseClient
+    .from('clients')
+    .select('client_type_id')
+    .eq('id', clientId)
+    .maybeSingle()
+  if (error) {
+    console.log('fetchClientTypeId (backoffice) error:', error.message)
+    return null
+  }
+  return data?.client_type_id || null
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -123,7 +136,11 @@ async function createForm(supabaseClient: SupabaseClient, data: CreateFormData) 
     if (payload.client_id && (payload.client_logo === undefined || payload.client_logo === null)) {
       payload.client_logo = await fetchClientLogo(supabaseClient, payload.client_id)
     }
-    
+    // Stamp client_type_id from the selected client, matching every other config table
+    if (payload.client_id && (payload.client_type_id === undefined || payload.client_type_id === null)) {
+      payload.client_type_id = await fetchClientTypeId(supabaseClient, payload.client_id)
+    }
+
     const { data: newForm, error } = await supabaseClient
       .from('custom_forms')
       .insert([payload])
@@ -150,8 +167,26 @@ async function updateForm(supabaseClient: SupabaseClient, data: UpdateFormData) 
   try {
     const { id, updates } = data
     const updatesCopy = { ...updates }
-    if (updatesCopy.client_id && updatesCopy.client_logo === null) {
-      updatesCopy.client_logo = await fetchClientLogo(supabaseClient, updatesCopy.client_id)
+
+    // The caller (backoffice Forms page) only sends changed fields like
+    // title/description/fields, never client_id, so client_id/client_type_id
+    // backfill must be resolved from the existing row instead.
+    const { data: existingForm, error: fetchError } = await supabaseClient
+      .from('custom_forms')
+      .select('client_id, client_type_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (fetchError) throw fetchError
+
+    const clientId = updatesCopy.client_id || existingForm?.client_id
+
+    if (clientId && updatesCopy.client_logo === null) {
+      updatesCopy.client_logo = await fetchClientLogo(supabaseClient, clientId)
+    }
+
+    if (clientId && !existingForm?.client_type_id && updatesCopy.client_type_id === undefined) {
+      updatesCopy.client_type_id = await fetchClientTypeId(supabaseClient, clientId)
     }
     
     const { data: updatedForm, error } = await supabaseClient

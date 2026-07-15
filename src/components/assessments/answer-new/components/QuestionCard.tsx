@@ -22,35 +22,34 @@ interface QuestionAnswer {
   comment?: string;
   attachments?: FileItem[];
 }
+import { cn } from '@/lib/utils';
 
 interface QuestionCardProps {
   question: AssessmentQuestion & { files?: QuestionFile[] };
   answer: QuestionAnswer | undefined;
   index: number;
   onAnswerChange: (questionId: string, field: string, value: boolean | string | FileItem[]) => void;
+  forceOpen?: boolean;
 }
 
-const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardProps) => {
+const QuestionCard = ({ question, answer, index, onAnswerChange, forceOpen = false }: QuestionCardProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const isExpanded = isOpen || forceOpen;
 
   console.log(`QuestionCard for question ${question.id}:`, { question, answer });
 
   const handleAnswerChange = (value: string) => {
-    console.log(`Setting answer for question ${question.id} to:`, value === 'yes');
-    // Ensure we're updating only this specific question
+    console.log(`Setting answer for question ${question.id} to:`, value);
     if (value === 'yes' || value === 'no') {
-      onAnswerChange(question.id, 'answer', value === 'yes');
+      onAnswerChange(question.id, 'answer', value);
     }
   };
 
-  // Get the current value for this specific question only
   const getRadioValue = () => {
     if (!answer || answer.questionId !== question.id) {
       return '';
     }
-    if (answer.answer === true) return 'yes';
-    if (answer.answer === false) return 'no';
-    return '';
+    return answer.answer ?? '';
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -63,26 +62,43 @@ const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardP
     onAnswerChange(question.id, 'attachments', files);
   };
 
+  const correctAnswer = question.correctAnswer ?? 'yes';
+  const hasAnswer = answer?.answer !== undefined && answer?.answer !== '';
+  const isCorrect = hasAnswer && answer.answer === correctAnswer;
+
   const getAnswerIcon = () => {
-    if (answer?.answer === true) return <CheckCircle className="h-5 w-5 text-green-500" />;
-    if (answer?.answer === false) return <XCircle className="h-5 w-5 text-red-500" />;
+    if (isCorrect) return <CheckCircle className="h-5 w-5 text-green-500" />;
+    if (hasAnswer) return <XCircle className="h-5 w-5 text-red-500" />;
     return <AlertCircle className="h-5 w-5 text-gray-400" />;
   };
 
   const getCardBorderColor = () => {
-    if (answer?.answer === true) return 'border-l-green-500 bg-green-50/30';
-    if (answer?.answer === false) return 'border-l-red-500 bg-red-50/30';
+    if (isCorrect) return 'border-l-green-500 bg-green-50/30';
+    if (hasAnswer) return 'border-l-red-500 bg-red-50/30';
     return 'border-l-blue-500 bg-blue-50/30';
   };
 
   const getStatusBadge = () => {
-    if (answer?.answer === true) return <Badge className="bg-green-100 text-green-800 border-green-200">✓ Yes</Badge>;
-    if (answer?.answer === false) return <Badge className="bg-red-100 text-red-800 border-red-200">✗ No</Badge>;
+    if (isCorrect) return <Badge className="bg-green-100 text-green-800 border-green-200">Correct</Badge>;
+    if (hasAnswer) return <Badge className="bg-red-100 text-red-800 border-red-200">Wrong</Badge>;
     return <Badge variant="outline" className="bg-gray-50 text-gray-600">Not Answered</Badge>;
   };
 
+  const getOptionClassName = (optionValue: string) => {
+    const isSelected = answer?.answer === optionValue;
+    const selectedIsCorrect = optionValue === correctAnswer;
+
+    if (!isSelected) {
+      return 'border-gray-200 hover:bg-gray-50 text-gray-700';
+    }
+
+    return selectedIsCorrect
+      ? 'border-green-500 bg-green-50 text-green-800'
+      : 'border-red-500 bg-red-50 text-red-800';
+  };
+
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Collapsible open={isExpanded} onOpenChange={setIsOpen}>
       <Card className={`border-l-4 transition-all duration-200 hover:shadow-md ${getCardBorderColor()}`}>
         <CollapsibleTrigger asChild>
           <div className="w-full cursor-pointer">
@@ -111,8 +127,8 @@ const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardP
                       Files
                     </Badge>
                   )}
-                  <div className="p-1 rounded-full hover:bg-gray-100 transition-colors">
-                    {isOpen ? (
+                  <div className="p-1 rounded-full hover:bg-gray-100 transition-colors print:hidden">
+                    {isExpanded ? (
                       <ChevronDown className="h-5 w-5 text-gray-500" />
                     ) : (
                       <ChevronRight className="h-5 w-5 text-gray-500" />
@@ -136,16 +152,16 @@ const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardP
                   onValueChange={handleAnswerChange}
                   className="flex gap-6"
                 >
-                  <div className="flex items-center space-x-3 p-4 rounded-lg border-2 border-green-200 hover:bg-green-50 transition-all duration-200 cursor-pointer">
-                    <RadioGroupItem value="yes" id={`${question.id}-yes`} className="border-green-500 text-green-600" />
-                    <Label htmlFor={`${question.id}-yes`} className="cursor-pointer font-medium text-green-700 flex items-center gap-2">
+                  <div className={cn("flex items-center space-x-3 p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer", getOptionClassName('yes'))}>
+                    <RadioGroupItem value="yes" id={`${question.id}-yes`} />
+                    <Label htmlFor={`${question.id}-yes`} className="cursor-pointer font-medium flex items-center gap-2">
                       <CheckCircle className="h-4 w-4" />
                       Yes
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-3 p-4 rounded-lg border-2 border-red-200 hover:bg-red-50 transition-all duration-200 cursor-pointer">
-                    <RadioGroupItem value="no" id={`${question.id}-no`} className="border-red-500 text-red-600" />
-                    <Label htmlFor={`${question.id}-no`} className="cursor-pointer font-medium text-red-700 flex items-center gap-2">
+                  <div className={cn("flex items-center space-x-3 p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer", getOptionClassName('no'))}>
+                    <RadioGroupItem value="no" id={`${question.id}-no`} />
+                    <Label htmlFor={`${question.id}-no`} className="cursor-pointer font-medium flex items-center gap-2">
                       <XCircle className="h-4 w-4" />
                       No
                     </Label>

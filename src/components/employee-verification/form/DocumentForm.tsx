@@ -38,6 +38,9 @@ interface DocumentFormValues {
   ifscCode?: string;
   otherType?: string;
 }
+// Document types the fetch-employee-document-prefill edge function knows how
+// to prefill (Aadhaar/PAN/Passport uploaded at employee creation time).
+const PREFILLABLE_DOCUMENT_TYPES = new Set(['aadhar', 'pan', 'passport']);
 
 interface DocumentFormProps {
   employeeId: string;
@@ -75,7 +78,13 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   // Custom document fields
   const [customDocumentName, setCustomDocumentName] = useState('');
   const [customDocumentFiles, setCustomDocumentFiles] = useState<FileItem[]>([]);
-  
+
+  // File already uploaded for this document type during employee creation
+  // (Aadhaar/PAN/Passport), offered here so the admin doesn't have to
+  // re-pick it - just confirm/add the document number and submit.
+  const [prefilledFiles, setPrefilledFiles] = useState<FileItem[]>([]);
+  const [isPrefillingFile, setIsPrefillingFile] = useState(false);
+
   const { toast } = useToast();
   const { user } = useAuth();
   const { state } = useEmployeeStore();
@@ -125,6 +134,54 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       setDocumentImage('');
     }
   }, [selectedTypeId, employeeId, hasExistingDocument]);
+
+  // Offer the Aadhaar/PAN/Passport file already uploaded during employee
+  // creation instead of requiring the admin to pick it again. Only applies
+  // when there's no employee_documents record for this type yet. The lookup,
+  // storage download and base64 encoding all happen server-side in the
+  // fetch-employee-document-prefill edge function.
+  useEffect(() => {
+    setPrefilledFiles([]);
+
+    const typeName = documentType?.name || '';
+    if (!selectedTypeId || !employeeId || hasExistingDocument || !PREFILLABLE_DOCUMENT_TYPES.has(typeName)) {
+      return;
+    }
+
+    let cancelled = false;
+    const clientId = employeeData?.clientId || state.clientId;
+
+    const loadPrefilledFile = async () => {
+      setIsPrefillingFile(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-employee-document-prefill', {
+          body: { employeeId, clientId, documentType: typeName },
+        });
+
+        if (error || !data?.success || !data?.found || cancelled) return;
+
+        setPrefilledFiles([
+          {
+            id: `prefilled-${typeName}-${Date.now()}`,
+            name: data.file.fileName || 'document',
+            size: Math.ceil((data.file.base64.length * 3) / 4),
+            type: data.file.contentType,
+            base64: `data:${data.file.contentType};base64,${data.file.base64}`,
+          },
+        ]);
+      } catch (error) {
+        console.error('Error prefilling existing compliance document:', error);
+      } finally {
+        if (!cancelled) setIsPrefillingFile(false);
+      }
+    };
+
+    loadPrefilledFile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTypeId, employeeId, hasExistingDocument, documentType?.name, employeeData?.clientId, state.clientId]);
 
   // Memoize the file change handler to prevent infinite loops
   const handleFilesChange = useCallback((files: FileItem[]) => {
@@ -805,11 +862,22 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           <Label className="text-sm font-medium">
             Document Image / PDF <span className="text-red-500">*</span>
           </Label>
+          {isPrefillingFile && (
+            <p className="text-xs text-gray-500 mt-1 flex items-center">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Checking for a file already uploaded for this employee...
+            </p>
+          )}
+          {!isPrefillingFile && prefilledFiles.length > 0 && (
+            <p className="text-xs text-primary mt-1">
+              Using the file already uploaded for this employee. Remove it to upload a different one.
+            </p>
+          )}
           <div className="mt-1">
             <ReusableFileUploader
               key={`file-uploader-${selectedTypeId}`}
               onFilesChange={handleFilesChange}
-              initialFiles={[]}
+              initialFiles={prefilledFiles}
               maxFiles={1}
               maxSize={10}
               maxTotalSize={10}

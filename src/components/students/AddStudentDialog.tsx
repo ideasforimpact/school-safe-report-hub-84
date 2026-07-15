@@ -11,7 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import StudentForm from './StudentForm';
 import { useStudents } from '@/contexts/StudentContext';
-import { toast } from 'sonner';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
 
@@ -50,7 +49,6 @@ const AddStudentDialog = ({ open, onOpenChange, peopleInvolved, onStudentAdded }
       
       onOpenChange(false);
     } catch (error) {
-      toast.error('Failed to add student');
       console.error(error);
     } finally {
       setIsSubmitting(false);

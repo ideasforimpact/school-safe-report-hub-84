@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 import { FileItem } from '@/types/fileTypes';
+import type { QuestionResponse } from '@/types/assessment';
 
 const fetchInflight = new Map<string, Promise<void>>();
+import { calculateAssessmentScore } from '@/utils/assessmentScoring';
 
 interface Answer {
   questionId: string;
-  answer: boolean | undefined;
+  answer: string | undefined;
   comment?: string;
   attachments?: FileItem[];
 }
@@ -18,6 +19,7 @@ interface Answer {
 interface Question {
   id: string;
   text: string;
+  correctAnswer?: string;
   required?: boolean;
   allowComments?: boolean;
   allowAttachments?: boolean;
@@ -48,6 +50,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   const [assessment, setAssessment] = useState<AssessmentData | null>(null);
   const [template, setTemplate] = useState<AssessmentData['template'] | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
+  const [generalComment, setGeneralComment] = useState('');
+  const [generalAttachments, setGeneralAttachments] = useState<FileItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -134,6 +138,12 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             });
 
             setAnswers(initialAnswers);
+
+            // Restore the general (assessment-level) comment and attachment, if previously saved
+            setGeneralComment(assessmentData.submit_comment || '');
+            setGeneralAttachments(
+              Array.isArray(assessmentData.submit_attachment) ? assessmentData.submit_attachment : []
+            );
           }
         } else {
           throw new Error('Assessment has no associated template');
@@ -180,6 +190,77 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     return Math.round((answeredQuestions / questions.length) * 100);
   };
 
+  // Shared between handleSaveAsDraft and handleSubmit — uploads every
+  // question's pending attachments plus the general (assessment-level)
+  // attachment in a single edge-function call (one AttachmentGroup per
+  // question-with-attachments, plus one for the general attachment),
+  // instead of one call per question. logPrefix just distinguishes draft
+  // vs submit in the console.
+  const uploadAnswersAndGeneralAttachment = async (logPrefix: string) => {
+    const { questionFileService } = await import('@/services/assessment/questionFileService');
+    const templateName = template?.title || template?.name || 'assessment';
+
+    const groups = [
+      ...answers
+        .filter(a => a.attachments && a.attachments.length > 0)
+        .map(a => ({
+          key: `question:${a.questionId}`,
+          bucket: 'assessment-question-files',
+          attachments: a.attachments!,
+          templateName,
+          questionId: a.questionId
+        })),
+      ...(generalAttachments.length > 0 ? [{
+        key: 'general',
+        bucket: 'assessment-submission-attachments',
+        attachments: generalAttachments,
+        assessmentId: assessment.assessment_id ?? assessmentId
+      }] : [])
+    ];
+
+    console.log(`${logPrefix} Uploading attachments in a single batched call:`, groups.map(g => g.key));
+    const results = groups.length > 0 ? await questionFileService.uploadAttachmentGroups(groups) : [];
+    const resultsByKey = new Map(results.map(r => [r.key, r]));
+
+    const failedKeys: string[] = [];
+    const answersWithUploadedAttachments = answers.map(answer => {
+      if (!answer.attachments || answer.attachments.length === 0) {
+        return {
+          questionId: answer.questionId,
+          answer: answer.answer,
+          comment: answer.comment || '',
+          attachments: []
+        };
+      }
+
+      const result = resultsByKey.get(`question:${answer.questionId}`);
+      if (result?.error) {
+        console.error(`${logPrefix} Error uploading attachments for question ${answer.questionId}:`, result.error);
+        failedKeys.push(`question ${answer.questionId}: ${result.error}`);
+      }
+
+      return {
+        questionId: answer.questionId,
+        answer: answer.answer,
+        comment: answer.comment || '',
+        attachments: result?.attachments || []
+      };
+    });
+
+    const generalResult = resultsByKey.get('general');
+    if (generalResult?.error) {
+      console.error(`${logPrefix} Error uploading general attachment:`, generalResult.error);
+      failedKeys.push(`general attachment: ${generalResult.error}`);
+    }
+
+    if (failedKeys.length > 0) {
+      toast.error('Failed to upload attachments. Please try again.');
+      throw new Error(failedKeys.join('; '));
+    }
+
+    return { answersWithUploadedAttachments, uploadedGeneralAttachments: generalResult?.attachments || [] };
+  };
+
   const handleSaveAsDraft = async () => {
     if (!assessment || !template || !assessmentId || !employeeData?.id || !clientId) {
       console.error('Missing required data for saving draft:', { assessment, template, assessmentId });
@@ -191,45 +272,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     
     try {
       // Upload attachments for all answers before saving draft (same as submit)
-      const { questionFileService } = await import('@/services/assessment/questionFileService');
-      // Use template title (name) instead of assessment name to match existing question file structure
-      const templateName = template?.title || template?.name || 'assessment';
-      
-      const answersWithUploadedAttachments = await Promise.all(
-        answers.map(async (answer) => {
-          if (!answer.attachments || answer.attachments.length === 0) {
-            return {
-        questionId: answer.questionId,
-        answer: answer.answer,
-        comment: answer.comment || '',
-              attachments: []
-            };
-          }
-
-          try {
-
-            const uploadedAttachments = await questionFileService.uploadAnswerAttachments(
-              answer.attachments,
-              clientId,
-              employeeData.id,
-              templateName,
-              answer.questionId
-            );
-            
-            return {
-              questionId: answer.questionId,
-              answer: answer.answer,
-              comment: answer.comment || '',
-              attachments: uploadedAttachments
-            };
-          } catch (uploadError) {
-            console.error(`[Draft] Error uploading attachments for question ${answer.questionId}:`, uploadError);
-            toast.error(`Failed to upload attachments for question. Please try again.`);
-            throw uploadError;
-          }
-        })
-      );
-
+      const { answersWithUploadedAttachments, uploadedGeneralAttachments } =
+        await uploadAnswersAndGeneralAttachment('[Draft]');
 
       const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
 
@@ -239,6 +283,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
           client_id: clientId,
           status: currentStatus,
           answers: answersWithUploadedAttachments,
+          submit_comment: generalComment.trim() || null,
+          submit_attachment: uploadedGeneralAttachments.length > 0 ? uploadedGeneralAttachments : null,
         },
       });
 
@@ -247,7 +293,14 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         throw new Error(`Failed to save draft: ${updateError.message}`);
       }
 
-      setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersWithUploadedAttachments } : null);
+      setAssessment(prev => prev ? {
+        ...prev,
+        status: currentStatus,
+        answers: answersWithUploadedAttachments,
+        submit_comment: generalComment.trim() || null,
+        submit_attachment: uploadedGeneralAttachments
+      } : null);
+      setGeneralAttachments(uploadedGeneralAttachments);
       toast.success('Assessment saved as draft successfully!');
       navigate('/assessments');
       
@@ -281,53 +334,28 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       return;
     }
 
+    if (!generalComment.trim()) {
+      toast.error('Please add a general comment before submitting');
+      return;
+    }
+
+    if (generalAttachments.length === 0) {
+      toast.error('Please add at least one general attachment before submitting');
+      return;
+    }
+
     setSubmitting(true);
     
     try {
       // Upload attachments for all answers before submitting
-      const { questionFileService } = await import('@/services/assessment/questionFileService');
-      // Use template title (name) instead of assessment name to match existing question file structure
-      const templateName = template?.title || template?.name || 'assessment';
-      
-      const answersWithUploadedAttachments = await Promise.all(
-        answers.map(async (answer) => {
-          if (!answer.attachments || answer.attachments.length === 0) {
-            return {
-              questionId: answer.questionId,
-              answer: answer.answer,
-              comment: answer.comment || '',
-              attachments: []
-            };
-          }
-
-          try {
-
-            const uploadedAttachments = await questionFileService.uploadAnswerAttachments(
-              answer.attachments,
-              clientId,
-              employeeData.id,
-              templateName,
-              answer.questionId
-            );
-            
-            return {
-              questionId: answer.questionId,
-              answer: answer.answer,
-              comment: answer.comment || '',
-              attachments: uploadedAttachments
-            };
-          } catch (uploadError) {
-            console.error(`Error uploading attachments for question ${answer.questionId}:`, uploadError);
-            toast.error(`Failed to upload attachments for question. Please try again.`);
-            throw uploadError;
-          }
-        })
-      );
+      const { answersWithUploadedAttachments, uploadedGeneralAttachments } =
+        await uploadAnswersAndGeneralAttachment('[Submit]');
 
       // Calculate score
-      const totalQuestions = questions.length;
-      const yesAnswers = answers.filter(a => a.answer === true).length;
-      const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
+      const score = calculateAssessmentScore(
+        questions,
+        answers as Pick<QuestionResponse, 'questionId' | 'answer'>[]
+      );
 
       const { error: updateError } = await supabase.functions.invoke('save-assessment-draft/submit-assessment', {
         body: {
@@ -335,6 +363,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
           client_id: clientId,
           score,
           answers: answersWithUploadedAttachments,
+          submit_comment: generalComment.trim(),
+          submit_attachment: uploadedGeneralAttachments,
           performed_by: {
             id: employeeData?.id || '',
             first_name: employeeData?.firstName || '',
@@ -374,6 +404,10 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     assessment,
     template,
     answers,
+    generalComment,
+    setGeneralComment,
+    generalAttachments,
+    setGeneralAttachments,
     loading,
     error,
     submitting,

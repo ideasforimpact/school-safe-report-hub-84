@@ -3,7 +3,7 @@
  * Mirrors employee_verification_api_calls: totals include all providers; fallback-only
  * counts go to other_provider_*; audit_log is an append-only event array.
  *
- * Primary / fallback must match vehicle-verify/index.ts routing (currently SurePass primary, QuickEKYC fallback).
+ * Primary / fallback must match vehicle-verify/index.ts routing (env-driven via PRIMARY_RC; default SurePass primary, QuickEKYC fallback).
  */
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -213,6 +213,22 @@ export async function recordVehicleVerificationApiCall(
     .eq("id", existing.id);
 }
 
-/** Primary / fallback labels — keep in sync with vehicle-verify/index.ts call order */
-export const VEHICLE_VERIFY_PRIMARY_PROVIDER = "surepass";
-export const VEHICLE_VERIFY_FALLBACK_PROVIDER = "quickeyc";
+/**
+ * Provider order is env-driven so swapping primary/fallback needs NO code change.
+ * Set PRIMARY_RC=surepass (default) for SurePass primary + QuickEKYC fallback, or
+ * PRIMARY_RC=quickekyc for the reverse. Values must match the provider labels stored
+ * in the DB ('surepass' / 'quickeyc'). Keep in sync with vehicle-verify/index.ts.
+ */
+export type VehicleVerifyProvider = "surepass" | "quickeyc";
+
+export function resolveVehicleVerifyPrimaryProvider(): VehicleVerifyProvider {
+  const raw = (Deno.env.get("PRIMARY_RC") || "").trim().toLowerCase();
+  if (["quickekyc", "quickeyc", "qkyc", "quick", "ekyc"].includes(raw)) return "quickeyc";
+  if (["surepass", "surepare", "sure"].includes(raw)) return "surepass";
+  return "surepass"; // default when unset/unrecognized
+}
+
+export const VEHICLE_VERIFY_PRIMARY_PROVIDER: VehicleVerifyProvider =
+  resolveVehicleVerifyPrimaryProvider();
+export const VEHICLE_VERIFY_FALLBACK_PROVIDER: VehicleVerifyProvider =
+  VEHICLE_VERIFY_PRIMARY_PROVIDER === "quickeyc" ? "surepass" : "quickeyc";

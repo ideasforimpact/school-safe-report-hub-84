@@ -6,13 +6,8 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusSummary from './VerificationStatusSummary';
 import { aggregatePersonalInfo, renderDobDisplay, renderAddressDisplay } from './utils/personalInfoUtils';
 import { AlertTriangle } from 'lucide-react';
-import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
-import {
-  employeeTypeName,
-  employeeDepartmentName
-} from '@/services/employeeNameHelpers';
-import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 import { formatDate } from "@/lib/Dateformat";
+import { capitalizeWords } from '@/lib/formatUtils';
 interface EmployeeDetailsProps {
   employee: Employee;
   documents?: VerificationDocument[];
@@ -20,8 +15,6 @@ interface EmployeeDetailsProps {
 
 const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }) => {
   const { getEmployeeDocuments } = useEmployeeVerification();
-  const { employeeDepartments } = useEmployeeDepartments();
-  const { employeeTypes } = useEmployeeTypes();
 
   // Pull Aadhaar-derived values (profile image) from API response if present
   const getAadhaarDerived = (): { profileImage?: string } => {
@@ -82,19 +75,13 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
     };
   };
 
-  const employeeTypeLabel = employeeTypeName(
-    employee.employeeType,
-    employeeTypes
-  );
+  const employeeTypeLabel = capitalizeWords(employee.employeeType);
 
-  const departmentLabel = employeeDepartmentName(
-    employee.department,
-    employeeDepartments
-  );
+  const departmentLabel = capitalizeWords(employee.department);
 
 
   // Prepare truncated name for card display (limit 200 chars with tooltip)
-  const fullName = employee.name || '';
+  const fullName = capitalizeWords(employee.name);
   const displayName =
     fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
 
@@ -120,7 +107,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
               )}
             </div>
             <p className="text-gray-500 text-left">
-              {employeeTypeLabel} · {departmentLabel}
+              {[employeeTypeLabel, departmentLabel].filter(Boolean).join(' · ')}
             </p>
           </div>
           {aadharProfileImage && (
@@ -165,16 +152,18 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Department</p>
-            <p className="font-medium text-left">{departmentLabel}</p>
+            <p className="font-medium text-left">{departmentLabel || 'Not Specified'}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Designation</p>
-            <p className="font-medium text-left">{employee.designation || ''}</p>
+            <p className="font-medium text-left">{capitalizeWords(employee.designation)}</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500 text-left">Employee Type</p>
-            <p className="font-medium text-left">{employeeTypeLabel}</p>
-          </div>
+          {employeeTypeLabel && (
+            <div>
+              <p className="text-sm text-gray-500 text-left">Employee Type</p>
+              <p className="font-medium text-left">{employeeTypeLabel}</p>
+            </div>
+          )}
           <div className="md:col-span-2">
             <p className="text-sm text-gray-500 text-left">Address</p>
             <div className="font-medium text-left pb-1">

@@ -30,6 +30,16 @@ interface ProcessResult {
   errors: string[];
 }
 
+// If a worker claims a row (is_processing=true) and then crashes or times out
+// before clearing the flag, the row would otherwise be stuck forever — neither
+// the batch scan nor the targeted single-row path filters would ever pick it
+// up again. Treat a claim older than this as abandoned and reclaimable.
+const STALE_PROCESSING_MINUTES = 10;
+
+function staleProcessingThresholdIso(): string {
+  return new Date(Date.now() - STALE_PROCESSING_MINUTES * 60 * 1000).toISOString();
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -43,10 +53,29 @@ serve(async (req) => {
       getSupabaseServiceRoleKey()
     );
 
-    console.log('Starting email queue processing...');
+    // Optional targeted processing: if the caller (an immediate-trigger from
+    // the app, as opposed to the cron which sends no body) passes a specific
+    // emailQueueId, process just that row instead of the full batch scan.
+    // This guarantees a freshly-queued row is sent right away even when a
+    // large backlog of older rows would otherwise push it outside the
+    // batch's limit(50) window.
+    let targetEmailId: string | undefined;
+    try {
+      const body = await req.json();
+      targetEmailId = body?.emailQueueId;
+    } catch {
+      // No body (or invalid JSON) — normal for the cron-driven batch call.
+    }
 
-    // Process emails in batches
-    const result = await processEmailQueue(supabase);
+    console.log(
+      targetEmailId
+        ? `Starting targeted email processing for id ${targetEmailId}...`
+        : 'Starting email queue processing...'
+    );
+
+    const result = targetEmailId
+      ? await processSingleEmail(supabase, targetEmailId)
+      : await processEmailQueue(supabase);
 
     console.log('Email queue processing completed:', result);
 
@@ -91,7 +120,8 @@ async function processEmailQueue(supabase: any): Promise<ProcessResult> {
       .select('*')
       .eq('is_sent', false)
       .eq('active', true) // Only process active emails
-      .eq('is_processing', false) // Skip rows already claimed by another worker
+      // Skip rows claimed by another worker, unless that claim is stale (crashed/timed-out worker)
+      // .or(`is_processing.eq.false,processing_started_at.lt.${staleProcessingThresholdIso()}`)
       .lt('retry_count', 3) // Default cap; per-row max_retries still enforced on update
       .order('priority', { ascending: false }) // High priority first
       .order('created_at', { ascending: true }) // Oldest first
@@ -155,6 +185,78 @@ async function processEmailQueue(supabase: any): Promise<ProcessResult> {
   } catch (error: any) {
     console.error('Error in processEmailQueue:', error);
     result.errors.push(`Queue processing error: ${error.message}`);
+  }
+
+  return result;
+}
+
+/**
+ * Process a single email_queue row by id, immediately, bypassing the batch
+ * scan entirely. Used by the "immediate trigger" callers right after they
+ * queue a notification, so it isn't at the mercy of the batch's limit(50)
+ * window when there's a backlog of older rows.
+ */
+async function processSingleEmail(supabase: any, emailId: string): Promise<ProcessResult> {
+  const result: ProcessResult = {
+    processed: 0,
+    sent: 0,
+    failed: 0,
+    errors: []
+  };
+
+  try {
+    // Same eligibility filters as the batch query, scoped to this one row.
+    const { data: email, error: fetchError } = await supabase
+      .from('email_queue')
+      .select('*')
+      .eq('id', emailId)
+      .eq('is_sent', false)
+      .eq('active', true)
+      // .or(`is_processing.eq.false,processing_started_at.lt.${staleProcessingThresholdIso()}`)
+      .lt('retry_count', 3)
+      .maybeSingle();
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch email ${emailId}: ${fetchError.message}`);
+    }
+
+    if (!email) {
+      console.log(`Email ${emailId} not found or not eligible for immediate processing (already sent/inactive/claimed)`);
+      return result;
+    }
+
+    result.processed++;
+
+    const claimed = await claimEmailForProcessing(supabase, email.id, 'process-email-queue');
+    if (!claimed) {
+      result.processed = 0; // lost the race to another worker — nothing done here
+      return result;
+    }
+
+    if (email.module_name === 'incident') {
+      const validationResult = await validateIncidentNotification(supabase, email);
+      if (!validationResult.isValid) {
+        console.log(`Incident validation failed for email ${email.id}: ${validationResult.reason}`);
+        await deactivateEmailAndUpdateLogs(supabase, email.id, validationResult.reason || 'Incident validation failed');
+        result.failed++;
+        result.errors.push(`Incident validation failed: ${validationResult.reason}`);
+        return result;
+      }
+    }
+
+    const emailSent = await sendQueuedEmail(supabase, email);
+    if (emailSent) {
+      result.sent++;
+      console.log(`Email sent successfully: ${email.id}`);
+    } else {
+      result.failed++;
+      result.errors.push(`Failed to send email ${email.id}`);
+      console.error(`Failed to send email: ${email.id}`);
+    }
+  } catch (error: any) {
+    result.failed++;
+    result.errors.push(`Error processing email ${emailId}: ${error.message}`);
+    console.error(`Error processing email ${emailId}:`, error);
   }
 
   return result;
@@ -517,7 +619,8 @@ async function claimEmailForProcessing(supabase: any, emailId: string, processor
       .eq('id', emailId)
       .eq('is_sent', false)
       .eq('active', true)
-      .eq('is_processing', false)
+      // Allow reclaiming a stale claim left behind by a crashed/timed-out worker
+      // .or(`is_processing.eq.false,processing_started_at.lt.${staleProcessingThresholdIso()}`)
       .select('id')
       .maybeSingle();
 

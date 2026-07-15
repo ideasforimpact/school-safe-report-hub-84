@@ -47,8 +47,9 @@ export const useCustomForms = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const { getClientId, getEmployeeId } = useEmployeeAccess();
   const hasFetchedRef = useRef(false);
+  // Get client_id and employee_id from employee access context
+  const { getClientId, getEmployeeId, getClientTypeId } = useEmployeeAccess();
 
   const fetchForms = useCallback(async () => {
     try {
@@ -82,7 +83,7 @@ export const useCustomForms = () => {
     try {
       const clientId = getClientId();
       const employeeId = getEmployeeId();
-      
+      const clientTypeId = getClientTypeId();
       if (!clientId) {
         throw new Error('Client ID not available. Please ensure you are logged in.');
       }
@@ -90,6 +91,7 @@ export const useCustomForms = () => {
       const payload = {
         operation: 'create',
         client_id: clientId,
+        client_type_id: clientTypeId,
         title: formData.title,
         description: formData.description,
         fields: formData.fields,
