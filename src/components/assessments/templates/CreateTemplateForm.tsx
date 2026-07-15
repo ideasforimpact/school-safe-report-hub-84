@@ -14,6 +14,7 @@ import { templateService } from '@/services/assessment/templateService';
 import { FileItem } from '@/types/fileTypes';
 import { supabase } from '@/integrations/supabase/client';
 import Loader from "@/components/common/Loader";
+import { ASSESSMENT_TITLE } from '@/components/constants';
 
 interface CreateTemplateFormProps {
   templateId?: string;
@@ -86,6 +87,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
 
       const questionsWithIds = template.questions.map((q, index) => ({
         ...q,
+        correctAnswer: q.correctAnswer ?? 'yes',
         id:
           q.id ||
           `temp_${Date.now()}_${index}_${Math.random()
@@ -137,6 +139,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     const newQuestion: AssessmentQuestion = {
       id: uniqueId,
       text: '',
+      correctAnswer: 'yes',
       allowComments: false,
       allowAttachments: false,
       required: true
@@ -162,7 +165,12 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     }
     
     // Validate template title format (no special characters allowed)
-    const isValidTemplateTitle = /^[a-zA-Z0-9\s]{1,25}$/.test(title.trim());
+    const trimmedTitle = title.trim();
+    if (trimmedTitle.length > ASSESSMENT_TITLE) {
+      setFormError(`Template title cannot exceed ${ASSESSMENT_TITLE} characters`);
+      return false;
+    }
+    const isValidTemplateTitle = new RegExp(`^[a-zA-Z0-9\\s]{1,${ASSESSMENT_TITLE}}$`).test(trimmedTitle);
     if (!isValidTemplateTitle) {
       setFormError('Template title can only contain letters, numbers, and spaces');
       return false;
@@ -182,6 +190,10 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     for (let i = 0; i < questions.length; i++) {
       if (!questions[i].text.trim()) {
         setFormError(`Question ${i + 1} text is required`);
+        return false;
+      }
+      if (questions[i].correctAnswer === undefined) {
+        setFormError(`Please select the correct answer for question ${i + 1}`);
         return false;
       }
     }

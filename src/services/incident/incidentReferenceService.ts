@@ -58,6 +58,44 @@ function buildMessage(type: ReferenceCheckType, count: number): string {
   return `Cannot delete this ${noun} because ${subject} currently linked to ${count} ${linkedTo}${count > 1 ? 's' : ''}`;
 }
 
+type ReferenceCheckResponse = { data: { success?: boolean; results?: ReferenceCheckResult[] } | null; error: { message?: string } | null };
+
+// De-duplicate identical checks (helps React StrictMode double-effect in dev,
+// and callers like UserList whose `checks` array is rebuilt with a new
+// reference but the same content on every re-render).
+const referenceCheckInflight = new Map<string, Promise<ReferenceCheckResponse>>();
+const referenceCheckRecent = new Map<string, { at: number; value: ReferenceCheckResponse }>();
+const REFERENCE_CHECK_DEDUPE_MS = 1200;
+
+const invokeCheckReferences = async (clientId: string, checks: ReferenceCheckRequest[]): Promise<ReferenceCheckResponse> => {
+  const key = JSON.stringify({ clientId, checks });
+  const recent = referenceCheckRecent.get(key);
+  const now = Date.now();
+  if (recent && now - recent.at < REFERENCE_CHECK_DEDUPE_MS) {
+    return recent.value;
+  }
+
+  const existing = referenceCheckInflight.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const request = supabase.functions
+    .invoke('fetch-incidents', {
+      body: { operation: 'check_references', clientId, checks },
+    })
+    .then((res) => {
+      referenceCheckRecent.set(key, { at: Date.now(), value: res });
+      return res;
+    })
+    .finally(() => {
+      referenceCheckInflight.delete(key);
+    });
+
+  referenceCheckInflight.set(key, request);
+  return request;
+};
+
 // Batches any number of {type, id} checks into a single fetch-incidents call
 // (operation: 'check_references'), which groups them server-side into one
 // query per type instead of one request per row.
@@ -69,9 +107,7 @@ async function checkBatchReferences(
   if (checks.length === 0) return map;
 
   try {
-    const { data, error } = await supabase.functions.invoke('fetch-incidents', {
-      body: { operation: 'check_references', clientId, checks },
-    });
+    const { data, error } = await invokeCheckReferences(clientId, checks);
 
     if (error) throw error;
     if (!data?.success) throw new Error('Failed to check references');

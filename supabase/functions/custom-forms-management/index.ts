@@ -22,6 +22,7 @@ interface FormField {
 
 interface CustomFormPayload {
   client_id: string;
+  client_type_id?: string | null;
   title?: string;
   description?: string;
   fields?: FormField[];
@@ -174,6 +175,7 @@ async function createForm(supabaseClient: any, payload: CustomFormPayload) {
     .from('custom_forms')
     .insert([{
       client_id: payload.client_id,
+      client_type_id: payload.client_type_id || null,
       title: payload.title,
       description: payload.description,
       fields: payload.fields || [],

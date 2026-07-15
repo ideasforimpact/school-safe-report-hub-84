@@ -5,6 +5,7 @@ import { User } from '@/contexts/auth/types';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
+import { calculateAssessmentScore } from '@/utils/assessmentScoring';
 
 interface AssessmentData {
   id: string;
@@ -107,9 +108,7 @@ export const useResponseManagement = (
     
     try {
       // Calculate score
-      const totalQuestions = template.questions.length;
-      const yesAnswers = questionResponses.filter(r => r.answer === true).length;
-      const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
+      const score = calculateAssessmentScore(template.questions, questionResponses);
 
       const { error: updateError } = await supabase
       .functions.invoke('save-assessment-draft/submit-assessment', {

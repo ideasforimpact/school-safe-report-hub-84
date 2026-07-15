@@ -256,14 +256,16 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
     initialized: initializedRef.current
   });
 
+  const visibleModules = modules.filter((module) => module.name?.toLowerCase() !== 'cpd');
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <label className="font-medium text-lg">Module Access</label>
-        
-        {loading ? (          
+
+        {loading ? (
           <Loader text="Loading modules..." />
-        ) : modules.length === 0 ? (
+        ) : visibleModules.length === 0 ? (
           <div className="flex items-center justify-center h-40">
             <p className="text-muted-foreground">No modules available</p>
           </div>
@@ -278,7 +280,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {modules.map((module) => {
+                {visibleModules.map((module) => {
                   const moduleAccess = moduleAccessState.find(m => m.module_id === module.id);
                   const moduleEnabled = moduleAccess?.is_enabled || false;
                   const isAdminEnabled = moduleAccess?.is_admin || false;

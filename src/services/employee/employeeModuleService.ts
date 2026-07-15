@@ -85,85 +85,31 @@ export const forceRefreshEmployeeModules = async (employeeId: string): Promise<v
   }
 };
 
-// Get employee module access items
-export const getEmployeeModuleAccessItems = async (employeeId: string): Promise<ModuleAccessItem[]> => {
+// Get module access for user (handles both super admin and regular employees).
+// Routes through the `employee-management` edge function (operation:
+// 'get_module_access') instead of querying `employee_modules`/`client_modules`
+// directly from the browser.
+export const getModuleAccessForUser = async (employee: { id: string; isSuperAdmin?: boolean; clientId?: string }): Promise<ModuleAccessItem[]> => {
   try {
-    const { data, error } = await supabase
-      .from('employee_modules')
-      .select('*, modules(id, name)')
-      .eq('employee_id', employeeId);
+    const { data, error } = await supabase.functions.invoke('employee-management', {
+      body: JSON.stringify({
+        operation: 'get_module_access',
+        employeeId: employee.id,
+        clientId: employee.clientId,
+        isSuperAdmin: employee.isSuperAdmin || false,
+      }),
+    });
 
     if (error) {
-      console.error("Error fetching module permissions:", error);
+      console.error("Error fetching module access:", error);
+      return [];
+    }
+    if (!data?.success) {
+      console.error("Error fetching module access:", data?.error);
       return [];
     }
 
-    // Map to ModuleAccessItem format
-    return data.map(item => {
-      const moduleName = item.modules?.name || 'Unknown Module';
-      const moduleKey = item.module_id;
-      
-      // Safely handle the level property which can be Json type from database
-      let levelObject: { is_admin?: boolean; [key: string]: unknown } = {};
-      if (item.level && typeof item.level === 'object' && !Array.isArray(item.level)) {
-        levelObject = item.level as { is_admin?: boolean; [key: string]: unknown };
-      }
-      
-      return {
-        name: moduleName,
-        key: moduleKey,
-        employeeId: employeeId,
-        module_id: item.module_id,
-        level: levelObject
-      };
-    });
-  } catch (error) {
-    console.error("Error getting employee module access items:", error);
-    return [];
-  }
-};
-
-// Get module access for user (handles both super admin and regular employees)
-export const getModuleAccessForUser = async (employee: { id: string; isSuperAdmin?: boolean; clientId?: string }): Promise<ModuleAccessItem[]> => {
-  try {
-    // If user is super admin, fetch all client modules
-    if (employee.isSuperAdmin && employee.clientId) {
-      const { data, error } = await supabase
-        .from('client_modules')
-        .select('module_id, modules(name)')
-        .eq('client_id', employee.clientId)
-        .eq('enabled', true);
-
-      if (error) {
-        console.error("Error fetching client modules for super admin:", error);
-        return [];
-      }
-
-      return data.map(item => ({
-        name: item.modules?.name ?? 'Unknown',
-        key: item.module_id,
-        module_id: item.module_id,
-        employeeId: employee.id,
-        enabled: true,
-        level: {
-          is_admin: true
-        }
-      }));
-    }
-
-    const modules = await getEmployeeModuleAccessItems(employee.id);
-
-    return modules.map(m => ({
-      name: m.name,
-      key: m.key ?? m.module_id,
-      module_id: m.module_id,
-      employeeId: employee.id,
-      enabled: m.enabled ?? true,
-      level: {
-        is_admin: m.level?.is_admin ?? false
-      }
-    }));
-
+    return (data.modules || []) as ModuleAccessItem[];
   } catch (error) {
     console.error("Error getting module access for user:", error);
     return [];

@@ -202,7 +202,7 @@ const TextareaWithVoice = React.forwardRef<
           disabled={props.disabled}
           aria-label={listening ? "Stop listening" : "Start voice input"}
           className={cn(
-            "absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition",
+            "print:hidden absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition",
             listening
               ? "text-red-600 border-red-200 bg-red-50"
               : "text-gray-600 hover:text-blue-600",

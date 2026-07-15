@@ -2,6 +2,7 @@
 import React from 'react';
 import { Action } from '@/types/incident';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
+import { NOTES__MAX_LENGTH } from '@/components/constants';
 
 interface ActionsTakenFormProps {
   actions: Action[];
@@ -28,10 +29,10 @@ const ActionsTakenForm: React.FC<ActionsTakenFormProps> = ({
           value={currentAction.description}
           onChange={(e) => setCurrentAction(prev => ({ ...prev, description: e.target.value }))}
           className="min-h-[100px] text-md"
-          maxLength={200}
+          maxLength={NOTES__MAX_LENGTH}
         />
         <div className="text-right text-sm text-gray-500">
-          {currentAction.description.length}/200 characters
+          {currentAction.description.length}/{NOTES__MAX_LENGTH} characters
         </div>
       </div>
     </div>

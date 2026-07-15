@@ -126,6 +126,9 @@ const TemplateDetail = () => {
                           Required
                         </Badge>
                       )}
+                      <Badge variant="outline" className="bg-emerald-50 text-emerald-800">
+                        Correct: {question.correctAnswer === 'no' ? 'No' : 'Yes'}
+                      </Badge>
                       {question.allowComments && (
                         <Badge variant="outline" className="bg-blue-50 text-blue-800">
                           Comments Allowed

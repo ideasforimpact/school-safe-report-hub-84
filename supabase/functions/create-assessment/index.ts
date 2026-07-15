@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
+import { triggerImmediateEmailProcessing } from '../_shared/triggerEmailProcessing.ts';
+import { renderAssessmentTemplate } from '../_shared/assessmentNotificationTemplates.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -204,7 +206,15 @@ async function queueAssessmentAssignedNotification(assessment: any, assignee: an
       })
     : "Not specified";
   const assessmentUrl = `${baseUrl}/assessments`;
-  const subject = `New Assessment Assigned – [Assessment ID: ${assessment.id}]`;
+  const templateVariables = {
+    User_Name: assigneeName,
+    Assessment_ID: assessment.id,
+    Assessment_Title: assessment.name,
+    Assigned_Date: assignedDate,
+    Due_Date: dueDate,
+    Assessment_URL: assessmentUrl,
+  };
+  const { subject, body } = renderAssessmentTemplate("assessment_assigned", templateVariables);
 
   const { data: eq } = await supabaseClient
     .from("email_queue")
@@ -215,14 +225,9 @@ async function queueAssessmentAssignedNotification(assessment: any, assignee: an
       recipient_email: assignee.email,
       recipient_name: assigneeName,
       subject,
-      body: "",
+      body,
       params: {
-        User_Name: assigneeName,
-        Assessment_ID: assessment.id,
-        Assessment_Title: assessment.name,
-        Assigned_Date: assignedDate,
-        Due_Date: dueDate,
-        Assessment_URL: assessmentUrl,
+        ...templateVariables,
         template_id: "frontend-assessment-assigned",
         module: "assessment",
         type: "assessment_assigned",
@@ -249,5 +254,7 @@ async function queueAssessmentAssignedNotification(assessment: any, assignee: an
       actionBy: assessment.created_by,
     },
   });
+
+  await triggerImmediateEmailProcessing(eq?.id);
 }
 

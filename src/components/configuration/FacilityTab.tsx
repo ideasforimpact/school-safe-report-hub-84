@@ -391,8 +391,8 @@ export const FacilityTab = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{s.facility} Name</TableHead>
               <TableHead>{s.campus}</TableHead>
+              <TableHead>{s.facility} Name</TableHead>
               {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -418,10 +418,10 @@ export const FacilityTab = ({
             ) : (
               paginatedFacilities.map((facility: FacilityItem) => (
                 <TableRow key={facility.id}>
-                  <TableCell>{facility.name}</TableCell>
                   <TableCell>
                     {getCampusName(facility.campusId)}
                   </TableCell>
+                  <TableCell>{facility.name}</TableCell>
                   {canCreate && (
                   <TableCell>
                     <div className="flex gap-2">

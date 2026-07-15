@@ -14,8 +14,11 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentAuditTimeline from '../audit/AssessmentAuditTimeline';
-import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 import { formatDate } from '@/lib/Dateformat';
+import MultipleFilesUpload from '@/components/MultipleFilesUpload';
+import { FileItem } from '@/types/fileTypes';
+
+const REWORK_ATTACHMENT_ID = 'rework';
 
 interface AssessmentViewDialogProps {
   open: boolean;
@@ -54,7 +57,7 @@ interface AnswerAttachment {
 
 interface Answer {
   questionId: string;
-  answer?: boolean;
+  answer?: string;
   comment?: string;
   attachments?: AnswerAttachment[];
 }
@@ -73,7 +76,12 @@ interface AssessmentData {
   completed_by_name?: string;
   completed_on?: string | null;
   closure_comments?: string | null;
+  closure_attachment?: AnswerAttachment[] | null;
+  is_reworked?: boolean;
   rework_comments?: string | null;
+  rework_attachments?: AnswerAttachment[] | null;
+  submit_comment?: string | null;
+  submit_attachment?: AnswerAttachment[] | null;
   created_by?: string;
   assigned_to?: string;
   template?: {
@@ -91,7 +99,9 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showReworkDialog, setShowReworkDialog] = useState(false);
   const [completionComments, setCompletionComments] = useState('');
+  const [closureAttachments, setClosureAttachments] = useState<FileItem[]>([]);
   const [reworkComments, setReworkComments] = useState('');
+  const [reworkAttachments, setReworkAttachments] = useState<FileItem[]>([]);
   const { user, employeeData } = useAuth();
   const clientId = employeeData?.clientId || user?.clientId;
   const lastFetchRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
@@ -179,9 +189,24 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
         });
       }
 
+      const processedReworkAttachments = Array.isArray(data.rework_attachments)
+        ? data.rework_attachments
+        : [];
+
+      const processedSubmittedAttachment = Array.isArray(data.submit_attachment)
+        ? data.submit_attachment
+        : [];
+
+      const processedClosureAttachment = Array.isArray(data.closure_attachment)
+        ? data.closure_attachment
+        : [];
+
       const formattedAssessment: AssessmentData = {
         ...data,
         answers: processedAnswers,
+        rework_attachments: processedReworkAttachments,
+        submit_attachment: processedSubmittedAttachment,
+        closure_attachment: processedClosureAttachment,
         creator_name: data.creator 
           ? `${data.creator.first_name} ${data.creator.last_name}`
           : 'Unknown',
@@ -227,6 +252,17 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
     try {
       setCompleting(true);
 
+      const { questionFileService } = await import('@/services/assessment/questionFileService');
+      const uploadedClosureAttachments = await questionFileService.uploadIfPresent(
+        closureAttachments,
+        () => questionFileService.uploadClosureAttachments(
+          closureAttachments,
+          clientId,
+          employeeData.id,
+          assessment.assessment_id
+        )
+      );
+
       const completedOn = new Date().toISOString();
       const { error } = await supabase
       .functions.invoke('save-assessment-draft/complete-assessment', {
@@ -236,6 +272,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
           completed_by: employeeData.id,
           completed_on: completedOn,
           closure_comments: completionComments.trim() || null,
+          closure_attachment: uploadedClosureAttachments.length > 0 ? uploadedClosureAttachments : null,
           performed_by: {
             id: employeeData.id,
             first_name: employeeData.firstName || '',
@@ -258,11 +295,14 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
         completed_by_name: `${employeeData.firstName} ${employeeData.lastName}`,
         completed_on: completedOn,
         closure_comments: completionComments.trim() || null,
+        closure_attachment: uploadedClosureAttachments
       } : null);
 
       toast.success('Assessment completed successfully');
       setShowConfirmDialog(false);
       setCompletionComments('');
+      setClosureAttachments([]);
+
       onOpenChange(false);
       if (onAssessmentUpdated) onAssessmentUpdated();
     } catch (error) {
@@ -279,8 +319,25 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
       return;
     }
 
+    if (!reworkComments.trim()) {
+      toast.error('Please provide rework comments before submitting');
+      return;
+    }
+
     try {
       setReworking(true);
+
+      const { questionFileService } = await import('@/services/assessment/questionFileService');
+      const uploadedReworkAttachments = await questionFileService.uploadIfPresent(
+        reworkAttachments,
+        () => questionFileService.uploadAnswerAttachments(
+          reworkAttachments,
+          clientId,
+          employeeData.id,
+          assessment.name || 'assessment',
+          REWORK_ATTACHMENT_ID
+        )
+      );
 
       const { error } = await supabase
       .functions.invoke('save-assessment-draft/rework-assessment', {
@@ -288,6 +345,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
           id: assessment.id,
           client_id: clientId,
           rework_comments: reworkComments.trim() || null,
+          rework_attachments: uploadedReworkAttachments.length > 0 ? uploadedReworkAttachments : null,
           performed_by: {
             id: employeeData.id,
             first_name: employeeData.firstName || '',
@@ -307,12 +365,16 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
       setAssessment(prev => prev ? {
         ...prev,
         status: 'Draft',
+        is_reworked: true,
         rework_comments: reworkComments.trim() || null,
+        rework_attachments: uploadedReworkAttachments
       } : null);
 
       toast.success(`Assessment has been reworked and status changed to Draft${reworkComments ? ' with comments' : ''}`);
       setShowReworkDialog(false);
       setReworkComments('');
+      setReworkAttachments([]);
+
       onOpenChange(false);
       if (onAssessmentUpdated) onAssessmentUpdated();
     } catch (error) {
@@ -750,11 +812,112 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                               </div>
                             </div>
                           )}
+                          {assessment.closure_attachment && assessment.closure_attachment.length > 0 && (
+                            <div>
+                              <span className="text-sm font-medium text-gray-500">Completion Attachments:</span>
+                              <div className="mt-2 space-y-1.5">
+                                {assessment.closure_attachment.map((attachment: AnswerAttachment, idx: number) => (
+                                  <div key={idx} className="flex items-center gap-2 p-2 bg-green-50 rounded border border-green-200">
+                                    <FileText className="h-4 w-4 text-green-600 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium truncate" title={attachment.name}>
+                                        {attachment.name || `Attachment ${idx + 1}`}
+                                      </p>
+                                    </div>
+                                    {(attachment.url || attachment.path) && (
+                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => openDocumentViewer(attachment)}
+                                          className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                          title="View document"
+                                        >
+                                          <Eye className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => downloadAttachment(attachment)}
+                                          className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                          title="Download document"
+                                        >
+                                          <Download className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     )}
 
-                    {assessment.status === 'Draft' && assessment.rework_comments && (
+                    {(assessment.submit_comment || (assessment.submit_attachment && assessment.submit_attachment.length > 0)) && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <MessageCircle className="h-5 w-5 text-blue-600" />
+                            Submission Information
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="grid grid-cols-1 gap-4">
+                            {assessment.submit_comment && (
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">Comment:</span>
+                                <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                  <p className="text-sm text-gray-700">{assessment.submit_comment}</p>
+                                </div>
+                              </div>
+                            )}
+                            {assessment.submit_attachment && assessment.submit_attachment.length > 0 && (
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">Attachment:</span>
+                                <div className="mt-2 space-y-1.5">
+                                  {assessment.submit_attachment.map((attachment: AnswerAttachment, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-200">
+                                      <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium truncate" title={attachment.name}>
+                                          {attachment.name || `Attachment ${idx + 1}`}
+                                        </p>
+                                      </div>
+                                      {(attachment.url || attachment.path) && (
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => openDocumentViewer(attachment)}
+                                            className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                            title="View document"
+                                          >
+                                            <Eye className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => downloadAttachment(attachment)}
+                                            className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                            title="Download document"
+                                          >
+                                            <Download className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {assessment.status === 'Draft' && assessment.is_reworked && (
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-lg flex items-center gap-2">
@@ -764,12 +927,53 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                         </CardHeader>
                         <CardContent className="space-y-3">
                           <div className="grid grid-cols-1 gap-4">
-                            <div>
-                              <span className="text-sm font-medium text-gray-500">Rework Comments:</span>
-                              <div className="mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                                <p className="text-sm text-gray-700">{assessment.rework_comments}</p>
+                            {assessment.rework_comments && (
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">Rework Comments:</span>
+                                <div className="mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                                  <p className="text-sm text-gray-700">{assessment.rework_comments}</p>
+                                </div>
                               </div>
-                            </div>
+                            )}
+                            {assessment.rework_attachments && assessment.rework_attachments.length > 0 && (
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">Rework Attachments:</span>
+                                <div className="mt-2 space-y-1.5">
+                                  {assessment.rework_attachments.map((attachment: AnswerAttachment, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-2 p-2 bg-orange-50 rounded border border-orange-200">
+                                      <FileText className="h-4 w-4 text-orange-600 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium truncate" title={attachment.name}>
+                                          {attachment.name || `Attachment ${idx + 1}`}
+                                        </p>
+                                      </div>
+                                      {(attachment.url || attachment.path) && (
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => openDocumentViewer(attachment)}
+                                            className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                            title="View document"
+                                          >
+                                            <Eye className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => downloadAttachment(attachment)}
+                                            className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                            title="Download document"
+                                          >
+                                            <Download className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -830,7 +1034,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-medium text-gray-500">Answer:</span>
                               {isAnswered ? (
-                                answer.answer ? (
+                                answer.answer === 'yes' ? (
                                   <Badge className="bg-green-100 text-green-800 text-xs py-0.5">
                                     <Check className="h-3 w-3 mr-1" />
                                     Yes
@@ -1019,17 +1223,32 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                             <p>You are about to rework this assessment. The status will be changed to "Draft" and it can be answered again.</p>
                             
                             <div className="space-y-2">
-                              <Label htmlFor="rework-comments">Rework Comments (Optional)</Label>
+                              <Label htmlFor="rework-comments">
+                                Rework Comments <span className="text-red-500">*</span>
+                              </Label>
                               <TextareaWithVoice
                                 id="rework-comments"
-                                placeholder="Enter any comments about why this assessment needs to be reworked..."
+                                placeholder="Enter comments about why this assessment needs to be reworked..."
                                 value={reworkComments}
                                 onChange={(e) => setReworkComments(e.target.value)}
                                 rows={4}
                                 className="resize-none"
                               />
+                              {!reworkComments.trim() && (
+                                <p className="text-xs text-red-500">Rework comments are required</p>
+                              )}
                             </div>
-                            
+
+                            <div className="space-y-2">
+                              <Label>Attachment (Optional)</Label>
+                              <MultipleFilesUpload
+                                onFilesChange={setReworkAttachments}
+                                initialFiles={reworkAttachments}
+                                maxFiles={5}
+                                className="border-gray-200 bg-white"
+                              />
+                            </div>
+
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                               <p className="text-sm text-amber-800">
                                 <strong>Note:</strong> This will change the assessment status to "Draft" and allow it to be answered again.
@@ -1038,12 +1257,19 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setReworkComments('')}>
+                          <AlertDialogCancel onClick={() => { setReworkComments(''); setReworkAttachments([]); }}>
                             Cancel
                           </AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={handleReworkAssessment}
-                            disabled={reworking}
+                            onClick={(e) => {
+                              if (!reworkComments.trim()) {
+                                e.preventDefault();
+                                toast.error('Please provide rework comments before submitting');
+                                return;
+                              }
+                              handleReworkAssessment();
+                            }}
+                            disabled={reworking || !reworkComments.trim()}
                             className="bg-orange-600 hover:bg-orange-700"
                           >
                             {reworking ? 'Reworking...' : 'Rework Assessment'}
@@ -1085,10 +1311,20 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                                 className="resize-none"
                               />
                             </div>
+
+                            <div className="space-y-2">
+                              <Label>Attachment (Optional)</Label>
+                              <MultipleFilesUpload
+                                onFilesChange={setClosureAttachments}
+                                initialFiles={closureAttachments}
+                                maxFiles={5}
+                                className="border-gray-200 bg-white"
+                              />
+                            </div>
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setCompletionComments('')}>
+                          <AlertDialogCancel onClick={() => { setCompletionComments(''); setClosureAttachments([]); }}>
                             Cancel
                           </AlertDialogCancel>
                           <AlertDialogAction

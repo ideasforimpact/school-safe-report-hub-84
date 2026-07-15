@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealTimeSubHook } from './useRealTimeSubHook';
 
+const VALID_SUB_TABS = ['campuses', 'classes', 'sections', 'facilities'];
+
 export function useEducationalConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('campuses');
@@ -20,10 +22,14 @@ export function useEducationalConfigurationManagement() {
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [facilities, setFacilities] = useState<ConfigItem[]>([]);
 
-  // Set initial tab based on URL parameter when component mounts
+  // Set initial tab based on URL parameter when component mounts. The `tab` param
+  // is shared with SettingsPage's own top-level section selector (?tab=educational
+  // picks this whole section) — only apply it here when it's actually one of this
+  // component's own sub-tabs, otherwise it stomps the default 'campuses' selection
+  // with a value ('educational') that matches no TabsTrigger here.
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab) {
+    if (tab && VALID_SUB_TABS.includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);

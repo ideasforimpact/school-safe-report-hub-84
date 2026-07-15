@@ -121,7 +121,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                       </Badge>
                     </span>
                     
-                    <span className="font-medium">Date:</span>
+                    <span className="font-medium">Occurrence Date:</span>
                     <span>{challan.challan_date || 'N/A'}</span>
                     
                     {(challan.Info || challan.challan_info) && (

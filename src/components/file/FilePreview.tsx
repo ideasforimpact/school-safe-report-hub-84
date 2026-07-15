@@ -34,9 +34,9 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
           className="h-10 w-10 mr-2 rounded overflow-hidden flex-shrink-0 border cursor-pointer"
           onClick={handlePreviewClick}
         >
-          <img 
-            src={file.base64} 
-            alt={file.name} 
+          <img
+            src={file.base64 || file.url}
+            alt={file.name}
             className="h-full w-full object-cover"
           />
         </div>
@@ -52,9 +52,9 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center items-center py-4">
-            <img 
-              src={file.base64} 
-              alt={file.name} 
+            <img
+              src={file.base64 || file.url}
+              alt={file.name}
               className="max-h-[70vh] max-w-full object-contain rounded-md"
             />
           </div>

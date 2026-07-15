@@ -74,20 +74,29 @@ serve(async (req) => {
       }
     }
     
-    // Check if token is a service role key by decoding and checking the role claim
+    // Check if token is the service role key. Newer Supabase projects issue
+    // non-JWT secret keys (e.g. "sb_secret_...") for the service role, which
+    // can't be decoded like a JWT — so compare the raw token against the
+    // known service role key first, before falling back to JWT decoding for
+    // legacy (JWT-format) service role keys.
     let isServiceRoleKey = false;
     let tokenPayload: any = null;
-    
-    try {
-      tokenPayload = decodeJWTPayload(token);
-      if (tokenPayload && tokenPayload.role === 'service_role') {
-        isServiceRoleKey = true;
-        console.log('[send-notification-email] Token is a service role key (role claim: service_role)');
-      } else if (tokenPayload) {
-        console.log('[send-notification-email] Token role claim:', tokenPayload.role || 'none');
+
+    if (token === serviceRoleKey) {
+      isServiceRoleKey = true;
+      console.log('[send-notification-email] Token matches the service role key directly');
+    } else {
+      try {
+        tokenPayload = decodeJWTPayload(token);
+        if (tokenPayload && tokenPayload.role === 'service_role') {
+          isServiceRoleKey = true;
+          console.log('[send-notification-email] Token is a service role key (role claim: service_role)');
+        } else if (tokenPayload) {
+          console.log('[send-notification-email] Token role claim:', tokenPayload.role || 'none');
+        }
+      } catch (error) {
+        console.log('[send-notification-email] Could not decode token payload, will try user authentication');
       }
-    } catch (error) {
-      console.log('[send-notification-email] Could not decode token payload, will try user authentication');
     }
     
     // Authenticate based on token type

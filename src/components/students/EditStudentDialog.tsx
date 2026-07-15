@@ -30,7 +30,6 @@ const EditStudentDialog = ({ open, onOpenChange, student }: EditStudentDialogPro
       toast.success('Student updated successfully');
       onOpenChange(false);
     } catch (error) {
-      toast.error('Failed to update student');
       console.error(error);
     } finally {
       setIsSubmitting(false);

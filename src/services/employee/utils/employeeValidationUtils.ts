@@ -1,10 +1,11 @@
 
 import { Employee } from '@/contexts/employee/types';
-import { 
-  EmployeeType, 
-  DepartmentType, 
-  EmploymentStatus 
+import {
+  EmployeeType,
+  DepartmentType,
+  EmploymentStatus
 } from '@/contexts/employee/types';
+import { isValidEmployeeTypeValue } from '@/constant/employeeConstant';
 
 // Validate employee data
 export const validateEmployeeData = (employeeData: Partial<Employee>): { valid: boolean; errors: string[] } => {
@@ -70,18 +71,16 @@ export const isValidContactPerson = (name: string): boolean => {
 export const isValidClientFormPhone = (phone?: string): boolean =>
   !!phone && /^[6-9]\d{9}$/.test(phone);
 
-export const isValidEmployeeType = (employeeType: string): boolean => {
-  const validTypes: EmployeeType[] = ['permanent', 'contract', 'part_time', 'consultant', 'intern'];
-  return validTypes.includes(employeeType as EmployeeType);
-};
+export const isValidEmployeeType = (employeeType: string): boolean =>
+  isValidEmployeeTypeValue(employeeType);
 
 export const isValidDepartment = (department: string): boolean => {
   const validDepartments: DepartmentType[] = [
     'admin', 
     'teaching', 
     'security', 
-    'maintenance', 
-    'transport', 
+    'maintenance',
+    'driver',
     'management',
     'it',
     'hr',

@@ -7,6 +7,7 @@
     "questions": [
       {
         "text": "Are emergency exits clearly marked, unobstructed, and accessible at all times?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -14,6 +15,7 @@
       },
       {
         "text": "Are fire extinguishers in place, regularly inspected, and staff trained on their use?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -21,6 +23,7 @@
       },
       {
         "text": "Is a first aid kit available and stocked, with at least one trained first aider on site?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -28,6 +31,7 @@
       },
       {
         "text": "Are all electrical panels, wiring, and equipment in safe working condition and inspected periodically?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -35,6 +39,7 @@
       },
       {
         "text": "Is PPE (Personal Protective Equipment) available, maintained, and used appropriately for relevant roles?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -42,13 +47,15 @@
       },
       {
         "text": "Has a formal risk assessment been conducted and reviewed within the last 12 months?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
         "allowAttachments": false
       },
       {
-        "text": "Are incident and near-miss reports being recorded and reviewed for corrective action?",
+        "text": "Have any workplace injuries or safety incidents occurred that were not reported or investigated?",
+        "correctAnswer": "no",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -56,6 +63,7 @@
       },
       {
         "text": "Have all employees received safety induction and role-specific safety training?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -71,6 +79,7 @@
     "questions": [
       {
         "text": "Is there a written anti-harassment and anti-discrimination policy that all employees have acknowledged?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -78,6 +87,7 @@
       },
       {
         "text": "Has the organization provided POSH (Prevention of Sexual Harassment) or equivalent training to all staff in the past year?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -85,6 +95,7 @@
       },
       {
         "text": "Is an Internal Complaints Committee (ICC) or equivalent body constituted and active?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -92,13 +103,15 @@
       },
       {
         "text": "Are complaint channels (anonymous or named) accessible and clearly communicated to all employees?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
         "allowAttachments": false
       },
       {
-        "text": "Are complaints addressed within defined SLAs and outcomes documented?",
+        "text": "Have any harassment or discrimination complaints been closed without proper investigation or documentation?",
+        "correctAnswer": "no",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -106,6 +119,7 @@
       },
       {
         "text": "Is there a non-retaliation policy and has it been communicated to all employees?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,

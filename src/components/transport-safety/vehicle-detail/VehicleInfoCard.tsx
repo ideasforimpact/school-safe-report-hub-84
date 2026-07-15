@@ -59,7 +59,7 @@ interface ChallanLogEntry {
 }
 
 const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
-  const { verifyDocument, deleteVehicle, updateVehicle } = useTransportSafety();
+  const { verifyDocument, deleteVehicle, updateVehicle, patchVehicleLocal } = useTransportSafety();
   const { state } = useEmployeeStore();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [isChecking, setIsChecking] = useState(false);
@@ -314,7 +314,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         </div>
         
         <div className="flex justify-start space-x-3">
-          {!isReadOnlySwitchedContext && (
+          {/* {!isReadOnlySwitchedContext && (
             <Button 
               onClick={() => setShowDeleteConfirm(true)} 
               variant="outline"
@@ -323,7 +323,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
               <Trash2 className="h-4 w-4 mr-2" />
               Delete Vehicle
             </Button>
-          )}
+          )} */}
           
           {/* Only show Run Safety Check button if user has admin access */}
           {!isReadOnlySwitchedContext && hasAdminAccess && (
@@ -378,6 +378,13 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 vehicleChallans={vehicleChallans}
                 challanError={
                   latestChallanSuccessLog ? null : 'No successful challan check available.'
+                }
+                onUnmasked={(values) =>
+                  patchVehicleLocal(vehicleId, {
+                    vehicleChasiNumber: values.chasi ?? undefined,
+                    vehicleEngineNumber: values.engine ?? undefined,
+                    vehicleOwnerName: values.owner ?? undefined,
+                  })
                 }
               />
             </Dialog>

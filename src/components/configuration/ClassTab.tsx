@@ -380,8 +380,8 @@ export const ClassTab = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{s.grade} Name</TableHead>
               <TableHead>{s.campus}</TableHead>
+              <TableHead>{s.grade} Name</TableHead>
               {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -407,8 +407,8 @@ export const ClassTab = ({
             ) : (
               paginatedClasses.map((cls) => (
                 <TableRow key={cls.id}>
-                  <TableCell>{cls.name}</TableCell>
                   <TableCell>{getCampusName(cls.campusId)}</TableCell>
+                  <TableCell>{cls.name}</TableCell>
                   {canCreate && (
                   <TableCell>
                     <div className="flex gap-2">

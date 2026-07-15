@@ -65,7 +65,7 @@ export interface AuthContextType {
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'full-time' | 'consultant' | 'admin';
 export type DepartmentType = 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 'Other' | 'Teaching' | 
-  'Administrative' | 'Support' | 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 
+  'Administrative' | 'Support' | 'admin' | 'teaching' | 'security' | 'maintenance' | 'driver' |
   'management' | 'Management';
 
 // Define a ModulePermissions interface

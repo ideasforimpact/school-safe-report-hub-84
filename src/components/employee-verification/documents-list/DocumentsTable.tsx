@@ -335,7 +335,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     if (doc.verifiedByEmployeeId && employees.length > 0) {
       const employee = employees.find(emp => emp.id === doc.verifiedByEmployeeId);
       if (employee) {
-        const fullName = `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.name || employee.email;
+        const fullName = employee.aadharVerifiedName || employee.name || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email;
         return fullName.charAt(0).toUpperCase() + fullName.slice(1);
       }
     }

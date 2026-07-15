@@ -84,7 +84,8 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
     const { data: employeesData, error: employeesError } = await supabase
       .from('employees')
       .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
-      .eq('client_id', clientId); // MANDATORY client_id filter
+      .eq('client_id', clientId) // MANDATORY client_id filter
+      .eq('is_secondary_super_admin', false); // Secondary super admins are hidden from employee lists
 
     if (employeesError) {
       console.error("Error fetching employees:", employeesError);
@@ -142,9 +143,10 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
       const employee: Employee = {
         id: record.id as string,
         employeeId: String(record.employee_id || ''),
-        name: `${record.first_name} ${record.last_name}`,
+        name: (record.aadhar_verified_name as string) || `${record.first_name} ${record.last_name}`,
         firstName: record.first_name as string,
         lastName: record.last_name as string,
+        aadharVerifiedName: (record.aadhar_verified_name as string) || undefined,
         email: String(record.email || ''),
         phone: String(record.phone || ''),
         designation: String(record.designation || ''),
@@ -215,7 +217,8 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
       .from('employees')
       .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
       .eq('client_id', clientId) // MANDATORY client_id filter
-      .eq('status', true); // Only fetch active employees
+      .eq('status', true) // Only fetch active employees
+      .eq('is_secondary_super_admin', false); // Secondary super admins are hidden from employee lists
 
     if (employeesError) {
       console.error("Error fetching active employees:", employeesError);
@@ -281,14 +284,15 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
       const otherDetailsRaw = record.other_details;
       const otherDetails: Record<string, unknown> = Array.isArray(otherDetailsRaw) ? (otherDetailsRaw[0] as Record<string, unknown>) || {} : (otherDetailsRaw as Record<string, unknown>) || {};
       const employee: Employee = {
-        id: record.id as string,
-        employeeId: String(record.employee_id || ''),
-        name: `${record.first_name} ${record.last_name}`,
-        firstName: record.first_name as string,
-        lastName: record.last_name as string,
-        email: String(record.email || ''),
-        phone: String(record.phone || ''),
-        designation: String(record.designation || ''),
+        id: record.id,
+        employeeId: record.employee_id || '',
+        name: (record.aadhar_verified_name as string) || `${record.first_name} ${record.last_name}`,
+        firstName: record.first_name,
+        lastName: record.last_name,
+        aadharVerifiedName: (record.aadhar_verified_name as string) || undefined,
+        email: record.email || '',
+        phone: (record.phone as string) || '',
+        designation: (record.designation as string) || '',
         personalDetails: {
           middleName: String(personalDetails.middle_name || '') || undefined,
           fatherName: String(personalDetails.father_name || '') || undefined,
@@ -350,7 +354,8 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
     let query = supabase
       .from('employees')
       .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)')
-      .eq('id', id);
+      .eq('id', id)
+      .eq('is_secondary_super_admin', false); // Secondary super admins are hidden from employee lookups
     
     // SECURITY: Add client_id filter if provided
     if (clientId) {
@@ -378,9 +383,10 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
     const employee: Employee = {
       id: data.id,
       employeeId: data.employee_id || '',
-      name: `${data.first_name} ${data.last_name}`,
+      name: (dataRow.aadhar_verified_name as string) || `${data.first_name} ${data.last_name}`,
       firstName: data.first_name,
       lastName: data.last_name,
+      aadharVerifiedName: (dataRow.aadhar_verified_name as string) || undefined,
       email: data.email || '',
       phone: String(dataRow.phone || ''),
       profileDocuments: Array.isArray(dataRow.documents) ? dataRow.documents as unknown[] : [],
@@ -464,9 +470,10 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
     return {
       id: data.id,
       employeeId: data.employee_id || '',
-      name: `${data.first_name} ${data.last_name}`,
+      name: (dataRow2.aadhar_verified_name as string) || `${data.first_name} ${data.last_name}`,
       firstName: data.first_name,
       lastName: data.last_name,
+      aadharVerifiedName: (dataRow2.aadhar_verified_name as string) || undefined,
       email: data.email || '',
       phone: '',
       designation: String(dataRow2.designation || ''),

@@ -23,8 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast as sonnerToast } from 'sonner';
 import AadharDetailsDialog from '@/components/employee-verification/documents-list/AadharDetailsDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
-import { employeeTypeName } from '@/services/employeeNameHelpers';
+import { capitalizeWords } from '@/lib/formatUtils';
 import Loader from '@/components/common/Loader';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
@@ -36,8 +35,6 @@ const EmployeeDetailPage = () => {
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  const { employeeTypes } = useEmployeeTypes();
-  
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [documents, setDocuments] = useState<VerificationDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,14 +68,11 @@ const EmployeeDetailPage = () => {
     (payload: { new?: { employee_id?: string }; old?: { employee_id?: string } }) => {
       const docToCheck = payload.new || payload.old;
       if (!docToCheck || docToCheck.employee_id !== employeeId) return;
-
     },
     [employeeId]
   );
-
-  const employeeTypeLabel = employee
-  ? employeeTypeName(employee.employeeType, employeeTypes)
-  : 'Employee';  
+  
+  const employeeTypeLabel = employee ? capitalizeWords(employee.employeeType) : '';
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
@@ -236,6 +230,22 @@ const EmployeeDetailPage = () => {
     }
   }, [employeeId, timeframeFilter, toast]);
 
+  const refetchEmployeeSilently = useCallback(async () => {
+    if (!employeeId || !clientId) return;
+    try {
+      const data = await fetchEmployeeVerificationData(employeeId, clientId);
+      if (data.employee) {
+        setEmployee(data.employee);
+      }
+    } catch (error) {
+      console.error('Error refetching employee data:', error);
+    }
+  }, [employeeId, clientId]);
+
+  const refetchDocumentsAndEmployee = useCallback(async () => {
+    await Promise.all([refetchDocuments(), refetchEmployeeSilently()]);
+  }, [refetchDocuments, refetchEmployeeSilently]);
+
   const handleRefreshDocuments = useCallback(async () => {
     if (employeeId && !isRefreshing) {
       console.log('Refresh button clicked for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
@@ -357,7 +367,7 @@ const EmployeeDetailPage = () => {
   }
 
   // Prepare truncated name for header display (limit 200 chars with tooltip)
-  const fullName = employee.name || '';
+  const fullName = capitalizeWords(employee.name);
   const headerDisplayName =
     fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
 
@@ -376,7 +386,7 @@ const EmployeeDetailPage = () => {
               >
                 {headerDisplayName}
               </h1>
-              <p className="text-gray-500">{employeeTypeLabel} • {employee.employeeId}</p>
+              <p className="text-gray-500">{employeeTypeLabel ? `${employeeTypeLabel} • ` : ''}{employee.employeeId}</p>
             </div>
           </div>
 
@@ -434,7 +444,7 @@ const EmployeeDetailPage = () => {
               documents={documents}
               onAddDocument={isReadOnlySwitchedContext ? undefined : handleAddDocument}
               initialLoadComplete={initialLoadComplete}
-              onDocumentAction={refetchDocuments}
+              onDocumentAction={refetchDocumentsAndEmployee}
               isVerificationLoading={isVerificationLoading}
               setIsVerificationLoading={setIsVerificationLoading}
               isReadOnly={isReadOnlySwitchedContext}
@@ -464,7 +474,7 @@ const EmployeeDetailPage = () => {
         onOpenChange={setAadharDialogOpen}
         aadharDetails={aadharVerificationData}
         documentId={aadharVerificationData?.documentId}
-        onVerificationUpdate={refetchDocuments}
+        onVerificationUpdate={refetchDocumentsAndEmployee}
         readOnly={isReadOnlySwitchedContext}
       />
     </Layout>

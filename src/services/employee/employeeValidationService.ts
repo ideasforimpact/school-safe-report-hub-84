@@ -1,146 +1,75 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+// Live single-field "already exists" checks (Add/Edit User dialogs). Both
+// route through checkBulkDuplicates (edge function) with a single-item array
+// rather than querying `employees` directly from the browser.
 export const checkEmployeeIdExists = async (employeeId: string, clientId: string): Promise<boolean> => {
-  try {
-    if (!employeeId || !clientId) {
-      return false;
-    }
-
-    const { data, error } = await supabase
-      .from('employees')
-      .select('id')
-      .eq('employee_id', employeeId)
-      .eq('client_id', clientId)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error checking employee ID existence:', error);
-      return false;
-    }
-
-    return !!data;
-  } catch (error) {
-    console.error('Error in checkEmployeeIdExists:', error);
+  if (!employeeId || !clientId) {
     return false;
   }
+
+  const { duplicateEmployeeIds } = await checkBulkDuplicates([employeeId], [], clientId);
+  return duplicateEmployeeIds.length > 0;
 };
 
 export const checkEmployeeEmailExists = async (
   email: string,
   clientId: string,
 ): Promise<boolean> => {
-  try {
-    if (!email || !clientId) {
-      return false;
-    }
-    
-    
-    const { data, error } = await supabase
-      .from('employees')
-      .select('id')
-      .eq('email', email)
-      .eq('client_id', clientId)
-      .maybeSingle();
-    
-    if (error) {
-      console.error('Error checking employee email existence:', error);
-      return false;
-    }
-
-    return !!data;
-  } catch (error) {
-    console.error('Error in checkEmployeeEmailExists:', error);
+  if (!email || !clientId) {
     return false;
   }
+
+  const { duplicateEmails } = await checkBulkDuplicates([], [email], clientId);
+  return duplicateEmails.length > 0;
 };
 /**
- * Bulk check for duplicate employee IDs within a client
+ * Bulk check for duplicate employee IDs and/or emails within a client.
+ * Routes through the `employee-management` edge function (operation:
+ * 'check_duplicates') instead of querying the `employees` table directly
+ * from the browser, in a single call for both fields.
  */
-export const checkBulkEmployeeIdDuplicates = async (
-  employeeIds: string[], 
-  clientId: string
-): Promise<{ duplicates: string[], errors: string[] }> => {
-  try {
-    if (!employeeIds || employeeIds.length === 0 || !clientId) {
-      return { duplicates: [], errors: [] };
-    }
-
-    // Remove empty or invalid employee IDs and create unique list
-    const validEmployeeIds = [...new Set(employeeIds.filter(id => id && typeof id === 'string' && id.trim()))];
-    
-    if (validEmployeeIds.length === 0) {
-      return { duplicates: [], errors: [] };
-    }
-
-    const { data, error } = await supabase
-      .from('employees')
-      .select('employee_id')
-      .eq('client_id', clientId)
-      .in('employee_id', validEmployeeIds);
-
-    if (error) {
-      console.error('Error checking bulk employee ID duplicates:', error);
-      return { duplicates: [], errors: [`Error checking duplicates: ${error.message}`] };
-    }
-
-    const existingEmployeeIds = data?.map(employee => employee.employee_id) || [];
-    
-    return { 
-      duplicates: existingEmployeeIds,
-      errors: []
-    };
-  } catch (error) {
-    console.error('Error in checkBulkEmployeeIdDuplicates:', error);
-    return { 
-      duplicates: [], 
-      errors: [`Validation error: ${(error as Error).message}`] 
-    };
-  }
-};
-
-export const checkBulkEmployeeEmailDuplicates = async (
+export const checkBulkDuplicates = async (
+  employeeIds: string[],
   emails: string[],
   clientId: string
-): Promise<{ duplicates: string[], errors: string[] }> => {
+): Promise<{ duplicateEmployeeIds: string[]; duplicateEmails: string[]; errors: string[] }> => {
+  const validEmployeeIds = [...new Set((employeeIds || []).filter(id => id && typeof id === 'string' && id.trim()))];
+  const validEmails = [...new Set(
+    (emails || [])
+      .filter(email => typeof email === 'string' && email.trim())
+      .map(email => email.trim().toLowerCase())
+  )];
+
+  if (validEmployeeIds.length === 0 && validEmails.length === 0) {
+    return { duplicateEmployeeIds: [], duplicateEmails: [], errors: [] };
+  }
+
   try {
-    if (!emails || emails.length === 0 || !clientId) {
-      return { duplicates: [], errors: [] };
-    }
+    const { data, error } = await supabase.functions.invoke('employee-management', {
+      body: JSON.stringify({
+        operation: 'check_duplicates',
+        clientId,
+        employeeIds: validEmployeeIds,
+        emails: validEmails,
+      }),
+    });
 
-    // Normalize → trim → remove empty → dedupe
-    const validEmails = [...new Set(
-      emails
-        .filter(email => typeof email === "string" && email.trim())
-        .map(email => email.trim().toLowerCase())  // normalize lowercase
-    )];
-
-    if (validEmails.length === 0) {
-      return { duplicates: [], errors: [] };
-    }
-
-    const { data, error } = await supabase
-      .from('employees')
-      .select('email')
-      .eq('client_id', clientId)
-      .in('email', validEmails);
-
-    if (error) {
-      console.error("Error checking bulk email duplicates:", error);
-      return { duplicates: [], errors: [`Error checking duplicates: ${error.message}`] };
-    }
-
-    const existingEmails = data?.map(row => row.email.toLowerCase()) || [];
+    if (error) throw error;
+    if (!data?.success) throw new Error('Failed to check duplicates');
 
     return {
-      duplicates: existingEmails,
-      errors: []
+      duplicateEmployeeIds: data.duplicateEmployeeIds || [],
+      duplicateEmails: data.duplicateEmails || [],
+      errors: [],
     };
   } catch (error) {
-    console.error("Error in checkBulkEmployeeEmailDuplicates:", error);
+    console.error('Error in checkBulkDuplicates:', error);
     return {
-      duplicates: [],
-      errors: [`Validation error: ${(error as Error).message}`]
+      duplicateEmployeeIds: [],
+      duplicateEmails: [],
+      errors: [`Validation error: ${(error as Error).message}`],
     };
   }
 };

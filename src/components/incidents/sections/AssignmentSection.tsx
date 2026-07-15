@@ -57,6 +57,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
           .select('id, first_name, last_name, email')
           .eq('client_id', employeeData.clientId)
           .eq('status', true)
+          .eq('is_secondary_super_admin', false)
           .not('email', 'is', null)
           .neq('email', '');
 

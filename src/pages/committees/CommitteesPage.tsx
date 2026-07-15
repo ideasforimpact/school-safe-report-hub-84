@@ -29,9 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import TablePaginationBar from '@/components/common/TablePaginationBar';
-import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import { Label } from '@/components/ui/label';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts';
 import SearchMultiSelect, { SearchMultiSelectOption } from '@/components/common/SearchMultiSelect';
@@ -99,7 +99,7 @@ const CommitteesPage = () => {
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [committeeMemberIdsByCommittee, setCommitteeMemberIdsByCommittee] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -187,25 +187,18 @@ const CommitteesPage = () => {
     setMemberRoles(formData.memberRoles);
   }, [clientId]);
 
-  // Reset to page 1 when search changes. DebouncedSearchInput debounces the
-  // keystrokes itself before calling this.
-  const handleSearchChange = (value: string) => {
-    setCurrentPage(1);
-    setSearchTerm(value);
-  };
-
   useEffect(() => {
-    loadCommittees(currentPage, searchTerm);
-  }, [loadCommittees, currentPage, searchTerm]);
+    loadCommittees(currentPage, debouncedSearch);
+  }, [loadCommittees, currentPage, debouncedSearch]);
 
-  // Employee names (for the members hover card) are cached after first load — load them
-  // on page init rather than waiting for the user to open the create/edit dialog, otherwise
-  // the member list shows "Member names unavailable" until a dialog has been opened once.
+  // Load employee names up front so the member-count hover card can resolve
+  // member IDs to names without requiring the user to open the create/edit
+  // dialog first (that was the only other place this was fetched).
   useEffect(() => {
     loadDialogData();
   }, [loadDialogData]);
 
-  const activeCommitteeFilterCount = searchTerm.trim() ? 1 : 0;
+  const activeCommitteeFilterCount = debouncedSearch.trim() ? 1 : 0;
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
 
@@ -351,7 +344,7 @@ const CommitteesPage = () => {
 
       setOpenDialog(false);
       resetForm();
-      await loadCommittees(currentPage, searchTerm);
+      await loadCommittees(currentPage, debouncedSearch);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save committee');
     } finally {
@@ -629,10 +622,13 @@ const CommitteesPage = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <DebouncedSearchInput
-              value={searchTerm}
-              onChange={handleSearchChange}
+              value={debouncedSearch}
+              onChange={(value) => {
+                setCurrentPage(1);
+                setDebouncedSearch(value);
+              }}
               placeholder="Filter by committee name..."
-              delay={400}
+              triggerOnEnter
               className="w-full max-w-sm"
             />
             {activeCommitteeFilterCount > 0 && (
@@ -641,7 +637,6 @@ const CommitteesPage = () => {
                 variant="outline"
                 className="inline-flex items-center gap-2"
                 onClick={() => {
-                  setSearchTerm('');
                   setDebouncedSearch('');
                   setCurrentPage(1);
                 }}
@@ -741,18 +736,16 @@ const CommitteesPage = () => {
             </div>
           )}
         </div>
-        {totalCount > pageSize && (
-          <div className="pb-6">
-            <TablePaginationBar
-              currentPage={safeCurrentPage}
-              totalPages={totalPages}
-              totalCount={totalCount}
-              pageSize={pageSize}
-              itemLabel="committees"
-              onPageChange={setCurrentPage}
-            />
-          </div>
-        )}
+        <div className="mx-6 pb-6">
+          <TablePaginationBar
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            itemLabel="committees"
+            onPageChange={setCurrentPage}
+          />
+        </div>
       </div>
 
       <AlertDialog

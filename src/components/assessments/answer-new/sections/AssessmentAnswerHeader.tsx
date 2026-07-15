@@ -41,7 +41,7 @@ const AssessmentAnswerHeader = ({ assessment, template, progress }: AssessmentAn
       transition={{ duration: 0.5 }}
     >
       {/* Back Button */}
-      <div className="mb-4">
+      <div className="mb-4 print:hidden">
         <Button
           variant="outline"
           onClick={handleBackToAssessments}
