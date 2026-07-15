@@ -979,7 +979,8 @@ async function handleList(supabaseClient: any, requestData: any) {
   let query = supabaseClient
     .from('employees')
     .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)', { count: 'exact' })
-    .eq('client_id', clientId);
+    .eq('client_id', clientId)
+    .eq('is_secondary_super_admin', false);
 
   // Employee Verification never sends `status` and expects active-only (existing
   // behaviour). User Management sends it explicitly and expects 'all' to include

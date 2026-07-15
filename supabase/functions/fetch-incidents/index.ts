@@ -123,7 +123,7 @@ serve(async (req) => {
         })(),
         prioritiesQuery,
         supabaseClient.from('incident_status').select('id, name'),
-        supabaseClient.from('employees').select('id, first_name, last_name, email').eq('client_id', clientId).eq('status', true).not('email', 'is', null).neq('email', ''),
+        supabaseClient.from('employees').select('id, first_name, last_name, email').eq('client_id', clientId).eq('status', true).eq('is_secondary_super_admin', false).not('email', 'is', null).neq('email', ''),
         supabaseClient.from('students').select('*, grade_info:grades!students_grade_id_fkey(id,name), section_info:sections!students_section_id_fkey(id,name), campus_info:campuses!students_campus_id_fkey(id,name)').eq('client_id', clientId).order('created_at', { ascending: false }),
       ]);
 
@@ -645,11 +645,13 @@ serve(async (req) => {
 
       if (error) throw error;
 
-      const { data: contributingFactors, error: cfError } = await supabaseClient
+      let contributingFactorsQuery = supabaseClient
         .from('contributing_factors')
         .select('id, name, weight')
-        .eq('client_id', clientId)
-        .order('name');
+        .eq('client_id', clientId);
+      if (clientTypeId) contributingFactorsQuery = contributingFactorsQuery.eq('client_type_id', clientTypeId);
+
+      const { data: contributingFactors, error: cfError } = await contributingFactorsQuery.order('name');
 
       if (cfError) throw cfError;
 

@@ -220,7 +220,7 @@ export const backofficeEmployeeService = {
         joiningDate: employeeData.joining_date || new Date().toISOString(),
         department: employeeData.department || '',
         position: employeeData.employee_type || '',
-        employeeType: (employeeData.employee_type as Employee['employeeType']) || 'permanent',
+        employeeType: (employeeData.employee_type as Employee['employeeType']) || '',
         status: employeeData.status === true,
         createdAt: employeeData.created_at || new Date().toISOString(),
         updatedAt: employeeData.updated_at || new Date().toISOString(),

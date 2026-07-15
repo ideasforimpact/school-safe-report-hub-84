@@ -129,7 +129,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       joiningDate: rec.joining_date || new Date().toISOString(),
       department: typeof dept === 'object' && dept !== null ? dept.department_name || '' : dept || '',
       position: typeof empType === 'object' && empType !== null ? empType.type_name || '' : empType || '',
-      employeeType: (typeof empType === 'object' && empType !== null ? empType.type_name : empType) as Employee['employeeType'] || 'permanent',
+      employeeType: ((typeof empType === 'object' && empType !== null ? empType.type_name : empType) || '') as Employee['employeeType'],
       status: rec.status === true,
       createdAt: rec.created_at || new Date().toISOString(),
       updatedAt: rec.updated_at || new Date().toISOString(),

@@ -23,8 +23,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast as sonnerToast } from 'sonner';
 import AadharDetailsDialog from '@/components/employee-verification/documents-list/AadharDetailsDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
-import { employeeTypeName } from '@/services/employeeNameHelpers';
 import { capitalizeWords } from '@/lib/formatUtils';
 import Loader from '@/components/common/Loader';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
@@ -37,8 +35,6 @@ const EmployeeDetailPage = () => {
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  const { employeeTypes } = useEmployeeTypes();
-  
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [documents, setDocuments] = useState<VerificationDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,9 +72,7 @@ const EmployeeDetailPage = () => {
     [employeeId]
   );
   
-  const employeeTypeLabel = employee
-  ? employeeTypeName(employee.employeeType, employeeTypes)
-  : '';  
+  const employeeTypeLabel = employee ? capitalizeWords(employee.employeeType) : '';
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;

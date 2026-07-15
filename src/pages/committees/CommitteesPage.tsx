@@ -191,6 +191,13 @@ const CommitteesPage = () => {
     loadCommittees(currentPage, debouncedSearch);
   }, [loadCommittees, currentPage, debouncedSearch]);
 
+  // Load employee names up front so the member-count hover card can resolve
+  // member IDs to names without requiring the user to open the create/edit
+  // dialog first (that was the only other place this was fetched).
+  useEffect(() => {
+    loadDialogData();
+  }, [loadDialogData]);
+
   const activeCommitteeFilterCount = debouncedSearch.trim() ? 1 : 0;
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
