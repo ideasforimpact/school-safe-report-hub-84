@@ -142,7 +142,10 @@ export const useAnswerAssessmentForm = () => {
     
     try {
       // Calculate score
-      const score = calculateAssessmentScore(questions, answers as any);
+      const score = calculateAssessmentScore(
+        questions,
+        answers as Pick<QuestionResponse, 'questionId' | 'answer'>[]
+      );
 
       // Convert answers to a format compatible with JSONB
       const answersData = answers.map(answer => ({

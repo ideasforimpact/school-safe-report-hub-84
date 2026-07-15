@@ -186,7 +186,7 @@ export const useIncidentForm = () => {
     index: number,
     field: keyof Person,
     value: string,
-    additionalFields?: Record<string, any>
+    additionalFields?: Record<string, string>
   ) => {
     const updatedPeople = [...peopleInvolved];
     const updatedPerson = { ...updatedPeople[index], [field]: value };

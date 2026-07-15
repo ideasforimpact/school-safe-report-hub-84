@@ -138,7 +138,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             } else {
                 setUnmaskError(data?.message || 'Failed to unmask values');
             }
-        } catch (e: any) {
+        } catch (e) {
             setUnmaskError(e?.message || 'Failed to unmask values');
         } finally {
             setUnmaskLoading(false);
@@ -266,7 +266,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                 // source exists AND the value is masked. Masking is detected either from the
                 // SurePass response_metadata flag OR, for records stored before those flags
                 // were captured, from the value itself containing masking characters ('*').
-                const looksMasked = (v: any) => typeof v === 'string' && v.includes('*');
+                const looksMasked = (v: unknown) => typeof v === 'string' && v.includes('*');
                 let value = item.value;
                 let masked = false;
 

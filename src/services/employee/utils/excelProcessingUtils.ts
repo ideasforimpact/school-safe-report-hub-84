@@ -33,7 +33,7 @@ import { RawEmployeeData } from '../types/importTypes';
 export const normalizePanNumber = (value: string): string =>
   (value || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10);
 
-export const sanitizeCellValue = (value: any): string => {
+export const sanitizeCellValue = (value: unknown): string => {
   if (value === undefined || value === null) return '';
   return String(value)
     // Strip invisible / formatting characters that copy-paste from
@@ -188,7 +188,8 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
                   // (e.g. "7/9/2026" would become September 7 instead of
                   // July 9), which can turn a past date into a "future"
                   // one and trigger false date-range validation errors.
-                  let [m, d, y] = parts.map(v => v.trim());
+                  const [m, d] = parts.map(v => v.trim());
+                  let y = parts[2].trim();
 
                   if (y.length === 2) y = "20" + y;
 
@@ -422,7 +423,8 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
                   // (e.g. "7/9/2026" would become September 7 instead of
                   // July 9), which can turn a past date into a "future"
                   // one and trigger false date-range validation errors.
-                  let [m, d, y] = parts.map(v => v.trim());
+                  const [m, d] = parts.map(v => v.trim());
+                  let y = parts[2].trim();
 
                   if (y.length === 2) y = "20" + y; // Convert 25 → 2025
 

@@ -33,38 +33,40 @@ interface ClientType {
   key: string;
   name: string;
 }
+interface BasicInfoFormData {
+  id?: string;
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  active: boolean;
+  logo: string;
+  institutionType: InstitutionType;
+  superAdminEmail?: string;
+  // Feature 2: optional because the add-view path doesn't ever populate it.
+  secondarySuperAdminEmails?: string[];
+  // Feature 2 bug 1 follow-up: surfaced here so adding a secondary super
+  // admin can auto-keep this list in sync (the user shouldn't have to
+  // remember to update both lists).
+  website?: string;
+  clientTypeId?: string;
+  aiIncidentRecommendedActionsEnabled?: boolean;
+  isHeadOffice?: boolean;
+  mappedClientIds?: string[];
+  mappedClientAccessLevels?: Record<string, 'read_only' | 'read_write_delete'>;
+  parentHeadOfficeId?: string;
+  parentHeadOfficeName?: string;
+  moduleInfoArray?: { name: string; module_id: string; is_admin: boolean }[];
+  allowedDomains?: string[];
+  superAdminAllowedDomains?: string[];
+  authProviders?: Record<string, unknown>;
+  whitelistedIPs?: string[];
+  superAdminEmailExists?: boolean;
+}
+
 interface BasicInfoTabProps {
-  formData: {
-    id?: string;
-    name: string;
-    contactPerson: string;
-    email: string;
-    phone: string;
-    active: boolean;
-    logo: string;
-    institutionType: InstitutionType;
-    superAdminEmail?: string;
-    // Feature 2: optional because the add-view path doesn't ever populate it.
-    secondarySuperAdminEmails?: string[];
-    // Feature 2 bug 1 follow-up: surfaced here so adding a secondary super
-    // admin can auto-keep this list in sync (the user shouldn't have to
-    // remember to update both lists).
-    website?: string;
-    clientTypeId?: string;
-    aiIncidentRecommendedActionsEnabled?: boolean;
-    isHeadOffice?: boolean;
-    mappedClientIds?: string[];
-    mappedClientAccessLevels?: Record<string, 'read_only' | 'read_write_delete'>;
-    parentHeadOfficeId?: string;
-    parentHeadOfficeName?: string;
-    moduleInfoArray?: { name: string; module_id: string; is_admin: boolean }[];
-    allowedDomains?: string[];
-    superAdminAllowedDomains?: string[];
-    authProviders?: Record<string, unknown>;
-    whitelistedIPs?: string[];
-    superAdminEmailExists?: boolean;
-  };
-  setFormData: (formData: any) => void;
+  formData: BasicInfoFormData;
+  setFormData: React.Dispatch<React.SetStateAction<BasicInfoFormData>>;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   showErrors?: boolean;
   isEdit?: boolean;

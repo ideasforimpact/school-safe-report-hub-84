@@ -24,10 +24,10 @@ export const questionFileService = {
   // guard — used everywhere a general/closure/rework attachment array is
   // conditionally uploaded (Draft, Submit, Complete, Rework all repeated
   // this exact `arr.length > 0 ? await uploadX(...) : []` shape).
-  uploadIfPresent: async <T = any>(
+  uploadIfPresent: async <T, R>(
     attachments: T[] | undefined | null,
-    uploadFn: () => Promise<any[]>
-  ): Promise<any[]> => {
+    uploadFn: () => Promise<R[]>
+  ): Promise<R[]> => {
     if (!attachments || attachments.length === 0) {
       return [];
     }
@@ -237,8 +237,9 @@ export const questionFileService = {
         throw new Error(uploadUrlData?.error || uploadUrlError?.message || 'Failed to get upload URLs');
       }
 
-      const itemResultsByKey = new Map<string, { success: boolean; results?: Array<{ fileName: string; success: boolean; path?: string; token?: string; publicUrl?: string; error?: string }>; error?: string }>(
-        uploadUrlData.results.map((r: any) => [r.key, r])
+      type ItemResult = { key: string; success: boolean; results?: Array<{ fileName: string; success: boolean; path?: string; token?: string; publicUrl?: string; error?: string }>; error?: string };
+      const itemResultsByKey = new Map<string, ItemResult>(
+        (uploadUrlData.results as ItemResult[]).map((r) => [r.key, r])
       );
 
       await Promise.all(

@@ -1,6 +1,6 @@
 
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
@@ -42,11 +42,11 @@ export const useFetchForms = () => {
   const clientId = isBackoffice ? client?.id : (employeeData?.clientId || user?.clientId);
   const clientTypeId = isBackoffice ? client?.clientTypeId : employeeData?.clientType?.id;
 
-  const fetchForms = async (clientId: string) => {
+  const fetchForms = useCallback(async (clientId: string) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('Fetching forms for client:', clientId);
 
       const { data, error } = await supabase.functions.invoke('fetch-forms', {
@@ -57,7 +57,7 @@ export const useFetchForms = () => {
         console.error('Error calling fetch-forms function:', error);
         throw error;
       }
-      
+
       if (!data.success) {
         throw new Error(data.error || 'Failed to fetch forms');
       }
@@ -69,7 +69,7 @@ export const useFetchForms = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientTypeId]);
 
   useEffect(() => {
     // Only proceed if user is authenticated
@@ -87,7 +87,7 @@ export const useFetchForms = () => {
       setLoading(true);
       setError(null);
     }
-  }, [user, clientId, clientTypeId]);
+  }, [user, clientId, clientTypeId, fetchForms]);
 
   const refetch = () => {
     if (clientId) {

@@ -28,7 +28,7 @@ interface QuestionCardProps {
   question: AssessmentQuestion & { files?: QuestionFile[] };
   answer: QuestionAnswer | undefined;
   index: number;
-  onAnswerChange: (questionId: string, field: string, value: any) => void;
+  onAnswerChange: (questionId: string, field: string, value: boolean | string | FileItem[]) => void;
   forceOpen?: boolean;
 }
 

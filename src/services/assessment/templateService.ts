@@ -135,10 +135,20 @@ export const templateService = {
         throw new Error(`Failed to fetch templates: ${error.message}`);
       }
 
-      const data = result?.templates;
+      const data = result?.templates as Array<{
+        id: string;
+        title: string;
+        description: string;
+        template_categories?: { name?: string };
+        category_id: string;
+        questions: unknown;
+        created_at: string;
+        created_by: string;
+        is_active: boolean;
+      }> | undefined;
 
       // Transform data to include type from category relationship
-      const templates = data?.map((template: any) => ({
+      const templates = data?.map((template) => ({
         id: template.id,
         title: template.title,
         description: template.description,

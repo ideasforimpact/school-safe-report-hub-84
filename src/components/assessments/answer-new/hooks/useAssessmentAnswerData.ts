@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FileItem } from '@/types/fileTypes';
+import type { QuestionResponse } from '@/types/assessment';
 
 const fetchInflight = new Map<string, Promise<void>>();
 import { calculateAssessmentScore } from '@/utils/assessmentScoring';
@@ -50,7 +51,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   const [template, setTemplate] = useState<AssessmentData['template'] | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [generalComment, setGeneralComment] = useState('');
-  const [generalAttachments, setGeneralAttachments] = useState<any[]>([]);
+  const [generalAttachments, setGeneralAttachments] = useState<FileItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -351,7 +352,10 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         await uploadAnswersAndGeneralAttachment('[Submit]');
 
       // Calculate score
-      const score = calculateAssessmentScore(questions, answers as any);
+      const score = calculateAssessmentScore(
+        questions,
+        answers as Pick<QuestionResponse, 'questionId' | 'answer'>[]
+      );
 
       const { error: updateError } = await supabase.functions.invoke('save-assessment-draft/submit-assessment', {
         body: {

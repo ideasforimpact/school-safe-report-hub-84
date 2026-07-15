@@ -76,12 +76,12 @@ interface AssessmentData {
   completed_by_name?: string;
   completed_on?: string | null;
   closure_comments?: string | null;
-  closure_attachment?: any[] | null;
+  closure_attachment?: AnswerAttachment[] | null;
   is_reworked?: boolean;
   rework_comments?: string | null;
-  rework_attachments?: any[] | null;
+  rework_attachments?: AnswerAttachment[] | null;
   submit_comment?: string | null;
-  submit_attachment?: any[] | null;
+  submit_attachment?: AnswerAttachment[] | null;
   created_by?: string;
   assigned_to?: string;
   template?: {
@@ -816,7 +816,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                             <div>
                               <span className="text-sm font-medium text-gray-500">Completion Attachments:</span>
                               <div className="mt-2 space-y-1.5">
-                                {assessment.closure_attachment.map((attachment: any, idx: number) => (
+                                {assessment.closure_attachment.map((attachment: AnswerAttachment, idx: number) => (
                                   <div key={idx} className="flex items-center gap-2 p-2 bg-green-50 rounded border border-green-200">
                                     <FileText className="h-4 w-4 text-green-600 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
@@ -877,7 +877,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                               <div>
                                 <span className="text-sm font-medium text-gray-500">Attachment:</span>
                                 <div className="mt-2 space-y-1.5">
-                                  {assessment.submit_attachment.map((attachment: any, idx: number) => (
+                                  {assessment.submit_attachment.map((attachment: AnswerAttachment, idx: number) => (
                                     <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-200">
                                       <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
                                       <div className="flex-1 min-w-0">
@@ -939,7 +939,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                               <div>
                                 <span className="text-sm font-medium text-gray-500">Rework Attachments:</span>
                                 <div className="mt-2 space-y-1.5">
-                                  {assessment.rework_attachments.map((attachment: any, idx: number) => (
+                                  {assessment.rework_attachments.map((attachment: AnswerAttachment, idx: number) => (
                                     <div key={idx} className="flex items-center gap-2 p-2 bg-orange-50 rounded border border-orange-200">
                                       <FileText className="h-4 w-4 text-orange-600 flex-shrink-0" />
                                       <div className="flex-1 min-w-0">

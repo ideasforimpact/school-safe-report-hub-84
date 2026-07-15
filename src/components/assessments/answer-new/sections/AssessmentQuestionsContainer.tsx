@@ -30,9 +30,9 @@ interface TemplateWithQuestions {
 }
 
 interface AssessmentQuestionsContainerProps {
-  template: any;
-  answers: any[];
-  onAnswerChange: (questionId: string, field: string, value: any) => void;
+  template: TemplateWithQuestions;
+  answers: AnswerEntry[];
+  onAnswerChange: (questionId: string, field: string, value: boolean | string | FileItem[]) => void;
   forceOpen?: boolean;
 }
 

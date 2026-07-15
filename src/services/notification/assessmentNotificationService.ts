@@ -128,9 +128,9 @@ export class AssessmentNotificationService {
    * Queue assessment reassigned notification
    */
   async queueAssessmentReassignedNotification(
-    assessment: any,
+    assessment: AssessmentNotificationAssessment,
     assignedEmployee: Employee,
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       if (!assignedEmployee?.id || !assignedEmployee?.email) {

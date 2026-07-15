@@ -90,7 +90,7 @@ const IncidentConfigurationContent = () => {
 
       setContributingFactors([...contributingFactors, data]);
       toast.success('Contributing factor added successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception adding contributing factor:', error);
       toast.error(error?.message || 'Failed to add contributing factor');
     }
@@ -118,7 +118,7 @@ const IncidentConfigurationContent = () => {
       );
       
       toast.success('Contributing factor updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception updating contributing factor:', error);
       toast.error(error?.message || 'Failed to update contributing factor');
     }
@@ -149,7 +149,7 @@ const IncidentConfigurationContent = () => {
 
       setReportTypes([...reportTypes, data]);
       toast.success('Report type added successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception adding report type:', error);
       toast.error(error?.message || 'Failed to add report type');
     }
@@ -163,7 +163,7 @@ const IncidentConfigurationContent = () => {
         reportTypes.map(type => (type.id === id ? data : type))
       );
       toast.success('Report type updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception updating report type:', error);
       toast.error(error?.message || 'Failed to update report type');
     }
@@ -190,7 +190,7 @@ const IncidentConfigurationContent = () => {
         reportTypes.map(type => (type.id === id ? data : type))
       );
       toast.success(`Report type ${isActive ? 'activated' : 'deactivated'} successfully`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception toggling report type status:', error);
       toast.error(error?.message || `Failed to ${isActive ? 'activate' : 'deactivate'} report type`);
     }
@@ -210,7 +210,7 @@ const IncidentConfigurationContent = () => {
 
       setPriorities([...priorities, data]);
       toast.success('Priority added successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception adding priority:', error);
       toast.error(error?.message || 'Failed to add priority');
     }
@@ -224,7 +224,7 @@ const IncidentConfigurationContent = () => {
         priorities.map(priority => (priority.id === id ? data : priority))
       );
       toast.success('Priority updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception updating priority:', error);
       toast.error(error?.message || 'Failed to update priority');
     }
@@ -251,7 +251,7 @@ const IncidentConfigurationContent = () => {
         priorities.map(priority => (priority.id === id ? data : priority))
       );
       toast.success(`Priority ${isActive ? 'activated' : 'deactivated'} successfully`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Exception toggling priority status:', error);
       toast.error(error?.message || `Failed to ${isActive ? 'activate' : 'deactivate'} priority`);
     }

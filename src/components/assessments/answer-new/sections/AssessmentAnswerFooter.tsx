@@ -4,15 +4,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Printer, Save, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { AssessmentQuestion } from '@/types/assessment';
+import { FileItem } from '@/types/fileTypes';
 
 interface AnswerEntry {
   questionId: string;
-  answer: boolean | undefined;
+  answer: string | undefined;
+}
+
+interface FooterQuestion {
+  id: string;
+  required?: boolean;
 }
 
 interface TemplateWithQuestions {
-  questions?: AssessmentQuestion[];
+  questions?: unknown;
 }
 
 interface AssessmentAnswerFooterProps {
@@ -23,10 +28,10 @@ interface AssessmentAnswerFooterProps {
   progress: number;
   totalQuestions: number;
   answeredQuestions: number;
-  template: any;
-  answers: any[];
+  template: TemplateWithQuestions | null;
+  answers: AnswerEntry[];
   generalComment: string;
-  generalAttachments: any[];
+  generalAttachments: FileItem[];
   onPrint: () => void;
 }
 
@@ -48,10 +53,10 @@ const AssessmentAnswerFooter = ({
   const checkAllRequiredAnswered = () => {
     if (!template?.questions) return false;
     
-    const questions = Array.isArray(template.questions) 
-      ? template.questions
+    const questions = Array.isArray(template.questions)
+      ? (template.questions as unknown as FooterQuestion[])
       : [];
-    
+
     const requiredQuestions = questions.filter((q) => q.required);
 
     return requiredQuestions.every((requiredQ) => {
