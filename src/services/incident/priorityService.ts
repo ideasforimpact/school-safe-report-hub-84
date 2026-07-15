@@ -14,18 +14,13 @@ export interface PriorityItem {
 }
 
 export const priorityService = {
-  // Check for duplicate priority name within client (and client type, when given)
-  checkDuplicatePriority: async (name: string, clientId: string, excludeId?: string, clientTypeId?: string): Promise<boolean> => {
+  // Check for duplicate priority name within client
+  checkDuplicatePriority: async (name: string, clientId: string, excludeId?: string): Promise<boolean> => {
     try {
-      const filters: Record<string, string> = { client_id: clientId };
-      if (clientTypeId) {
-        filters.client_type_id = clientTypeId;
-      }
-
       let query = supabase
         .from('incident_priorities')
         .select('id')
-        .match(filters)
+        .eq('client_id', clientId)
         .ilike('name', name.trim());
 
       if (excludeId) {
@@ -95,7 +90,7 @@ export const priorityService = {
       }
 
       // Check for duplicate
-      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, finalClientId, undefined, clientTypeId);
+      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, finalClientId);
       if (isDuplicate) {
         throw new Error('A priority with this name already exists');
       }
@@ -128,7 +123,7 @@ export const priorityService = {
   },
 
   // Update priority - RLS handles client validation automatically
-  updatePriority: async (id: string, name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientTypeId?: string) => {
+  updatePriority: async (id: string, name: string, description: string | null = null, color: string | null = null, weight: number | null = 0) => {
     try {
       const trimmedName = name.trim();
       if (!trimmedName) {
@@ -152,7 +147,7 @@ export const priorityService = {
       }
 
       // Check for duplicate (excluding current record)
-      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, employee.client_id, id, clientTypeId);
+      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, employee.client_id, id);
       if (isDuplicate) {
         throw new Error('A priority with this name already exists');
       }

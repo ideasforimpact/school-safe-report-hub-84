@@ -28,7 +28,7 @@ interface ChallanLogEntry {
 
 const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) => {
   const { documents } = vehicle;
-  const vehicleChallans = vehicle.vehicleChallans || null;
+  const [vehicleChallans] = useState<VehicleChallans | null>(vehicle.vehicleChallans || null);
   const [showChallanDetails, setShowChallanDetails] = useState(false);
   
   // Check if vehicle has verification data
