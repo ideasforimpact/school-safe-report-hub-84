@@ -24,7 +24,7 @@ const EditEmployeeDialog: React.FC<EditEmployeeDialogProps> = ({ employee }) => 
   const { updateEmployee } = useEmployeeVerification();
   const { toast } = useToast();
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: Partial<Employee>) => {
     setIsSubmitting(true);
     try {
       await updateEmployee(employee.id, data);

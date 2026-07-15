@@ -21,7 +21,7 @@ interface ServerFilters {
 
 interface IncidentFiltersProps {
   filters: ServerFilters;
-  onFilterChange: (field: string, value: any) => void;
+  onFilterChange: (field: string, value: unknown) => void;
   onClearFilters: () => void;
   toggleAdvancedFilters?: () => void;
   availableCategories: string[];

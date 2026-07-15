@@ -3,16 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, X } from 'lucide-react';
 import SearchMultiSelect, { SearchMultiSelectOption } from '@/components/common/SearchMultiSelect';
-
-interface GroupOption {
-  id: string;
-  name: string;
-  group_type: string | null;
-}
+import { useActiveGroups, useAssignSop } from '@/hooks/sop/useSopQueries';
 
 interface AssignSOPDialogProps {
   open: boolean;
@@ -33,45 +27,24 @@ const AssignSOPDialog: React.FC<AssignSOPDialogProps> = ({
   initialGroupIds,
   onAssigned,
 }) => {
-  const [groups, setGroups] = useState<GroupOption[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
-  const [search, setSearch] = useState('');
-  const [loadingGroups, setLoadingGroups] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+
+  // ─── React Query hooks ──────────────────────────────────────────────────────
+  const { data: groups = [], isFetching: loadingGroups } = useActiveGroups(
+    clientId,
+    open && !!clientId && !!employeeId,
+  );
+  const assignMutation = useAssignSop();
+  const submitting = assignMutation.isPending;
 
   useEffect(() => {
     if (open) {
       setSelectedGroupIds(initialGroupIds?.filter(Boolean) || []);
-      setSearch('');
-      if (clientId && employeeId) {
-        fetchGroups();
-      } else {
-        // If IDs are missing, keep list empty; Save will still be blocked
+      if (!clientId || !employeeId) {
         console.warn('AssignSOPDialog opened without client or employee id');
       }
     }
-  }, [open]);
-
-  const fetchGroups = async () => {
-    if (!clientId || !employeeId) return;
-    try {
-      setLoadingGroups(true);
-      const { data, error } = await (supabase as any)
-        .from('groups')
-        .select('id, name, group_type')
-        .eq('client_id', clientId)
-        .eq('status', true)
-        .order('name');
-
-      if (error) throw error;
-      setGroups((data || []) as GroupOption[]);
-    } catch (error: any) {
-      console.error('Error fetching groups for SOP assignment:', error);
-      toast.error('Failed to load groups');
-    } finally {
-      setLoadingGroups(false);
-    }
-  };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleGroup = (groupId: string) => {
     setSelectedGroupIds((prev) =>
@@ -79,7 +52,7 @@ const AssignSOPDialog: React.FC<AssignSOPDialogProps> = ({
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!sopId || !clientId || !employeeId) {
       toast.error('Missing SOP, client or employee information');
       return;
@@ -89,47 +62,19 @@ const AssignSOPDialog: React.FC<AssignSOPDialogProps> = ({
       toast.error('Please select at least one group');
       return;
     }
-
-    try {
-      setSubmitting(true);
-
-      const { data, error } = await supabase.functions.invoke('assign-sop', {
-        body: {
-          sop_id: sopId,
-          client_id: clientId,
-          employee_id: employeeId,
-          group_ids: selectedGroupIds,
+    assignMutation.mutate(
+      { sop_id: sopId, client_id: clientId, employee_id: employeeId, group_ids: selectedGroupIds },
+      {
+        onSuccess: (data) => {
+          const assignedCount = data?.assigned_summary?.total_count ?? 0;
+          onAssigned(assignedCount);
+          onOpenChange(false);
         },
-      });
-
-      if (error) {
-        console.error('Error assigning SOP:', error);
-        const message =
-          (error as any)?.message ||
-          (error as any)?.error ||
-          'Failed to assign SOP';
-        toast.error(message);
-        return;
+        onError: (error: Error) => {
+          toast.error(error.message || 'Failed to assign SOP');
+        },
       }
-
-      if (data?.error) {
-        const detail = data.details ? `: ${data.details}` : '';
-        toast.error(`${data.error}${detail}` || 'Failed to assign SOP');
-        return;
-      }
-
-      // Expecting data.assigned_summary with groups and employees and total_count
-      const assignedCount = data?.assigned_summary?.total_count ?? 0;
-      onAssigned(assignedCount);
-      toast.success('SOP assigned successfully');
-      onOpenChange(false);
-    } catch (error: any) {
-      console.error('Error assigning SOP:', error);
-      const message = error?.message || 'Failed to assign SOP';
-      toast.error(message);
-    } finally {
-      setSubmitting(false);
-    }
+    );
   };
 
   const options: SearchMultiSelectOption[] = groups.map((g) => ({

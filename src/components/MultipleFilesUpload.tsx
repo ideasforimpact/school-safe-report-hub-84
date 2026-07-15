@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { FilePlus, AlertCircle, X } from 'lucide-react';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { FileItem } from '@/types/fileTypes';
 import { formatFileSize } from '@/utils/fileUtils';
 import FileList from './file/FileList';

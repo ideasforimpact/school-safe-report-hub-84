@@ -87,19 +87,13 @@ export const FacilityTab = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          facilities.map(async (facility) => {
-            const refInfo = await incidentReferenceService.checkFacilityReferences(facility.id, clientId);
-            return { id: facility.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          facilities.map((facility) => ({ type: 'facility' as const, id: facility.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setFacilityReferences(map);
       } catch (error) {
         console.error('Error preloading facility reference info:', error);
@@ -174,7 +168,7 @@ export const FacilityTab = ({
         await deleteFacility(facilityToDelete.id);
         setDeleteDialogOpen(false);
         setFacilityToDelete(null);
-      } catch (error: any) {
+      } catch (error) {
         // Error handling is done in the hook, just close the dialog
         setDeleteDialogOpen(false);
         setFacilityToDelete(null);
@@ -251,8 +245,8 @@ export const FacilityTab = ({
       );
     }
     
-    if (filterCampusId && filterCampusId !== 'all') {
-      filtered = filtered.filter(facility => (facility as any).campusId === filterCampusId);
+    if (filterCampusId) {
+      filtered = filtered.filter(facility => facility.campusId === filterCampusId);
     }
     
     return filtered;
@@ -362,7 +356,10 @@ export const FacilityTab = ({
             )}
           </div>
           <div className="w-48">
-            <Select value={filterCampusId} onValueChange={setFilterCampusId}>
+            <Select
+              value={filterCampusId || 'all'}
+              onValueChange={(value) => setFilterCampusId(value === 'all' ? '' : value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder={`Filter by ${s.campus.toLowerCase()}`} />
               </SelectTrigger>

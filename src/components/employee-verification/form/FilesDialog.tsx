@@ -64,16 +64,18 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
     const t = (verificationType || '').toLowerCase();
     if (t.includes('police')) return 'police';
     if (t === '' || t === 'manual') return 'manual';
-    return t.replace(/[^a-z0-9\-]/g, '-');
+    return t.replace(/[^a-z0-9-]/g, '-');
   }, [verificationType]);
 
-  const toFriendlyStorageError = (err: any): string => {
+  const toFriendlyStorageError = (err: unknown): string => {
     console.log(err, "FileError");
     try {
-      const src = err?.parsed ?? err; // prefer parsed JSON from xhr
-      const status = src?.statusCode ?? src?.status ?? err?.status ?? err?.code;
-      const errorField = src?.error ?? err?.error;
-      const msgField = src?.message ?? err?.message;
+      const src = (err as Record<string, unknown>)?.parsed ?? err; // prefer parsed JSON from xhr
+      const asRecord = src as Record<string, unknown>;
+      const errRecord = err as Record<string, unknown>;
+      const status = asRecord?.statusCode ?? asRecord?.status ?? errRecord?.status ?? errRecord?.code;
+      const errorField = asRecord?.error ?? errRecord?.error;
+      const msgField = asRecord?.message ?? errRecord?.message;
       if (status === 409) {
         return 'File already exists in storage. Rename the file or delete the existing one and try again.';
       }
@@ -81,13 +83,17 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
       if (/duplicate|already exists/.test(combined)) {
         return 'File already exists in storage. Rename the file or delete the existing one and try again.';
       }
-    } catch (_) {}
+    } catch (_) { /* ignore */ }
     return 'Something went wrong. Please retry after some time.';
   };
 
-  const pickErrorMessage = (err: any): string => {
+  const pickErrorMessage = (err: unknown): string => {
     console.log(err,"pickErrorMessage");
-    const hasStatus = !!(err?.parsed?.statusCode || err?.statusCode || err?.status || err?.code);
+    const e = err as Record<string, unknown>;
+    const hasStatus = !!(
+      (e?.parsed as Record<string, unknown>)?.statusCode ||
+      e?.statusCode || e?.status || e?.code
+    );
     return hasStatus ? toFriendlyStorageError(err) : 'Something went wrong. Please retry after some time.';
   };
 
@@ -118,7 +124,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
     }
   }, [open]);
 
-  const validateFile = (file: File): boolean => {
+  const validateFile = useCallback((file: File): boolean => {
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
     if (!validTypes.includes(file.type)) {
       setUiError('Please upload JPG, PNG, or PDF files only');
@@ -143,7 +149,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
 
     setUiError(null);
     return true;
-  };
+  }, [toast]);
 
   const processFile = (file: File): Promise<FileItem> => {
     return new Promise((resolve, reject) => {
@@ -189,7 +195,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
         variant: 'destructive',
       });
     }
-  }, [isReadOnly, toast]);
+  }, [isReadOnly, toast, validateFile]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleFileSelection(e.target.files);
@@ -225,13 +231,13 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
           resolve();
         } else {
           let message = `Upload failed with status ${xhr.status}`;
-          let parsed: any = null;
+          let parsed: Record<string, unknown> | null = null;
           if (xhr.responseText) {
             try {
-              parsed = JSON.parse(xhr.responseText);
+              parsed = JSON.parse(xhr.responseText) as Record<string, unknown>;
               // Common Supabase Storage error shape: { statusCode, error, message }
-              if (parsed?.message) message = parsed.message;
-              else if (parsed?.error) message = parsed.error;
+              if (parsed?.message) message = parsed.message as string;
+              else if (parsed?.error) message = parsed.error as string;
             } catch {
               message = `${xhr.status}: ${xhr.responseText}`;
             }
@@ -240,10 +246,11 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
           if (xhr.status === 409) {
             message = 'File already exists in storage. Rename the file or delete the existing one and try again.';
           }
-          const error = new Error(message) as any;
-          (error).status = xhr.status;
-          (error).raw = xhr.responseText;
-          if (parsed) (error).parsed = parsed;
+          const error = Object.assign(new Error(message), {
+            status: xhr.status,
+            raw: xhr.responseText,
+            parsed: parsed ?? undefined,
+          });
           reject(error);
         }
       };
@@ -273,9 +280,8 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
       const baseFolderPath = `${clientId}/${employeeId}/${documentId}/${normalizedType}`;
 
       const uploadPromises = newFiles.map(async (fileItem, idx) => {
-        try {
-          const base64Data = fileItem.base64.includes(',') 
-            ? fileItem.base64.split(',')[1] 
+          const base64Data = fileItem.base64.includes(',')
+            ? fileItem.base64.split(',')[1]
             : fileItem.base64;
           const byteCharacters = atob(base64Data);
           const byteNumbers = new Array(byteCharacters.length);
@@ -316,20 +322,13 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
             contentType: fileItem.type || 'application/octet-stream',
             size: fileItem.size,
           };
-        } catch (err: any) {
-          // const errorMsg = pickErrorMessage(err);
-          // setTimeout(() => {
-          //   showErrorOnce('Upload failed', `${fileItem.name}: ${errorMsg}`);
-          // }, 0);
-          // setUploadItems((prev) => prev.map((it, i) => i === idx ? { ...it, status: 'error' as const, error: errorMsg } : it));
-          throw err;
-        }
       });
 
+      type UploadedFileInfo = { objectPath: string; fileName: string; contentType: string; size: number };
       const uploadedFiles = await Promise.allSettled(uploadPromises);
       const successfulFiles = uploadedFiles
         .filter((r) => r.status === 'fulfilled')
-        .map((r) => (r as PromiseFulfilledResult<any>).value);
+        .map((r) => (r as PromiseFulfilledResult<UploadedFileInfo>).value);
 
       if (successfulFiles.length === 0) {
         throw new Error('All file uploads failed');
@@ -348,7 +347,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
       });
 
       // Optimistic update
-      const optimistic: FileInfo[] = successfulFiles.map((f: any) => ({
+      const optimistic: FileInfo[] = successfulFiles.map((f) => ({
         objectPath: f.objectPath,
         fileName: f.fileName,
         contentType: f.contentType,
@@ -361,7 +360,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
         await new Promise(resolve => setTimeout(resolve, 1500));
         onRefresh();
       }
-    } catch (error: any) {
+    } catch (error) {
       // const message = pickErrorMessage(error);
       // showErrorOnce('Error', message);
     } finally {
@@ -393,8 +392,8 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
         await new Promise(r => setTimeout(r, 300));
         onRefresh();
       }
-    } catch (err: any) {
-      toast({ title: 'Delete failed', description: err?.message || 'Unknown error', variant: 'destructive' });
+    } catch (err) {
+      toast({ title: 'Delete failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
     } finally {
       setDeleting(false);
       setDeletingFileName(null);
@@ -413,10 +412,10 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
       }
 
       window.open(signed.data.signedUrl, '_blank');
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error?.message || 'Failed to download file',
+        description: error instanceof Error ? error.message : 'Failed to download file',
         variant: 'destructive',
       });
     }
@@ -433,8 +432,8 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
       }
 
       window.open(signed.data.signedUrl, '_blank', 'noopener,noreferrer');
-    } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'Failed to open file', variant: 'destructive' });
+    } catch (error) {
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to open file', variant: 'destructive' });
     }
   };
 

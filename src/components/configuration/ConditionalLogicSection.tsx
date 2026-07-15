@@ -10,7 +10,7 @@ import { FormField } from '@/types/formTypes';
 interface ConditionalLogicSectionProps {
   field: FormField;
   allFields: FormField[];
-  onUpdateField: (fieldId: string, property: keyof FormField, value: any) => void;
+  onUpdateField: (fieldId: string, property: keyof FormField, value: FormField[keyof FormField]) => void;
   fieldIndex: number;
 }
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 import { getSupabaseServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
@@ -107,10 +106,10 @@ function aggregateVehicleVerificationForClient(rows: Record<string, unknown>[]) 
   let challanSuccess = 0;
   let challanFailed = 0;
   for (const row of rows || []) {
-    rcSuccess += Number((row as any).rc_success || 0);
-    rcFailed += Number((row as any).rc_failed || 0);
-    challanSuccess += Number((row as any).challan_success || 0);
-    challanFailed += Number((row as any).challan_failed || 0);
+    rcSuccess += Number(row.rc_success || 0);
+    rcFailed += Number(row.rc_failed || 0);
+    challanSuccess += Number(row.challan_success || 0);
+    challanFailed += Number(row.challan_failed || 0);
   }
 
   const rcTotal = rcSuccess + rcFailed;
@@ -118,23 +117,23 @@ function aggregateVehicleVerificationForClient(rows: Record<string, unknown>[]) 
 
   if (rcAuditCount === 0 && rcTotal > 0) {
     for (const row of rows || []) {
-      const main = String((row as any).provider || "unknown");
-      addProviderCount(rcMap, main, Number((row as any).rc_success || 0), Number((row as any).rc_failed || 0));
-      const otherSuccessObj = (row as any).other_provider_success_call &&
-          typeof (row as any).other_provider_success_call === "object"
-        ? (row as any).other_provider_success_call
-        : {};
-      const otherFailedObj = (row as any).other_provider_failed_call &&
-          typeof (row as any).other_provider_failed_call === "object"
-        ? (row as any).other_provider_failed_call
-        : {};
+      const main = String(row.provider || "unknown");
+      addProviderCount(rcMap, main, Number(row.rc_success || 0), Number(row.rc_failed || 0));
+      const otherSuccessObj = row.other_provider_success_call &&
+          typeof row.other_provider_success_call === "object"
+        ? (row.other_provider_success_call as Record<string, Record<string, unknown>>)
+        : {} as Record<string, Record<string, unknown>>;
+      const otherFailedObj = row.other_provider_failed_call &&
+          typeof row.other_provider_failed_call === "object"
+        ? (row.other_provider_failed_call as Record<string, Record<string, unknown>>)
+        : {} as Record<string, Record<string, unknown>>;
       const names = new Set<string>([
         ...Object.keys(otherSuccessObj || {}),
         ...Object.keys(otherFailedObj || {}),
       ]);
       for (const name of names) {
-        const ps = Number((otherSuccessObj as any)?.[name]?.success || 0);
-        const pf = Number((otherFailedObj as any)?.[name]?.failed || 0);
+        const ps = Number(otherSuccessObj?.[name]?.success || 0);
+        const pf = Number(otherFailedObj?.[name]?.failed || 0);
         addProviderCount(rcMap, name, ps, pf);
       }
     }
@@ -142,28 +141,28 @@ function aggregateVehicleVerificationForClient(rows: Record<string, unknown>[]) 
 
   if (challanAuditCount === 0 && challanTotal > 0) {
     for (const row of rows || []) {
-      const main = String((row as any).provider || "unknown");
+      const main = String(row.provider || "unknown");
       addProviderCount(
         challanMap,
         main,
-        Number((row as any).challan_success || 0),
-        Number((row as any).challan_failed || 0),
+        Number(row.challan_success || 0),
+        Number(row.challan_failed || 0),
       );
-      const otherSuccessObj = (row as any).other_provider_success_call &&
-          typeof (row as any).other_provider_success_call === "object"
-        ? (row as any).other_provider_success_call
-        : {};
-      const otherFailedObj = (row as any).other_provider_failed_call &&
-          typeof (row as any).other_provider_failed_call === "object"
-        ? (row as any).other_provider_failed_call
-        : {};
+      const otherSuccessObj = row.other_provider_success_call &&
+          typeof row.other_provider_success_call === "object"
+        ? (row.other_provider_success_call as Record<string, Record<string, unknown>>)
+        : {} as Record<string, Record<string, unknown>>;
+      const otherFailedObj = row.other_provider_failed_call &&
+          typeof row.other_provider_failed_call === "object"
+        ? (row.other_provider_failed_call as Record<string, Record<string, unknown>>)
+        : {} as Record<string, Record<string, unknown>>;
       const names = new Set<string>([
         ...Object.keys(otherSuccessObj || {}),
         ...Object.keys(otherFailedObj || {}),
       ]);
       for (const name of names) {
-        const ps = Number((otherSuccessObj as any)?.[name]?.success || 0);
-        const pf = Number((otherFailedObj as any)?.[name]?.failed || 0);
+        const ps = Number(otherSuccessObj?.[name]?.success || 0);
+        const pf = Number(otherFailedObj?.[name]?.failed || 0);
         addProviderCount(challanMap, name, ps, pf);
       }
     }

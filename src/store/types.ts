@@ -11,8 +11,8 @@ export interface EmployeeData {
   isSuperAdmin?: boolean;
   department?: string;
   employeeType?: string;
-  client?: any;
-  clientType?: any;
+  client?: Record<string, unknown>;
+  clientType?: string;
 }
 
 export interface Module {
@@ -22,7 +22,7 @@ export interface Module {
   icon: string;
   level: string;
   enabled: boolean;
-  accessLevel: any;
+  accessLevel: string | null;
   order?: number;
   url?: string;
 }
@@ -98,7 +98,7 @@ export interface SetEmployeeDataAction {
 
 export interface SetConfiguredModulesAction {
   type: EmployeeActionTypes.SET_CONFIGURED_MODULES;
-  payload: any[];
+  payload: Module[];
 }
 
 export interface SetLoadingAction {

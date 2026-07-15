@@ -11,6 +11,75 @@ interface FetchSOPRequest {
   client_id?: string | null;
   employee_id?: string | null;
   is_super_admin: boolean;
+  search?: string | null;
+  status?: string | null;
+  category_id?: string | null;
+  page?: number;
+  limit?: number;
+}
+
+interface SOPRow {
+  id: string;
+  title: string;
+  category_id: string | null;
+  description: string | null;
+  status: boolean;
+  procedure_steps: unknown;
+  important_notes: string | null;
+  client_id: string;
+  employee_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface EmployeeRef {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email?: string | null;
+}
+
+interface GroupRef {
+  id: string;
+  name: string | null;
+  group_type: string | null;
+  status: boolean | null;
+  group_employees?: { employee_id: string; employee?: EmployeeRef | null }[] | null;
+}
+
+interface SopAssignmentRow {
+  sop_id: string;
+  created_by: string | null;
+  group: GroupRef | null;
+  creator: EmployeeRef | null;
+}
+
+interface FormattedAssignment {
+  group_id: string | null;
+  group_name: string | null;
+  group_type: string | null;
+  group_status: boolean | null;
+  employee_count: number;
+  employees: { id: string; first_name: string; last_name: string; email: string; full_name: string }[];
+  created_by_id: string | null;
+  created_by_name: string | null;
+}
+
+interface CategoryRow {
+  id: string;
+  category_name: string;
+}
+
+interface SignoffRow {
+  sop_id: string;
+  employee_id: string;
+  is_completed?: boolean;
+  completed_date?: string | null;
+}
+
+interface SopAssignedJoinRow {
+  sop_id: string;
+  sop: SOPRow | null;
 }
 
 serve(async (req) => {
@@ -39,9 +108,12 @@ serve(async (req) => {
 
     // Parse request body
     const requestData: FetchSOPRequest = await req.json()
-    const { client_id, employee_id, is_super_admin } = requestData
+    const { client_id, employee_id, is_super_admin, search, status, category_id } = requestData
+    const page = Math.max(1, Number(requestData.page || 1));
+    const limit = Math.max(1, Number(requestData.limit || 10));
 
-    let formattedSOPs: any[] = [];
+    let formattedSOPs: unknown[] = [];
+    let total = 0;
 
     if (is_super_admin) {
       // Super admin: Fetch SOPs from sop table filtered by client_id and employee_id
@@ -70,7 +142,7 @@ serve(async (req) => {
           employee_id,
           created_at,
           updated_at
-        `)
+        `, { count: 'exact' })
         .eq('client_id', client_id);
 
       // Filter by employee_id if provided
@@ -78,27 +150,57 @@ serve(async (req) => {
         query = query.eq('employee_id', employee_id);
       }
 
-      const { data: sopData, error: sopError } = await query.order('created_at', { ascending: false });
+      if (status === 'active') {
+        query = query.eq('status', true);
+      } else if (status === 'inactive') {
+        query = query.eq('status', false);
+      }
+
+      if (category_id) {
+        query = query.eq('category_id', category_id);
+      }
+
+      if (search) {
+        const orParts = [`title.ilike.%${search}%`, `description.ilike.%${search}%`];
+        const { data: catMatches } = await supabaseClient
+          .from('sop_categories')
+          .select('id')
+          .ilike('category_name', `%${search}%`);
+        const matchingCategoryIds = (catMatches || []).map((c: { id: string }) => c.id);
+        if (matchingCategoryIds.length > 0) {
+          orParts.push(`category_id.in.(${matchingCategoryIds.join(',')})`);
+        }
+        query = query.or(orParts.join(','));
+      }
+
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      const { data: sopData, error: sopError, count } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      total = count ?? 0;
 
       if (sopError) {
         throw sopError;
       }
 
       // Fetch category names separately
-      const categoryIds = [...new Set((sopData || []).map((s: any) => s.category_id))];
+      const categoryIds = [...new Set((sopData || []).map((s: SOPRow) => s.category_id))];
       const { data: categories } = await supabaseClient
         .from('sop_categories')
         .select('id, category_name')
         .in('id', categoryIds);
 
-      const categoryMap = new Map((categories || []).map((c: any) => [c.id, c.category_name]));
+      const categoryMap = new Map((categories || []).map((c: CategoryRow) => [c.id, c.category_name]));
 
       // Get SOP IDs to fetch assigned counts and group details
-      const sopIds = (sopData || []).map((s: any) => s.id);
-      
+      const sopIds = (sopData || []).map((s: SOPRow) => s.id);
+
       // Fetch assigned counts and group/creator details for each SOP
       const assignedCountMap = new Map<string, number>();
-      const assignmentsBySopId = new Map<string, any[]>();
+      const assignmentsBySopId = new Map<string, SopAssignmentRow[]>();
 
       if (sopIds.length > 0) {
         const { data: assignedData, error: assignedError } = await supabaseClient
@@ -134,7 +236,7 @@ serve(async (req) => {
         }
 
         if (assignedData) {
-          assignedData.forEach((item: any) => {
+          assignedData.forEach((item: SopAssignmentRow) => {
             const count = assignedCountMap.get(item.sop_id) || 0;
             assignedCountMap.set(item.sop_id, count + 1);
 
@@ -158,7 +260,7 @@ serve(async (req) => {
         }
 
         if (signoffData) {
-          signoffData.forEach((item: any) => {
+          signoffData.forEach((item: SignoffRow) => {
             if (!signoffCountBySopId.has(item.sop_id)) {
               signoffCountBySopId.set(item.sop_id, new Set<string>());
             }
@@ -169,7 +271,7 @@ serve(async (req) => {
 
       // Fetch SOP creator names
       const creatorIds = [
-        ...new Set((sopData || []).map((s: any) => s.employee_id).filter(Boolean)),
+        ...new Set((sopData || []).map((s: SOPRow) => s.employee_id).filter(Boolean)),
       ];
 
       const creatorMap = new Map<string, { id: string; first_name: string; last_name: string }>();
@@ -180,17 +282,17 @@ serve(async (req) => {
           .select('id, first_name, last_name')
           .in('id', creatorIds);
 
-        (creators || []).forEach((emp: any) => {
+        (creators || []).forEach((emp: { id: string; first_name: string; last_name: string }) => {
           creatorMap.set(emp.id, emp);
         });
       }
 
       // Format data
-      formattedSOPs = (sopData || []).map((sop: any) => {
+      formattedSOPs = (sopData || []).map((sop: SOPRow) => {
         const creator = sop.employee_id ? creatorMap.get(sop.employee_id) : null;
         const assignments = assignmentsBySopId.get(sop.id) || [];
 
-        const formattedAssignments = assignments.map((item: any) => {
+        const formattedAssignments: FormattedAssignment[] = assignments.map((item: SopAssignmentRow) => {
           const group = item.group;
           const createdByEmp = item.creator;
           const members = (group?.group_employees || []) as { 
@@ -229,8 +331,8 @@ serve(async (req) => {
         
         // Deduplicate employees across all groups to get unique employee count
         const uniqueEmployeeIds = new Set<string>();
-        formattedAssignments.forEach((a: any) => {
-          (a.employees || []).forEach((emp: any) => {
+        formattedAssignments.forEach((a: FormattedAssignment) => {
+          (a.employees || []).forEach((emp) => {
             if (emp.id) {
               uniqueEmployeeIds.add(emp.id);
             }
@@ -299,15 +401,16 @@ serve(async (req) => {
         )
       }
 
-      const groupIds = (employeeGroups || []).map((g: any) => g.group_id);
+      const groupIds = (employeeGroups || []).map((g: { group_id: string }) => g.group_id);
       
       if (groupIds.length === 0) {
         // Employee is not a member of any groups, return empty array
         return new Response(
-          JSON.stringify({ 
-            success: true, 
+          JSON.stringify({
+            success: true,
             data: [],
-            message: 'No SOPs found - employee is not a member of any groups' 
+            pagination: { total: 0 },
+            message: 'No SOPs found - employee is not a member of any groups'
           }),
           { 
             status: 200, 
@@ -355,20 +458,20 @@ serve(async (req) => {
       }
 
       // Extract category IDs and fetch category names
-      const categoryIds = [...new Set((data || []).filter((item: any) => item.sop).map((item: any) => item.sop.category_id))];
-      
+      const categoryIds = [...new Set((data || []).filter((item: SopAssignedJoinRow) => item.sop).map((item: SopAssignedJoinRow) => item.sop!.category_id))];
+
       const { data: categories } = await supabaseClient
         .from('sop_categories')
         .select('id, category_name')
         .in('id', categoryIds);
 
-      const categoryMap = new Map((categories || []).map((c: any) => [c.id, c.category_name]));
+      const categoryMap = new Map((categories || []).map((c: CategoryRow) => [c.id, c.category_name]));
 
       // Get unique SOP IDs
-      const uniqueSopIds = [...new Set((data || []).filter((item: any) => item.sop).map((item: any) => item.sop.id))];
-      
+      const uniqueSopIds = [...new Set((data || []).filter((item: SopAssignedJoinRow) => item.sop).map((item: SopAssignedJoinRow) => item.sop!.id))];
+
       // Fetch groups assigned to each SOP (will filter to only groups where employee is a member)
-      const assignmentsBySopId = new Map<string, any[]>();
+      const assignmentsBySopId = new Map<string, SopAssignmentRow[]>();
       if (uniqueSopIds.length > 0) {
         const { data: assignedData, error: assignedError } = await supabaseClient
           .from('sop_assigned')
@@ -406,7 +509,7 @@ serve(async (req) => {
 
         if (assignedData) {
           // Filter to only include groups where the current employee is a member
-          assignedData.forEach((item: any) => {
+          assignedData.forEach((item: SopAssignmentRow) => {
             const group = item.group;
             if (group && group.id) {
               // Check if this group is in the employee's groups
@@ -421,15 +524,39 @@ serve(async (req) => {
       }
 
       // Deduplicate SOPs by SOP ID (employee might be in multiple groups assigned to same SOP)
-      const uniqueSopMap = new Map<string, any>();
-      (data || []).forEach((item: any) => {
+      const uniqueSopMap = new Map<string, SOPRow>();
+      (data || []).forEach((item: SopAssignedJoinRow) => {
         if (item.sop && !uniqueSopMap.has(item.sop.id)) {
           uniqueSopMap.set(item.sop.id, item.sop);
         }
       });
 
-      const uniqueSops = Array.from(uniqueSopMap.values());
-      const sopIdsForSignoffCheck = uniqueSops.map((sop: any) => sop.id);
+      // Apply search/status/category filters (the joined query above can't filter
+      // on the embedded `sop` relation directly, so filter the deduplicated list).
+      let uniqueSops = Array.from(uniqueSopMap.values());
+
+      if (status === 'active') {
+        uniqueSops = uniqueSops.filter((sop) => sop.status === true);
+      } else if (status === 'inactive') {
+        uniqueSops = uniqueSops.filter((sop) => sop.status === false);
+      }
+
+      if (category_id) {
+        uniqueSops = uniqueSops.filter((sop) => sop.category_id === category_id);
+      }
+
+      if (search) {
+        const searchLower = search.toLowerCase();
+        uniqueSops = uniqueSops.filter((sop) =>
+          (sop.title || '').toLowerCase().includes(searchLower) ||
+          (sop.description || '').toLowerCase().includes(searchLower) ||
+          (categoryMap.get(sop.category_id) || '').toLowerCase().includes(searchLower)
+        );
+      }
+
+      total = uniqueSops.length;
+
+      const sopIdsForSignoffCheck = uniqueSops.map((sop: SOPRow) => sop.id);
 
       // Check signoff request status for the employee and get completed_date
       const signoffStatusMap = new Map<string, boolean>();
@@ -448,7 +575,7 @@ serve(async (req) => {
         }
 
         if (signoffData) {
-          signoffData.forEach((item: any) => {
+          signoffData.forEach((item: SignoffRow) => {
             signoffStatusMap.set(item.sop_id, true);
             if (item.completed_date) {
               signoffCompletedDateMap.set(item.sop_id, item.completed_date);
@@ -461,7 +588,7 @@ serve(async (req) => {
       const creatorIds = [
         ...new Set(
           uniqueSops
-            .map((sop: any) => sop.employee_id)
+            .map((sop: SOPRow) => sop.employee_id)
             .filter(Boolean),
         ),
       ];
@@ -474,17 +601,17 @@ serve(async (req) => {
           .select('id, first_name, last_name')
           .in('id', creatorIds);
 
-        (creators || []).forEach((emp: any) => {
+        (creators || []).forEach((emp: { id: string; first_name: string; last_name: string }) => {
           creatorMap.set(emp.id, emp);
         });
       }
 
       // Format function for non-super admin users
-      const formatSOPForNonAdmin = (sop: any) => {
+      const formatSOPForNonAdmin = (sop: SOPRow) => {
         const creator = sop.employee_id ? creatorMap.get(sop.employee_id) : null;
         const assignments = assignmentsBySopId.get(sop.id) || [];
 
-        const formattedAssignments = assignments.map((a: any) => {
+        const formattedAssignments: FormattedAssignment[] = assignments.map((a: SopAssignmentRow) => {
           const group = a.group;
           const createdByEmp = a.creator;
           const members = (group?.group_employees || []) as { 
@@ -523,8 +650,8 @@ serve(async (req) => {
         
         // Deduplicate employees across all groups to get unique employee count
         const uniqueEmployeeIds = new Set<string>();
-        formattedAssignments.forEach((a: any) => {
-          (a.employees || []).forEach((emp: any) => {
+        formattedAssignments.forEach((a: FormattedAssignment) => {
+          (a.employees || []).forEach((emp) => {
             if (emp.id) {
               uniqueEmployeeIds.add(emp.id);
             }
@@ -562,15 +689,18 @@ serve(async (req) => {
           };
       };
 
-      // Format all unique SOPs
-      formattedSOPs = uniqueSops.map(formatSOPForNonAdmin);
+      // Format all unique SOPs, then apply pagination to the filtered set
+      const from = (page - 1) * limit;
+      const to = from + limit;
+      formattedSOPs = uniqueSops.slice(from, to).map(formatSOPForNonAdmin);
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         data: formattedSOPs,
-        message: 'SOPs fetched successfully' 
+        pagination: { total },
+        message: 'SOPs fetched successfully'
       }),
       { 
         status: 200, 
@@ -581,9 +711,9 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in fetch-sop function:', error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Internal server error',
-        details: error.message 
+        details: error instanceof Error ? error.message : String(error)
       }),
       { 
         status: 500, 

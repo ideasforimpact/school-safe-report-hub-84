@@ -70,7 +70,7 @@ const BackofficeEmployeeVerificationPage = () => {
     return map;
   }, [clients]);
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     try {
       setLoading(true);
       console.log('🚀 BackofficeEmployeeVerificationPage: Starting active client fetch');
@@ -89,7 +89,7 @@ const BackofficeEmployeeVerificationPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   const fetchEmployeesByClient = useCallback(async (clientId: string) => {
     try {
@@ -153,7 +153,7 @@ const BackofficeEmployeeVerificationPage = () => {
   // Fetch all clients on component mount
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [fetchClients]);
 
   // Fetch employees when client selection changes (only after clients are loaded)
   useEffect(() => {

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 
@@ -33,7 +33,7 @@ interface DatabaseCustomForm {
   client_id: string;
   title: string;
   description?: string;
-  fields: any; // JSON in database
+  fields: unknown; // JSON in database
   is_active: boolean;
   preview_url?: string;
   client_logo?: string;
@@ -47,32 +47,28 @@ export const useCustomForms = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Get client_id and employee_id from employee access context
   const { getClientId, getEmployeeId } = useEmployeeAccess();
+  const hasFetchedRef = useRef(false);
 
-  const fetchForms = async () => {
+  const fetchForms = useCallback(async () => {
     try {
       setLoading(true);
       const clientId = getClientId();
-      
-      if (!clientId) {
-        throw new Error('Client ID not available. Please ensure you are logged in.');
-      }
 
-      const { data, error } = await supabase
-        .from('custom_forms')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
+      if (!clientId) throw new Error('Client ID not available. Please ensure you are logged in.');
+
+      const { data: result, error } = await supabase.functions.invoke('fetch-forms', {
+        body: { client_id: clientId },
+      });
 
       if (error) throw error;
-      
-      // Transform database data to our interface
-      const transformedForms: CustomForm[] = (data || []).map(form => ({
+
+      const raw = result?.data ?? result ?? [];
+      const transformedForms: CustomForm[] = (raw as Record<string, unknown>[]).map(form => ({
         ...form,
         fields: Array.isArray(form.fields) ? (form.fields as unknown as FormField[]) : []
       }));
-      
+
       setForms(transformedForms);
     } catch (err) {
       console.error('Error fetching forms:', err);
@@ -80,7 +76,7 @@ export const useCustomForms = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getClientId]);
 
   const saveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => {
     try {
@@ -99,7 +95,7 @@ export const useCustomForms = () => {
         fields: formData.fields,
         is_active: formData.is_active,
         created_by: employeeId,
-        client_logo: (formData as any).client_logo || null
+        client_logo: (formData as CustomForm & { client_logo?: string }).client_logo || null
       };
 
       const { data, error } = await supabase.functions.invoke('custom-forms-management', {
@@ -133,7 +129,7 @@ export const useCustomForms = () => {
         formId: id,
         client_id: clientId,
         ...formData
-      } as any;
+      };
 
       const { data, error } = await supabase.functions.invoke('custom-forms-management', {
         body: payload
@@ -216,8 +212,10 @@ export const useCustomForms = () => {
   };
 
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     fetchForms();
-  }, []);
+  }, [fetchForms]);
 
   return {
     forms,

@@ -24,7 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface VoterIdDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  voterIdDetails: any;
+  voterIdDetails: Record<string, unknown>;
   documentId?: string;
   onVerificationUpdate?: () => void;
   readOnly?: boolean;
@@ -53,7 +53,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
 
   // Prepare profile image source if available
   const profileImageSrc = (() => {
-    const value = (voterInfo as any)?.profile_image || (voterInfo as any)?.photo || (voterInfo as any)?.image || (voterInfo as any)?.image_url;
+    const value = (voterInfo as Record<string, unknown>)?.profile_image || (voterInfo as Record<string, unknown>)?.photo || (voterInfo as Record<string, unknown>)?.image || (voterInfo as Record<string, unknown>)?.image_url;
     if (!value || typeof value !== 'string') return undefined;
     if (value.startsWith('http') || value.startsWith('https') || value.startsWith('data:')) return value;
     return `data:image/jpeg;base64,${value}`;

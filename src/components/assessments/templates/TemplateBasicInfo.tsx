@@ -48,7 +48,7 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
         return;
       }
 
-      const categories = data.map((item: any) => item.name);
+      const categories = data.map((item) => item.name);
       setTemplateTypes(categories);
       setLoadingTypes(false);
     };

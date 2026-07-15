@@ -29,7 +29,7 @@ export function buildPublicStorageUrl(filePath: string, bucket: string = 'employ
     return filePath;
   }
 
-  const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+  const base = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
   if (!base) {
     throw new Error('VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL is not set');
   }
@@ -71,7 +71,7 @@ export function buildClientLogoUrl(logoPath: string | null | undefined): string 
   }
   
   // Build URL from file path
-  const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+  const base = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
   if (!base) {
     console.warn('VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL is not set, cannot build logo URL');
     return undefined;

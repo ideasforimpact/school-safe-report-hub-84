@@ -14,12 +14,20 @@ import {
 import { MessageSquare, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronRight, Paperclip, Eye, Download } from 'lucide-react';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { FileItem } from '@/types/fileTypes';
+import { AssessmentQuestion, QuestionFile } from '@/types/assessment';
+
+interface QuestionAnswer {
+  questionId: string;
+  answer: boolean | undefined;
+  comment?: string;
+  attachments?: FileItem[];
+}
 
 interface QuestionCardProps {
-  question: any;
-  answer: any;
+  question: AssessmentQuestion & { files?: QuestionFile[] };
+  answer: QuestionAnswer | undefined;
   index: number;
-  onAnswerChange: (questionId: string, field: string, value: any) => void;
+  onAnswerChange: (questionId: string, field: string, value: boolean | string | FileItem[]) => void;
 }
 
 const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardProps) => {
@@ -174,7 +182,7 @@ const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardP
                     Reference files provided with this question:
                   </div>
                   <div className="space-y-2">
-                    {question.files.map((file: any, fileIndex: number) => (
+                    {question.files.map((file: QuestionFile, fileIndex: number) => (
                       <div
                         key={file.id || fileIndex}
                         className="flex items-center justify-between bg-white border border-blue-200 rounded-md p-3"

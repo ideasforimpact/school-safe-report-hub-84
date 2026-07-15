@@ -22,21 +22,22 @@ export const filterByDateRange = (incidents: Incident[], dateFilter: DateRangeFi
       case 'today':
         return incidentDate.toDateString() === today.toDateString();
         
-      case 'week':
+      case 'week': {
         const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
         return isWithinInterval(incidentDate, { start: weekStart, end: today });
-        
-      case 'month':
+      }
+      case 'month': {
         const monthStart = startOfMonth(today);
         return isWithinInterval(incidentDate, { start: monthStart, end: today });
-        
-      case 'quarter':
+      }
+      case 'quarter': {
         const quarterStart = subMonths(today, 3);
         return isWithinInterval(incidentDate, { start: quarterStart, end: today });
-        
-      case 'year':
+      }
+      case 'year': {
         const yearStart = startOfYear(today);
         return isWithinInterval(incidentDate, { start: yearStart, end: today });
+      }
         
       case 'custom':
         if (customRange?.from && customRange?.to) {

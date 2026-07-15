@@ -88,7 +88,7 @@ const CpdDetailsDialog: React.FC<CpdDetailsDialogProps> = ({
   const defaultTab = orderedDomains[0]?.id ?? '';
 
   const entriesByDomain = React.useMemo(() => {
-    const entries = (user as any)?.cpd_entries ?? [];
+    const entries = user?.cpd_entries ?? [];
     const map: Record<string, CpdEntryForUser[]> = {};
     for (const d of orderedDomains) {
       map[d.id] = entries.filter((e: CpdEntryForUser) => e.domain_id === d.id);

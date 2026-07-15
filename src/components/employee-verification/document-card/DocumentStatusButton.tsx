@@ -14,7 +14,7 @@ interface DocumentStatusButtonProps {
 
 const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [aadharDetails, setAadharDetails] = useState<any>(null);
+  const [aadharDetails, setAadharDetails] = useState<NonNullable<VerificationDocument['employee_docs_log']>[number] | null>(null);
   const { documentStatuses } = useEmployeeVerification();
   const [statusName, setStatusName] = useState<string | null>(null);
   const { toast } = useToast();

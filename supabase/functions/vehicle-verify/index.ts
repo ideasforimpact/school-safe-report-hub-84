@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.22.0";
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
@@ -414,7 +413,7 @@ function mapRcDataForCurrentRc(data: any) {
     data.registration_date
       ? new Date(data.registration_date).getFullYear()
       : null;
-     let originaldata:any={};
+     const originaldata:any={};
      originaldata['data']={
     display_type: data.maker_model || null,              
     display_year: registrationYear || null,      

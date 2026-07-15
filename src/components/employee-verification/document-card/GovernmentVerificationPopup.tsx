@@ -46,7 +46,7 @@ export interface GovernmentVerificationPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   documentType: GovernmentDocumentType;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   documentId?: string;
   onVerificationUpdate?: () => void;
   isViewMode?: boolean;
@@ -262,8 +262,8 @@ const GovernmentVerificationPopup: React.FC<GovernmentVerificationPopupProps> = 
   const config = DOC_CONFIGS[documentType];
   if (!config) return null;
 
-  const getValue = (key: string, fallback: string) => {
-  const value = safeData[key] ?? fallback;
+  const getValue = (key: string, fallback: string): string => {
+  const value = (safeData[key] as string | undefined) ?? fallback;
 
   // Apply formatting only for date fields
   if (
@@ -281,9 +281,9 @@ const GovernmentVerificationPopup: React.FC<GovernmentVerificationPopupProps> = 
   const summaryRightValue = getValue(config.summaryRight.valueKey, config.summaryRight.fallback);
   const docNumber = getValue(config.numberKey, config.numberFallback);
   const stateCode = (docNumber?.match?.(/^[A-Za-z]{2}/)?.[0]?.toUpperCase()) || "";
-  const state = safeData.state || "";
-  const uploadedFileUrl = safeData.uploadedFileUrl;
-  const fileType = safeData.fileType;
+  const state = (safeData.state as string) || "";
+  const uploadedFileUrl = safeData.uploadedFileUrl as string | undefined;
+  const fileType = safeData.fileType as string | undefined;
   const {
     isExpired: expired,
     isExpiringSoon,
@@ -336,10 +336,10 @@ console.log("isViewMode:", isViewMode);
         throw new Error(data?.error || "Approval failed");
       }
 
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Approval Failed",
-        description: error.message || "Something went wrong.",
+        description: error instanceof Error ? error.message : "Something went wrong.",
         variant: "destructive",
       });
     } finally {
@@ -387,10 +387,10 @@ console.log("isViewMode:", isViewMode);
         throw new Error(data?.error || "Rejection failed");
       }
 
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Rejection Failed",
-        description: error.message || "Something went wrong.",
+        description: error instanceof Error ? error.message : "Something went wrong.",
         variant: "destructive",
       });
     } finally {
@@ -685,7 +685,7 @@ console.log("isViewMode:", isViewMode);
                   >
                     {data?.profileImage ? (
                     <img
-                      src={`data:image/jpeg;base64,${data.profileImage}`}
+                      src={`data:image/jpeg;base64,${data.profileImage as string}`}
                         alt="Profile"
                         className="w-full h-full object-cover"
                       />

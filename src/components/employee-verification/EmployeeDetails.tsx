@@ -38,9 +38,9 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
     if (!aadhar || !aadhar.apiResponseData) return {};
 
     // Most responses are { data: {...} }. Fallback to root if needed.
-    const root: any = aadhar.apiResponseData?.data ?? aadhar.apiResponseData;
+    const root: Record<string, unknown> = (aadhar.apiResponseData?.data ?? aadhar.apiResponseData) || {};
 
-    const rawImage: string | undefined = root?.profile_image || root?.photo || root?.image || root?.image_link;
+    const rawImage = (root?.profile_image || root?.photo || root?.image || root?.image_link) as string | undefined;
 
     const profileImage = (() => {
       if (!rawImage || typeof rawImage !== 'string') return undefined;

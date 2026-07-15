@@ -53,7 +53,7 @@ async function getUniqueFileName(clientId: string, originalFileName: string): Pr
     })
   
   // Check if a file with the same name exists
-  const fileExists = existingFile?.some((file: any) => file.name === sanitized) || false
+  const fileExists = existingFile?.some((file: { name: string }) => file.name === sanitized) || false
   
   // If file doesn't exist, use original sanitized name
   if (!fileExists) {

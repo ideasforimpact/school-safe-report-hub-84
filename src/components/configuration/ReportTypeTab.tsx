@@ -81,7 +81,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   
   // Get client ID and type from auth context
   const { employeeData, user } = useAuth();
-  const clientTypeId = employeeData?.clientType?.id || (user as any)?.clientType?.id;
+  const clientTypeId = employeeData?.clientType?.id || user?.clientType?.id;
   // Use the hook to get report types filtered by client type
   const { reportTypes, loading, fetchReportTypes } = useReportTypes(clientTypeId);
   const [reportTypeReferences, setReportTypeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
@@ -98,19 +98,13 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          reportTypes.map(async (type) => {
-            const refInfo = await incidentReferenceService.checkReportTypeReferences(type.id, clientId);
-            return { id: type.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          reportTypes.map((type) => ({ type: 'reportType' as const, id: type.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setReportTypeReferences(map);
       } catch (error) {
         console.error('Error preloading report type reference info:', error);
@@ -125,6 +119,11 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   }, [reportTypes, employeeData]);
 
   const handleAddReportType = async () => {
+    if (!employeeData?.clientId) {
+      setError('Client information not available');
+      return;
+    }
+
     if (!newTypeName.trim()) {
       setError('Name is required');
       return;
@@ -136,28 +135,13 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     }
 
     try {
-      setError(null);
-      setIsSaving(true);
-      // Pass client ID from auth context
-      await reportTypeService.addReportType(
-        newTypeName.trim(),
-        newTypeDescription.trim(),
-        employeeData?.clientId,
-        clientTypeId
-      );
-      setNewTypeName('');
-      setNewTypeDescription('');
-      setIsAddDialogOpen(false);
-      // Refresh data immediately
+      setError(null); setIsSaving(true);
+      await reportTypeService.addReportType(newTypeName.trim(), newTypeDescription.trim(), employeeData.clientId, clientTypeId);
       await fetchReportTypes();
-      toast.success('Report type added successfully');
-    } catch (error: any) {
-      console.error('Error adding report type:', error);
-      setError(error.message || 'Failed to add report type');
-      // Don't close the dialog when there's an error - keep it open so user can see the error message
-    } finally {
-      setIsSaving(false);
-    }
+      setNewTypeName(''); setNewTypeDescription(''); setIsAddDialogOpen(false);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to add report type');
+    } finally { setIsSaving(false); }
   };
 
   const handleEditReportType = async () => {
@@ -172,21 +156,13 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     }
 
     try {
-      setError(null);
-      setIsSaving(true);
+      setError(null); setIsSaving(true);
       await reportTypeService.updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
-      setIsEditDialogOpen(false);
-      setSelectedType(null);
-      // Refresh data immediately
       await fetchReportTypes();
-      toast.success('Report type updated successfully');
-    } catch (error: any) {
-      console.error('Error updating report type:', error);
-      setError(error.message || 'Failed to update report type');
-      // Don't close the dialog when there's an error - keep it open so user can see the error message
-    } finally {
-      setIsSaving(false);
-    }
+      setIsEditDialogOpen(false); setSelectedType(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update report type');
+    } finally { setIsSaving(false); }
   };
 
   const handleEditClick = (type: ReportType) => {
@@ -222,11 +198,8 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           // Refresh data immediately
           await fetchReportTypes();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
-          toast.success(`Report type ${newStatus ? 'activated' : 'deactivated'} successfully`);
-        } catch (error: any) {
-          console.error('Error toggling report type status:', error);
-          const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} report type`;
-          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
+        } catch (error) {
+          setConfirmationDialog(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Failed', isLoading: false }));
         }
       },
       error: null,
@@ -252,11 +225,8 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           // Refresh data immediately
           await fetchReportTypes();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
-          toast.success('Report type deleted successfully');
-        } catch (error: any) {
-          console.error('Error deleting report type:', error);
-          const errorMessage = error?.message || 'Failed to delete report type';
-          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
+        } catch (error) {
+          setConfirmationDialog(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Failed to delete', isLoading: false }));
         }
       },
       error: null,

@@ -1,3 +1,141 @@
+interface VerificationLogItem {
+    field: string;
+    value: string;
+}
+
+interface VerificationDataEntry {
+    value?: Record<string, VerificationLogItem[]>;
+}
+
+export interface VehicleReportRow {
+    id?: string;
+    registration_number?: string;
+    verification_data?: VerificationDataEntry[];
+    verification_status?: string;
+}
+
+export interface AssessmentReportRow {
+    name?: string;
+    status?: string;
+    target_completion_date?: string;
+    assessment_templates?: { title?: string };
+    employees?: { first_name?: string };
+}
+
+interface IncidentStatusRef {
+    name?: string;
+}
+
+interface IncidentCategoryRef {
+    name?: string;
+}
+
+interface IncidentPriorityRef {
+    name?: string;
+}
+
+interface IncidentReportTypeRef {
+    name?: string;
+}
+
+interface PersonInvolved {
+    name?: string;
+    role?: string;
+    grades?: { name?: string };
+    sections?: { name?: string };
+}
+
+export interface IncidentReportRow {
+    incident_status?: IncidentStatusRef;
+    incident_categories?: IncidentCategoryRef;
+    incident_priorities?: IncidentPriorityRef;
+    incident_report_types?: IncidentReportTypeRef;
+    people_involved?: PersonInvolved[];
+    date?: string;
+    created_at?: string;
+    reported_date?: string;
+}
+
+export interface GrievanceReportRow {
+    status?: string;
+    submitter_type?: string;
+    submitter_name?: string;
+    due_date?: string;
+    created_at?: string;
+    responses?: { subject?: string };
+}
+
+export interface EmployeeReportRow {
+    id?: string;
+    first_name?: string;
+    last_name?: string;
+    employee_id?: string;
+    joining_date?: string;
+}
+
+export interface EmployeeDocumentReportRow {
+    employee_id?: string;
+    employee_name?: string;
+    employee_code?: string;
+    document_type_id?: string;
+    document_type?: string;
+    verification_status?: string;
+}
+
+export interface ChallanReportRow {
+    amount?: number | string;
+    registration_number?: string;
+    name?: string;
+    challan_number?: string;
+    date?: string;
+}
+
+interface VehicleActionItem {
+    vehicleNo?: string;
+    owner: string;
+    fc?: string;
+    insurance?: string;
+    puc?: string;
+}
+
+interface PendingEmployeeGroup {
+    name: string;
+    id: string;
+    reasons: string[];
+}
+
+interface CategorySummary {
+    name: string;
+    total: number;
+    completed: number;
+    inProgress: number;
+    overdue: number;
+}
+
+interface IncidentCategorySummaryItem {
+    name: string;
+    total: number;
+    closed: number;
+    progress: number;
+    open: number;
+}
+
+interface GrievanceSourceSummaryItem {
+    name: string;
+    total: number;
+    addressed: number;
+    pending: number;
+    overdue: number;
+}
+
+interface IndividualInvolved {
+    name?: string;
+    grade: string;
+    title: string;
+    category: string;
+    date?: string;
+}
+
 export const getReportingPeriodText = (monthLabel: string) => {
     const [monthName, yearStr] = monthLabel.split(" ");
     const year = Number(yearStr);
@@ -48,7 +186,7 @@ export const getStatusStyle = (percent: number) => {
     };
 };
 
-export const getExpiredVehicleDocsCount = (vehicles: any[]) => {
+export const getExpiredVehicleDocsCount = (vehicles: VehicleReportRow[]) => {
     const today = new Date();
     let expiredCount = 0;
 
@@ -66,14 +204,14 @@ export const getExpiredVehicleDocsCount = (vehicles: any[]) => {
             return;
         }
 
-        const verificationLog = Object.values(logObject)[0] as any[];
+        const verificationLog = Object.values(logObject)[0] as VerificationLogItem[];
         if (!Array.isArray(verificationLog)) {
             expiredCount += 3;
             return;
         }
 
         const getField = (name: string) =>
-            verificationLog.find((item: any) => item.field === name)?.value;
+            verificationLog.find((item) => item.field === name)?.value;
 
         // -------- PUCC --------
         const puccNumber = getField("pucc_number");
@@ -101,32 +239,32 @@ export const getExpiredVehicleDocsCount = (vehicles: any[]) => {
     return expiredCount;
 };
 
-export const getNewAssessmentCount = (assessments: any[]) => {
+export const getNewAssessmentCount = (assessments: AssessmentReportRow[]) => {
     if (!Array.isArray(assessments)) return 0;
 
     return assessments.filter(
-        (a: any) => a.status?.toLowerCase() === "new"
+        (a) => a.status?.toLowerCase() === "new"
     ).length;
 };
 
-export const getOpenIncidentCount = (incidents: any[]) => {
+export const getOpenIncidentCount = (incidents: IncidentReportRow[]) => {
     if (!Array.isArray(incidents)) return 0;
 
     return incidents.filter(
-        (i: any) =>
+        (i) =>
             i.incident_status?.name?.toLowerCase() === "open"
     ).length;
 };
 
-export const getPendingGrievanceCount = (grievances: any[]) => {
+export const getPendingGrievanceCount = (grievances: GrievanceReportRow[]) => {
     if (!Array.isArray(grievances)) return 0;
 
     return grievances.filter(
-        (g: any) => g.status?.toLowerCase() === "pending"
+        (g) => g.status?.toLowerCase() === "pending"
     ).length;
 };
 
-export const getVehicleCompliance = (vehicles: any[]) => {
+export const getVehicleCompliance = (vehicles: VehicleReportRow[]) => {
     const activeVehicles = vehicles.filter(
         (v) => v.verification_status === "active"
     );
@@ -138,7 +276,7 @@ export const getVehicleCompliance = (vehicles: any[]) => {
         const log = v.verification_data?.[0]?.value;
         if (!log) return;
 
-        const data = Object.values(log)[0] as any[];
+        const data = Object.values(log)[0] as VerificationLogItem[];
 
         const today = new Date();
 
@@ -161,7 +299,7 @@ export const getVehicleCompliance = (vehicles: any[]) => {
     return { percent, compliant, total };
 };
 
-export const getAssessmentCompliance = (assessments: any[]) => {
+export const getAssessmentCompliance = (assessments: AssessmentReportRow[]) => {
     const total = assessments.length;
 
     const overdue = assessments.filter(
@@ -178,8 +316,8 @@ export const getAssessmentCompliance = (assessments: any[]) => {
 };
 
 export const getEmployeeCompliance = (
-    employees: any[],
-    employeeDocuments: any[]
+    employees: EmployeeReportRow[],
+    employeeDocuments: EmployeeDocumentReportRow[]
 ) => {
     const totalEmployees = employees.length;
     const totalEmployeesdocs = employeeDocuments.length;
@@ -196,7 +334,7 @@ export const getEmployeeCompliance = (
     return { percent, pending: pendingDocs, totalEmployeesdocs };
 };
 
-export const getIncidentCompliance = (incidents: any[]) => {
+export const getIncidentCompliance = (incidents: IncidentReportRow[]) => {
     const total = incidents.length;
     const open = getOpenIncidentCount(incidents);
 
@@ -209,7 +347,7 @@ export const getIncidentCompliance = (incidents: any[]) => {
     return { percent, open, total };
 };
 
-export const getGrievanceCompliance = (grievances: any[]) => {
+export const getGrievanceCompliance = (grievances: GrievanceReportRow[]) => {
     const total = grievances.length;
     const pending = getPendingGrievanceCount(grievances);
 
@@ -222,7 +360,7 @@ export const getGrievanceCompliance = (grievances: any[]) => {
     return { percent, pending, total };
 };
 
-export const getVehicleSummary = (vehicles: any[]) => {
+export const getVehicleSummary = (vehicles: VehicleReportRow[]) => {
     const today = new Date();
 
     let total = 0;
@@ -241,7 +379,7 @@ export const getVehicleSummary = (vehicles: any[]) => {
             return;
         }
 
-        const data = Object.values(log)[0] as any[];
+        const data = Object.values(log)[0] as VerificationLogItem[];
 
         const getDate = (field: string) =>
             new Date(data.find(d => d.field === field)?.value);
@@ -272,7 +410,7 @@ export const getVehicleSummary = (vehicles: any[]) => {
     return { total, compliant, nonCompliant, expiringSoon };
 };
 
-export const getDocumentComplianceStats = (vehicles: any[]) => {
+export const getDocumentComplianceStats = (vehicles: VehicleReportRow[]) => {
     const today = new Date();
     const soonDate = new Date();
     soonDate.setDate(today.getDate() + 30);
@@ -289,11 +427,11 @@ export const getDocumentComplianceStats = (vehicles: any[]) => {
         const logObject = vehicle.verification_data?.[0]?.value;
         if (!logObject) return;
 
-        const verificationLog = Object.values(logObject)[0] as any[];
+        const verificationLog = Object.values(logObject)[0] as VerificationLogItem[];
         if (!Array.isArray(verificationLog)) return;
 
         const getDate = (field: string) => {
-            const value = verificationLog.find((i: any) => i.field === field)?.value;
+            const value = verificationLog.find((i) => i.field === field)?.value;
             return value ? new Date(value) : null;
         };
 
@@ -320,12 +458,12 @@ export const getDocumentComplianceStats = (vehicles: any[]) => {
     return stats;
 };
 
-export const getVehiclesRequiringAction = (vehicles: any[]) => {
+export const getVehiclesRequiringAction = (vehicles: VehicleReportRow[]) => {
     const today = new Date();
     const soonDate = new Date();
     soonDate.setDate(today.getDate() + 30);
 
-    const result: any[] = [];
+    const result: VehicleActionItem[] = [];
 
     vehicles.forEach((vehicle) => {
         if (vehicle.verification_status !== "active") return;
@@ -333,11 +471,11 @@ export const getVehiclesRequiringAction = (vehicles: any[]) => {
         const logObject = vehicle.verification_data?.[0]?.value;
         if (!logObject) return;
 
-        const verificationLog = Object.values(logObject)[0] as any[];
+        const verificationLog = Object.values(logObject)[0] as VerificationLogItem[];
         if (!Array.isArray(verificationLog)) return;
 
         const getField = (name: string) =>
-            verificationLog.find((i: any) => i.field === name)?.value;
+            verificationLog.find((i) => i.field === name)?.value;
 
         const fc = getField("fit_up_to");
         const insurance = getField("insurance_upto");
@@ -402,7 +540,7 @@ export const getDateCellStyle = (dateStr: string | null) => {
     };
 };
 
-export const getChallanSummary = (challans: any[]) => {
+export const getChallanSummary = (challans: ChallanReportRow[]) => {
     let total = 0;
     challans.forEach(c => {
         total += Number(c.amount || 0);
@@ -410,8 +548,8 @@ export const getChallanSummary = (challans: any[]) => {
     return total;
 };
 
-export const getPendingEmployeesGrouped = (employeeDocuments: any[]) => {
-    const map: Record<string, any> = {};
+export const getPendingEmployeesGrouped = (employeeDocuments: EmployeeDocumentReportRow[]) => {
+    const map: Record<string, PendingEmployeeGroup> = {};
 
     employeeDocuments.forEach((doc) => {
 
@@ -437,7 +575,7 @@ export const getPendingEmployeesGrouped = (employeeDocuments: any[]) => {
     return Object.values(map);
 };
 
-export const getAssessmentStats = (assessments: any[]) => {
+export const getAssessmentStats = (assessments: AssessmentReportRow[]) => {
     console.log(assessments, 'assessments items ');
 
     const total = assessments.length;
@@ -450,8 +588,8 @@ export const getAssessmentStats = (assessments: any[]) => {
     return { total, completed, inProgress, overdue, rate };
 };
 
-export const getAssessmentByCategory = (assessments: any[]) => {
-    const map: any = {};
+export const getAssessmentByCategory = (assessments: AssessmentReportRow[]) => {
+    const map: Record<string, Omit<CategorySummary, "name">> = {};
 
     assessments.forEach(a => {
         const cat = a.assessment_templates.title || "Other";
@@ -467,10 +605,10 @@ export const getAssessmentByCategory = (assessments: any[]) => {
         else if (a.status === "overdue") map[cat].overdue++;
     });
 
-    return Object.entries(map).map(([name, v]: any) => ({ name, ...v }));
+    return Object.entries(map).map(([name, v]): CategorySummary => ({ name, ...v }));
 };
 
-export const getIncidentStats = (incidents: any[]) => {
+export const getIncidentStats = (incidents: IncidentReportRow[]) => {
     const total = incidents.length;
 
     const closed = incidents.filter(
@@ -491,8 +629,8 @@ export const getIncidentStats = (incidents: any[]) => {
     return { total, closed, inProgress, open, resolutionRate };
 };
 
-export const getIncidentCategorySummary = (incidents: any[]) => {
-    const map: any = {};
+export const getIncidentCategorySummary = (incidents: IncidentReportRow[]) => {
+    const map: Record<string, Omit<IncidentCategorySummaryItem, "name">> = {};
 
     incidents.forEach((i) => {
 
@@ -510,13 +648,13 @@ export const getIncidentCategorySummary = (incidents: any[]) => {
         else map[category].open++;
     });
 
-    return Object.entries(map).map(([name, data]: any) => ({
+    return Object.entries(map).map(([name, data]): IncidentCategorySummaryItem => ({
         name,
         ...data,
     }));
 };
 
-export const getCriticalIncidents = (incidents: any[]) => {
+export const getCriticalIncidents = (incidents: IncidentReportRow[]) => {
     return incidents.filter((i) => {
 
         const status = i.incident_status?.name?.toLowerCase();
@@ -525,13 +663,13 @@ export const getCriticalIncidents = (incidents: any[]) => {
     });
 };
 
-export const getIndividualsFromIncidents = (incidents: any[]) => {
-    const list: any[] = [];
+export const getIndividualsFromIncidents = (incidents: IncidentReportRow[]) => {
+    const list: IndividualInvolved[] = [];
     console.log(incidents, 'incident student involved');
 
     incidents.forEach((inc) => {
         if (inc.people_involved?.length) {
-            inc.people_involved.forEach((p: any) => {
+            inc.people_involved.forEach((p) => {
                 list.push({
                     name: p.name,
                     grade:
@@ -549,7 +687,7 @@ export const getIndividualsFromIncidents = (incidents: any[]) => {
     return list;
 };
 
-export const getGrievanceStats = (grievances: any[]) => {
+export const getGrievanceStats = (grievances: GrievanceReportRow[]) => {
     const total = grievances.length;
 
     const addressed = grievances.filter(
@@ -573,8 +711,8 @@ export const getGrievanceStats = (grievances: any[]) => {
     return { total, addressed, pending, overdue, resolutionRate };
 };
 
-export const getGrievanceSourceSummary = (grievances: any[]) => {
-    const map: any = {};
+export const getGrievanceSourceSummary = (grievances: GrievanceReportRow[]) => {
+    const map: Record<string, Omit<GrievanceSourceSummaryItem, "name">> = {};
 
     grievances.forEach((g) => {
         const source = g.submitter_type || "Others";
@@ -597,13 +735,13 @@ export const getGrievanceSourceSummary = (grievances: any[]) => {
         }
     });
 
-    return Object.entries(map).map(([name, data]: any) => ({
+    return Object.entries(map).map(([name, data]): GrievanceSourceSummaryItem => ({
         name,
         ...data,
     }));
 };
 
-export const getCriticalGrievances = (grievances: any[]) => {
+export const getCriticalGrievances = (grievances: GrievanceReportRow[]) => {
     const today = new Date();
 
     return grievances.filter((g) => {

@@ -1,67 +1,97 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { categoryService, CategoryItem, SubcategoryItem } from '@/services/incident/categoryService';
+import { invokeIncidentConfig } from '@/components/incident/incidentConfigurationEdgeService';
+import { ContributingFactorItem } from '@/services/incident/contributingFactorService';
+import { ReportTypeItem } from '@/services/incident/reportTypeService';
+import { PriorityItem } from '@/services/incident/priorityService';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
+
+interface ListAllResult {
+  categories: CategoryItem[];
+  subcategories: SubcategoryItem[];
+  priorities: PriorityItem[];
+  reportTypes: ReportTypeItem[];
+  contributingFactors: ContributingFactorItem[];
+}
 
 export function useIncidentCategories() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [subcategoryMappings, setSubcategoryMappings] = useState<Record<string, SubcategoryItem[]>>({});
+  // Populated alongside categories/subcategories by the same listAll call — lets
+  // IncidentConfigurationContent seed its Report Types/Priorities/Contributing
+  // Factors tabs from this one fetch instead of three separate edge-function calls.
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactorItem[]>([]);
+  const [reportTypes, setReportTypes] = useState<ReportTypeItem[]>([]);
+  const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { employeeData, user } = useAuth();
 
   // Load categories and subcategories on mount
-  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? undefined;
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? undefined;
 
-  const fetchAndApply = async () => {
-    if (!employeeData?.clientId || !clientTypeId) return;
+  // Dedupes overlapping calls (e.g. React.StrictMode's dev double-invoke)
+  // without blocking legitimate re-fetches after create/update/delete.
+  const inflightRef = useRef<Promise<void> | null>(null);
 
-    const [categoriesData, subcategoriesData] = await Promise.all([
-      categoryService.getCategories(employeeData.clientId, clientTypeId),
-      categoryService.getSubcategories(undefined, employeeData.clientId, clientTypeId),
-    ]);
+  // Single edge-function call fetches all incident config data from the server
+  const loadData = useCallback(async () => {
+    if (inflightRef.current) return inflightRef.current;
 
-    setCategories(categoriesData);
-
-    const mappings: Record<string, SubcategoryItem[]> = {};
-    subcategoriesData.forEach(sub => {
-      if (sub.category_id) {
-        if (!mappings[sub.category_id]) mappings[sub.category_id] = [];
-        mappings[sub.category_id].push(sub);
-      }
-    });
-    setSubcategoryMappings(mappings);
-  };
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      if (!employeeData?.clientId || !clientTypeId) {
+    const request = (async () => {
+      if (!employeeData?.clientId) {
         toast.error('Client information not available');
         return;
       }
-      await fetchAndApply();
-    } catch (error) {
-      console.error('Error loading categories and subcategories:', error);
-      toast.error('Failed to load categories and subcategories');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // Silent refresh: re-fetches data without showing the full-page loader.
-  // Used by real-time subscriptions so CRUD operations don't unmount the UI.
-  const silentRefresh = async () => {
-    try {
-      await fetchAndApply();
-    } catch (error) {
-      console.error('Error refreshing categories and subcategories:', error);
-    }
-  };
+      try {
+        setLoading(true);
+        if (!employeeData?.clientId || !clientTypeId) {
+          toast.error('Client information not available');
+          return;
+        }
+
+        const result = await invokeIncidentConfig<ListAllResult>({
+          resource: 'categories', // ignored by listAll, kept for type-shape consistency
+          operation: 'listAll',
+          clientId: employeeData.clientId,
+          clientTypeId,
+        });
+
+        setCategories(result.categories);
+        setContributingFactors(result.contributingFactors);
+        setReportTypes(result.reportTypes);
+        setPriorities(result.priorities);
+
+        // Group subcategories by category_id
+        const mappings: Record<string, SubcategoryItem[]> = {};
+        result.subcategories.forEach(sub => {
+          if (sub.category_id) {
+            if (!mappings[sub.category_id]) {
+              mappings[sub.category_id] = [];
+            }
+            mappings[sub.category_id].push(sub);
+          }
+        });
+
+        setSubcategoryMappings(mappings);
+      } catch (error) {
+        console.error('Error loading categories and subcategories:', error);
+        toast.error('Failed to load categories and subcategories');
+      } finally {
+        setLoading(false);
+        inflightRef.current = null;
+      }
+    })();
+
+    inflightRef.current = request;
+    return request;
+  }, [employeeData?.clientId, clientTypeId]);
 
   useEffect(() => {
     loadData();
-  }, [employeeData?.clientId, clientTypeId]);
+  }, [employeeData?.clientId, loadData]);
 
   // Category operations
   const addCategory = async (name: string) => {
@@ -94,7 +124,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Category added successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding category:', error);
       // The service already shows the error toast, so we don't need to show another one
       throw error; // Re-throw to let the component handle it
@@ -131,7 +161,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Category updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating category:', error);
       // The service already shows the error toast, so we don't need to show another one
       throw error; // Re-throw to let the component handle it
@@ -179,9 +209,8 @@ export function useIncidentCategories() {
       setSubcategoryMappings(mappings);
       console.log('Hook: State updated successfully');
       toast.success('Category deleted successfully');
-    } catch (error: any) {
-      console.error('Hook: Error deleting category:', error);
-      // Re-throw the error so the component can handle it and show the specific error message
+    } catch (error) {
+      console.error('Error deleting category:', error);
       throw error;
     }
   };
@@ -212,7 +241,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Subcategory added successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding subcategory:', error);
       // The service already shows the error toast, so we don't need to show another one
       throw error; // Re-throw to let the component handle it
@@ -244,7 +273,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Subcategory updated successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating subcategory:', error);
       // The service already shows the error toast, so we don't need to show another one
       throw error; // Re-throw to let the component handle it
@@ -276,7 +305,7 @@ export function useIncidentCategories() {
       
       setSubcategoryMappings(mappings);
       toast.success('Subcategory deleted successfully');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting subcategory:', error);
       // Re-throw the error so the component can handle it and show the specific error message
       throw error;
@@ -286,6 +315,9 @@ export function useIncidentCategories() {
   return {
     categories,
     subcategoryMappings,
+    contributingFactors,
+    reportTypes,
+    priorities,
     loading,
     addCategory,
     updateCategory,
@@ -293,7 +325,6 @@ export function useIncidentCategories() {
     addSubcategory,
     updateSubcategory,
     deleteSubcategory,
-    loadData,
-    silentRefresh
+    loadData
   };
 }

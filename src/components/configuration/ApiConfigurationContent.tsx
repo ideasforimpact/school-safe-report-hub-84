@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Eye, Trash2, Key, Loader2 } from 'lucide-react';
 import { StatusSwitch } from '@/components/ui/status-switch';
@@ -57,7 +57,7 @@ const ApiConfigurationContent = () => {
   const employeeId = employeeData?.id;
 
   // Fetch API configurations
-  const fetchApiConfigs = async () => {
+  const fetchApiConfigs = useCallback(async () => {
     if (!clientId) {
       setLoading(false);
       return;
@@ -80,17 +80,17 @@ const ApiConfigurationContent = () => {
 
       const result = await response.json();
       setApiConfigs(result.data || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching API configurations:', error);
-      toast.error(error?.message || 'Failed to fetch API configurations');
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch API configurations');
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
 
   useEffect(() => {
     fetchApiConfigs();
-  }, [clientId]);
+  }, [fetchApiConfigs]);
 
   // Handle create API configuration
   const handleCreate = async () => {
@@ -127,9 +127,9 @@ const ApiConfigurationContent = () => {
       toast.success(result.message || 'API configuration created successfully');
       setShowCreateDialog(false);
       await fetchApiConfigs();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating API configuration:', error);
-      toast.error(error?.message || 'Failed to create API configuration');
+      toast.error(error instanceof Error ? error.message : 'Failed to create API configuration');
     } finally {
       setCreating(false);
     }
@@ -154,9 +154,9 @@ const ApiConfigurationContent = () => {
       const result = await response.json();
       setSelectedConfig(result.data);
       setShowViewDialog(true);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching API configuration:', error);
-      toast.error(error?.message || 'Failed to fetch API configuration');
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch API configuration');
     }
   };
 
@@ -189,9 +189,9 @@ const ApiConfigurationContent = () => {
 
       toast.success(`API configuration ${!config.active ? 'activated' : 'deactivated'} successfully`);
       await fetchApiConfigs();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error toggling API configuration status:', error);
-      toast.error(error?.message || 'Failed to update API configuration status');
+      toast.error(error instanceof Error ? error.message : 'Failed to update API configuration status');
     } finally {
       setToggling(null);
     }
@@ -221,9 +221,9 @@ const ApiConfigurationContent = () => {
       setShowDeleteDialog(false);
       setSelectedConfig(null);
       await fetchApiConfigs();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting API configuration:', error);
-      toast.error(error?.message || 'Failed to delete API configuration');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete API configuration');
     } finally {
       setDeleting(false);
     }

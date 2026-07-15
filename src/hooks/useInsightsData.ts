@@ -123,7 +123,7 @@ export const useInsightsData = () => {
           // Parse people involved from JSON if it exists - using any to bypass type checking
           let peopleInvolved = [];
           try {
-            const recordWithPeople = record as any;
+            const recordWithPeople = record as Record<string, unknown>;
             if (recordWithPeople.peopleInvolved && typeof recordWithPeople.peopleInvolved === 'string') {
               peopleInvolved = JSON.parse(recordWithPeople.peopleInvolved);
             } else if (Array.isArray(recordWithPeople.peopleInvolved)) {
@@ -181,7 +181,7 @@ export const useInsightsData = () => {
         employeeState.configuredModules) {
       fetchInsightsData();
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules, authEmployeeData, employeeState.employeeData]);
   
   // Apply filters to get filtered incidents
   const filteredIncidents = useMemo(() => {
@@ -251,7 +251,7 @@ export const useInsightsData = () => {
   }, [filteredIncidents]);
   
   // Handle filter changes
-  const handleFilterChange = (name: string, value: any) => {
+  const handleFilterChange = (name: string, value: unknown) => {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
   

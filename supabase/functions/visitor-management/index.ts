@@ -13,6 +13,49 @@ import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 const BUCKET_NAME = 'visitors_evidence';
 
+interface VehicleTypeInfo {
+  id: string;
+  key: string;
+  name: string;
+  active: boolean;
+}
+
+interface VisitorRow {
+  evidence_files?: EvidenceFile[] | null;
+  vehicle_type_info?: VehicleTypeInfo | null;
+  [key: string]: unknown;
+}
+
+interface TrustedVehicleRow {
+  id: string;
+  vehicle_name?: string | null;
+  name?: string | null;
+  type?: string | null;
+  vehicle_no?: string | null;
+  client_id: string;
+  employee_id: string;
+  entry_status?: string | null;
+  in_time?: string | null;
+  exit_time?: string | null;
+  validity_from: string | Date | null;
+  validity_to: string | Date | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface EvidenceFile {
+  name: string;
+  path?: string;
+  url?: string;
+  type: string;
+  base64?: string;
+}
+
+interface KycDetailInput {
+  document_type: string;
+  document_no: string;
+}
+
 // Helper function to decode base64
 function decodeBase64(base64: string): Uint8Array {
   const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
@@ -26,10 +69,10 @@ function decodeBase64(base64: string): Uint8Array {
 
 // Transform DB visitor row so API returns a single vehicle_type object
 // vehicle_type: { id, key, name, active } and removes vehicle_type_info helper
-function transformVisitorRow(row: any): any {
+function transformVisitorRow(row: VisitorRow | null): VisitorRow | null {
   if (!row) return row;
 
-  const transformed: any = { ...row };
+  const transformed: VisitorRow = { ...row };
 
   if (row.vehicle_type_info) {
     transformed.vehicle_type = {
@@ -67,7 +110,7 @@ function calculateValidity(validityFrom: string | Date | null, validityTo: strin
 }
 
 // Transform trusted vehicle row to match required structure
-function transformTrustedVehicleRow(row: any): any {
+function transformTrustedVehicleRow(row: TrustedVehicleRow | null) {
   if (!row) return null;
   
   return {
@@ -134,6 +177,7 @@ function getMimeTypeFromFilename(filename: string): string {
 // Helper function to upload files to storage
 // Returns only paths (not URLs) to avoid exposing storage URLs in database
 async function uploadFiles(
+  // deno-lint-ignore no-explicit-any
   supabase: any,
   files: Array<{ name: string; type: string; base64: string }>,
   clientId: string,

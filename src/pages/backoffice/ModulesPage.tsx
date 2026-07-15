@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,15 +39,7 @@ const ModulesPage = () => {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchModules();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [modules, searchTerm, levelFilter, statusFilter]);
-
-  const fetchModules = async () => {
+  const fetchModules = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch all modules initially, not just backoffice
@@ -77,9 +69,9 @@ const ModulesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...modules];
 
     // Apply search filter
@@ -103,7 +95,15 @@ const ModulesPage = () => {
     }
 
     setFilteredModules(filtered);
-  };
+  }, [modules, searchTerm, levelFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchModules();
+  }, [fetchModules]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -148,9 +148,9 @@ const ModulesPage = () => {
       setDeleteDialogOpen(false);
       setSelectedModule(null);
       fetchModules();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error deleting module:', err);
-      setDeleteError(err?.message || 'Failed to delete module. Please try again.');
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete module. Please try again.');
     } finally {
       setDeleting(false);
     }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, PieLabelRenderProps } from 'recharts';
 import {
   ChartContainer,
   ChartTooltip,
@@ -53,7 +53,7 @@ const makeRenderLabel = (adjustedPercentages: string[]) =>
     outerRadius,
     name,
     index,
-  }: any) => {
+  }: PieLabelRenderProps) => {
     const RADIAN = Math.PI / 180;
 
     const r = outerRadius + 18;
@@ -96,7 +96,7 @@ const renderLabelLine = ({
   cy,
   midAngle,
   outerRadius,
-}: any) => {
+}: PieLabelRenderProps) => {
   const RADIAN = Math.PI / 180;
 
   const r1 = outerRadius - 2;   // start slightly inside pie

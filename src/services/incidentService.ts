@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Incident } from '@/types/incident';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface IncidentRecord {
   id: string;
@@ -25,7 +26,7 @@ export interface IncidentRecord {
   root_cause?: string | null;
   learning_points?: string | null;
   action_taken?: string | null;
-  recommended_action?: any | null;
+  recommended_action?: Json | null;
 }
 
 export const incidentService = {
@@ -62,7 +63,27 @@ export const incidentService = {
         throw new Error(`Failed to fetch incidents: ${error.message}`);
       }
 
-      const transformedIncidents: IncidentRecord[] = (incidents || []).map((inc: any) => ({
+      interface IncidentQueryRow {
+        id: string;
+        ticket_id: string;
+        description: string | null;
+        reopen: number;
+        recommended_action: Json | null;
+        date: string;
+        created_at: string;
+        updated_at: string;
+        incident_report_types: { name: string } | null;
+        incident_categories: { name: string } | null;
+        incident_subcategories: { name: string } | null;
+        campuses: { name: string } | null;
+        facilities: { name: string } | null;
+        incident_priorities: { name: string } | null;
+        incident_status: { name: string } | null;
+        created_by_employee: { id: string; first_name: string; last_name: string } | null;
+        assigned_employee: { id: string; first_name: string; last_name: string } | null;
+      }
+
+      const transformedIncidents: IncidentRecord[] = (incidents || []).map((inc: IncidentQueryRow) => ({
         id: inc.id,
         ticket_id: inc.ticket_id,
         type: inc.incident_report_types?.name || 'Unknown',

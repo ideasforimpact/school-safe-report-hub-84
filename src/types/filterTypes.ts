@@ -39,7 +39,7 @@ export interface FilterHookReturn {
   priorityOptions?: string[];
   statusOptions?: string[];
   locationOptions?: string[];
-  handleFilterChange: (field: string, value: any) => void;
+  handleFilterChange: (field: string, value: string | boolean | Date | null) => void;
   toggleAdvancedFilters: () => void;
   clearFilters: () => void;
 }

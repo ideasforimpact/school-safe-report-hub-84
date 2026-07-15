@@ -18,16 +18,59 @@ import {
     transformApiResponseData,
 } from '@/utils/transport-safety/documentStatusUtils';
 import { Badge } from '@/components/ui/badge';
+import { RawChallan } from '@/services/transport-safety/vehicleService';
+
+interface ChallanRecord extends RawChallan {
+    accused_name?: string;
+    challan_place?: string;
+    offense_details?: string;
+    Info?: string;
+    challan_info?: string;
+}
+
+interface ChallanSnapshot {
+    success?: boolean;
+    [key: string]: unknown;
+}
+
+interface ChallanPayload {
+    challan_details?: { challans?: RawChallan[] };
+    challan_data?: RawChallan[];
+    [key: string]: unknown;
+}
+
+interface ChallanHistoryLogEntry {
+    provider?: string;
+    data?: {
+        status_code?: number;
+        data?: ChallanPayload;
+    };
+}
+
+interface ApiResponse {
+    original?: {
+        status_code?: number;
+        success?: boolean;
+        status?: string;
+    };
+    transformed?: unknown;
+    challan?: {
+        type?: string;
+        message?: string;
+        [key: string]: unknown;
+    };
+    [key: string]: unknown;
+}
 
 interface VerificationDetailsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     title?: string;
-    challanSnapshot?: any | null;
+    challanSnapshot?: ChallanSnapshot | null;
     challanError?: string | null;
     hasChallanData?: boolean;
     vehicle?: Vehicle;
-    apiResponse?: any; // API response from vehicle-verify edge function
+    apiResponse?: ApiResponse; // API response from vehicle-verify edge function
     vehicleChallans?: VehicleChallans | null; // vehicle_challans from database
     showChallanTabs?: boolean; // If false, shows all challans without Pending/Disposed tabs (for TransportChallansPage)
     hideMainTabs?: boolean; // If true, hides Verification/Challan Details tabs and shows only challan content (for TransportChallansPage)
@@ -68,8 +111,8 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         const logs = vehicleChallans?.challan_history_log;
         if (!logs || typeof logs !== 'object') return null;
 
-        const successLogs = Object.entries(logs).filter(
-            ([_, entry]: any) => entry?.data?.status_code === 200
+        const successLogs = Object.entries(logs as Record<string, ChallanHistoryLogEntry>).filter(
+            ([, entry]) => entry?.data?.status_code === 200
         );
 
         if (successLogs.length === 0) return null;
@@ -78,7 +121,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
         );
 
-        const [timestamp, log]: any = successLogs[0];
+        const [timestamp, log] = successLogs[0];
 
         return {
             timestamp,
@@ -181,20 +224,20 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             return String(value).trim() !== '';
         };
 
-        const mergeChallan = (base: any, incoming: any) => {
-            const merged = { ...base };
+        const mergeChallan = (base: ChallanRecord, incoming: ChallanRecord): ChallanRecord => {
+            const merged: ChallanRecord = { ...base };
 
             Object.entries(incoming || {}).forEach(([key, value]) => {
-                const existing = (merged as any)[key];
+                const existing = merged[key];
                 if (!hasValue(existing) && hasValue(value)) {
-                    (merged as any)[key] = value;
+                    merged[key] = value;
                 }
             });
 
             return merged;
         };
 
-        const getDedupKey = (challan: any) => {
+        const getDedupKey = (challan: ChallanRecord) => {
             const challanNumber = String(challan?.challan_number || challan?.challan_no || '').trim().toUpperCase();
             if (challanNumber) return `number:${challanNumber}`;
 
@@ -204,8 +247,8 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             return `fallback:${challanDate}|${amount}|${status}`;
         };
 
-        const deduped = new Map<string, any>();
-        rawChallans.forEach((challan: any) => {
+        const deduped = new Map<string, ChallanRecord>();
+        (rawChallans as ChallanRecord[]).forEach((challan) => {
             const key = getDedupKey(challan);
             const existing = deduped.get(key);
             deduped.set(key, existing ? mergeChallan(existing, challan) : challan);
@@ -216,11 +259,11 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     const normalizeChallanStatus = (status?: string) => (status || '').trim().toUpperCase();
     const isDisposedStatus = (status?: string) =>
         ['DISPOSED', 'PAID', 'CASH'].includes(normalizeChallanStatus(status));
-    const disposedChallans = challanDetails.filter((c: any) =>
+    const disposedChallans = challanDetails.filter((c) =>
         isDisposedStatus(c.challan_status)
     );
 
-    const pendingChallans = challanDetails.filter((c: any) =>
+    const pendingChallans = challanDetails.filter((c) =>
         !isDisposedStatus(c.challan_status)
     );
 
@@ -246,7 +289,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             return sum + (isNaN(amount) ? 0 : amount);
         }, 0);
     }, [challanDetails]);
-    const ChallanCard = ({ challan }: { challan: any }) => {
+    const ChallanCard = ({ challan }: { challan: ChallanRecord }) => {
         const normalizedStatus = normalizeChallanStatus(challan.challan_status);
         const isDisposed = isDisposedStatus(challan.challan_status);
         const displayStatus = normalizedStatus === 'CASH' ? 'PAID' : (challan.challan_status || 'UNPAID');
@@ -362,7 +405,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                         </Badge>
                                     </div>
                                     <div className="space-y-3">
-                                        {challanDetails.map((challan: any, index: number) => (
+                                        {challanDetails.map((challan: ChallanRecord, index: number) => (
                                             <ChallanCard key={index} challan={challan} />
                                         ))}
                                     </div>
@@ -475,7 +518,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                                                 </Badge>
                                                             </div>
                                                             <div className="space-y-3">
-                                                                {pendingChallans.map((challan: any, index: number) => (
+                                                                {pendingChallans.map((challan: ChallanRecord, index: number) => (
                                                                     <ChallanCard key={index} challan={challan} />
                                                                 ))}
                                                             </div>
@@ -497,7 +540,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                                                 </Badge>
                                                             </div>
                                                             <div className="space-y-3">
-                                                                {disposedChallans.map((challan: any, index: number) => (
+                                                                {disposedChallans.map((challan: ChallanRecord, index: number) => (
                                                                     <ChallanCard key={index} challan={challan} />
                                                                 ))}
                                                             </div>
@@ -520,7 +563,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                                 </Badge>
                                             </div>
                                             <div className="space-y-3">
-                                                {challanDetails.map((challan: any, index: number) => (
+                                                {challanDetails.map((challan: ChallanRecord, index: number) => (
                                                     <ChallanCard key={index} challan={challan} />
                                                 ))}
                                             </div>

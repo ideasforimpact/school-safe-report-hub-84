@@ -168,7 +168,7 @@ export const DocumentVerificationErrors = {
 // Function to get user-friendly error message from API response
 export function getVerificationErrorMessage(
   documentType: string,
-  apiResponse: any,
+  apiResponse: Record<string, unknown>,
   fallbackMessage?: string
 ): VerificationError {
   const docType = documentType.toUpperCase().replace(' ', '_');

@@ -11,7 +11,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
  * Get Supabase URL - tries local name first, then cloud name
  */
 function getSupabaseUrl(): string {
-  let url = Deno.env.get('URL') ?? 
+  const url = Deno.env.get('URL') ?? 
             Deno.env.get('SUPABASE_URL') ?? 
             '';
   return url;
