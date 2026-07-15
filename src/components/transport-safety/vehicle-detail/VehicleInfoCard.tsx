@@ -59,7 +59,7 @@ interface ChallanLogEntry {
 }
 
 const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
-  const { verifyDocument, deleteVehicle, patchVehicleLocal } = useTransportSafety();
+  const { verifyDocument, deleteVehicle, updateVehicle, patchVehicleLocal } = useTransportSafety();
   const { state } = useEmployeeStore();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [isChecking, setIsChecking] = useState(false);
@@ -147,12 +147,8 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       setApiResponseData(data.data); // Store API response for dialog
       setLastCheckTime(new Date());
       
-      // Update the vehicle in context with verification data. The vehicle-verify
-      // edge function already persisted these fields to the DB server-side, so this
-      // is a local-only patch (not another DB round-trip) — it makes the fresh data
-      // visible immediately to every consumer of this vehicle (e.g. the Document
-      // Status card), instead of leaving them stale until the next realtime refresh.
-      patchVehicleLocal(vehicleId, {
+      // Update the vehicle in context with verification data (minimal update)
+      updateVehicle(vehicleId, {
         verificationStatus: data.data.status,
         verificationDate: data.data.verificationDate,
         verificationData: data.data.transformed
@@ -162,10 +158,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       try {
         const updatedChallans = await getVehicleChallans(vehicleId);
         setVehicleChallans(updatedChallans);
-        // Also patch the shared vehicle so sibling components (e.g. the Document
-        // Status card) see the fresh challan data immediately, not just this card.
-        patchVehicleLocal(vehicleId, { vehicleChallans: updatedChallans });
-
+        
         // Check challan status from vehicle_challans
         if (updatedChallans) {
           // Check if we have challan data (even if API call failed, we might have error data)
@@ -366,13 +359,8 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         )}
 
         
-        {/* Show the "View Latest Verification" button/dialog when there's persisted
-            history OR we just ran a fresh check this session — a fresh check can
-            complete without the vehicle's persisted verification_data being updated
-            (e.g. the edge function's "documents up to date" skip path reuses cached
-            data), so relying on latestVerificationData alone could leave the dialog
-            unable to open right after a successful check. */}
-        {(latestVerificationData || apiResponseData) && (
+        {/* Only show the "View Latest Verification" button */}
+        {latestVerificationData && (
           <div className="mt-3">
             <Dialog open={showVerificationResults} onOpenChange={setShowVerificationResults}>
               <DialogTrigger asChild>
