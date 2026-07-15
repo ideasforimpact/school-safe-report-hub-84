@@ -30,6 +30,7 @@ import jsPDF from 'jspdf';
 import JSZip from 'jszip';
 import Loader from '../common/Loader';
 import { formatDate } from '@/lib/Dateformat';
+import { toLocalDateString } from '@/utils/dateUtils';
 import { AssessmentQuestion, QuestionResponse } from '@/types/assessment';
 
 interface Assessment {
@@ -173,8 +174,8 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
           status: statusFilter,
           created_by: createdByFilter,
           assigned_to: assignedToFilter,
-          target_date_from: targetDateFrom ? targetDateFrom.toISOString().split('T')[0] : null,
-          target_date_to: targetDateTo ? targetDateTo.toISOString().split('T')[0] : null,
+          target_date_from: targetDateFrom ? toLocalDateString(targetDateFrom) : null,
+          target_date_to: targetDateTo ? toLocalDateString(targetDateTo) : null,
           assessment_id_url: assessmentIdFromUrl || null,
           is_admin: hasAssessmentAdmin,
           employee_id: currentUserEmployeeId,
