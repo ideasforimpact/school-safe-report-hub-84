@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Paperclip, Eye, Download } from 'lucide-react';
 import { AssessmentQuestion, QuestionResponse } from '@/types/assessment';
+import { cn } from '@/lib/utils';
 
 interface AnswerQuestionCardProps {
   question: AssessmentQuestion;
@@ -18,15 +19,33 @@ interface AnswerQuestionCardProps {
 
 const AnswerQuestionCard = ({ question, answer, index, onAnswerChange }: AnswerQuestionCardProps) => {
   const handleAnswerChange = (value: string) => {
-    onAnswerChange(question.id, 'answer', value === 'yes');
+    onAnswerChange(question.id, 'answer', value);
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onAnswerChange(question.id, 'comment', e.target.value);
   };
 
+  const correctAnswer = question.correctAnswer ?? 'yes';
+  const hasAnswer = answer?.answer !== undefined && answer?.answer !== '';
+  const isCorrect = hasAnswer && answer.answer === correctAnswer;
+
+  const getCardClassName = () => {
+    if (isCorrect) return 'border-l-4 border-l-green-500 bg-green-50/30';
+    if (hasAnswer) return 'border-l-4 border-l-red-500 bg-red-50/30';
+    return 'border-l-4 border-l-blue-500';
+  };
+
+  const getOptionClassName = (optionValue: string) => {
+    const isSelected = answer?.answer === optionValue;
+    if (!isSelected) return 'border-gray-200 text-gray-700 hover:bg-gray-50';
+    return optionValue === correctAnswer
+      ? 'border-green-500 bg-green-50 text-green-800'
+      : 'border-red-500 bg-red-50 text-red-800';
+  };
+
   return (
-    <Card className="border-l-4 border-l-blue-500">
+    <Card className={getCardClassName()}>
       <CardContent className="p-6">
         <div className="space-y-4">
           <div className="flex items-start gap-3">
@@ -43,23 +62,29 @@ const AnswerQuestionCard = ({ question, answer, index, onAnswerChange }: AnswerQ
           
           <div className="ml-11">
             <RadioGroup
-              value={answer?.answer === true ? 'yes' : answer?.answer === false ? 'no' : ''}
+              value={answer?.answer ?? ''}
               onValueChange={handleAnswerChange}
               className="flex gap-6"
             >
-              <div className="flex items-center space-x-2">
+              <div className={cn("flex items-center space-x-2 rounded-lg border-2 p-3 transition-all", getOptionClassName('yes'))}>
                 <RadioGroupItem value="yes" id={`${question.id}-yes`} />
                 <Label htmlFor={`${question.id}-yes`} className="cursor-pointer">
                   Yes
                 </Label>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className={cn("flex items-center space-x-2 rounded-lg border-2 p-3 transition-all", getOptionClassName('no'))}>
                 <RadioGroupItem value="no" id={`${question.id}-no`} />
                 <Label htmlFor={`${question.id}-no`} className="cursor-pointer">
                   No
                 </Label>
               </div>
             </RadioGroup>
+
+            {hasAnswer && (
+              <Badge className={isCorrect ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
+                {isCorrect ? 'Correct' : 'Wrong'}
+              </Badge>
+            )}
             
             {question.allowComments && (
               <div className="mt-4">

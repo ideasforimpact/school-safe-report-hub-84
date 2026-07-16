@@ -6,23 +6,31 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
-import { Check, Eye, Loader2, X, Tag, Upload, ChevronRight, ChevronLeft, ChevronDown, FileText } from 'lucide-react';
+import { Check, Eye, Loader2, X, Tag, Upload, ChevronRight, ChevronLeft, ChevronDown, FileText, Info, Lock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
-import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_PERSONAL_INFO_CONSTANTS, STAFF_ID_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS } from '@/constant/employeeConstant';
+import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, 
+        EMPLOYEE_PERSONAL_INFO_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS, 
+        isValidReligion, getReligionErrorMessage, isValidNationality, getNationalityErrorMessage } from '@/constant/employeeConstant';
 import { EmailValidationStatus, EmployeeIdValidationStatus } from './AddUserDialog';
 import { useDebounce } from '@/hooks/useDebounce';
 import { checkEmployeeEmailExists, checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
 import WizardProgress from '@/components/ui/wizard-progress';
-import { EMPLOYEE_COMPLIANCE_DOCUMENTS } from '@/constants/employeeComplianceDocuments';
+import {
+  EMPLOYEE_COMPLIANCE_DOCUMENTS,
+  VERIFICATION_MANAGED_DOCUMENT_KEYS,
+  type EmployeeComplianceDocumentKey,
+} from '@/constants/employeeComplianceDocuments';
 import { getProfileDocumentSignedUrl } from '@/services/employee/employeeProfileDocumentService';
 import { fileToBase64 } from '@/utils/fileToBase64';
 import { EmployeeUser } from '@/pages/UserManagement';
+import { capitalizeWords } from '@/lib/formatUtils';
 
 type EditUserFormData = {
   firstName: string;
@@ -502,8 +510,14 @@ const EditUserDialog = ({
           !/^[a-zA-Z\s.,-]+$/.test((personalDetails.qualification || '').trim())
         ? 'Qualification can only contain letters, commas, spaces, dots, and hyphens'
         : '',
-      religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
-      nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
+      religion:
+        personalDetails.religion && !isValidReligion(personalDetails.religion)
+          ? getReligionErrorMessage()
+          : '',
+      nationality:
+        personalDetails.nationality && !isValidNationality(personalDetails.nationality)
+          ? getNationalityErrorMessage()
+          : '',
       bloodGroup:
         (personalDetails.bloodGroup || '').trim() &&
         !/^(A|A1|A2|B|AB|OH|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim())
@@ -512,6 +526,10 @@ const EditUserDialog = ({
       dob:
         personalDetails.dob && personalDetails.dob > new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]
           ? 'Employee must be at least 18 years old'
+          : '',
+      residenceAddress:
+        (personalDetails.residenceAddress || '').trim().length > 100
+          ? 'Address cannot exceed 100 characters'
           : '',
     };
   };
@@ -526,6 +544,16 @@ const EditUserDialog = ({
   const formatAadhaarNumber = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 12);
     return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+  };
+
+  // Resigning date must have already happened — today itself doesn't count.
+  const isStrictlyPastDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return false;
+    date.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date.getTime() < today.getTime();
   };
 
   const getProfessionalOtherDetailsErrors = () => {
@@ -557,8 +585,8 @@ const EditUserDialog = ({
           ? `Biometric User ID must be between ${BIOMETRIC_USER_ID_CONSTANTS.MIN_LENGTH} and ${BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH} characters`
           : '',
       exitDate:
-        professionalOtherDetails.exitDate && new Date(professionalOtherDetails.exitDate) > new Date()
-          ? 'Resigning date cannot be in the future'
+        professionalOtherDetails.exitDate && !isStrictlyPastDate(professionalOtherDetails.exitDate)
+          ? 'Resigning date must be a past date'
           : '',
     };
   };
@@ -766,12 +794,23 @@ const EditUserDialog = ({
     setCurrentStep(stepIndex);
   };
 
+  // Aadhaar/PAN/Passport are only locked once a file actually exists for
+  // that key (uploaded via Add User/Import Employee, or synced back from
+  // Employee Verification). If one was never uploaded, Edit User remains
+  // the place to add it - same as any other compliance document.
+  const isDocumentLockedForEdit = (documentKey: string) =>
+    VERIFICATION_MANAGED_DOCUMENT_KEYS.has(documentKey as EmployeeComplianceDocumentKey) &&
+    !!uploadedDocuments[documentKey];
+
   const openDocumentPicker = (documentKey: string) => {
+    if (isDocumentLockedForEdit(documentKey)) {
+      return;
+    }
     documentInputRefs.current[documentKey]?.click();
   };
 
   const handleDocumentChange = (documentKey: string, file: File | null) => {
-    if (!file) {
+    if (!file || isDocumentLockedForEdit(documentKey)) {
       return;
     }
 
@@ -1033,13 +1072,13 @@ const EditUserDialog = ({
           <div className="grid gap-4">
             {currentStep === 0 && (
               <div className="min-h-[420px]">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mb-3">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name <span className="text-red-500">*</span></Label>
                 <Input
                   id="firstName"
                   value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, firstName: capitalizeWords(e.target.value) })}
                   maxLength={EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH}
                   minLength={EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH}
                   required
@@ -1067,7 +1106,7 @@ const EditUserDialog = ({
                 <Input
                   id="lastName"
                   value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, lastName: capitalizeWords(e.target.value) })}
                   maxLength={EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH}
                   minLength={EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH}
                   required
@@ -1091,6 +1130,34 @@ const EditUserDialog = ({
                 )}
               </div>
             </div>
+
+            {currentUser?.aadharVerifiedName && (
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-gray-600 cursor-default" />
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        className="relative bg-slate-800 text-white border-slate-800 px-3 py-1.5 text-sm after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-2 after:w-2 after:rotate-45 after:bg-slate-800"
+                      >
+                        This name was captured after verifying the employee's Aadhar
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Input
+                  id="fullName"
+                  value={currentUser.aadharVerifiedName}
+                  readOnly
+                  disabled
+                  className="bg-gray-50 text-gray-600"
+                />
+              </div>
+            )}
 
             <div className="space-y-2 mb-3">
               <Label htmlFor="email">Email</Label>
@@ -1160,8 +1227,12 @@ const EditUserDialog = ({
                   })
                 }
                 placeholder="Enter residence address"
-                className="min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                maxLength={250}
+                className={`min-h-[90px] w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${personalDetailsErrors.residenceAddress ? 'border-red-500' : 'border-input'}`}
               />
+              {personalDetailsErrors.residenceAddress && (
+                <p className="text-xs text-red-500">{personalDetailsErrors.residenceAddress}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -1658,33 +1729,6 @@ const EditUserDialog = ({
                     )}
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-gray-100 mt-3 mb-4">
-                    <Label htmlFor="cpd-toggle-edit">CPD Involved</Label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        id="cpd-toggle-edit"
-                        onClick={() =>
-                          setFormData({
-                            ...formData,
-                            is_cpd_involved: !formData.is_cpd_involved,
-                          })
-                        }
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          formData.is_cpd_involved ? 'bg-emerald-500' : 'bg-gray-300'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            formData.is_cpd_involved ? 'translate-x-5' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                      <span className="text-sm text-gray-600">
-                        {formData.is_cpd_involved ? 'Included in CPD tracking' : 'Not included in CPD tracking'}
-                      </span>
-                    </div>
-                  </div>
               </div>
             )}
 
@@ -1718,14 +1762,29 @@ const EditUserDialog = ({
                     {EMPLOYEE_COMPLIANCE_DOCUMENTS.map((document) => {
                       const fileName = uploadedDocuments[document.key];
                       const fileMeta = documentMetaByKey[document.key];
+                      const isLocked = isDocumentLockedForEdit(document.key);
                       return (
                         <div key={document.key} className="space-y-2">
-                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1.5">
                             {document.label}
+                            {isLocked && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Lock className="h-3 w-3 text-slate-400" aria-label="Managed in Employee Verification" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Managed in Employee Verification</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                           </Label>
                           <div
                             onClick={() => openDocumentPicker(document.key)}
-                            className="group flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 transition-colors hover:border-blue-400 hover:shadow-sm"
+                            className={`group flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 transition-colors ${
+                              isLocked ? 'cursor-not-allowed opacity-75' : 'cursor-pointer hover:border-blue-400 hover:shadow-sm'
+                            }`}
                           >
                             <div className="flex min-w-0 flex-1 items-center gap-2.5">
                               <FileText
@@ -1750,7 +1809,7 @@ const EditUserDialog = ({
                                   <Eye className="h-4 w-4" />
                                 </button>
                               )}
-                              {fileName && fileMeta?.source !== 'verification' && (
+                              {!isLocked && fileName && fileMeta?.source !== 'verification' && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -1763,17 +1822,19 @@ const EditUserDialog = ({
                                   <X className="h-4 w-4" />
                                 </button>
                               )}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openDocumentPicker(document.key);
-                                }}
-                                className="text-blue-600 hover:text-blue-700"
-                                aria-label={`Upload ${document.label}`}
-                              >
-                                <Upload className="h-4 w-4" />
-                              </button>
+                              {!isLocked && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDocumentPicker(document.key);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-700"
+                                  aria-label={`Upload ${document.label}`}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                             <input
                               ref={(element) => {
@@ -1782,6 +1843,7 @@ const EditUserDialog = ({
                               type="file"
                               className="hidden"
                               accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                              disabled={isLocked}
                               onChange={(e) => handleDocumentChange(document.key, e.target.files?.[0] ?? null)}
                             />
                           </div>

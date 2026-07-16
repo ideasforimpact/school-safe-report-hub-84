@@ -8,13 +8,19 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { useAuth } from '@/contexts/auth';
+import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 
 interface Employee {
   id: string;
   first_name: string;
   last_name: string;
   email: string | null;
+  aadhar_verified_name: string | null;
 }
+
+const getEmployeeDisplayName = (employee: Pick<Employee, 'first_name' | 'last_name' | 'aadhar_verified_name'>) =>
+  employee.aadhar_verified_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
 
 interface ReassignAssessmentDialogProps {
   open: boolean;
@@ -22,6 +28,13 @@ interface ReassignAssessmentDialogProps {
   assessmentId: number;
   currentAssigneeId: string | null;
   currentAssigneeName: string;
+  assessment: {
+    id: string;
+    name: string;
+    created_by: string;
+    client_id: string;
+    target_completion_date: string;
+  };
   onReassignSuccess: () => void;
 }
 
@@ -31,9 +44,11 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
   assessmentId,
   currentAssigneeId,
   currentAssigneeName,
+  assessment,
   onReassignSuccess
 }) => {
   const { clientId } = useAssessmentAccess();
+  const { employeeData } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
@@ -113,7 +128,30 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
         return;
       }
 
-      toast.success(`Assessment reassigned to ${selectedEmployee?.first_name} ${selectedEmployee?.last_name}`);
+      toast.success(`Assessment reassigned to ${selectedEmployee ? getEmployeeDisplayName(selectedEmployee) : ''}`);
+
+      // Notify the newly-assigned employee (not if reassigning to yourself).
+      // Immediate email processing is triggered internally by
+      // queueAssessmentReassignedNotification — no manual invoke needed here.
+      if (selectedEmployee && selectedEmployeeId !== employeeData?.id) {
+        try {
+          await assessmentNotificationService.queueAssessmentReassignedNotification(
+            {
+              id: assessment.id,
+              title: assessment.name,
+              target_completion_date: assessment.target_completion_date,
+              assigned_to: selectedEmployeeId,
+              created_by: assessment.created_by,
+              client_id: assessment.client_id
+            },
+            selectedEmployee,
+            employeeData
+          );
+        } catch (notificationError) {
+          console.error('Error queueing assessment reassignment notification:', notificationError);
+          // Don't fail the reassignment if notification fails
+        }
+      }
 
       onReassignSuccess();
       onOpenChange(false);
@@ -134,7 +172,7 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
   };
 
   const filteredEmployees = employees.filter((employee) => {
-    const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.toLowerCase().trim();
+    const fullName = getEmployeeDisplayName(employee).toLowerCase();
     const email = (employee.email || '').toLowerCase();
     const normalizedSearch = employeeSearchTerm.trim().toLowerCase();
 
@@ -187,7 +225,7 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
             />
             {selectedEmployee && (
               <div className="mt-2 rounded-md bg-purple-50 px-3 py-2 text-sm text-purple-700">
-                Selected: {selectedEmployee.first_name} {selectedEmployee.last_name} ({selectedEmployee.email})
+                Selected: {getEmployeeDisplayName(selectedEmployee)} ({selectedEmployee.email})
               </div>
             )}
             {shouldShowEmployeeDropdown && (
@@ -211,7 +249,7 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
                           isSelected ? 'bg-purple-50 text-purple-700' : 'hover:bg-gray-50'
                         }`}
                       >
-                        <div className="font-medium">{employee.first_name} {employee.last_name}</div>
+                        <div className="font-medium">{getEmployeeDisplayName(employee)}</div>
                         <div className="text-xs text-gray-500">{employee.email}</div>
                       </button>
                     );

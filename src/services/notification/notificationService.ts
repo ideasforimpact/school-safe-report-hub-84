@@ -29,6 +29,26 @@ export class NotificationService {
    * Queue notification for later processing by cron job
    */
   async queueNotification(notificationData: NotificationData, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
+    const result = await this.queueNotificationInternal(notificationData, currentEmployeeData);
+    return result.success;
+  }
+
+  /**
+   * Same as queueNotification, but also returns the email_queue row's id so
+   * the caller can trigger immediate processing of that specific row
+   * (see assessmentNotificationService.triggerImmediateEmailProcessing).
+   */
+  async queueNotificationWithId(
+    notificationData: NotificationData,
+    currentEmployeeData?: Record<string, unknown>
+  ): Promise<{ success: boolean; emailQueueId?: string }> {
+    return this.queueNotificationInternal(notificationData, currentEmployeeData);
+  }
+
+  private async queueNotificationInternal(
+    notificationData: NotificationData,
+    currentEmployeeData?: Record<string, unknown>
+  ): Promise<{ success: boolean; emailQueueId?: string }> {
     try {
       console.log('Queueing notification:', {
         module: notificationData.module,
@@ -46,7 +66,7 @@ export class NotificationService {
           // Instead, stamp the source record so a UI can show "notification suppressed"
           // and an admin can audit which event was skipped and why.
           await this.recordSkipOnSource(notificationData, shouldSkip);
-          return false;
+          return { success: false };
         }
       } else {
         console.log('Grievance notification - bypassing skip condition checks');
@@ -56,14 +76,14 @@ export class NotificationService {
       const template = getFrontendTemplate(notificationData.module, notificationData.type);
       if (!template) {
         console.error('No template found for notification:', notificationData.type);
-        return false;
+        return { success: false };
       }
 
       // Process template variables
       const processedTemplate = this.processTemplate(template, notificationData.variables);
       console.log(processedTemplate,"processedTemplate");
-      
-      
+
+
       // Queue email in database
       const emailResult = await this.queueEmail({
         module_name: notificationData.module,
@@ -94,10 +114,10 @@ export class NotificationService {
         emailQueueId: emailResult.emailQueueId
       });
 
-      return emailResult.success;
+      return { success: emailResult.success, emailQueueId: emailResult.emailQueueId };
     } catch (error) {
       console.error('Error queueing notification:', error);
-      
+
       // Log failed notification
       await this.logNotification({
         ...notificationData,
@@ -106,8 +126,8 @@ export class NotificationService {
         status: 'failed',
         errorMessage: error instanceof Error ? error.message : 'Unknown error'
       });
-      
-      return false;
+
+      return { success: false };
     }
   }
 

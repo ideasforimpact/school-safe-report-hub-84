@@ -163,7 +163,7 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         {(challan.challan_date_time || challan.challan_date) && (
                             <div>
-                                <div className="text-xs font-semibold text-gray-500 mb-1">Date</div>
+                                <div className="text-xs font-semibold text-gray-500 mb-1">Occurrence Date</div>
                                 <div className="text-sm text-gray-900">
                                     {formatDateTime(new Date(challan.challan_date_time || challan.challan_date))}
                                 </div>

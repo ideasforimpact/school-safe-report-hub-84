@@ -3,7 +3,9 @@ import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { RawEmployeeData, ImportResult } from './types/importTypes';
 import { supabase } from '@/integrations/supabase/client';
-import { checkEmployeeIdExists } from './employeeValidationService';
+import { checkBulkDuplicates } from './employeeValidationService';
+import { normalizePanNumber } from './utils/excelProcessingUtils';
+import { capitalizeWords } from '@/lib/formatUtils';
 
 // List of demo emails that can bypass authentication requirements
 const DEMO_EMAILS = [
@@ -33,7 +35,19 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     console.log("Pre-validating Employee IDs for duplicates...");
     const validationErrors: string[] = [];
     const validEmployees: RawEmployeeData[] = [];
-    
+
+    // Look up all Employee IDs in the file at once instead of one request per
+    // row — avoids firing N sequential `employees` lookups against the DB.
+    const employeeIdsInFile = rawData
+      .map(row => row.employeeId)
+      .filter(id => id !== undefined && id !== null && String(id).trim() !== '')
+      .map(id => String(id).trim());
+    let existingEmployeeIds = new Set<string>();
+    if (clientId && employeeIdsInFile.length > 0) {
+      const { duplicateEmployeeIds } = await checkBulkDuplicates(employeeIdsInFile, [], clientId);
+      existingEmployeeIds = new Set(duplicateEmployeeIds);
+    }
+
     for (let i = 0; i < rawData.length; i++) {
       const row = rawData[i];
       
@@ -46,12 +60,15 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
                 (typeof value === 'string' && value.trim() === '') ||
                 value === 0;
         });
-        const rawAadhar = row.aadharNo ? String(row.aadharNo).trim() : '';
-        const rawEsi = row.esiNo ? String(row.esiNo).trim() : '';
-        const rawPf = row.pfNo ? String(row.pfNo).trim() : '';
+        // Strip all non-digit separators (spaces, dashes, etc.) before checking
+        // length/format — this must match what the Verify step (excelValidationUtils.ts)
+        // already accepted, otherwise a value that passed Verify can be silently
+        // dropped here instead of imported.
+        const rawAadhar = row.aadharNo ? String(row.aadharNo).replace(/\D/g, '') : '';
+        const rawEsi = row.esiNo ? String(row.esiNo).replace(/\D/g, '') : '';
+        const rawPf = row.pfNo ? String(row.pfNo).replace(/\D/g, '') : '';
 
-        // Validate formats before stripping formatting
-        if (rawAadhar && !/^\d{12}$/.test(rawAadhar.replace(/\s/g, ''))) {
+        if (rawAadhar && !/^\d{12}$/.test(rawAadhar)) {
           validationErrors.push(`Row ${i + 2}: Aadhaar number must contain only numbers and be exactly 12 digits`);
           continue;
         }
@@ -72,12 +89,9 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         }
         
         // Check if Employee ID already exists for this client
-        if (clientId) {
-          const employeeIdExists = await checkEmployeeIdExists(String(row.employeeId).trim(), clientId);
-          if (employeeIdExists) {
-            validationErrors.push(`Row ${i + 2}: Employee ID '${row.employeeId}' already exists for this client`);
-            continue;
-          }
+        if (clientId && existingEmployeeIds.has(String(row.employeeId).trim())) {
+          validationErrors.push(`Row ${i + 2}: Employee ID '${row.employeeId}' already exists for this client`);
+          continue;
         }
         
         // If we get here, the employee data is valid
@@ -137,14 +151,15 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       const cleanPfNo = row.pfNo
         ? String(row.pfNo).replace(/\D/g, '')
         : null;
+      const cleanPanNo = row.panNo ? normalizePanNumber(String(row.panNo)) : null;
       // Create default module access payload with Dashboard module
       
       // Add default module permissions to each employee record
       // and normalize/validate employee data fields
       return {
         employeeId: String(row.employeeId).trim(),
-        firstName: String(row.firstName),
-        lastName: String(row.lastName),
+        firstName: capitalizeWords(String(row.firstName).trim()),
+        lastName: capitalizeWords(String(row.lastName).trim()),
         email: row.email != null && String(row.email).trim() !== '' ? String(row.email).trim() : undefined,
         phone: row.phone ? String(row.phone) : undefined,
         employeeType: row.employeeType != null && String(row.employeeType).trim() !== '' ? String(row.employeeType).trim() : undefined,
@@ -171,7 +186,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         qualification: row.qualification,
         // Professional Other Details
         aadharNo: cleanAadharNo,
-        panNo: row.panNo,
+        panNo: cleanPanNo,
         esiNo: cleanEsiNo,
         pfNo: cleanPfNo,
         exitDate: row.resigningOrTerminationDate,
@@ -310,9 +325,11 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
         console.error(`Function call failed with status ${response.status}:`, errorData);
-        throw new Error(`Bulk operation failed with status ${response.status}: ${errorData.message || 'Unknown error'}`);
+        // The edge function returns { error, details }, not { message } — read the
+        // field it actually sends, otherwise the real error is always discarded.
+        throw new Error(`Bulk operation failed with status ${response.status}: ${errorData.details || errorData.error || 'Unknown error'}`);
       }
       
       const responseData = await response.json();
@@ -428,7 +445,7 @@ const transformEmployeeData = (dbEmployee: BulkImportEmployeeResponse): Employee
 export const showImportResultNotifications = (result: ImportResult): void => {
   // Show success toast for new employees
   if (result.successCount > 0) {
-    // toast.success(`Successfully imported ${result.successCount} new employees`);
+    toast.success(`Successfully imported ${result.successCount} new employees`);
   }
   
   // Show success toast for updated employees

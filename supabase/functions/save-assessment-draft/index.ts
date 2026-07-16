@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
+import { triggerImmediateEmailProcessing } from '../_shared/triggerEmailProcessing.ts';
+import { renderAssessmentTemplate } from '../_shared/assessmentNotificationTemplates.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,7 +58,7 @@ serve(async (req) => {
 // ─── draft ───────────────────────────────────────────────────────────────────
 
 async function handleDraft(body: any): Promise<Response> {
-  const { assessment_id, client_id, status, answers } = body;
+  const { assessment_id, client_id, status, answers, submit_comment, submit_attachment } = body;
 
   if (!assessment_id || !client_id) {
     return new Response(
@@ -67,7 +69,13 @@ async function handleDraft(body: any): Promise<Response> {
 
   const { data, error } = await supabaseClient
     .from("assessments")
-    .update({ status, answers, updated_at: new Date().toISOString() })
+    .update({
+      status,
+      answers,
+      submit_comment: submit_comment ?? null,
+      submit_attachment: submit_attachment ?? null,
+      updated_at: new Date().toISOString(),
+    })
     .eq("assessment_id", assessment_id)
     .eq("client_id", client_id)
     .select()
@@ -89,7 +97,7 @@ async function handleDraft(body: any): Promise<Response> {
 // ─── submit ──────────────────────────────────────────────────────────────────
 
 async function handleSubmit(body: any): Promise<Response> {
-  const { assessment_id, client_id, score, answers, performed_by, assessment_info } = body;
+  const { assessment_id, client_id, score, answers, submit_comment, submit_attachment, performed_by, assessment_info } = body;
   const base_url = Deno.env.get("SITE_URL") ?? "";
 
   if (!assessment_id || !client_id) {
@@ -101,7 +109,15 @@ async function handleSubmit(body: any): Promise<Response> {
 
   const { error } = await supabaseClient
     .from("assessments")
-    .update({ status: "Submitted", score, answers, updated_at: new Date().toISOString() })
+    .update({
+      status: "Submitted",
+      is_reworked: false,
+      score,
+      answers,
+      submit_comment: submit_comment ?? null,
+      submit_attachment: submit_attachment ?? null,
+      updated_at: new Date().toISOString(),
+    })
     .eq("assessment_id", assessment_id)
     .eq("client_id", client_id);
 
@@ -126,7 +142,7 @@ async function handleSubmit(body: any): Promise<Response> {
 // ─── complete ────────────────────────────────────────────────────────────────
 
 async function handleComplete(body: any): Promise<Response> {
-  const { id, client_id, closure_comments, completed_by, completed_on, performed_by, assessment_info } = body;
+  const { id, client_id, closure_comments, closure_attachment, completed_by, completed_on, performed_by, assessment_info } = body;
   const base_url = Deno.env.get("SITE_URL") ?? "";
 
   if (!id || !client_id) {
@@ -143,6 +159,7 @@ async function handleComplete(body: any): Promise<Response> {
       completed_by: completed_by || null,
       completed_on: completed_on || new Date().toISOString(),
       closure_comments: closure_comments || null,
+      closure_attachment: closure_attachment ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -169,7 +186,7 @@ async function handleComplete(body: any): Promise<Response> {
 // ─── rework ──────────────────────────────────────────────────────────────────
 
 async function handleRework(body: any): Promise<Response> {
-  const { id, client_id, rework_comments, performed_by, assessment_info } = body;
+  const { id, client_id, rework_comments, rework_attachments, performed_by, assessment_info } = body;
   const base_url = Deno.env.get("SITE_URL") ?? "";
 
   if (!id || !client_id) {
@@ -183,7 +200,9 @@ async function handleRework(body: any): Promise<Response> {
     .from("assessments")
     .update({
       status: "Draft",
+      is_reworked: true,
       rework_comments: rework_comments || null,
+      rework_attachments: rework_attachments ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -231,7 +250,7 @@ async function queueSubmittedNotification(
   const { data: creator } = await supabaseClient
     .from("employees")
     .select("id, first_name, last_name, email, status")
-    .eq("user_id", assessmentInfo.created_by)
+    .eq("id", assessmentInfo.created_by)
     .maybeSingle();
 
   if (!creator || !creator.email) return;
@@ -316,7 +335,15 @@ async function queueSubmittedNotification(
   const submitterName = `${performed_by.first_name} ${performed_by.last_name}`;
   const creatorName = `${creator.first_name} ${creator.last_name}`;
   const assessmentUrl = `${baseUrl}/assessments`;
-  const subject = `Assessment Submitted – [Assessment ID: ${assessmentInfo.id}]`;
+  const templateVariables = {
+    User_Name: creatorName,
+    Assessment_ID: assessmentInfo.id,
+    Assessment_Title: assessmentInfo.name,
+    Submitted_By: submitterName,
+    Submitted_Date: submittedDate,
+    Assessment_URL: assessmentUrl,
+  };
+  const { subject, body } = renderAssessmentTemplate("assessment_submitted", templateVariables);
 
   const { data: eq } = await supabaseClient
     .from("email_queue")
@@ -327,14 +354,9 @@ async function queueSubmittedNotification(
       recipient_email: creator.email,
       recipient_name: creatorName,
       subject,
-      body: "",
+      body,
       params: {
-        User_Name: creatorName,
-        Assessment_ID: assessmentInfo.id,
-        Assessment_Title: assessmentInfo.name,
-        Submitted_By: submitterName,
-        Submitted_Date: submittedDate,
-        Assessment_URL: assessmentUrl,
+        ...templateVariables,
         template_id: "frontend-assessment-submitted",
         module: "assessment",
         type: "assessment_submitted",
@@ -361,6 +383,8 @@ async function queueSubmittedNotification(
       actionBy: performed_by.id,
     },
   });
+
+  await triggerImmediateEmailProcessing(eq?.id);
 }
 
 async function queueCompletedNotification(
@@ -458,7 +482,15 @@ async function queueCompletedNotification(
   const completedByName = `${performed_by.first_name} ${performed_by.last_name}`;
   const assigneeName = `${assignee.first_name} ${assignee.last_name}`;
   const assessmentUrl = `${baseUrl}/assessments`;
-  const subject = `Assessment Completed – [Assessment ID: ${assessmentUuid}]`;
+  const templateVariables = {
+    User_Name: assigneeName,
+    Assessment_ID: assessmentUuid,
+    Assessment_Title: assessmentInfo.name,
+    Completed_By: completedByName,
+    Completed_Date: completedDate,
+    Assessment_URL: assessmentUrl,
+  };
+  const { subject, body } = renderAssessmentTemplate("assessment_completed", templateVariables);
 
   const { data: eq } = await supabaseClient
     .from("email_queue")
@@ -469,14 +501,9 @@ async function queueCompletedNotification(
       recipient_email: assignee.email,
       recipient_name: assigneeName,
       subject,
-      body: "",
+      body,
       params: {
-        User_Name: assigneeName,
-        Assessment_ID: assessmentUuid,
-        Assessment_Title: assessmentInfo.name,
-        Completed_By: completedByName,
-        Completed_Date: completedDate,
-        Assessment_URL: assessmentUrl,
+        ...templateVariables,
         template_id: "frontend-assessment-completed",
         module: "assessment",
         type: "assessment_completed",
@@ -502,6 +529,8 @@ async function queueCompletedNotification(
       actionBy: performed_by.id,
     },
   });
+
+  await triggerImmediateEmailProcessing(eq?.id);
 }
 
 async function queueReworkNotification(
@@ -594,7 +623,15 @@ async function queueReworkNotification(
   const assigneeName = `${assignee.first_name} ${assignee.last_name}`;
   const reworkReason = reworkComments || "Please rework this assessment";
   const assessmentUrl = `${baseUrl}/assessments`;
-  const subject = `Rework Required – [Assessment ID: ${assessmentUuid}]`;
+  const templateVariables = {
+    User_Name: assigneeName,
+    Assessment_ID: assessmentUuid,
+    Assessment_Title: assessmentInfo.name,
+    Requested_By: requestedByName,
+    Rework_Reason: reworkReason,
+    Assessment_URL: assessmentUrl,
+  };
+  const { subject, body } = renderAssessmentTemplate("assessment_rework_required", templateVariables);
   const { data: eq } = await supabaseClient
     .from("email_queue")
     .insert({
@@ -604,14 +641,9 @@ async function queueReworkNotification(
       recipient_email: assignee.email,
       recipient_name: assigneeName,
       subject,
-      body: "",
+      body,
       params: {
-        User_Name: assigneeName,
-        Assessment_ID: assessmentUuid,
-        Assessment_Title: assessmentInfo.name,
-        Requested_By: requestedByName,
-        Rework_Reason: reworkReason,
-        Assessment_URL: assessmentUrl,
+        ...templateVariables,
         template_id: "frontend-assessment-rework-required",
         module: "assessment",
         type: "assessment_rework_required",
@@ -638,4 +670,6 @@ async function queueReworkNotification(
       reworkReason,
     },
   });
+
+  await triggerImmediateEmailProcessing(eq?.id);
 }

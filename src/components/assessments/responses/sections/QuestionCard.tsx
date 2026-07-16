@@ -34,7 +34,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   const [fileError, setFileError] = useState<string | null>(null);
 
   const handleAnswer = (value: string) => {
-    onChange(question.id, 'answer', value === 'yes');
+    onChange(question.id, 'answer', value);
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

@@ -25,6 +25,10 @@ export interface TransportSafetyContextType {
 
   addVehicle: (vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>) => void;
   updateVehicle: (id: string, updates: Partial<Vehicle>) => void;
+  // Local-only merge into the in-memory vehicle (no DB write, no toast). Used to
+  // reflect side-effect updates (e.g. an unmask edge function that already wrote
+  // the row) so every consumer sees the new values immediately.
+  patchVehicleLocal: (id: string, updates: Partial<Vehicle>) => void;
   deleteVehicle: (id: string) => void;
   getVehicle: (id: string) => Vehicle | undefined;
   addDocument: (vehicleId: string, document: Omit<VehicleDocument, 'id'>) => void;

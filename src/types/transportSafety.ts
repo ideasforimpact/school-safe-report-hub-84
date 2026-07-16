@@ -86,6 +86,9 @@ export interface Vehicle {
   provider?: string | null; // surepass or quickeyc
   statusCode?: string | null; // status_code from API
   rcStatus?: string | null; // success or error
+  vehicleChasiNumber?: string | null; // real (unmasked) chassis number
+  vehicleEngineNumber?: string | null; // real (unmasked) engine number
+  vehicleOwnerName?: string | null; // real (unmasked) owner name
   // Challan data
   vehicleChallans?: VehicleChallans | null;
 }

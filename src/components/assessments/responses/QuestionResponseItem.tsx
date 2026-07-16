@@ -33,7 +33,7 @@ const QuestionResponseItem: React.FC<QuestionResponseItemProps> = ({
   const [fileError, setFileError] = useState<string | null>(null);
 
   const handleAnswer = (value: string) => {
-    onChange(question.id, 'answer', value === 'yes');
+    onChange(question.id, 'answer', value);
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -153,6 +153,7 @@ const QuestionResponseItem: React.FC<QuestionResponseItemProps> = ({
           <AnswerRadioGroup
             questionId={question.id}
             answer={response?.answer}
+            correctAnswer={question.correctAnswer ?? 'yes'}
             readOnly={readOnly}
             onAnswerChange={handleAnswer}
           />

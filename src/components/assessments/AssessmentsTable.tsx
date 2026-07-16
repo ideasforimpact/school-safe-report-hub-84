@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
-import { Eye, FileText, AlertCircle, UserCheck, Download, X } from 'lucide-react';
+import { Eye, FileText, AlertCircle, UserCheck, Download, X, RotateCcw } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -47,6 +47,7 @@ interface Assessment {
   client_id: string;
   creator_name: string;
   assignee_name: string;
+  is_reworked?: boolean;
   template?: { questions: AssessmentQuestion[] };
 }
 
@@ -101,6 +102,11 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
     id: number;
     assignedTo: string | null;
     assigneeName: string;
+    assessmentUuid: string;
+    name: string;
+    createdBy: string;
+    clientId: string;
+    targetCompletionDate: string;
   } | null>(null);
   const [isBulkBarPinned, setIsBulkBarPinned] = useState(false);
   const [bulkBarPlaceholderHeight, setBulkBarPlaceholderHeight] = useState(0);
@@ -319,7 +325,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, assessment?: Assessment) => {
     const statusColors = {
       'New': 'bg-blue-100 text-blue-800',
       'Draft': 'bg-gray-100 text-gray-800',
@@ -327,7 +333,18 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
       'Submitted': 'bg-purple-100 text-purple-800',
       'Completed': 'bg-green-100 text-green-800',
     };
-    
+
+    const isRework = status === 'Draft' && !!assessment?.is_reworked;
+
+    if (isRework) {
+      return (
+        <Badge className="bg-orange-100 text-orange-800 border border-orange-300 flex items-center gap-1 w-fit">
+          <RotateCcw className="h-3 w-3" />
+          Rework
+        </Badge>
+      );
+    }
+
     return (
       <Badge className={statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}>
         {status}
@@ -351,7 +368,16 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
 
   const handleAssessmentUpdated = () => fetchAssessments(currentPage, true);
   const handleReassign = (a: Assessment) => {
-    setSelectedAssessmentForReassign({ id: a.assessment_id, assignedTo: a.assigned_to, assigneeName: a.assignee_name || 'Unassigned' });
+    setSelectedAssessmentForReassign({
+      id: a.assessment_id,
+      assignedTo: a.assigned_to,
+      assigneeName: a.assignee_name || 'Unassigned',
+      assessmentUuid: a.id,
+      name: a.name,
+      createdBy: a.created_by,
+      clientId: a.client_id,
+      targetCompletionDate: a.target_completion_date,
+    });
     setReassignDialogOpen(true);
   };
 
@@ -834,7 +860,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
                         </div>
                         </TableCell>
 
-                        <TableCell>{getStatusBadge(assessment.status)}</TableCell>
+                        <TableCell>{getStatusBadge(assessment.status, assessment)}</TableCell>
 
                         <TableCell>
                         <span className="font-medium">
@@ -931,6 +957,13 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
           assessmentId={selectedAssessmentForReassign.id}
           currentAssigneeId={selectedAssessmentForReassign.assignedTo}
           currentAssigneeName={selectedAssessmentForReassign.assigneeName}
+          assessment={{
+            id: selectedAssessmentForReassign.assessmentUuid,
+            name: selectedAssessmentForReassign.name,
+            created_by: selectedAssessmentForReassign.createdBy,
+            client_id: selectedAssessmentForReassign.clientId,
+            target_completion_date: selectedAssessmentForReassign.targetCompletionDate
+          }}
           onReassignSuccess={handleAssessmentUpdated}
         />
       )}

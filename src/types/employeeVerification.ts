@@ -47,6 +47,7 @@ export interface Employee {
   // Add these fields to make it compatible with the other Employee type
   firstName?: string;
   lastName?: string;
+  aadharVerifiedName?: string;
   isSuperAdmin?: boolean; // Added this property to fix the error
   isCpdInvolved?: boolean;
   

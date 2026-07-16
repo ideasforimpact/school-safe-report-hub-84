@@ -3,7 +3,7 @@ import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit } from 'lucide-react';
+import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Link } from 'react-router-dom';
@@ -236,7 +236,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     <div className="flex justify-start gap-1 items-center">
                       <Button asChild variant="ghost" size="icon">
                         <Link to={`/transport-safety/${vehicle.id}`}>
-                            <Settings className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
                       {!shouldHideWriteActions && onEditVehicle && (

@@ -90,6 +90,7 @@ interface Employee {
   firstName: string;
   lastName: string;
   email: string;
+  aadharVerifiedName?: string;
 }
 
 interface PeopleInvolvedSectionProps {
@@ -131,14 +132,9 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   
   // Get client type from auth context
   const clientType = employeeData?.client?.client_type?.key || employeeData?.clientType?.key || '';
-  const isSchoolClient = clientType.toLowerCase() === 'school';
-  
-  console.log('Auth employeeData in incidents:', employeeData);
-  console.log('Client type from auth:', clientType);
-  console.log('Is school client:', isSchoolClient);
-  console.log("isIntegrationEnabled",isIntegrationEnabled);
-  
-  
+  const showStudentRole = clientType.toLowerCase() === 'school' || clientType.toLowerCase() === 'institute';
+
+
   // State for search functionality
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
   const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
@@ -291,8 +287,11 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     if (role === 'Staff') {
       const staff = person as Employee;
       // Update both name and id in a single atomic update
-      const additionalFields = staff.id ? { id: staff.id } : undefined;
-      onPersonChange(index, 'name', `${staff.firstName} ${staff.lastName}`, additionalFields);
+      const additionalFields = {
+        ...(staff.id ? { id: staff.id } : {}),
+        ...(staff.aadharVerifiedName ? { aadhar_verified_name: staff.aadharVerifiedName } : {})
+      };
+      onPersonChange(index, 'name', staff.aadharVerifiedName || `${staff.firstName} ${staff.lastName}`, additionalFields);
     } else {
       const student = person as ApiStudent;
 
@@ -432,15 +431,18 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     if (role === 'Staff') {
       const availableStaff = staffMembers.filter(staff => {
         const fullName = `${staff.firstName} ${staff.lastName}`;
-        return !selectedStaffNames.includes(fullName);
+        const aadharName = staff.aadharVerifiedName || '';
+        return !selectedStaffNames.includes(fullName) && (!aadharName || !selectedStaffNames.includes(aadharName));
       });
       
       return searchQuery
         ? availableStaff.filter(staff => {
             const fullName = `${staff.firstName} ${staff.lastName}`;
+            const aadharName = staff.aadharVerifiedName || '';
             const email = staff.email || '';
             const searchTerm = searchQuery.toLowerCase();
             return fullName.toLowerCase().includes(searchTerm) ||
+                   aadharName.toLowerCase().includes(searchTerm) ||
                    email.toLowerCase().includes(searchTerm);
           })
         : availableStaff;
@@ -530,8 +532,15 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 
   const getSelectedDisplay = (person: Person, role: string) => {
     if (role === 'Staff') {
-      const staff = staffMembers.find(s => `${s.firstName} ${s.lastName}` === person.name);
-      return staff ? `${staff.firstName} ${staff.lastName} (${staff.email})` : person.name;
+      const staff = staffMembers.find(s => 
+        s.id === person.id ||
+        `${s.firstName} ${s.lastName}` === person.name || 
+        s.aadharVerifiedName === person.name
+      );
+      if (staff) {
+        return `${staff.aadharVerifiedName || `${staff.firstName} ${staff.lastName}`} (${staff.email})`;
+      }
+      return person.aadhar_verified_name || person.name;
     } else if (role === 'Student') {
       // If the name already includes student ID in parentheses, return as is
       if (person.name.includes('(') && person.name.includes(')')) {
@@ -723,7 +732,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                         {person.role === 'Staff' ? (
                           <>
                             <span className="font-medium">
-                              {(option as Employee).firstName} {(option as Employee).lastName}
+                              {(option as Employee).aadharVerifiedName || `${(option as Employee).firstName} ${(option as Employee).lastName}`}
                             </span>
                             <span className="text-gray-500 ml-1">
                               ({(option as Employee).email})
@@ -905,8 +914,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const getRoleOptions = () => {
     const options = [];
     
-    // Only show Student option if client type is "school"
-    if (isSchoolClient) {
+    // Only show Student option if client type is "school" or "institute"
+    if (showStudentRole) {
       options.push({ value: 'Student', label: 'Student' });
     }
     

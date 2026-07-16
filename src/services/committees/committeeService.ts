@@ -195,7 +195,7 @@ export const fetchCommitteeDefaults = async (): Promise<CommitteeDefault[]> => {
 
 export const fetchCommitteeMemberRoles = async (): Promise<CommitteeMemberRole[]> => {
   const { data, error } = await supabase
-    .from('committee_member_roles' as const)
+    .from('committee_member_roles' as never)
     .select('id, name, sort_order, active')
     .eq('active', true)
     .order('sort_order', { ascending: true });
@@ -294,7 +294,7 @@ export const fetchEventsPageData = async (
   const inflight = eventsPageInflight.get(key);
   if (inflight) return inflight;
 
-  const request = invokeCommittee<{ committee: Committee; events: CommitteeEvent[]; members: CommitteeMember[] }>(
+  const request = invokeCommittee<{ committee: Committee | null; events: CommitteeEvent[]; members: CommitteeMember[] }>(
     'get_events_page_data',
     { client_id: clientId, committee_id: committeeId },
   ).then((data) => ({

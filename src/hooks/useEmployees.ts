@@ -23,6 +23,7 @@ export const useEmployees = () => {
           .from('employees')
           .select('id, first_name, last_name, email, department')
           .eq('status', true)
+          .eq('is_secondary_super_admin', false)
           .order('first_name');
 
         if (error) throw error;

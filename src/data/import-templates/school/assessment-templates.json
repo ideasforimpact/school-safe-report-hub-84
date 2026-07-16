@@ -7,6 +7,7 @@
         "questions": [
             {
                 "text": "Are all school computers, tablets, and routers patched and updated with the latest security versions?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -14,6 +15,7 @@
             },
             {
                 "text": "Ensure backup is active for all important data. Has this been verified within the last 6 months?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -21,6 +23,7 @@
             },
             {
                 "text": "Is the internet filtering system (to block unsafe or inappropriate websites) working effectively and reviewed regularly?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -28,6 +31,7 @@
             },
             {
                 "text": "Have there been any cyber incidents or near misses (e.g., phishing, data loss, online bullying) reported in the last 6 months?",
+                "correctAnswer": "no",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -35,6 +39,7 @@
             },
             {
                 "text": "Are email security measures (spam filter, phishing detection, suspicious link alerts) active and up to date?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -42,6 +47,7 @@
             },
             {
                 "text": "Have all third-party or cloud-based applications used by staff or students been reviewed for security compliance in the past 6 months?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -49,6 +55,7 @@
             },
             {
                 "text": "Has password rotation been completed in the last 6 months for Wi-Fi networks, staff accounts, and admin systems?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -56,6 +63,7 @@
             },
             {
                 "text": "Were cyber safety awareness sessions conducted for students and staff during this 6-month period?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -63,6 +71,7 @@
             },
             {
                 "text": "Have all software subscriptions and licenses used by the school been audited in the past 6 months, and were any unnecessary or unused tools removed?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -70,6 +79,7 @@
             },
             {
                 "text": "Have user access privileges been reviewed to ensure that only authorized staff and students have access to critical systems and data?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -86,13 +96,15 @@
         "questions": [
             {
                 "text": "Are all school buses and vans holding valid vehicle fitness certificates, insurance, and pollution control documents?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
                 "allowAttachments": false
             },
             {
-                "text": "Have driver and attendant background verifications (police check, license validity, ID proof) been completed and documented?\\n",
+                "text": "Have driver and attendant background verifications (police check, license validity, ID proof) been completed and documented?\n",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -100,6 +112,7 @@
             },
             {
                 "text": "Is a GPS tracking system installed and actively monitored on all school transport vehicles?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -107,6 +120,7 @@
             },
             {
                 "text": "Are CCTV cameras and panic buttons installed and functional inside all buses and vans?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -114,6 +128,7 @@
             },
             {
                 "text": "Is a female attendant present on every vehicle during student pickup and drop, as per regulatory guidelines?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -121,6 +136,7 @@
             },
             {
                 "text": "Are first-aid kits and fire extinguishers available, intact, and checked for expiry in every vehicle?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -128,13 +144,15 @@
             },
             {
                 "text": "Are boarding and deboarding areas within the school premises clearly marked, supervised, and safe for students?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
                 "allowAttachments": false
             },
             {
-                "text": "Have driver behavior and speed limits been reviewed using GPS or manual logs to ensure compliance?",
+                "text": "Have any speed limit violations or unsafe driver behaviours been identified and left unaddressed in the last 6 months?",
+                "correctAnswer": "no",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -142,13 +160,15 @@
             },
             {
                 "text": "Are transport maintenance records updated, including regular servicing, brake checks, and tire condition reports?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
                 "allowAttachments": false
             },
             {
-                "text": "Have transport safety drills or orientation sessions been conducted for drivers, attendants, and students on safe travel behavior and emergency actions?\\n\\n",
+                "text": "Have transport safety drills or orientation sessions been conducted for drivers, attendants, and students on safe travel behavior and emergency actions?\n\n",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -165,6 +185,7 @@
         "questions": [
             {
                 "text": "Has the school appointed a Designated Child Protection Officer (CPO) and is their contact information visibly displayed for students and staff?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -172,6 +193,7 @@
             },
             {
                 "text": "Have all teachers, non-teaching staff, and volunteers undergone background verification (police check and ID validation)?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -179,6 +201,7 @@
             },
             {
                 "text": "Are all staff members trained and sensitized about child protection laws (e.g., POCSO Act) and safe interaction protocols?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -186,6 +209,7 @@
             },
             {
                 "text": "Is there a Child Protection Policy in place, and has it been reviewed or updated in the last 6 months?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -193,6 +217,7 @@
             },
             {
                 "text": "Is there a confidential reporting mechanism (e.g., complaint box, helpline, digital form) available for students to report concerns safely?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -200,6 +225,7 @@
             },
             {
                 "text": "Are students educated through workshops or sessions about personal safety, boundaries, and how to report inappropriate behavior?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -207,20 +233,23 @@
             },
             {
                 "text": "Are CCTV cameras functional and covering key areas such as corridors, entry/exit points, and common spaces without invading privacy zones?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": false,
                 "allowComments": false,
                 "allowAttachments": false
             },
             {
-                "text": "Have all reported incidents or complaints (if any) been recorded, investigated promptly, and documented with outcomes?",
+                "text": "Have any child protection complaints or incidents been left uninvestigated or unresolved in the last 6 months?",
+                "correctAnswer": "no",
                 "files": [],
                 "required": false,
-                "allowComments": false,
+                "allowComments": true,
                 "allowAttachments": false
             },
             {
                 "text": "Are school transport staff and external vendors (cleaning, maintenance, canteen) also trained and verified for child safety compliance?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": false,
                 "allowComments": false,
@@ -228,6 +257,7 @@
             },
             {
                 "text": "Has the Internal Child Protection Committee conducted a review meeting in the last 6 months, and were action points recorded and followed up?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": false,
                 "allowComments": false,
@@ -244,6 +274,7 @@
         "questions": [
             {
                 "text": "Are all restrooms cleaned, disinfected, and maintained regularly with proper cleaning schedules displayed?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -251,20 +282,23 @@
             },
             {
                 "text": "Is safe drinking water available throughout the school, and are water quality tests conducted and documented?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
                 "allowAttachments": false
             },
             {
-                "text": "Are waste segregation practices (wet/dry waste) followed and bins properly labeled and covered?",
+                "text": "Have any food safety or hygiene violations been identified and left unaddressed in the last 6 months?",
+                "correctAnswer": "no",
                 "files": [],
-                "required": false,
-                "allowComments": false,
+                "required": true,
+                "allowComments": true,
                 "allowAttachments": false
             },
             {
                 "text": "Has the school conducted pest control treatments within the last 6 months and maintained vendor/service records?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -272,6 +306,7 @@
             },
             {
                 "text": "Are handwashing facilities available, functional, and supplied with soap or sanitizer in all key areas (restrooms, cafeteria, labs)?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -279,6 +314,7 @@
             },
             {
                 "text": "Is the school cafeteria or kitchen meeting hygiene standards ,  clean preparation area, proper food storage, and staff wearing protective gear? Share your observations in comments, if any non hygiene",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -286,6 +322,7 @@
             },
             {
                 "text": "Are medical facilities or first-aid rooms available, equipped with essential medicines, and managed by a trained nurse or first-aid responder?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -293,6 +330,7 @@
             },
             {
                 "text": "Are health checkups or wellness programs conducted for students and staff at least once in 6 months?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -300,6 +338,7 @@
             },
             {
                 "text": "Are waste disposal partners or municipal cleaning services verified for safe collection and disposal of waste?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -307,6 +346,7 @@
             },
             {
                 "text": "Are cleaning staff trained and provided with protective gear (gloves, masks, aprons) and supervised during sanitation activities?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -323,6 +363,7 @@
         "questions": [
             {
                 "text": "Are there any damaged or leaning trees within or near the school premises that could pose a risk of falling during storms or heavy winds?",
+                "correctAnswer": "no",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -330,6 +371,7 @@
             },
             {
                 "text": "Have all open pits, drains, or manholes been identified and securely covered to prevent accidental falls?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -337,6 +379,7 @@
             },
             {
                 "text": "Are all electrical wires, panels, and outdoor cables properly insulated, secured, and free from water exposure or damage?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -344,6 +387,7 @@
             },
             {
                 "text": "Are school boundary walls and fences structurally sound, with no cracks, loose bricks, or leaning sections?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -351,6 +395,7 @@
             },
             {
                 "text": "Are construction or maintenance areas, if any, clearly barricaded and marked with warning signs?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -358,6 +403,7 @@
             },
             {
                 "text": "Are pathways, playgrounds, and outdoor spaces free of uneven surfaces, potholes, or slippery zones?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -365,6 +411,7 @@
             },
             {
                 "text": "Has the rainwater drainage system been cleaned and maintained to prevent waterlogging and mosquito breeding?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -372,6 +419,7 @@
             },
             {
                 "text": "Are chemical storage and cleaning supplies kept in safe, ventilated areas away from children's reach?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -379,6 +427,7 @@
             },
             {
                 "text": "Are outdoor lighting systems functional and sufficient for visibility during early morning or late evening school hours?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -386,6 +435,7 @@
             },
             {
                 "text": "Has a campus-level environmental risk walk-through inspection been conducted in the last 6 months, and were identified issues resolved?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -402,6 +452,7 @@
         "questions": [
             {
                 "text": "Are all exterior lights (headlights, brake lights, indicators) functioning properly?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -409,6 +460,7 @@
             },
             {
                 "text": "Are the brakes in good working condition?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -416,6 +468,7 @@
             },
             {
                 "text": "Are tyres properly inflated and free of excess wear/damage?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -423,6 +476,7 @@
             },
             {
                 "text": "Is the horn operational?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -430,6 +484,7 @@
             },
             {
                 "text": "Are mirrors and windows clean and without cracks or damage?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -437,6 +492,7 @@
             },
             {
                 "text": "Is the windscreen wiper system working, and washer fluid filled?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -444,6 +500,7 @@
             },
             {
                 "text": "Are emergency exits accessible and clearly marked?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -451,6 +508,7 @@
             },
             {
                 "text": "Is a first-aid kit available and fully stocked?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -458,6 +516,7 @@
             },
             {
                 "text": "Is a functional fire extinguisher present and accessible?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -465,6 +524,7 @@
             },
             {
                 "text": "Are the seat belts (if fitted) present and functional?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -472,6 +532,7 @@
             },
             {
                 "text": "Is the floor clean, free of debris, and not slippery?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -479,6 +540,7 @@
             },
             {
                 "text": "Are all seats and handrails securely fixed and in good condition?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -486,6 +548,7 @@
             },
             {
                 "text": "Are there any visible fuel or fluid leaks?",
+                "correctAnswer": "no",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -493,6 +556,7 @@
             },
             {
                 "text": "Is the vehicle free from any unusual noises or vibrations during a short test run?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -500,6 +564,7 @@
             },
             {
                 "text": "Are safety instructions (emergency contacts, procedures) displayed inside the vehicle?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -507,6 +572,7 @@
             },
             {
                 "text": "Is school signage/board displayed prominently?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": false,
@@ -523,6 +589,7 @@
         "questions": [
             {
                 "text": "Are all CCTV cameras functional in classrooms, corridors, and entry/exit areas, and has the footage retention been verified?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -530,6 +597,7 @@
             },
             {
                 "text": "Have all restricted or hazardous areas (e.g., electrical rooms, labs, rooftops, maintenance zones) been securely locked and access-controlled?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -537,6 +605,7 @@
             },
             {
                 "text": "Are first-aid kits available in every block and updated with non-expired medical supplies?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -544,6 +613,7 @@
             },
             {
                 "text": "Have emergency exits and stairways been inspected to ensure they are clear, well-marked, and unobstructed?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -551,6 +621,7 @@
             },
             {
                 "text": "Is there adequate lighting and visibility in corridors, restrooms, and outdoor play areas during all school hours?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -558,6 +629,7 @@
             },
             {
                 "text": "Are supervision protocols in place during recess, physical education, and sports periods to prevent accidents or bullying?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -565,6 +637,7 @@
             },
             {
                 "text": "Have all playground and sports equipment been checked for damage, sharp edges, or instability?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -572,13 +645,15 @@
             },
             {
                 "text": "Are CCTV and security monitoring staff logs reviewed periodically to confirm proper observation and response readiness?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
                 "allowAttachments": false
             },
             {
-                "text": "Have incident reports related to student safety (if any) been reviewed and preventive actions taken within the last 6 months?",
+                "text": "Have any student safety incidents or near-misses been left without corrective action in the last 6 months?",
+                "correctAnswer": "no",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -586,6 +661,7 @@
             },
             {
                 "text": "Have awareness drills or safety orientation sessions been conducted for students and staff on physical safety practices (e.g., emergency behavior, safe movement, avoiding restricted zones)?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -602,6 +678,7 @@
         "questions": [
             {
                 "text": "Are emergency contact numbers (fire, police, ambulance, hospital) displayed prominently across key areas in the school?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -609,6 +686,7 @@
             },
             {
                 "text": "Have evacuation drills or mock emergency drills been conducted in the last 6 months, and are records maintained?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -616,6 +694,7 @@
             },
             {
                 "text": "Are emergency exits, alarm systems, and assembly points clearly marked, accessible, and communicated to students and staff?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -623,6 +702,7 @@
             },
             {
                 "text": "Is the school medical room or first-aid center adequately stocked, and is a trained medical responder available during school hours?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -630,6 +710,7 @@
             },
             {
                 "text": "Are communication systems (PA system, intercom, or digital alerts) functional and tested periodically for emergency use?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -637,6 +718,7 @@
             },
             {
                 "text": "Have teachers and staff received training on how to guide students safely during emergencies and follow evacuation protocols?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": false,
                 "allowComments": false,
@@ -644,13 +726,15 @@
             },
             {
                 "text": "Has the school established a coordination plan with local authorities (police, fire, hospitals) for quick response in case of a crisis?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
                 "allowAttachments": false
             },
             {
-                "text": "Have all emergency related incidents, near misses, or emergency drills been reviewed, and has the ERT implemented corrective actions for improvement?",
+                "text": "Have any critical emergency preparedness gaps identified in drills or reviews been left unresolved?",
+                "correctAnswer": "no",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -658,6 +742,7 @@
             },
             {
                 "text": "Has an Emergency Response Team (ERT) been formed with clearly assigned roles and responsibilities for staff members?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,
@@ -665,6 +750,7 @@
             },
             {
                 "text": "Has the school developed and maintained a Crisis Management Plan covering natural disasters, fire, medical, and security emergencies?",
+                "correctAnswer": "yes",
                 "files": [],
                 "required": true,
                 "allowComments": true,

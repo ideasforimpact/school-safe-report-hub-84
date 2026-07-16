@@ -25,17 +25,13 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   employees: propEmployees
 }) => {
   const [employees, setEmployees] = useState<Employee[]>(propEmployees || []);
-  const [isLoadingEmployees, setIsLoadingEmployees] = useState(!propEmployees?.length);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    if (propEmployees && propEmployees.length > 0) {
-      setEmployees(propEmployees);
-      setIsLoadingEmployees(false);
-    }
+    setEmployees(propEmployees || []);
   }, [propEmployees]);
-  
+
   // Find the selected employee
   const selectedEmployee = employees.find(emp => emp.id === owner);
   const selectedEmployeeDisplay = selectedEmployee
@@ -90,12 +86,12 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
               }, 200);
             }}
             placeholder={
-              isLoading || isLoadingEmployees 
-                ? "Loading staff members..." 
+              isLoading
+                ? "Loading staff members..."
                 : "Search by name or email..."
             }
             className="w-full pr-8 h-11 bg-white border-gray-300"
-            disabled={isLoading || isLoadingEmployees}
+            disabled={isLoading}
           />
           <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         </div>

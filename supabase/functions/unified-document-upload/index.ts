@@ -8,6 +8,18 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Maps an employee_document_type.name (Employee Verification) to the
+// compliance document key used by the Users module
+// (src/constants/employeeComplianceDocuments.ts). Keep in sync with the
+// equivalent map in supabase/functions/fetch-employee-document-prefill.
+const PROFILE_DOCUMENT_KEY_BY_TYPE: Record<string, string> = {
+  aadhar: 'aadhaarCard',
+  pan: 'panCard',
+  passport: 'passport',
+};
+
+const PROFILE_DOCUMENTS_BUCKET = 'employee_profile_documents';
+
 interface DocumentUploadRequest {
   employeeId: string;
   clientId: string;
@@ -69,7 +81,7 @@ serve(async (req) => {
     // 1) Validate employee belongs to client
     const { data: employee, error: empErr } = await supabase
       .from('employees')
-      .select('id, client_id')
+      .select('id, client_id, employee_id, documents')
       .eq('id', employeeId)
       .eq('client_id', clientId)
       .single();
@@ -186,7 +198,61 @@ serve(async (req) => {
 
     console.log('Document record created successfully:', documentRecord);
 
-    // 6) Return success response with document info
+    // 6) Best-effort sync back to the Users module: Aadhaar/PAN/Passport
+    // uploaded here should replace the matching profile document so the two
+    // modules don't drift. Never fails the request - the verification
+    // document above is already saved.
+    let profileSyncWarning: string | undefined;
+    const profileDocKey = PROFILE_DOCUMENT_KEY_BY_TYPE[docType.name];
+    if (profileDocKey) {
+      try {
+        const base64Data = documentFile.base64.split(',')[1] || documentFile.base64;
+        const profileBinaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        const profileSanitizedFileName = sanitizeFilename(documentFile.name);
+        const profileTimestamp = Date.now();
+        const employeeKey = employee.employee_id || employeeId;
+        const profileStoragePath = `${clientId}/${employeeKey}/${profileDocKey}/${profileTimestamp}_${profileSanitizedFileName}`;
+
+        const { error: profileUploadError } = await supabase.storage
+          .from(PROFILE_DOCUMENTS_BUCKET)
+          .upload(profileStoragePath, profileBinaryData, {
+            contentType: documentFile.type,
+            upsert: false
+          });
+
+        if (profileUploadError) {
+          throw new Error(`Profile upload failed: ${profileUploadError.message}`);
+        }
+
+        const existingProfileDocuments = Array.isArray(employee.documents) ? employee.documents : [];
+        const otherProfileDocuments = existingProfileDocuments.filter((doc: any) => doc?.key !== profileDocKey);
+        const mergedProfileDocuments = [
+          ...otherProfileDocuments,
+          {
+            key: profileDocKey,
+            fileName: profileSanitizedFileName,
+            filePath: profileStoragePath,
+            uploadedAt: new Date().toISOString(),
+          },
+        ];
+
+        const { error: profileUpdateError } = await supabase
+          .from('employees')
+          .update({ documents: mergedProfileDocuments })
+          .eq('id', employeeId);
+
+        if (profileUpdateError) {
+          throw new Error(`Profile document update failed: ${profileUpdateError.message}`);
+        }
+
+        console.log(`Synced ${profileDocKey} back to Users module at ${profileStoragePath}`);
+      } catch (syncError) {
+        console.error('Error syncing document back to Users module:', syncError);
+        profileSyncWarning = (syncError as Error).message || 'Failed to sync document to Users module';
+      }
+    }
+
+    // 7) Return success response with document info
     const response = {
       success: true,
       message: `${docType.name} document uploaded successfully`,
@@ -203,7 +269,8 @@ serve(async (req) => {
         params: documentRecord.params,
         createdAt: documentRecord.created_at,
         updatedAt: documentRecord.updated_at
-      }
+      },
+      ...(profileSyncWarning ? { profileSyncWarning } : {})
     };
 
     return new Response(JSON.stringify(response), {

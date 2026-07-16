@@ -10,6 +10,7 @@ export type NotificationType =
   | 'incident_reminder_10_days'
   | 'employee_verified'
   | 'assessment_assigned'
+  | 'assessment_reassigned'
   | 'assessment_submitted'
   | 'assessment_completed'
   | 'assessment_rework_required'

@@ -32,7 +32,8 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
         const { data, error } = await supabase
           .from('employees')
           .select('*')
-          .eq('status', true); // Changed to use boolean value
+          .eq('status', true) // Changed to use boolean value
+          .eq('is_secondary_super_admin', false);
 
         if (error) {
           console.error("Error fetching employees:", error);

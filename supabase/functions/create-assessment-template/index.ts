@@ -18,6 +18,7 @@ interface QuestionFile {
 interface AssessmentQuestion {
   id: string;
   text: string;
+  correctAnswer?: string;
   allowComments: boolean;
   allowAttachments: boolean;
   required: boolean;
@@ -261,6 +262,7 @@ serve(async (req) => {
       const processedQuestion: AssessmentQuestion = {
         id: question.id,
         text: question.text,
+        correctAnswer: question.correctAnswer ?? 'yes',
         allowComments: question.allowComments,
         allowAttachments: question.allowAttachments,
         required: question.required,

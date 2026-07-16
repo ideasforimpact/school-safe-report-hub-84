@@ -22,6 +22,7 @@ export interface Person {
   notes?: string;
   id?: string;
   student_id?:string;
+  aadhar_verified_name?: string;
 }
 
 export interface UserRef {

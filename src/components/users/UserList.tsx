@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmployeeUser } from '@/pages/UserManagement';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
@@ -26,6 +25,7 @@ import { formatDate } from "@/lib/Dateformat";
 import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { getEmployeeTypeLabel } from '@/constant/employeeConstant';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import {
   fetchEmployeeProfileDocuments,
@@ -36,6 +36,17 @@ import {
   VerificationDocumentRow,
 } from '@/services/employee/employeeProfileDocumentService';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { capitalizeWords } from '@/lib/formatUtils';
+
+// Existing records may have been created before name capitalization was enforced
+// on entry, so normalize casing at display time rather than trusting stored data.
+const getUserDisplayName = (user: { firstName?: string; lastName?: string; aadharVerifiedName?: string }) =>
+  capitalizeWords(user.aadharVerifiedName || `${user.firstName || ''} ${user.lastName || ''}`.trim());
+
+const getDepartmentBadgeColor = (department?: string) => {
+  if (department?.toLowerCase() === 'admin') return 'bg-blue-100 text-blue-700';
+  return 'bg-gray-100 text-gray-700';
+};
 
 interface UserListProps {
   users: EmployeeUser[];
@@ -272,8 +283,10 @@ const UserList = ({
     }
   };
 
-  // Handle deactivate user with database update
-  const handleDeactivateUser = async (userId: string, employeeId: string, clientId: string) => {
+  // Handle deactivate user — the actual status update (and clearing the
+  // employee's module/permission grants) happens server-side via the
+  // onDeactivateUser prop, which invokes the employee-management edge function.
+  const handleDeactivateUser = async (userId: string) => {
     if (isReadOnlySwitchedContext) {
       toast.error('Read-only users cannot deactivate users');
       return;
@@ -281,33 +294,10 @@ const UserList = ({
 
     try {
       setIsTableLoading(true);
-      
-      // Update the employee status in the database
-      const { data, error } = await supabase
-        .from('employees')
-        .update({ 
-          status: false, // Set active = 0 (false)
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .eq('client_id', clientId);
-
-      if (error) {
-        console.error('Error deactivating employee:', error);
-        toast.error('Failed to deactivate employee');
-        return;
-      }
-
-      console.log('Employee deactivated successfully:', data);
-      
-      // Call the parent's deactivate function
       await onDeactivateUser(userId);
-      
-      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
-      
     } catch (error) {
       console.error('Error deactivating employee:', error);
       toast.error('Failed to deactivate employee');
@@ -317,8 +307,9 @@ const UserList = ({
     }
   };
 
-  // Handle activate user with database update
-  const handleActivateUser = async (userId: string, employeeId: string, clientId: string) => {
+  // Handle activate user — the actual status update happens server-side via
+  // the onReactivateUser prop, which invokes the employee-management edge function.
+  const handleActivateUser = async (userId: string) => {
     if (isReadOnlySwitchedContext) {
       toast.error('Read-only users cannot activate users');
       return;
@@ -326,33 +317,10 @@ const UserList = ({
 
     try {
       setIsTableLoading(true);
-      
-      // Update the employee status in the database
-      const { data, error } = await supabase
-        .from('employees')
-        .update({ 
-          status: true, // Set active = 1 (true)
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .eq('client_id', clientId);
-
-      if (error) {
-        console.error('Error activating employee:', error);
-        toast.error('Failed to activate employee');
-        return;
-      }
-
-      console.log('Employee activated successfully:', data);
-      
-      // Call the parent's reactivate function
       await onReactivateUser(userId);
-      
-      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
-      
     } catch (error) {
       console.error('Error activating employee:', error);
       toast.error('Failed to activate employee');
@@ -410,11 +378,28 @@ const UserList = ({
                     </Tooltip>
                   </TooltipProvider>
                 )}
+                {user.department?.toLowerCase() === 'driver' && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-blue-300 bg-blue-50 text-xs font-semibold text-blue-700 cursor-default">
+                          D
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        className="relative bg-slate-800 text-white border-slate-800 px-3 py-1.5 text-sm after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-2 after:w-2 after:rotate-45 after:bg-slate-800"
+                      >
+                        Driver
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
             </TableCell>
             <TableCell>
               <div className="flex flex-col">
-                <span className="font-medium text-gray-900">{user.firstName} {user.lastName}</span>
+                <span className="font-medium text-gray-900">{getUserDisplayName(user)}</span>
                 {(() => {
                   const extUser = user as unknown as { tags?: string[]; designation?: string };
                   const tags =
@@ -439,12 +424,20 @@ const UserList = ({
             <TableCell className="max-w-[200px]">
                 <span className="block truncate" title={user.email}>{user.email}</span>
               </TableCell>
-            <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
+            <TableCell>
+              {user.department ? (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getDepartmentBadgeColor(user.department)}`}>
+                  {user.department.charAt(0).toUpperCase() + user.department.slice(1)}
+                </span>
+              ) : (
+                <span>-</span>
+              )}
+            </TableCell>
             <TableCell className="text-center">
               <button
                 type="button"
                 className="text-blue-600 hover:text-blue-700 disabled:text-gray-300"
-                aria-label={`View documents for ${user.firstName} ${user.lastName}`}
+                aria-label={`View documents for ${getUserDisplayName(user)}`}
                 onClick={() =>{ 
                   console.log("Selected User:", user);
                   setDocumentDialogUser(user);
@@ -499,14 +492,14 @@ const UserList = ({
                         <AlertDialogHeader>
                           <AlertDialogTitle>Deactivate User</AlertDialogTitle>
                           <AlertDialogDescription>
-                              Are you sure you want to deactivate {user.firstName} {user.lastName}? They will no longer be able to log in to the system.
+                              Are you sure you want to deactivate {getUserDisplayName(user)}? They will no longer be able to log in to the system.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
                           <AlertDialogAction 
                             className="bg-amber-600 hover:bg-amber-700"
-                              onClick={() => handleDeactivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              onClick={() => handleDeactivateUser(user.id)}
                               disabled={isTableLoading}
                           >
                             Deactivate
@@ -530,14 +523,14 @@ const UserList = ({
                           <AlertDialogHeader>
                             <AlertDialogTitle>Activate User</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to activate {user.firstName} {user.lastName}? They will be able to log in to the system again.
+                              Are you sure you want to activate {getUserDisplayName(user)}? They will be able to log in to the system again.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
                             <AlertDialogAction 
                               className="bg-green-600 hover:bg-green-700"
-                              onClick={() => handleActivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              onClick={() => handleActivateUser(user.id)}
                               disabled={isTableLoading}
                             >
                               Activate
@@ -667,7 +660,7 @@ const UserList = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <h1 className="text-xl font-semibold leading-tight truncate">
-                        {valueOrNotSet(`${documentDialogUser.firstName || ''} ${documentDialogUser.lastName || ''}`.trim())}
+                        {valueOrNotSet(getUserDisplayName(documentDialogUser))}
                       </h1>
                       <p className="text-sm text-slate-500 truncate">{valueOrNotSet(documentDialogUser.employeeId)}</p>
                     </div>
@@ -707,10 +700,10 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">First Name</p>
-                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.firstName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(capitalizeWords(documentDialogUser.firstName))}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Last Name</p>
-                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.lastName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(capitalizeWords(documentDialogUser.lastName))}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Email</p>
                   <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.email)}</p>
@@ -794,7 +787,7 @@ const UserList = ({
                   <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.department)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Employee Type</p>
-                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.employeeType)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(getEmployeeTypeLabel(documentDialogUser.employeeType))}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Joining Date</p>
                   <p className="font-medium mb-4 break-words">{documentDialogUser.joiningDate ? formatDate(documentDialogUser.joiningDate) : 'Not Set'}</p>

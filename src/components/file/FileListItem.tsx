@@ -60,7 +60,7 @@ const FileListItem: React.FC<FileListItemProps> = ({
           </div>
         )}
       </div>
-      <div className="flex items-center">
+      <div className="flex items-center print:hidden">
         {isImage && (
           <Button 
             type="button" 

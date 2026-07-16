@@ -27,11 +27,13 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
   
   // Create a mapping from modules in Redux
   const availableModules = state.configuredModules && state.configuredModules.length > 0
-    ? state.configuredModules.map(module => ({
-        key: module.key || module.id,
-        name: module.name,
-        module_id: module.id
-      }))
+    ? state.configuredModules
+        .filter(module => module.name?.toLowerCase() !== 'cpd')
+        .map(module => ({
+          key: module.key || module.id,
+          name: module.name,
+          module_id: module.id
+        }))
     : [];
     const hasAppliedDefaultsRef = useRef(false);
     const isEditMode = !!employeeId;

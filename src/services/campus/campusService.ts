@@ -2,14 +2,22 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ConfigItem } from '@/contexts/types';
 
-export const getAllCampuses = async (): Promise<ConfigItem[]> => {
+export const getAllCampuses = async (clientId?: string, clientTypeId?: string): Promise<ConfigItem[]> => {
   try {
     console.log("Fetching campuses from database...");
-    
-    const { data, error } = await supabase
+    let query = supabase
       .from('campuses')
       .select('*');
-    
+
+    if (clientId) {
+      query = query.eq('client_id', clientId);
+    }
+    if (clientTypeId) {
+      query = query.eq('client_type_id', clientTypeId);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
       console.error("Error fetching campuses:", error);
       throw error;

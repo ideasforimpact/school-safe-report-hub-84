@@ -84,9 +84,10 @@ export type CpdEntryForUser = {
 export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
   employeeId?: string;
-  employeeType?: EmployeeType; 
+  employeeType?: EmployeeType;
   departmentId?: string;
   department?: DepartmentType;
+  aadharVerifiedName?: string;
   joiningDate?: string;
   documents?: Array<{
     label: string;
@@ -156,6 +157,7 @@ interface RawEmployeeListItem {
   id: string;
   first_name?: string;
   last_name?: string;
+  aadhar_verified_name?: string;
   email?: string;
   phone?: string;
   designation?: string;
@@ -458,6 +460,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             id: employee.id,
             firstName: employee.first_name,
             lastName: employee.last_name,
+            aadharVerifiedName: employee.aadhar_verified_name,
             email: employee.email,
             phone: employee.phone,
             designation: employee.designation,
@@ -823,6 +826,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     try {
       setIsLoading(true);
       const userManagementModule = state.configuredModules;
+      // processEmployeeExcel already reports success/failure per row via
+      // showImportResultNotifications — don't show a second, unconditional
+      // success toast here, or a partial/total failure gets misreported as success.
       await processEmployeeExcel(file, clientId, userManagementModule);
       await refreshEmployeesList();
       toast.success("Employees imported successfully");
@@ -1156,26 +1162,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                     setIsEditDialogOpen(true);
                   }}
                   onDeleteUser={handleDeleteUser}
-                  onDeactivateUser={async (id) => {
-                    try {
-                      await deactivateExistingUser([], id);
-                      await refreshEmployeesList();
-                      // toast.success("User deactivated successfully");
-                    } catch (error) {
-                      console.error("Error deactivating user:", error);
-                      toast.error("Failed to deactivate user");
-                    }
-                  }}
-                  onReactivateUser={async (id) => {
-                    try {
-                      await reactivateExistingUser([], id);
-                      await refreshEmployeesList();
-                      // toast.success("User reactivated successfully");
-                    } catch (error) {
-                      console.error("Error reactivating user:", error);
-                      toast.error("Failed to reactivate user");
-                    }
-                  }}
+                  onDeactivateUser={handleDeactivateUser}
+                  onReactivateUser={handleReactivateUser}
                   hasAdminAccess={hasUserManagementAdminAccess}
                   canEditUsers={!isReadOnlySwitchedContext}
                   onRefresh={refreshEmployeesList}
