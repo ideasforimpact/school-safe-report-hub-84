@@ -17,12 +17,14 @@ interface AssignmentSectionProps {
   owner: string;
   onSelectChange: (name: string, value: string) => void;
   isLoading?: boolean;
+  employees?: Employee[];
 }
 
 const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   owner,
   onSelectChange,
-  isLoading = false
+  isLoading = false,
+  employees: propEmployees
 }) => {
   const { employeeData } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -30,8 +32,17 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   
-  // Fetch employees based on client_id
+  // Update local employees state when prop changes
+  useEffect(() => {
+    if (propEmployees && propEmployees.length > 0) {
+      setEmployees(propEmployees);
+      setIsLoadingEmployees(false);
+    }
+  }, [propEmployees]);
+
+  // Fetch employees based on client_id - only if not provided by prop
     const fetchEmployees = useCallback(async () => {
+      if (propEmployees && propEmployees.length > 0) return;
       if (!employeeData?.clientId) {
         setIsLoadingEmployees(false);
         return;
@@ -46,6 +57,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
           .select('id, first_name, last_name, email')
           .eq('client_id', employeeData.clientId)
           .eq('status', true)
+          .eq('is_secondary_super_admin', false)
           .not('email', 'is', null)
           .neq('email', '');
 
@@ -65,23 +77,26 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
       } finally {
         setIsLoadingEmployees(false);
       }
-    }, [employeeData?.clientId]);
+    }, [employeeData?.clientId, propEmployees]);
 
     useEffect(() => {
-      fetchEmployees();
-    }, [fetchEmployees]);
+      if (!propEmployees || propEmployees.length === 0) {
+        fetchEmployees();
+      }
+    }, [fetchEmployees, propEmployees]);
 
     const handleEmployeesRealtime = useCallback(async () => {
-      console.log('real time update',employeeData?.clientId);
-      
-      await fetchEmployees();
-    }, [fetchEmployees]);
+      console.log('real time update', employeeData?.clientId);
+      if (!propEmployees || propEmployees.length === 0) {
+        await fetchEmployees();
+      }
+    }, [fetchEmployees, employeeData?.clientId, propEmployees]);
 
     useRealTimeSubHook({
       channelName: 'employees-realtime',
       events: '*',
       table: 'employees',
-      enabled: true,
+      enabled: !propEmployees || propEmployees.length === 0,
       onPayload: handleEmployeesRealtime,
     });
 

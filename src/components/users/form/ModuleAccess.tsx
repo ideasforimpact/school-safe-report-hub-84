@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+import { Module } from '@/store/types';
 import { Badge } from "@/components/ui/badge";
 import { Check, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,11 +27,13 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
   
   // Create a mapping from modules in Redux
   const availableModules = state.configuredModules && state.configuredModules.length > 0
-    ? state.configuredModules.map(module => ({
-        key: module.key || module.id,
-        name: module.name,
-        module_id: module.id
-      }))
+    ? state.configuredModules
+        .filter(module => module.name?.toLowerCase() !== 'cpd')
+        .map(module => ({
+          key: module.key || module.id,
+          name: module.name,
+          module_id: module.id
+        }))
     : [];
     const hasAppliedDefaultsRef = useRef(false);
     const isEditMode = !!employeeId;
@@ -45,18 +48,18 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
       const normalize = (s?: string) => String(s || '').trim().toLowerCase();
 
       // Build indexed lookup for configured modules
-      const configuredMap: Record<string, any> = {};
-      (state.configuredModules || []).forEach((m: any) => {
-        configuredMap[normalize(m.module_id)] = m;
+      const configuredMap: Record<string, Module> = {};
+      (state.configuredModules || []).forEach((m: Module) => {
+        configuredMap[normalize(m.id)] = m;
         configuredMap[normalize(m.key)] = m;
         configuredMap[normalize(m.name)] = m;
       });
 
       // Take only enabled defaults
-      const enabledDefaults = (defaultModules || []).filter((d: any) => d.enabled);
+      const enabledDefaults = (defaultModules || []).filter((d) => d.enabled);
 
       // Map each default to configured module → produce correct ModuleAccessItem
-      const mappedDefaults: ModuleAccessItem[] = enabledDefaults.map((d: any) => {
+      const mappedDefaults: ModuleAccessItem[] = enabledDefaults.map((d) => {
         const match =
           configuredMap[normalize(d.module_id)] ||
           configuredMap[normalize(d.key)] ||
@@ -73,7 +76,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
 
       onModuleChange(mappedDefaults);
       hasAppliedDefaultsRef.current = true;
-    }, [state.configuredModules, employeeId, isSuperAdmin, isEditMode]);
+    }, [state.configuredModules, employeeId, isSuperAdmin, isEditMode, onModuleChange]);
 
   // Helper function to check if a module is selected
   const isModuleSelected = (moduleId: string): boolean => {

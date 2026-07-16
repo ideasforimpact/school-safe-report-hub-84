@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
+import type { Json } from '@/integrations/supabase/types';
 
 interface PaginationParams {
   page?: number;
@@ -26,11 +27,37 @@ interface PaginatedResponse<T> {
   hasMore: boolean;
   currentPage: number;
   totalPages: number;
+  config?: Record<string, unknown>; // New field for consolidated config data
+}
+
+// Shape of an incident row as returned by the fetch-incidents edge function
+interface IncidentEdgeRow {
+  id: string;
+  ticket_id: string;
+  description?: string;
+  root_cause_analysis?: string | null;
+  learning_points?: string | null;
+  action_taken?: string | null;
+  people_involved?: unknown[];
+  date: string;
+  reopen?: number;
+  created_at: string;
+  updated_at: string;
+  recommended_action?: Json | null;
+  incident_report_types?: { name?: string } | null;
+  incident_categories?: { name?: string } | null;
+  incident_subcategories?: { name?: string } | null;
+  campuses?: { name?: string } | null;
+  facilities?: { name?: string } | null;
+  incident_status?: { name?: string } | null;
+  incident_priorities?: { name?: string } | null;
+  created_by_employee?: { id?: string; first_name?: string; last_name?: string } | null;
+  assigned_employee?: { id?: string; first_name?: string; last_name?: string } | null;
 }
 
 class IncidentDataService {
   private static instance: IncidentDataService;
-  private incidentCache: Map<string, IncidentRecord[]> = new Map();
+  private incidentCache: Map<string, PaginatedResponse<IncidentRecord>> = new Map();
   private isLoading = false;
 
   static getInstance(): IncidentDataService {
@@ -61,15 +88,20 @@ class IncidentDataService {
     }
   }
 
-  private async getCategoryId(clientId: string, categoryName: string): Promise<string | null> {
+  private async getCategoryId(clientId: string, categoryName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('incident_categories')
         .select('id')
         .eq('name', categoryName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up category ID for "${categoryName}":`, error);
         return null;
@@ -82,15 +114,20 @@ class IncidentDataService {
     }
   }
 
-  private async getSubcategoryId(clientId: string, subcategoryName: string): Promise<string | null> {
+  private async getSubcategoryId(clientId: string, subcategoryName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('incident_subcategories')
         .select('id')
         .eq('name', subcategoryName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up subcategory ID for "${subcategoryName}":`, error);
         return null;
@@ -103,15 +140,20 @@ class IncidentDataService {
     }
   }
 
-  private async getPriorityId(clientId: string, priorityName: string): Promise<string | null> {
+  private async getPriorityId(clientId: string, priorityName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('incident_priorities')
         .select('id')
         .eq('name', priorityName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up priority ID for "${priorityName}":`, error);
         return null;
@@ -124,15 +166,20 @@ class IncidentDataService {
     }
   }
 
-  private async getLocationId(clientId: string, locationName: string): Promise<string | null> {
+  private async getLocationId(clientId: string, locationName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('campuses')
         .select('id')
         .eq('name', locationName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up location ID for "${locationName}":`, error);
         return null;
@@ -145,15 +192,20 @@ class IncidentDataService {
     }
   }
 
-  private async getFacilityId(clientId: string, facilityName: string): Promise<string | null> {
+  private async getFacilityId(clientId: string, facilityName: string, clientTypeId?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('facilities')
         .select('id')
         .eq('name', facilityName)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      
+        .eq('client_id', clientId);
+
+      if (clientTypeId) {
+        query = query.eq('client_type_id', clientTypeId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
       if (error) {
         console.warn(`Error looking up facility ID for "${facilityName}":`, error);
         return null;
@@ -169,8 +221,8 @@ class IncidentDataService {
   // Method with server-side filtering but optional client-side pagination
   async fetchIncidentsForClientWithFilters(
     clientId: string, 
-    forceRefresh = false, 
-    employeeData?: any, 
+    forceRefresh = false,
+    employeeData?: Record<string, unknown>,
     hasIncidentAdmin?: boolean,
     pagination: PaginationParams = { page: 1, pageSize: 10 },
     filters: ServerFilters = {},
@@ -198,223 +250,71 @@ class IncidentDataService {
       };
     }
     
-    // Create cache key including filters and user-specific data (no page info)
+    // Cache key includes page/pageSize — the server (fetch-incidents edge function)
+    // paginates with .range(), so each cache entry only ever holds ONE page of
+    // results, never the full filtered set. Keying by page keeps entries from
+    // colliding (previously page 2's 3 results got cached under the same key as
+    // page 1's 10, and any later "cache hit" re-sliced that partial page as if it
+    // were the complete dataset — showing page 2's rows mislabeled as page 1).
     const filterKey = JSON.stringify(filters);
     const userKey = `${employeeData.id}_${employeeData.isSuperAdmin}_${hasIncidentAdmin}`;
-    const cacheKey = `${clientId}_${userKey}_${filterKey}`;
-    
+    const cacheKey = `${clientId}_${userKey}_${filterKey}_p${page}_s${pageSize}`;
+
     console.log(`   - Cache key: ${cacheKey}`);
-    
+
     // Return cached data if available and not forcing refresh
     if (!forceRefresh && this.incidentCache.has(cacheKey)) {
-      console.log(`✅ Returning cached data with ${returnAllData ? 'NO' : 'client-side'} pagination`);
-      const allIncidents = this.incidentCache.get(cacheKey)!;
-      
-      if (returnAllData) {
-        // Return ALL incidents without pagination for client-side handling
-        return {
-          data: allIncidents,
-          totalCount: allIncidents.length,
-          hasMore: false,
-          currentPage: 1,
-          totalPages: 1
-        };
-      } else {
-        // Apply client-side pagination (for backward compatibility)
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedData = allIncidents.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(allIncidents.length / pageSize);
-        
-        return {
-          data: paginatedData,
-          totalCount: allIncidents.length,
-          hasMore: page < totalPages,
-          currentPage: page,
-          totalPages
-        };
-      }
+      console.log('✅ Returning cached page from previous fetch');
+      return this.incidentCache.get(cacheKey)!;
     }
 
     // Prevent multiple simultaneous requests
     if (this.isLoading) {
       console.log('⚠️ Request already in progress, returning cached or empty data');
-      const cachedData = this.incidentCache.get(cacheKey) || [];
-      
-      if (returnAllData) {
-        return {
-          data: cachedData,
-          totalCount: cachedData.length,
-          hasMore: false,
-          currentPage: 1,
-          totalPages: 1
-        };
-      } else {
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedData = cachedData.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(cachedData.length / pageSize);
-        
-        return {
-          data: paginatedData,
-          totalCount: cachedData.length,
-          hasMore: page < totalPages,
-          currentPage: page,
-          totalPages
-        };
-      }
+      return this.incidentCache.get(cacheKey) || {
+        data: [],
+        totalCount: 0,
+        hasMore: false,
+        currentPage: page,
+        totalPages: 0
+      };
     }
 
     this.isLoading = true;
 
     try {
-      console.log('🚀 Making server request for ALL incidents with filters and role-based access...');
-      
-      // Perform parallel ID lookups for filters
-      const [statusId, categoryId, subcategoryId, priorityId, locationId, facilityId] = await Promise.all([
-        (filters.status && filters.status !== 'Reopen') ? this.getStatusId(clientId, filters.status) : Promise.resolve(null),
-        filters.category ? this.getCategoryId(clientId, filters.category) : Promise.resolve(null),
-        filters.subcategory ? this.getSubcategoryId(clientId, filters.subcategory) : Promise.resolve(null),
-        filters.priority ? this.getPriorityId(clientId, filters.priority) : Promise.resolve(null),
-        filters.location ? this.getLocationId(clientId, filters.location) : Promise.resolve(null),
-        filters.facility ? this.getFacilityId(clientId, filters.facility) : Promise.resolve(null)
-      ]);
-
-      console.log('🔍 Filter ID lookups completed:', {
-        statusId: statusId || 'none',
-        categoryId: categoryId || 'none',
-        subcategoryId: subcategoryId || 'none',
-        priorityId: priorityId || 'none',
-        locationId: locationId || 'none',
-        facilityId: facilityId || 'none'
+      console.log('🚀 Invoking fetch-incidents edge function...');
+      const clientTypeId: string | undefined = employeeData?.clientType?.id;
+      const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+        body: {
+          clientId,
+          employeeId: employeeData.id,
+          isSuperAdmin: employeeData.isSuperAdmin === true || hasIncidentAdmin === true,
+          clientTypeId,
+          page,
+          pageSize,
+          search: filters.search || '',
+          category: filters.category || '',
+          subcategory: filters.subcategory || '',
+          status: filters.status || '',
+          priority: filters.priority || '',
+          location: filters.location || '',
+          facility: filters.facility || '',
+          dateFrom: filters.dateFrom || '',
+          dateTo: filters.dateTo || ''
+        },
       });
-      
-      let query = supabase
-        .from('incidents')
-        .select(`
-          id,
-          ticket_id,
-          description,
-          root_cause_analysis,
-          learning_points,
-          action_taken,
-          people_involved,
-          date,
-          created_at,
-          updated_at,
-          reopen,
-          recommended_action,
-          created_by,
-          assigned_to,
-          incident_report_types!type_id(id, name),
-          incident_categories!category_id(id, name),
-          incident_subcategories!subcategory_id(id, name),
-          campuses!location_id(id, name),
-          facilities!facility_id(id, name),
-          incident_priorities!priority_id(id, name),
-          incident_status!status_id(id, name),
-          created_by_employee:employees!created_by(id, first_name, last_name),
-          assigned_employee:employees!assigned_to(id, first_name, last_name)
-        `)
-        .eq('client_id', clientId);
-
-      // Apply role-based filtering with improved logic
-      console.log('🔒 Applying role-based filtering:', { 
-        employeeData, 
-        hasIncidentAdmin,
-        isSuperAdmin: employeeData.isSuperAdmin 
-      });
-      
-      const isSuperAdmin = employeeData.isSuperAdmin === true;
-      
-      if (isSuperAdmin) {
-        // Super admin can see all incidents for the client
-        console.log('   - Super admin: can see all incidents for this client');
-      } else if (hasIncidentAdmin) {
-        // Incident admin can see all incidents for the client
-        console.log('   - Incident admin: can see all incidents for this client');
-      } else {
-        // Regular users can only see incidents they created or are assigned to
-        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-        console.log(`   - Regular user: applied filter for employee ${employeeData.id} (created_by OR assigned_to)`);
-      }
-
-      // Apply server-side filters using foreign key IDs
-      if (filters.search && filters.search.trim()) {
-        query = query.or(`ticket_id.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
-        console.log(`   - Applied search filter: ${filters.search}`);
-      }
-
-      if (filters.status === 'Reopen') {
-        query = query.eq('reopen', 1);
-        console.log('   - Applied reopen filter: reopen = 1');
-      } else if (statusId) {
-        query = query.eq('status_id', statusId);
-        console.log(`   - Applied status filter: ${filters.status} (ID: ${statusId})`);
-      } else if (filters.status) {
-        console.warn(`   - Status "${filters.status}" not found, skipping status filter`);
-      }
-
-      if (categoryId) {
-        query = query.eq('category_id', categoryId);
-        console.log(`   - Applied category filter: ${filters.category} (ID: ${categoryId})`);
-      } else if (filters.category) {
-        console.warn(`   - Category "${filters.category}" not found, skipping category filter`);
-      }
-
-      if (subcategoryId) {
-        query = query.eq('subcategory_id', subcategoryId);
-        console.log(`   - Applied subcategory filter: ${filters.subcategory} (ID: ${subcategoryId})`);
-      } else if (filters.subcategory) {
-        console.warn(`   - Subcategory "${filters.subcategory}" not found, skipping subcategory filter`);
-      }
-
-      if (priorityId) {
-        query = query.eq('priority_id', priorityId);
-        console.log(`   - Applied priority filter: ${filters.priority} (ID: ${priorityId})`);
-      } else if (filters.priority) {
-        console.warn(`   - Priority "${filters.priority}" not found, skipping priority filter`);
-      }
-
-      if (locationId) {
-        query = query.eq('location_id', locationId);
-        console.log(`   - Applied location filter: ${filters.location} (ID: ${locationId})`);
-      } else if (filters.location) {
-        console.warn(`   - Location "${filters.location}" not found, skipping location filter`);
-      }
-
-      if (facilityId) {
-        query = query.eq('facility_id', facilityId);
-        console.log(`   - Applied facility filter: ${filters.facility} (ID: ${facilityId})`);
-      } else if (filters.facility) {
-        console.warn(`   - Facility "${filters.facility}" not found, skipping facility filter`);
-      }
-
-      if (filters.dateFrom) {
-        query = query.gte('date', filters.dateFrom);
-        console.log(`   - Applied date from filter: ${filters.dateFrom}`);
-      }
-
-      if (filters.dateTo) {
-        query = query.lte('date', filters.dateTo);
-        console.log(`   - Applied date to filter: ${filters.dateTo}`);
-      }
-
-      // Order by created_at but NO PAGINATION - fetch ALL records
-      query = query.order('created_at', { ascending: false });
-
-      console.log(`📊 Server query: fetching ALL incidents matching filters`);
-
-      const { data: incidents, error } = await query;
 
       if (error) {
-        console.error('❌ Database query error:', error);
-        throw new Error(`Failed to fetch incidents: ${error.message}`);
+        console.error('❌ Edge function error:', error);
+        throw new Error(`Failed to fetch incidents from edge function: ${error.message}`);
       }
 
-      console.log(`✅ Server returned ${incidents?.length || 0} incidents (ALL matching records)`);
+      const incidents = data?.incidents || [];
+      const totalCount = data?.totalCount || 0;
+      console.log(`✅ Edge function returned ${incidents.length} incidents (Total matching: ${totalCount})`);
 
-      const transformedIncidents: IncidentRecord[] = (incidents || []).map((inc: any) => ({
+      const transformedIncidents: IncidentRecord[] = (incidents as IncidentEdgeRow[]).map((inc) => ({
         id: inc.id,
         ticket_id: inc.ticket_id,
         type: inc.incident_report_types?.name || 'Unknown',
@@ -443,50 +343,21 @@ class IncidentDataService {
         recommended_action: inc.recommended_action || null
       }));
 
-      // Cache ALL the results
-      this.incidentCache.set(cacheKey, transformedIncidents);
-      console.log(`💾 Cached ${transformedIncidents.length} incidents with key: ${cacheKey}`);
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const response: PaginatedResponse<IncidentRecord> = {
+        data: transformedIncidents,
+        totalCount,
+        hasMore: page < totalPages,
+        currentPage: page,
+        totalPages,
+        config: data.config // Include consolidated config data
+      };
 
-      if (returnAllData) {
-        // Return ALL incidents without pagination for client-side handling
-        const response: PaginatedResponse<IncidentRecord> = {
-          data: transformedIncidents,
-          totalCount: transformedIncidents.length,
-          hasMore: false,
-          currentPage: 1,
-          totalPages: 1
-        };
+      // Cache the full response object keyed by page
+      this.incidentCache.set(cacheKey, response as unknown as IncidentRecord[]);
+      console.log(`💾 Cached page ${page} with ${transformedIncidents.length} incidents`);
 
-        console.log(`📋 Returning ALL ${transformedIncidents.length} incidents for client-side pagination:`);
-        console.log(`   - Total records: ${transformedIncidents.length}`);
-        console.log(`   - User access level: ${isSuperAdmin ? 'Super Admin' : hasIncidentAdmin ? 'Incident Admin' : 'Regular User'}`);
-        
-        return response;
-      } else {
-        // Apply client-side pagination (for backward compatibility)
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedData = transformedIncidents.slice(startIndex, endIndex);
-        const totalPages = Math.ceil(transformedIncidents.length / pageSize);
-        const hasMore = page < totalPages;
-
-        const response: PaginatedResponse<IncidentRecord> = {
-          data: paginatedData,
-          totalCount: transformedIncidents.length,
-          hasMore,
-          currentPage: page,
-          totalPages
-        };
-
-        console.log(`📋 Client-side pagination result with role-based access and filters:`);
-        console.log(`   - Page ${page}/${totalPages}`);
-        console.log(`   - Records on this page: ${paginatedData.length}`);
-        console.log(`   - Total records cached: ${transformedIncidents.length}`);
-        console.log(`   - Has more: ${hasMore}`);
-        console.log(`   - User access level: ${isSuperAdmin ? 'Super Admin' : hasIncidentAdmin ? 'Incident Admin' : 'Regular User'}`);
-        
-        return response;
-      }
+      return response;
 
     } catch (error) {
       console.error('❌ Error in incidentDataService.fetchIncidentsForClientWithFilters:', error);
@@ -498,9 +369,9 @@ class IncidentDataService {
 
   // Keep existing method for backward compatibility
   async fetchIncidentsForClient(
-    clientId: string, 
-    forceRefresh = false, 
-    employeeData?: any, 
+    clientId: string,
+    forceRefresh = false,
+    employeeData?: Record<string, unknown>,
     hasIncidentAdmin?: boolean,
     pagination: PaginationParams = { page: 1, pageSize: 10 }
   ): Promise<PaginatedResponse<IncidentRecord>> {
@@ -517,78 +388,68 @@ class IncidentDataService {
   }
 
   async fetchIncidentsForClientLegacy(
-    clientId: string, 
-    forceRefresh = false, 
-    employeeData?: any, 
+    clientId: string,
+    forceRefresh = false,
+    employeeData?: Record<string, unknown>,
     hasIncidentAdmin?: boolean
   ): Promise<IncidentRecord[]> {
     const response = await this.fetchIncidentsForClient(clientId, forceRefresh, employeeData, hasIncidentAdmin);
     return response.data;
   }
 
-  async getIncidentStats(clientId: string, employeeData?: any, hasIncidentAdmin?: boolean): Promise<{
+  private statsInflight: Map<string, Promise<{
+    total: number;
+    open: number;
+    inProgress: number;
+    closed: number;
+  }>> = new Map();
+
+  async getIncidentStats(clientId: string, employeeData?: Record<string, unknown>, hasIncidentAdmin?: boolean): Promise<{
     total: number;
     open: number;
     inProgress: number;
     closed: number;
   }> {
-    try {
-      // Early return if no employee data
-      if (!employeeData || !employeeData.id) {
-        console.log('⚠️ No employee data provided for stats, returning empty stats');
-        return { total: 0, open: 0, inProgress: 0, closed: 0 };
-      }
-
-      let query = supabase
-        .from('incidents')
-        .select(`
-          id,
-          created_by,
-          assigned_to,
-          incident_status!status_id(name)
-        `)
-        .eq('client_id', clientId);
-
-      // Apply same improved filtering logic for stats
-      const isSuperAdmin = employeeData.isSuperAdmin === true;
-      
-      if (isSuperAdmin) {
-        // Super admin can see all incidents
-        console.log('Stats: Super admin access - all incidents');
-      } else if (hasIncidentAdmin) {
-        // Incident admin can see all incidents for the client
-        console.log('Stats: Incident admin access - all incidents');
-      } else {
-        // Regular users can only see incidents they created or are assigned to
-        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-        console.log('Stats: Regular user access - filtered incidents');
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      const stats = {
-        total: data?.length || 0,
-        open: 0,
-        inProgress: 0,
-        closed: 0
-      };
-
-      data?.forEach((incident: any) => {
-        const status = incident.incident_status?.name;
-        if (status === 'Open') stats.open++;
-        else if (status === 'In Progress') stats.inProgress++;
-        else if (status === 'Closed') stats.closed++;
-      });
-
-      return stats;
-    } catch (error) {
-      console.error('Error fetching incident stats:', error);
+    // Early return if no employee data
+    if (!employeeData || !employeeData.id) {
+      console.log('⚠️ No employee data provided for stats, returning empty stats');
       return { total: 0, open: 0, inProgress: 0, closed: 0 };
     }
+
+    const isSuperAdmin = employeeData.isSuperAdmin === true;
+    const inflightKey = `${clientId}_${employeeData.id}_${isSuperAdmin}_${hasIncidentAdmin}`;
+
+    const existing = this.statsInflight.get(inflightKey);
+    if (existing) {
+      return existing;
+    }
+
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+          body: {
+            operation: 'get_stats',
+            clientId,
+            employeeId: employeeData.id,
+            isSuperAdmin,
+            hasIncidentAdmin,
+          },
+        });
+
+        if (error) throw error;
+        if (!data?.success) throw new Error('Failed to fetch incident stats');
+
+        return data.data as { total: number; open: number; inProgress: number; closed: number };
+      } catch (error) {
+        console.error('Error fetching incident stats:', error);
+        return { total: 0, open: 0, inProgress: 0, closed: 0 };
+      } finally {
+        this.statsInflight.delete(inflightKey);
+      }
+    })();
+
+    this.statsInflight.set(inflightKey, request);
+    return request;
   }
 
   clearCache(clientId?: string, employeeId?: string): void {

@@ -11,10 +11,16 @@ import { Trash2, Plus, Eye, Edit } from 'lucide-react';
 import { FormField, DEFAULT_GRIEVANCE_FIELDS } from '@/types/formTypes';
 import { toast } from 'sonner';
 
+interface FormBuilderFormData {
+  title: string;
+  description: string;
+  fields: FormField[];
+}
+
 interface FormBuilderProps {
-  onSave: (form: any) => void;
+  onSave: (form: FormBuilderFormData) => void;
   onCancel: () => void;
-  initialForm?: any;
+  initialForm?: Partial<FormBuilderFormData>;
 }
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ onSave, onCancel, initialForm }) => {
@@ -131,7 +137,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ onSave, onCancel, init
             <Label>Field Type</Label>
             <Select
               value={editingField?.type}
-              onValueChange={(value) => setEditingField({ ...editingField!, type: value as any })}
+              onValueChange={(value) => setEditingField({ ...editingField!, type: value as FormField['type'] })}
             >
               <SelectTrigger>
                 <SelectValue />

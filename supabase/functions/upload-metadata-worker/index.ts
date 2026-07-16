@@ -6,6 +6,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type ComplianceFileEntry = {
+  path: string;
+  parentFolderId?: string | null;
+  fileName: string;
+  contentType?: string | null;
+  size?: number | null;
+  uploaded_at: string;
+};
+
+type ComplianceFolderFiles = {
+  folder_name?: string | null;
+  files: ComplianceFileEntry[];
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -56,7 +70,7 @@ serve(async (req) => {
       if (findErr) throw findErr;
 
       if (folderRow) {
-        let nextFiles: any;
+        let nextFiles: ComplianceFolderFiles[] | ComplianceFileEntry[];
         if (Array.isArray(folderRow.files) && folderRow.files[0]?.files && Array.isArray(folderRow.files[0].files)) {
           const inner = folderRow.files[0].files ?? [];
           nextFiles = [

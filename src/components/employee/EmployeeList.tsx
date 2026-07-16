@@ -128,7 +128,7 @@ const EmployeeList = ({ employees, onEditClick, onDeleteEmployee, onDeactivateEm
                   className={employee.status === 'inactive' ? "bg-gray-50" : ""}
                 >
                   <TableCell className="font-medium">{employee.employeeId}</TableCell>
-                  <TableCell>{`${employee.firstName} ${employee.lastName}`}</TableCell>
+                  <TableCell>{employee.aadharVerifiedName || `${employee.firstName} ${employee.lastName}`}</TableCell>
                   <TableCell>{employee.email}</TableCell>
                   <TableCell>{employee.department}</TableCell>
                   <TableCell>{employee.employeeType}</TableCell>

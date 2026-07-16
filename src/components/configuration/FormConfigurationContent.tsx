@@ -181,7 +181,7 @@ const FormConfigurationContent = () => {
     }
   };
 
-  const handleSaveForm = async (formData: any) => {
+  const handleSaveForm = async (formData: Record<string, unknown>) => {
     try {
       const clientId = getClientId();
       const employeeId = getEmployeeId();
@@ -203,8 +203,8 @@ const FormConfigurationContent = () => {
           .select('logo')
           .eq('id', clientId)
           .maybeSingle();
-        clientLogo = (clientRow as any)?.logo || null;
-      } catch {}
+        clientLogo = (clientRow as { logo?: string | null } | null)?.logo || null;
+      } catch { /* ignore */ }
 
       if (editingForm) {
         // Update existing form - ensure client_id and client_logo are included
@@ -212,8 +212,8 @@ const FormConfigurationContent = () => {
           ...formData,
           client_id: clientId,
           client_logo: formData.client_logo ?? clientLogo,
-        } as any;
-        await updateForm(editingForm.id, updateData);
+        };
+        await updateForm(editingForm.id, updateData as Parameters<typeof updateForm>[1]);
         toast({
           title: "Success",
           description: "Form updated successfully"
@@ -225,8 +225,8 @@ const FormConfigurationContent = () => {
           client_id: clientId,
           created_by: employeeId,
           client_logo: formData.client_logo ?? clientLogo,
-        } as any;
-        await saveForm(newFormData);
+        };
+        await saveForm(newFormData as Parameters<typeof saveForm>[0]);
         toast({
           title: "Success", 
           description: "Form created successfully"
@@ -374,7 +374,7 @@ const FormConfigurationContent = () => {
                 />
               </div>
               <div>
-                <Select onValueChange={(value) => setStatusFilter(value as any)} defaultValue="all">
+                <Select onValueChange={(value) => setStatusFilter(value as 'all' | 'active' | 'inactive')} defaultValue="all">
                   <SelectTrigger className="w-[180px]" disabled={isPageLoading}>
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>

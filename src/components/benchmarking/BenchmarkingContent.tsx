@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ChartView from './views/ChartView';
 import TableView from './views/TableView';
+import { BenchmarkingChartData } from '@/hooks/benchmarking/types';
 
 interface BenchmarkingContentProps {
   selectedCategory: string;
   showSubcategories: boolean;
-  chartData: any[];
+  chartData: BenchmarkingChartData[];
   selectedCities: string[];
 }
 

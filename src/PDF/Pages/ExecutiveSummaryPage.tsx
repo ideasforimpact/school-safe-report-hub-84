@@ -12,18 +12,25 @@ import {
   getReportingPeriodText,
   getStatusStyle,
   getVehicleCompliance,
+  VehicleReportRow,
+  AssessmentReportRow,
+  IncidentReportRow,
+  GrievanceReportRow,
+  EmployeeReportRow,
+  EmployeeDocumentReportRow,
+  ChallanReportRow,
 } from "../utils";
 import { ReportFooter } from "./ReportFooter";
 
 interface Props {
   month: string;
-  vehicles: any[];
-  employees: any[];
-  employeeDocuments: any[];
-  challans: any[];
-  assessments: any[];
-  incidents: any[];
-  grievancesSummary: any[];
+  vehicles: VehicleReportRow[];
+  employees: EmployeeReportRow[];
+  employeeDocuments: EmployeeDocumentReportRow[];
+  challans: ChallanReportRow[];
+  assessments: AssessmentReportRow[];
+  incidents: IncidentReportRow[];
+  grievancesSummary: GrievanceReportRow[];
   challanTotal: number;
 }
 
@@ -42,7 +49,7 @@ export const ExecutiveSummaryPage = ({
   const expiredVehicleCount = getExpiredVehicleDocsCount(vehicles);
 
   const pendingEmployees = employeeDocuments.filter(
-    (d: any) => d.verification_status !== "verified"
+    (d) => d.verification_status !== "verified"
   ).length;
 
   const newAssessmentCount = getNewAssessmentCount(assessments);

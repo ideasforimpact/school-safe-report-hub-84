@@ -1,6 +1,6 @@
 
 import { useMemo } from 'react';
-import { useIncidents } from '@/contexts/IncidentContext';
+import { useIncidents, Incident } from '@/contexts/IncidentContext';
 import { cityData } from './mockCityData';
 import { BenchmarkingState, BenchmarkingChartData } from './types';
 
@@ -42,9 +42,9 @@ export const useChartDataProcessing = (benchmarkingState: BenchmarkingState) => 
 
 // Helper function to process subcategory level data
 const processSubcategoryData = (
-  selectedCategory: string, 
-  selectedCities: string[], 
-  filteredIncidents: any[]
+  selectedCategory: string,
+  selectedCities: string[],
+  filteredIncidents: Incident[]
 ): BenchmarkingChartData[] => {
   // Show detailed subcategory breakdown
   const subcategories = selectedCategory ? 
@@ -78,9 +78,9 @@ const processSubcategoryData = (
 
 // Helper function to process category level data
 const processCategoryData = (
-  selectedCategory: string, 
-  selectedCities: string[], 
-  filteredIncidents: any[]
+  selectedCategory: string,
+  selectedCities: string[],
+  filteredIncidents: Incident[]
 ): BenchmarkingChartData[] => {
   // Show aggregate category-level data
   return selectedCities.map(city => {

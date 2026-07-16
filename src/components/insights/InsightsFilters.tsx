@@ -7,6 +7,8 @@ import { DatePickerWithRange } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Facility } from "@/contexts/FacilityContext";
+import { Tables } from "@/integrations/supabase/types";
 
 interface InsightsFiltersProps {
   dateFilter: string;
@@ -27,9 +29,9 @@ interface InsightsFiltersProps {
   handleDateRangeChange: (range: DateRange | undefined) => void;
   availableSubcategories: string[];
   peopleInvolved: string[];
-  facilities: any[];
-  categories: any[];
-  reportTypes: any[];
+  facilities: Facility[];
+  categories: Tables<'incident_categories'>[];
+  reportTypes: Tables<'incident_report_types'>[];
   isAdmin: boolean;
 }
 

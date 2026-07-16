@@ -22,7 +22,7 @@ export const downloadCSV = (csvContent: string, filename: string): void => {
   document.body.removeChild(link);
 };
 
-export const prepareIncidentsExport = (incidents: any[]): string => {
+export const prepareIncidentsExport = (incidents: { id: string; type: string; category: string; subcategory: string; description: string; date: string | Date; location: string; status: string; peopleInvolved: { name: string; role: string; notes?: string }[]; reportedBy?: { name?: string }; owner?: { name?: string }; actions?: { description: string; responsiblePerson: string; date: string | Date }[] }[]): string => {
   // Prepare the CSV header
   const headers = [
     'ID',
@@ -38,16 +38,16 @@ export const prepareIncidentsExport = (incidents: any[]): string => {
     'Owner',
     'Actions Taken'
   ];
-  
+
   // Prepare the CSV rows
   const rows = incidents.map(incident => {
     const peopleInvolved = incident.peopleInvolved
-      .map((p: any) => `${p.name} (${p.role})${p.notes ? ` - ${p.notes}` : ''}`)
+      .map((p) => `${p.name} (${p.role})${p.notes ? ` - ${p.notes}` : ''}`)
       .join('; ');
-    
+
     const actions = incident.actions
       ? incident.actions
-          .map((a: any) => `${a.description} by ${a.responsiblePerson} on ${new Date(a.date).toLocaleDateString()}`)
+          .map((a) => `${a.description} by ${a.responsiblePerson} on ${new Date(a.date).toLocaleDateString()}`)
           .join('; ')
       : '';
     
@@ -70,15 +70,15 @@ export const prepareIncidentsExport = (incidents: any[]): string => {
   return prepareCSVContent(headers, rows);
 };
 
-export const prepareIncidentsExcelExport = (incidents: any[]) => {
+export const prepareIncidentsExcelExport = (incidents: { id: string; type: string; category: string; subcategory: string; description: string; date: string | Date; location: string; status: string; peopleInvolved: { name: string; role: string; notes?: string }[]; reportedBy?: { name?: string }; owner?: { name?: string }; actions?: { description: string; responsiblePerson: string; date: string | Date }[] }[]) => {
   return incidents.map(incident => {
     const peopleInvolved = incident.peopleInvolved
-      .map((p: any) => `${p.name} (${p.role})${p.notes ? ` - ${p.notes}` : ''}`)
+      .map((p) => `${p.name} (${p.role})${p.notes ? ` - ${p.notes}` : ''}`)
       .join('; ');
-    
+
     const actions = incident.actions
       ? incident.actions
-          .map((a: any) => `${a.description} by ${a.responsiblePerson} on ${new Date(a.date).toLocaleDateString()}`)
+          .map((a) => `${a.description} by ${a.responsiblePerson} on ${new Date(a.date).toLocaleDateString()}`)
           .join('; ')
       : '';
 
@@ -99,7 +99,7 @@ export const prepareIncidentsExcelExport = (incidents: any[]) => {
   });
 };
 
-export const downloadExcel = (data: any[], filename: string): void => {
+export const downloadExcel = (data: Record<string, unknown>[], filename: string): void => {
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Incidents Report");

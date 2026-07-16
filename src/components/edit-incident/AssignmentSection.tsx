@@ -3,9 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/auth/AuthContext';
-import { toast } from 'sonner';
 
 interface Employee {
   id: string;
@@ -18,66 +15,23 @@ interface AssignmentSectionProps {
   owner: string;
   onSelectChange: (name: string, value: string) => void;
   isLoading?: boolean;
+  employees?: Employee[];
 }
 
 const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   owner,
   onSelectChange,
-  isLoading = false
+  isLoading = false,
+  employees: propEmployees
 }) => {
-  const { employeeData } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
+  const [employees, setEmployees] = useState<Employee[]>(propEmployees || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  
-  // Fetch employees based on client_id
+
   useEffect(() => {
-    const fetchEmployees = async () => {
-      if (!employeeData?.clientId) {
-        console.log('No client ID available for fetching employees');
-        setIsLoadingEmployees(false);
-        return;
-      }
+    setEmployees(propEmployees || []);
+  }, [propEmployees]);
 
-      try {
-        setIsLoadingEmployees(true);
-        console.log('Fetching employees for client:', employeeData.clientId);
-
-        const { data: employeesData, error } = await supabase
-          .from('employees')
-          .select('id, first_name, last_name, email')
-          .eq('client_id', employeeData.clientId)
-          .eq('status', true) // Only active employees
-          .not('email', 'is', null)
-          .neq('email', '');
-
-        if (error) {
-          console.error('Error fetching employees:', error);
-          toast.error('Failed to load employees');
-          return;
-        }
-
-        console.log('Fetched employees:', employeesData);
-        const mappedEmployees = employeesData.map(emp => ({
-          id: emp.id,
-          firstName: emp.first_name,
-          lastName: emp.last_name,
-          email: emp.email || '',
-        }));
-        
-        setEmployees(mappedEmployees);
-      } catch (error) {
-        console.error('Error fetching employees:', error);
-        toast.error('Failed to load employees');
-      } finally {
-        setIsLoadingEmployees(false);
-      }
-    };
-
-    fetchEmployees();
-  }, [employeeData?.clientId]);
-  
   // Find the selected employee
   const selectedEmployee = employees.find(emp => emp.id === owner);
   const selectedEmployeeDisplay = selectedEmployee
@@ -132,12 +86,12 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
               }, 200);
             }}
             placeholder={
-              isLoading || isLoadingEmployees 
-                ? "Loading staff members..." 
+              isLoading
+                ? "Loading staff members..."
                 : "Search by name or email..."
             }
             className="w-full pr-8 h-11 bg-white border-gray-300"
-            disabled={isLoading || isLoadingEmployees}
+            disabled={isLoading}
           />
           <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         </div>

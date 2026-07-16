@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ShieldCheck, Loader2, FileText, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Json } from '@/integrations/supabase/types';
+import { VerificationDocument } from '@/types/employeeVerification';
 interface VerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -25,11 +27,11 @@ interface VerificationDialogProps {
   documentId?: string;
   documentNumber?: string;
   quickStartMethod?: 'api' | 'manual' | null;
-  documents?: any[]; // Add documents prop to find the updated document
+  documents?: VerificationDocument[]; // Add documents prop to find the updated document
   onDocumentAction?: () => void; // Add callback for document updates
   setIsVerificationLoading?: (loading: boolean) => void; // Add loading state setter
   employeeName?: string;
-  onApiSuccess?: (documentType: string, data: any) => void; // Add API success callback prop
+  onApiSuccess?: (documentType: string, data: Json) => void; // Add API success callback prop
 }
 
 const VerificationDialog: React.FC<VerificationDialogProps> = ({
@@ -92,15 +94,47 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const autoStartedRef = useRef(false);
 
   // Get OTP validity from environment variable (in minutes), default to 10 minutes
-  const OTP_VALIDITY_MINUTES = (() => {
+  const OTP_VALIDITY_MINUTES = useMemo(() => {
     const envValue = import.meta.env.VITE_AADHAR_OTP_VALIDITY;
     const parsed = parseInt(envValue as string || '10', 10);
     console.log('OTP Validity from env:', { envValue, parsed, finalMinutes: parsed });
     return parsed;
-  })();
+  }, []);
   const OTP_VALIDITY_SECONDS = OTP_VALIDITY_MINUTES * 60;
   console.log('OTP Validity in seconds:', OTP_VALIDITY_SECONDS);
-  
+
+  const startCooldownTimer = useCallback((seconds: number) => {
+    console.info("Starting cooldown timer with seconds:", seconds, "current time:", new Date().toISOString());
+    console.info("OTP_VALIDITY_SECONDS constant:", OTP_VALIDITY_SECONDS, "OTP_VALIDITY_MINUTES:", OTP_VALIDITY_MINUTES);
+    setCooldownSeconds(seconds);
+    setOtpExpired(false); // Reset expired state when starting new timer
+
+    // Clear any existing timer
+    if (cooldownTimerId !== null) {
+      clearInterval(cooldownTimerId);
+    }
+
+    // Start new timer
+    const timerId = window.setInterval(() => {
+      setCooldownSeconds(prevSeconds => {
+        if (prevSeconds === null || prevSeconds <= 1) {
+          clearInterval(timerId);
+          setCooldownTimerId(null);
+          // When timer reaches 0, hide OTP input and show expired warning
+          if (showOtpInput) {
+            setShowOtpInput(false);
+            setOtpExpired(true);
+            setOtp(""); // Clear OTP input
+          }
+          return null;
+        }
+        return prevSeconds - 1;
+      });
+    }, 1000);
+
+    setCooldownTimerId(timerId);
+  }, [cooldownTimerId, showOtpInput, OTP_VALIDITY_SECONDS, OTP_VALIDITY_MINUTES]);
+
   // Cleanup effect to reset loading state when dialog closes
   useEffect(() => {
     if (!open) {
@@ -159,7 +193,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setOtpExpired(false); // Reset expired state when dialog closes
     }
     autoStartedRef.current = false;
-  }, [open]);
+  }, [open, cooldownTimerId]);
 
   // Note: openDetailDialogAfterSuccess function removed - we now open dialogs directly with API response data
 
@@ -172,6 +206,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       // For API quickStart, just show the dialog - don't auto-click the API button
     }
+    // `handleManualClick` is intentionally omitted: it is a plain (non-memoized) function that
+    // itself calls a dozen other non-memoized handler functions defined later in this component,
+    // so wrapping it would cascade into memoizing the entire handler tree — out of scope for a
+    // dependency-tracking fix. The `autoStartedRef` guard already ensures this only runs once
+    // per dialog open, so referencing the latest closure here is safe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, quickStartMethod, isOther, isOtherDocuments]);
 
   // Check if OTP was already generated and is still valid when dialog opens
@@ -192,39 +232,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       }
     }
-  }, [open, isAadhar, documentId, documents]);
-
-  const startCooldownTimer = (seconds: number) => {
-    console.info("Starting cooldown timer with seconds:", seconds, "current time:", new Date().toISOString());
-    console.info("OTP_VALIDITY_SECONDS constant:", OTP_VALIDITY_SECONDS, "OTP_VALIDITY_MINUTES:", OTP_VALIDITY_MINUTES);
-    setCooldownSeconds(seconds);
-    setOtpExpired(false); // Reset expired state when starting new timer
-    
-    // Clear any existing timer
-    if (cooldownTimerId !== null) {
-      clearInterval(cooldownTimerId);
-    }
-    
-    // Start new timer
-    const timerId = window.setInterval(() => {
-      setCooldownSeconds(prevSeconds => {
-        if (prevSeconds === null || prevSeconds <= 1) {
-          clearInterval(timerId);
-          setCooldownTimerId(null);
-          // When timer reaches 0, hide OTP input and show expired warning
-          if (showOtpInput) {
-            setShowOtpInput(false);
-            setOtpExpired(true);
-            setOtp(""); // Clear OTP input
-          }
-          return null;
-        }
-        return prevSeconds - 1;
-      });
-    }, 1000);
-    
-    setCooldownTimerId(timerId);
-  };
+  }, [open, isAadhar, documentId, documents, OTP_VALIDITY_MINUTES, startCooldownTimer]);
 
   // Separate handler for Bank Account API verification
   const handleBankAccountApiVerification = async () => {
@@ -270,7 +278,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         const errorMessage = apiResponse?.message || data?.message || data?.error || "Bank Statement verification failed. Please check your details and try again.";
         setErrorMessage(errorMessage);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleBankAccountApiVerification:", err);
       setErrorMessage("Something went wrong during Bank Statement verification. Please try again.");
     } finally {
@@ -307,10 +315,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The Bank Statement has been manually verified successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleBankAccountManualVerification:", err);
       toast.error("Verification Error", {
-        description: err.message || "Failed to manually verify Bank Statement"
+        description: err instanceof Error ? err.message : String(err) || "Failed to manually verify Bank Statement"
       });
     } finally {
       setIsBankAccountVerifying(false);
@@ -346,10 +354,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The Bank Statement has been rejected successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleBankAccountRejection:", err);
       toast.error("Rejection Error", {
-        description: err.message || "Failed to reject Bank Statement"
+        description: err instanceof Error ? err.message : String(err) || "Failed to reject Bank Statement"
       });
     } finally {
       setIsBankAccountVerifying(false);
@@ -394,9 +402,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setErrorMessage(errorMsg);
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       setErrorKey(null);
-      setErrorMessage(err.message || 'Passport verification error.');
+      setErrorMessage(err instanceof Error ? err.message : String(err) || 'Passport verification error.');
     } finally {
       setIsPassportVerifying(false);
     }
@@ -414,8 +422,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       toast.success('Passport Manually Verified', { description: data?.message || 'The Passport has been manually verified successfully.' });
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error('Verification Error', { description: err.message || 'Failed to manually verify Passport' });
+    } catch (err) {
+      toast.error('Verification Error', { description: err instanceof Error ? err.message : String(err) || 'Failed to manually verify Passport' });
     } finally {
       setIsPassportVerifying(false);
     }
@@ -433,8 +441,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       toast.success('Passport Rejected', { description: data?.message || 'The Passport has been rejected successfully.' });
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error('Rejection Error', { description: err.message || 'Failed to reject Passport' });
+    } catch (err) {
+      toast.error('Rejection Error', { description: err instanceof Error ? err.message : String(err) || 'Failed to reject Passport' });
     } finally {
       setIsPassportVerifying(false);
     }
@@ -504,7 +512,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setErrorMessage(errorMessage);
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handlePanApiVerification:", err);
       setErrorKey(null);
       setErrorMessage("Something went wrong during PAN verification. Please try again.");
@@ -570,7 +578,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setErrorMessage(errorMessage);
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleDrivingLicenseApiVerification:", err);
       setErrorKey(null);
       setErrorMessage("Something went wrong during Driving License verification. Please try again.");
@@ -608,10 +616,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The Driving License has been manually verified successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleDrivingLicenseManualVerification:", err);
       toast.error("Verification Error", {
-        description: err.message || "Failed to manually verify Driving License"
+        description: err instanceof Error ? err.message : String(err) || "Failed to manually verify Driving License"
       });
     } finally {
       setIsDrivingLicenseVerifying(false);
@@ -647,10 +655,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The Driving License has been rejected successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleDrivingLicenseRejection:", err);
       toast.error("Rejection Error", {
-        description: err.message || "Failed to reject Driving License"
+        description: err instanceof Error ? err.message : String(err) || "Failed to reject Driving License"
       });
     } finally {
       setIsDrivingLicenseVerifying(false);
@@ -686,10 +694,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The PAN has been manually verified successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handlePanManualVerification:", err);
       toast.error("Verification Error", {
-        description: err.message || "Failed to manually verify PAN"
+        description: err instanceof Error ? err.message : String(err) || "Failed to manually verify PAN"
       });
     } finally {
       setIsPanVerifying(false);
@@ -725,10 +733,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The PAN has been rejected successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handlePanRejection:", err);
       toast.error("Rejection Error", {
-        description: err.message || "Failed to reject PAN"
+        description: err instanceof Error ? err.message : String(err) || "Failed to reject PAN"
       });
     } finally {
       setIsPanVerifying(false);
@@ -792,7 +800,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setErrorMessage(errorMessage);
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleVoterIdApiVerification:", err);
       setErrorKey(null);
       setErrorMessage("Something went wrong during Voter ID verification. Please try again.");
@@ -830,10 +838,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The Voter ID has been manually verified successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleVoterIdManualVerification:", err);
       toast.error("Verification Error", {
-        description: err.message || "Failed to manually verify Voter ID"
+        description: err instanceof Error ? err.message : String(err) || "Failed to manually verify Voter ID"
       });
     } finally {
       setIsVoterIdVerifying(false);
@@ -869,10 +877,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The Voter ID has been rejected successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleVoterIdRejection:", err);
       toast.error("Rejection Error", {
-        description: err.message || "Failed to reject Voter ID"
+        description: err instanceof Error ? err.message : String(err) || "Failed to reject Voter ID"
       });
     } finally {
       setIsVoterIdVerifying(false);
@@ -908,10 +916,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The document has been manually verified successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleOtherManualVerification:", err);
       toast.error("Verification Error", {
-        description: err.message || "Failed to manually verify document"
+        description: err instanceof Error ? err.message : String(err) || "Failed to manually verify document"
       });
     } finally {
       setIsOtherVerifying(false);
@@ -947,10 +955,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         description: data?.message || "The document has been rejected successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in handleOtherRejection:", err);
       toast.error("Rejection Error", {
-        description: err.message || "Failed to reject document"
+        description: err instanceof Error ? err.message : String(err) || "Failed to reject document"
       });
     } finally {
       setIsOtherRejecting(false);
@@ -1025,10 +1033,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         } else {
           startCooldownTimer(OTP_VALIDITY_SECONDS);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('requestAadharOtp error:', err);
         setErrorKey(null);
-        setErrorMessage(err.message || 'Failed to request OTP. Please try again.');
+        setErrorMessage(err instanceof Error ? err.message : String(err) || 'Failed to request OTP. Please try again.');
       } finally {
         setIsRequestingOtp(false);
       }
@@ -1097,10 +1105,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           description: data?.message || "The document has been manually verified successfully."
         });
         onOpenChange(false);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Exception in manual verification:", err);
         toast.error("Verification Error", {
-          description: err.message || "Failed to manually verify document"
+          description: err instanceof Error ? err.message : String(err) || "Failed to manually verify document"
         });
       } finally {
         setIsAadharManualVerifying(false);
@@ -1138,7 +1146,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   setIsVerifyingOtp(true);
 
   try {
-    const requestBody: any = {
+    const requestBody: Record<string, unknown> = {
       action: 'verifyAadharOtp',
       documentId,
       otp
@@ -1173,9 +1181,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 
     if (onDocumentAction) await onDocumentAction();
 
-  } catch (err: any) {
+  } catch (err) {
     console.error('verifyAadharOtp error:', err);
-    setErrorMessage(err.message || 'Failed to verify OTP. Please try again.');
+    setErrorMessage(err instanceof Error ? err.message : String(err) || 'Failed to verify OTP. Please try again.');
   } finally {
     setIsVerifyingOtp(false);
   }
@@ -1262,10 +1270,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   //       clearInterval(cooldownTimerId);
   //       setCooldownTimerId(null);
   //     }
-  //   } catch (err: any) {
+  //   } catch (err) {
   //     console.error("Exception in handleOtpSubmit:", err);
   //     toast.error("Verification Failed", {
-  //       description: err.message || "Failed to verify OTP"
+  //       description: err instanceof Error ? err.message : String(err) || "Failed to verify OTP"
   //     });
   //     onOpenChange(false); // Close the dialog
   //     if (onDocumentAction) {

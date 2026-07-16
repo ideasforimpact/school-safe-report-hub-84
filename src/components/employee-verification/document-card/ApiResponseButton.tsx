@@ -113,7 +113,7 @@ const ApiResponseButton: React.FC<ApiResponseButtonProps> = ({
     }
   };
 
-  const formatApiResponse = (data: any) => {
+  const formatApiResponse = (data: unknown) => {
     if (!data) return 'No API response data available';
     if (typeof data === 'string') return data;
     return JSON.stringify(data, null, 2);

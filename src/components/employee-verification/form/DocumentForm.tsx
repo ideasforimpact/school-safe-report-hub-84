@@ -30,12 +30,24 @@ import { enqueueEmployeeDocumentUpload } from '@/services/employee/employeeDocum
 import GeneralVerificationUploader from './GeneralVerificationUploader';
 import DrugVerifactionUploader from './DrugVerifactionUploader';
 
+interface DocumentFormValues {
+  documentNumber?: string;
+  documentImage?: string;
+  dateOfBirth?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  otherType?: string;
+}
+// Document types the fetch-employee-document-prefill edge function knows how
+// to prefill (Aadhaar/PAN/Passport uploaded at employee creation time).
+const PREFILLABLE_DOCUMENT_TYPES = new Set(['aadhar', 'pan', 'passport']);
+
 interface DocumentFormProps {
   employeeId: string;
   selectedTypeId: string;
-  files: any[];
+  files: FileItem[];
   isSubmitting: boolean;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: DocumentFormValues) => void;
   onCancel: () => void;
   onFileUploaded: (base64: string) => void;
 }
@@ -66,7 +78,13 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   // Custom document fields
   const [customDocumentName, setCustomDocumentName] = useState('');
   const [customDocumentFiles, setCustomDocumentFiles] = useState<FileItem[]>([]);
-  
+
+  // File already uploaded for this document type during employee creation
+  // (Aadhaar/PAN/Passport), offered here so the admin doesn't have to
+  // re-pick it - just confirm/add the document number and submit.
+  const [prefilledFiles, setPrefilledFiles] = useState<FileItem[]>([]);
+  const [isPrefillingFile, setIsPrefillingFile] = useState(false);
+
   const { toast } = useToast();
   const { user } = useAuth();
   const { state } = useEmployeeStore();
@@ -116,6 +134,54 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       setDocumentImage('');
     }
   }, [selectedTypeId, employeeId, hasExistingDocument]);
+
+  // Offer the Aadhaar/PAN/Passport file already uploaded during employee
+  // creation instead of requiring the admin to pick it again. Only applies
+  // when there's no employee_documents record for this type yet. The lookup,
+  // storage download and base64 encoding all happen server-side in the
+  // fetch-employee-document-prefill edge function.
+  useEffect(() => {
+    setPrefilledFiles([]);
+
+    const typeName = documentType?.name || '';
+    if (!selectedTypeId || !employeeId || hasExistingDocument || !PREFILLABLE_DOCUMENT_TYPES.has(typeName)) {
+      return;
+    }
+
+    let cancelled = false;
+    const clientId = employeeData?.clientId || state.clientId;
+
+    const loadPrefilledFile = async () => {
+      setIsPrefillingFile(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-employee-document-prefill', {
+          body: { employeeId, clientId, documentType: typeName },
+        });
+
+        if (error || !data?.success || !data?.found || cancelled) return;
+
+        setPrefilledFiles([
+          {
+            id: `prefilled-${typeName}-${Date.now()}`,
+            name: data.file.fileName || 'document',
+            size: Math.ceil((data.file.base64.length * 3) / 4),
+            type: data.file.contentType,
+            base64: `data:${data.file.contentType};base64,${data.file.base64}`,
+          },
+        ]);
+      } catch (error) {
+        console.error('Error prefilling existing compliance document:', error);
+      } finally {
+        if (!cancelled) setIsPrefillingFile(false);
+      }
+    };
+
+    loadPrefilledFile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTypeId, employeeId, hasExistingDocument, documentType?.name, employeeData?.clientId, state.clientId]);
 
   // Memoize the file change handler to prevent infinite loops
   const handleFilesChange = useCallback((files: FileItem[]) => {
@@ -244,16 +310,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 variant: 'destructive',
               });
             }, 0);
-            // Best-effort rollback: delete the created document immediately
+            // Best-effort rollback: delete the created document via edge function
             try {
               if (createdDocumentId) {
-                const { error: rollbackErr } = await supabase
-                  .from('employee_documents')
-                  .delete()
-                  .eq('id', createdDocumentId);
-                if (rollbackErr) {
-                  console.error('Immediate rollback failed (createSignedUploadUrl error)', rollbackErr);
-                }
+                await supabase.functions.invoke('employee-documents', {
+                  body: { action: 'purgeDocument', employeeId, documentId: createdDocumentId },
+                });
               }
             } catch (rbErr) {
               console.error('Immediate rollback exception', rbErr);
@@ -274,9 +336,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             contentType: fileItem.type || 'application/octet-stream',
             size: fileItem.size,
           };
-        } catch (err: any) {
+        } catch (err) {
           // Show per-file error toast with specific reason if available
-          const errorMsg = err?.message || 'Unknown storage error';
+          const errorMsg = err instanceof Error ? err.message : 'Unknown storage error';
           setTimeout(() => {
             toast({
               title: 'Upload failed',
@@ -290,9 +352,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       });
 
       const uploadedFiles = await Promise.allSettled(uploadPromises);
+      type UploadedFile = { objectPath: string; fileName: string; contentType: string; size: number };
       const successfulFiles = uploadedFiles
         .filter((r) => r.status === 'fulfilled')
-        .map((r) => (r as PromiseFulfilledResult<any>).value);
+        .map((r) => (r as PromiseFulfilledResult<UploadedFile>).value);
 
       console.log(uploadedFiles,"uploadedFiles");
       
@@ -355,26 +418,21 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       if (onCancel) {
         onCancel();
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error(`Error uploading ${verificationType} files:`, error);
-      // Best-effort rollback: delete the document record if it was created
+      // Best-effort rollback: delete the document record via edge function
       try {
-        const toDeleteId = createdDocumentId || undefined;
-        if (toDeleteId) {
-          const { error: rollbackErr } = await supabase
-            .from('employee_documents')
-            .delete()
-            .eq('id', toDeleteId);
-          if (rollbackErr) {
-            console.error('Rollback failed: could not delete document record', rollbackErr);
-          }
+        if (createdDocumentId) {
+          await supabase.functions.invoke('employee-documents', {
+            body: { action: 'purgeDocument', employeeId, documentId: createdDocumentId },
+          });
         }
       } catch (rbErr) {
         console.error('Rollback exception', rbErr);
       }
       toast({
         title: 'Error',
-        description: error?.message || 'Failed to upload files. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to upload files. Please try again.',
         variant: 'destructive',
       });
       setUploading(false);
@@ -804,11 +862,22 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           <Label className="text-sm font-medium">
             Document Image / PDF <span className="text-red-500">*</span>
           </Label>
+          {isPrefillingFile && (
+            <p className="text-xs text-gray-500 mt-1 flex items-center">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Checking for a file already uploaded for this employee...
+            </p>
+          )}
+          {!isPrefillingFile && prefilledFiles.length > 0 && (
+            <p className="text-xs text-primary mt-1">
+              Using the file already uploaded for this employee. Remove it to upload a different one.
+            </p>
+          )}
           <div className="mt-1">
             <ReusableFileUploader
               key={`file-uploader-${selectedTypeId}`}
               onFilesChange={handleFilesChange}
-              initialFiles={[]}
+              initialFiles={prefilledFiles}
               maxFiles={1}
               maxSize={10}
               maxTotalSize={10}

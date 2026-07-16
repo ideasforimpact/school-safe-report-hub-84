@@ -9,13 +9,32 @@ const corsHeaders = {
 
 type UploadFile = { fileName: string; contentType: string; base64Data: string };
 
+interface StoredFileEntry {
+  path: string;
+  parentFolderId?: string | null;
+}
+
+interface ComplianceFilesEntry {
+  folder_name?: string;
+  storage_folder?: string;
+  files?: StoredFileEntry[];
+}
+
+interface ComplianceRow {
+  id: string;
+  parent_folder_id?: string | null;
+  files?: ComplianceFilesEntry[];
+  folder_id?: string | null;
+  folder_exists?: boolean;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action, clientId, folderName, parentFolderId, files, employeeId, folderId, docId } = await req.json();
+    const { action, clientId, folderName, parentFolderId, files, employeeId, folderId, docId, objectPath, rowId, isValid, validDate } = await req.json();
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -100,6 +119,38 @@ serve(async (req) => {
       return insertRes.data;
     };
 
+    if (action === "create_signed_upload_url") {
+      if (!objectPath) return new Response(JSON.stringify({ error: "objectPath is required" }), { status: 400, headers: corsHeaders });
+      const { data, error: signError } = await supabaseAdmin.storage
+        .from(bucketName)
+        .createSignedUploadUrl(objectPath);
+      if (signError || !data?.signedUrl) throw signError ?? new Error("Failed to create signed URL");
+      return new Response(JSON.stringify({ signedUrl: data.signedUrl, token: data.token, path: data.path }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "set_validity") {
+      if (!clientId || !rowId) return new Response(JSON.stringify({ error: "clientId and rowId are required" }), { status: 400, headers: corsHeaders });
+      const { data: vd, error: ve } = await supabaseAdmin
+        .from("compliance_documents")
+        .update({ is_valid: isValid, valid_date: validDate })
+        .eq("id", rowId)
+        .eq("client_id", clientId)
+        .select("id, is_valid, valid_date");
+      if (ve) throw ve;
+      return new Response(JSON.stringify({ data: vd }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "list") {
+      if (!clientId) return new Response(JSON.stringify({ error: "clientId is required" }), { status: 400, headers: corsHeaders });
+      const { data, error: listError } = await supabaseAdmin
+        .from("compliance_documents")
+        .select("id, folder_exists, folder_id, parent_folder_id, files, is_valid, valid_date")
+        .eq("client_id", clientId)
+        .eq("is_delete", 0);
+      if (listError) throw listError;
+      return new Response(JSON.stringify({ data: data ?? [] }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (action === "create_folder") {
       // Create folder (root or nested)
       const newFolderId = crypto.randomUUID();
@@ -135,8 +186,8 @@ serve(async (req) => {
 
         // Walk up to root to build path segments
         const segments: string[] = [];
-        let walker: any = parentRow;
-        const getSlug = (row: any) => row?.files?.[0]?.storage_folder ?? `${(row?.files?.[0]?.folder_name ?? "Folder").replaceAll('/', '-')}_${row?.folder_id ?? ''}`;
+        let walker: ComplianceRow | null = parentRow;
+        const getSlug = (row: ComplianceRow | null) => row?.files?.[0]?.storage_folder ?? `${(row?.files?.[0]?.folder_name ?? "Folder").replaceAll('/', '-')}_${row?.folder_id ?? ''}`;
         segments.unshift(getSlug(walker));
         while (walker?.parent_folder_id) {
           const { data: up, error: upErr } = await supabaseAdmin
@@ -159,7 +210,14 @@ serve(async (req) => {
         contentType: "application/octet-stream",
       });
 
-      const insertPayload: any = {
+      const insertPayload: {
+        client_id: string;
+        folder_exists: boolean;
+        folder_id: string;
+        files: ComplianceFilesEntry[];
+        created_by: string | null;
+        parent_folder_id?: string;
+      } = {
         client_id: clientId,
         folder_exists: true,
         folder_id: newFolderId,
@@ -254,7 +312,7 @@ serve(async (req) => {
 
         if (folderRow) {
           // Support both legacy flat files array and new structured array [{ folder_name, files: [] }]
-          let newFiles: any;
+          let newFiles: ComplianceFilesEntry[];
           if (Array.isArray(folderRow.files) && folderRow.files[0]?.files && Array.isArray(folderRow.files[0].files)) {
             const inner = folderRow.files[0].files ?? [];
             const mergedInner = inner.concat(storedPaths.map((p) => ({ path: p, parentFolderId })));
@@ -312,8 +370,8 @@ serve(async (req) => {
       // Soft delete a folder by its folder_id or docId (row id) - set is_delete = 1
       if (!folderId && !docId) throw new Error("folderId or docId is required");
 
-      let row: any = null;
-      let rowErr: any = null;
+      let row: Record<string, unknown> | null = null;
+      let rowErr: { message: string } | null = null;
       if (docId) {
         const resp = await supabaseAdmin
           .from("compliance_documents")
@@ -343,7 +401,7 @@ serve(async (req) => {
 
       // Set is_delete = 1 for all child folders
       if (childFolders && childFolders.length > 0) {
-        const childIds = childFolders.map((c: any) => c.id);
+        const childIds = childFolders.map((c: { id: string }) => c.id);
         const { error: childDelErr } = await supabaseAdmin
           .from("compliance_documents")
           .update({ is_delete: 1 })

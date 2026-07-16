@@ -140,7 +140,7 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
               {employeeData && (
                 <div className="flex items-center gap-2">
                   <span className="font-medium">
-                    Welcome, {employeeData.firstName} {employeeData.lastName}
+                    Welcome, {employeeData.aadharVerifiedName || `${employeeData.firstName} ${employeeData.lastName}`}
                   </span>
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium whitespace-nowrap">
                     {employeeTypeLabel}

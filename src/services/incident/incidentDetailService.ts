@@ -53,21 +53,22 @@ export interface IncidentDetail {
   client_id: string;
   root_cause_analysis?: string;
   action_taken?: string;
-  contributing_factor?: any[];
+  contributing_factor?: unknown[];
   reopen: number;
-  recommended_action?: any;
-  learning_points: string
+  recommended_action?: unknown;
+  learning_points: string;
+  closure_attachments?: unknown[];
 }
 
 // Helper functions for safe type conversion
-const safeArrayCast = <T>(value: any, fallback: T[] = []): T[] => {
+const safeArrayCast = <T>(value: unknown, fallback: T[] = []): T[] => {
   if (Array.isArray(value)) {
     return value as T[];
   }
   return fallback;
 };
 
-const safeObjectCast = <T>(value: any, fallback: T): T => {
+const safeObjectCast = <T>(value: unknown, fallback: T): T => {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return value as T;
   }

@@ -45,7 +45,7 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
     }));
   };
 
-  const handleFieldChange = (fieldId: string, property: keyof FormField, value: any) => {
+  const handleFieldChange = (fieldId: string, property: keyof FormField, value: FormField[keyof FormField]) => {
     setFormData(prev => ({
       ...prev,
       fields: prev.fields.map(field =>

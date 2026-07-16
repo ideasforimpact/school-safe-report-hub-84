@@ -6,23 +6,38 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { HelpCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { AssessmentQuestion } from '@/types/assessment';
+import { FileItem } from '@/types/fileTypes';
 
 interface Question {
   id: string;
   text: string;
+  correctAnswer?: string;
   required?: boolean;
   allowComments?: boolean;
   allowAttachments?: boolean;
 }
 
-interface AssessmentQuestionsContainerProps {
-  template: any;
-  answers: any[];
-  onAnswerChange: (questionId: string, field: string, value: any) => void;
+interface AnswerEntry {
+  questionId: string;
+  answer: boolean | undefined;
+  comment?: string;
+  attachments?: FileItem[];
 }
 
-const AssessmentQuestionsContainer = ({ template, answers, onAnswerChange }: AssessmentQuestionsContainerProps) => {
-  const questions = Array.isArray(template.questions) 
+interface TemplateWithQuestions {
+  questions?: AssessmentQuestion[] | unknown;
+}
+
+interface AssessmentQuestionsContainerProps {
+  template: TemplateWithQuestions;
+  answers: AnswerEntry[];
+  onAnswerChange: (questionId: string, field: string, value: boolean | string | FileItem[]) => void;
+  forceOpen?: boolean;
+}
+
+const AssessmentQuestionsContainer = ({ template, answers, onAnswerChange, forceOpen = false }: AssessmentQuestionsContainerProps) => {
+  const questions = Array.isArray(template.questions)
     ? (template.questions as unknown as Question[])
     : [];
 
@@ -46,12 +61,12 @@ const AssessmentQuestionsContainer = ({ template, answers, onAnswerChange }: Ass
         transition={{ duration: 0.5 }}
       >
         <h2 className="text-3xl font-bold text-gray-900 mb-3">Assessment Questions</h2>
-        <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+        <p className="text-gray-600 mb-6 max-w-2xl mx-auto print:hidden">
           Click on each question card below to expand and provide your answer. Questions marked with an asterisk (*) are required.
         </p>
         
         {/* Progress Section */}
-        <Card className="max-w-md mx-auto bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <Card className="max-w-md mx-auto bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 print:hidden">
           <CardContent className="p-6">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -82,6 +97,7 @@ const AssessmentQuestionsContainer = ({ template, answers, onAnswerChange }: Ass
 
       {/* Instructions Card */}
       <motion.div
+        className="print:hidden"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
@@ -132,6 +148,7 @@ const AssessmentQuestionsContainer = ({ template, answers, onAnswerChange }: Ass
                 answer={answer}
                 index={index + 1}
                 onAnswerChange={onAnswerChange}
+                forceOpen={forceOpen}
               />
             </motion.div>
           );

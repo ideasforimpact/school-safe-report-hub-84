@@ -110,10 +110,12 @@ export interface MonthlyTrendsArea {
   totalIncidents: number;
 }
 
+const analyticsInflight = new Map<string, Promise<Record<string, unknown>[]>>();
+
 export const useNewInsightsData = (dateRange?: DateRange) => {
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
-  const [incidents, setIncidents] = useState<any[]>([]);
+  const [incidents, setIncidents] = useState<Record<string, unknown>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Get client ID from employee data
@@ -127,26 +129,24 @@ export const useNewInsightsData = (dateRange?: DateRange) => {
       try {
         setIsLoading(true);
 
-        // Fetch incidents with joins for better data
-        const { data: incidentsData, error } = await supabase
-          .from('incidents')
-          .select(`
-            *,
-            facility:facilities(name),
-            category:incident_categories(name),
-            subcategory:incident_subcategories(name),
-            type:incident_report_types(name),
-            status:incident_status(name),
-            priority:incident_priorities(name, color),
-            assigned_to_user:employees!incidents_assigned_to_fkey(first_name, last_name),
-            created_by_user:employees!incidents_created_by_fkey(first_name, last_name)
-          `)
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false });
+        let request = analyticsInflight.get(clientId);
+        if (!request) {
+          request = (async () => {
+            const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+              body: { operation: 'get_analytics', clientId },
+            });
 
-        if (error) throw error;
+            if (error) throw error;
+            if (!data?.success) throw new Error('Failed to fetch incident analytics');
 
-        setIncidents(incidentsData || []);
+            return (data.incidents || []) as Record<string, unknown>[];
+          })();
+
+          analyticsInflight.set(clientId, request);
+          request.finally(() => analyticsInflight.delete(clientId));
+        }
+
+        setIncidents(await request);
       } catch (error) {
         console.error('Error fetching incidents:', error);
       } finally {

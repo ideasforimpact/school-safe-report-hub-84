@@ -40,7 +40,7 @@ function isValidEmail(email: string): boolean {
  * Validate auth info request
  * Accepts either supabase_token OR email
  */
-export function validateAuthInfoRequest(body: any): ValidationResult {
+export function validateAuthInfoRequest(body: Record<string, unknown>): ValidationResult {
   const errors: ValidationError[] = [];
 
   if (!body || typeof body !== 'object') {
@@ -58,7 +58,7 @@ export function validateAuthInfoRequest(body: any): ValidationResult {
     errors.push({ field: 'supabase_token', reason: 'Either supabase_token or email is required' });
   }
 
-  if (hasEmail && !isValidEmail(body.email)) {
+  if (hasEmail && !isValidEmail(body.email as string)) {
     errors.push({ field: 'email', reason: 'email must be a valid email address' });
   }
 
@@ -88,7 +88,7 @@ export function validateAuthInfoRequest(body: any): ValidationResult {
 /**
  * Validate refresh request
  */
-export function validateRefreshRequest(body: any): ValidationResult {
+export function validateRefreshRequest(body: Record<string, unknown>): ValidationResult {
   const errors: ValidationError[] = [];
 
   if (!body || typeof body !== 'object') {
@@ -111,7 +111,7 @@ export function validateRefreshRequest(body: any): ValidationResult {
 /**
  * Validate logout request
  */
-export function validateLogoutRequest(body: any): ValidationResult {
+export function validateLogoutRequest(body: Record<string, unknown>): ValidationResult {
   const errors: ValidationError[] = [];
 
   if (!body || typeof body !== 'object') {

@@ -182,7 +182,7 @@ export const backofficeEmployeeService = {
         console.error('Error fetching documents:', documentsError);
       }
 
-      const documentIds = ((documentsData as any[]) || []).map(doc => doc.id).filter(Boolean);
+      const documentIds = ((documentsData as Array<Record<string, unknown>>) || []).map(doc => doc.id).filter(Boolean);
       let auditByDocumentId = new Map<string, { both_fallback: boolean | null; latest_status_code: number | null }>();
 
       if (documentIds.length > 0) {
@@ -195,7 +195,7 @@ export const backofficeEmployeeService = {
           console.error('Error fetching employee verification audit logs:', auditError);
         } else {
           auditByDocumentId = new Map(
-            (auditData || []).map((row: any) => [
+            (auditData || []).map((row) => [
               row.document_id,
               {
                 both_fallback: row.both_fallback ?? null,
@@ -220,19 +220,19 @@ export const backofficeEmployeeService = {
         joiningDate: employeeData.joining_date || new Date().toISOString(),
         department: employeeData.department || '',
         position: employeeData.employee_type || '',
-        employeeType: (employeeData.employee_type as Employee['employeeType']) || 'permanent',
+        employeeType: (employeeData.employee_type as Employee['employeeType']) || '',
         status: employeeData.status === true,
         createdAt: employeeData.created_at || new Date().toISOString(),
         updatedAt: employeeData.updated_at || new Date().toISOString(),
         clientId: employeeData.client_id,
         isSuperAdmin: employeeData.is_super_admin,
-        documents: ((documentsData as any[]) || []).map(doc => {
+        documents: ((documentsData as Array<Record<string, unknown> & { document_type?: { name?: string }; document_status?: { name?: string }; employee_docs_log?: unknown[]; cron_log?: unknown[] }>) || []).map(doc => {
           let documentUrl = doc.document_url;
           
           // If document_url is a storage path, convert to full URL
           if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
             {
-              const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+              const base = (import.meta as Record<string, unknown> & { env?: Record<string, string> }).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
               const normalizedBase = base.replace(/\/$/, '');
               documentUrl = `${normalizedBase}/employee-documents/${documentUrl}`;
             }
@@ -246,10 +246,10 @@ export const backofficeEmployeeService = {
             documentNumber: doc.document_number || '',
             documentImage: documentUrl,
             // Pass-through files array for backoffice Files dialog
-            documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
-            comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
+            documents_files: Array.isArray(doc.documents_files) ? doc.documents_files : [],
+            comments: Array.isArray(doc.comments) ? doc.comments : [],
             verificationStatus: doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed' | 'rejected' || 'pending',
-            apiVerificationStatus: (doc as any).api_verification_status as 'pending' | 'completed' | 'failed' | null,
+            apiVerificationStatus: doc.api_verification_status as 'pending' | 'completed' | 'failed' | null,
             bothFallback: auditByDocumentId.get(doc.id)?.both_fallback ?? undefined,
             latestStatusCode: auditByDocumentId.get(doc.id)?.latest_status_code ?? undefined,
             documentStatusId: doc.document_status_id,
@@ -260,10 +260,10 @@ export const backofficeEmployeeService = {
             employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
               timestamp: string;
               action: string;
-              response: any;
+              response: unknown;
               notes?: string;
             }> : [],
-            params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+            params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: unknown; DOB?: string; } : {},
             cronActivate: doc.cron_activate || false,
             cronActivatedDate: doc.cron_activated_date || undefined,
             cronUpdatedDate: doc.cron_updated_date || undefined,
@@ -271,7 +271,7 @@ export const backofficeEmployeeService = {
               timestamp: string;
               action: string;
               status: string;
-              details?: any;
+              details?: unknown;
               error?: string;
             }> : [],
             createdAt: doc.created_at,

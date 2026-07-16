@@ -39,13 +39,13 @@ const UserFormContainer = ({ formData, setFormData, isEditMode = false }: UserFo
     
     // First, reset all permissions to false
     Object.keys(updatedPermissions).forEach(key => {
-      (updatedPermissions as any)[key] = false;
+      updatedPermissions[key] = false;
     });
-    
+
     // Then, set the selected permissions to true
     moduleAccessItems.forEach(item => {
       if (item.key && Object.keys(updatedPermissions).includes(item.key)) {
-        (updatedPermissions as any)[item.key] = true;
+        updatedPermissions[item.key] = true;
       }
     });
     

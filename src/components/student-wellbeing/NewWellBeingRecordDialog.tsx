@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 const ATTACHMENTS_MAX_FILES = 5;
 const ATTACHMENTS_MAX_SIZE_MB = 10;
@@ -63,7 +64,7 @@ export function NewWellBeingRecordDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [studentListVersion, setStudentListVersion] = useState(0);
-  const handleStudentDeleted = (payload: any) => {
+  const handleStudentDeleted = (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
     if (payload.eventType !== 'DELETE') return;
 
     const deletedStudentId = payload.old?.id;
@@ -90,22 +91,21 @@ export function NewWellBeingRecordDialog({
   });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !clientId) return;
     let cancelled = false;
     setLoadingOptions(true);
     const load = async () => {
-      const { data, error } = await (supabase as any)
-        .from('general_concern')
-        .select('id, name')
-        .eq('active', true)
-        .order('name');
+      const { data, error } = await supabase.functions.invoke('fetch-general-concerns', {
+        method: 'POST',
+        body: { clientId },
+      });
       if (cancelled) return;
       setLoadingOptions(false);
-      if (error) {
+      if (error || data?.error) {
         toast.error('Failed to load concern types');
         return;
       }
-      const list: { id: string; name: string }[] = Array.isArray(data) ? data : [];
+      const list: { id: string; name: string }[] = Array.isArray(data?.data) ? data.data : [];
       setGeneralConcernOptions(list);
       if (list.length > 0) {
         const general = list.find((r) => r.name === 'General Concern');
@@ -114,7 +114,7 @@ export function NewWellBeingRecordDialog({
     };
     load();
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, clientId]);
  
   const validate = (): boolean => {
     const next: Record<string, string> = {};

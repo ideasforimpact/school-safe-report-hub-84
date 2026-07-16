@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 interface AssessmentTabsProps {
@@ -13,19 +13,19 @@ const AssessmentTabs: React.FC<AssessmentTabsProps> = ({
   const location = useLocation();
 
   // Determine active tab based on the URL path
-  const getActiveTab = () => {
+  const getActiveTab = useCallback(() => {
     if (location.pathname.includes('/templates')) return 'templates';
     if (location.pathname.includes('/assignments')) return 'assignments';
     if (location.pathname.includes('/results')) return 'results';
     if (location.pathname.includes('/respond')) return 'assignments'; // This ensures respond still shows assignments tab as active
     return 'overview';
-  };
+  }, [location.pathname]);
   const [activeTab, setActiveTab] = useState(defaultValue || getActiveTab());
 
   // Update active tab when location changes
   useEffect(() => {
     setActiveTab(getActiveTab());
-  }, [location.pathname]);
+  }, [getActiveTab]);
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     switch (value) {

@@ -10,7 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { formatDate} from '@/lib/Dateformat';
-import { AlertTriangle, Circle } from 'lucide-react';
+import { AlertTriangle, Circle, Loader2, Unlock } from 'lucide-react';
 import { Vehicle, VehicleChallans } from '@/types/transportSafety';
 import {
     getVerificationFieldLabel,
@@ -18,19 +18,66 @@ import {
     transformApiResponseData,
 } from '@/utils/transport-safety/documentStatusUtils';
 import { Badge } from '@/components/ui/badge';
+import { RawChallan } from '@/services/transport-safety/vehicleService';
+
+interface ChallanRecord extends RawChallan {
+    accused_name?: string;
+    challan_place?: string;
+    offense_details?: string;
+    Info?: string;
+    challan_info?: string;
+}
+
+interface ChallanSnapshot {
+    success?: boolean;
+    [key: string]: unknown;
+}
+
+interface ChallanPayload {
+    challan_details?: { challans?: RawChallan[] };
+    challan_data?: RawChallan[];
+    [key: string]: unknown;
+}
+
+interface ChallanHistoryLogEntry {
+    provider?: string;
+    data?: {
+        status_code?: number;
+        data?: ChallanPayload;
+    };
+}
+
+interface ApiResponse {
+    original?: {
+        status_code?: number;
+        success?: boolean;
+        status?: string;
+    };
+    transformed?: unknown;
+    challan?: {
+        type?: string;
+        message?: string;
+        [key: string]: unknown;
+    };
+    [key: string]: unknown;
+}
+import { supabase } from '@/integrations/supabase/client';
 
 interface VerificationDetailsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     title?: string;
-    challanSnapshot?: any | null;
+    challanSnapshot?: ChallanSnapshot | null;
     challanError?: string | null;
     hasChallanData?: boolean;
     vehicle?: Vehicle;
-    apiResponse?: any; // API response from vehicle-verify edge function
+    apiResponse?: ApiResponse; // API response from vehicle-verify edge function
     vehicleChallans?: VehicleChallans | null; // vehicle_challans from database
     showChallanTabs?: boolean; // If false, shows all challans without Pending/Disposed tabs (for TransportChallansPage)
     hideMainTabs?: boolean; // If true, hides Verification/Challan Details tabs and shows only challan content (for TransportChallansPage)
+    // Fired after a successful unmask so the parent can persist the real values into
+    // the in-memory vehicle (context), keeping them visible on RUN-again and history.
+    onUnmasked?: (values: { chasi?: string; engine?: string; owner?: string }) => void;
 }
 
 const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
@@ -44,8 +91,59 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     vehicleChallans,
     showChallanTabs = true, // Default to true to maintain existing behavior
     hideMainTabs = false, // Default to false to maintain existing behavior
+    onUnmasked,
 }) => {
     const [activeTab, setActiveTab] = React.useState<'verification' | 'challan'>('verification');
+
+    // On-demand unmask state. A single rc-full call returns both chassis and engine, so
+    // clicking UNMASK on either row reveals both.
+    const [unmasked, setUnmasked] = React.useState<{ chasi?: string; engine?: string; owner?: string }>({});
+    const [unmaskLoading, setUnmaskLoading] = React.useState(false);
+    const [unmaskError, setUnmaskError] = React.useState<string | null>(null);
+
+    // Reset unmask state whenever the dialog is reopened for a different vehicle.
+    React.useEffect(() => {
+        setUnmasked({});
+        setUnmaskError(null);
+        setUnmaskLoading(false);
+    }, [vehicle?.id, open]);
+
+    // Masking flags come from SurePass response_metadata, preserved by vehicle-verify in
+    // both the fresh apiResponse and the stored current_rc_data (history popup).
+    const responseMetadata = React.useMemo(() => {
+        return apiResponse?.original?.data?.response_metadata
+            ?? vehicle?.currentRcData?.data?.response_metadata
+            ?? null;
+    }, [apiResponse, vehicle]);
+
+    const handleUnmask = React.useCallback(async () => {
+        if (!vehicle?.registrationNumber) return;
+        setUnmaskLoading(true);
+        setUnmaskError(null);
+        try {
+            const { data, error } = await supabase.functions.invoke('vehicle-unmask', {
+                body: { registrationNumber: vehicle.registrationNumber, vehicleId: vehicle.id },
+            });
+            if (error) throw error;
+            if (data?.success) {
+                const values = {
+                    chasi: data.vehicle_chasi_number ?? undefined,
+                    engine: data.vehicle_engine_number ?? undefined,
+                    owner: data.vehicle_owner_name ?? undefined,
+                };
+                setUnmasked(values);
+                // Propagate to the context vehicle so the real values survive dialog
+                // close/reopen (RUN-again) and appear in the history popup.
+                onUnmasked?.(values);
+            } else {
+                setUnmaskError(data?.message || 'Failed to unmask values');
+            }
+        } catch (e) {
+            setUnmaskError(e?.message || 'Failed to unmask values');
+        } finally {
+            setUnmaskLoading(false);
+        }
+    }, [vehicle?.registrationNumber, vehicle?.id, onUnmasked]);
 
     // Get provider name for display
     const getProviderName = (provider?: string | null): string => {
@@ -68,8 +166,8 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         const logs = vehicleChallans?.challan_history_log;
         if (!logs || typeof logs !== 'object') return null;
 
-        const successLogs = Object.entries(logs).filter(
-            ([_, entry]: any) => entry?.data?.status_code === 200
+        const successLogs = Object.entries(logs as Record<string, ChallanHistoryLogEntry>).filter(
+            ([, entry]) => entry?.data?.status_code === 200
         );
 
         if (successLogs.length === 0) return null;
@@ -78,7 +176,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
         );
 
-        const [timestamp, log]: any = successLogs[0];
+        const [timestamp, log] = successLogs[0];
 
         return {
             timestamp,
@@ -151,17 +249,54 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         return transformedData
             .filter((item) => {
                 const fieldName = item.field?.toLowerCase() || '';
-                // Exclude challan_details and client_id variations
-                return item.field !== 'challan_details' && 
-                       fieldName !== 'client_id' && 
+                // Exclude challan_details, client_id variations, and owner_name (hidden per requirement)
+                return item.field !== 'challan_details' &&
+                       fieldName !== 'client_id' &&
                        fieldName !== 'clientid' &&
-                       !fieldName.includes('client id');
+                       !fieldName.includes('client id')
             })
-            .map((item) => ({
-                label: getVerificationFieldLabel(item.field),
-                value: item.value,
-            }));
-    }, [transformedData]);
+            .map((item) => {
+                // Chassis/engine/owner: prefer the dedicated (unmasked) value — first from
+                // this session's unmask click, then the persisted column — else fall back to
+                // the (possibly masked) API value. `masked` is true only when no unmasked
+                // source exists AND the value is masked. Masking is detected either from the
+                // SurePass response_metadata flag OR, for records stored before those flags
+                // were captured, from the value itself containing masking characters ('*').
+                const looksMasked = (v: unknown) => typeof v === 'string' && v.includes('*');
+                let value = item.value;
+                let masked = false;
+
+                if (item.field === 'vehicle_chasi_number') {
+                    const dedicated = unmasked.chasi ?? vehicle?.vehicleChasiNumber ?? null;
+                    if (dedicated) value = dedicated;
+                    else if (responseMetadata?.masked_chassis === true || looksMasked(value)) masked = true;
+                } else if (item.field === 'vehicle_engine_number') {
+                    const dedicated = unmasked.engine ?? vehicle?.vehicleEngineNumber ?? null;
+                    if (dedicated) value = dedicated;
+                    else if (responseMetadata?.masked_engine === true || looksMasked(value)) masked = true;
+                } else if (item.field === 'owner_name') {
+                    const dedicated = unmasked.owner ?? vehicle?.vehicleOwnerName ?? null;
+                    if (dedicated) value = dedicated;
+                    else if (responseMetadata?.masked_owner_name === true || looksMasked(value)) masked = true;
+                }
+
+                return {
+                    field: item.field,
+                    label: getVerificationFieldLabel(item.field),
+                    value,
+                    masked,
+                };
+            });
+    }, [transformedData, unmasked, vehicle, responseMetadata]);
+
+    // Show the single "Unlock Masked Records" control only in the live verification popup
+    // (which passes `apiResponse`) and only while a field is still masked. The history popup
+    // (no `apiResponse`) never shows the button — it just displays the already-stored
+    // unmasked column values when present, everything else as-is.
+    const hasMaskedRecords = React.useMemo(
+        () => Boolean(apiResponse) && rcDataForDisplay.some((field) => field.masked),
+        [apiResponse, rcDataForDisplay],
+    );
 
     // Get challan details from vehicle_challans.latest_challan_data (priority) or transformed data
     const challanDetails = React.useMemo(() => {
@@ -181,20 +316,20 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             return String(value).trim() !== '';
         };
 
-        const mergeChallan = (base: any, incoming: any) => {
-            const merged = { ...base };
+        const mergeChallan = (base: ChallanRecord, incoming: ChallanRecord): ChallanRecord => {
+            const merged: ChallanRecord = { ...base };
 
             Object.entries(incoming || {}).forEach(([key, value]) => {
-                const existing = (merged as any)[key];
+                const existing = merged[key];
                 if (!hasValue(existing) && hasValue(value)) {
-                    (merged as any)[key] = value;
+                    merged[key] = value;
                 }
             });
 
             return merged;
         };
 
-        const getDedupKey = (challan: any) => {
+        const getDedupKey = (challan: ChallanRecord) => {
             const challanNumber = String(challan?.challan_number || challan?.challan_no || '').trim().toUpperCase();
             if (challanNumber) return `number:${challanNumber}`;
 
@@ -204,8 +339,8 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             return `fallback:${challanDate}|${amount}|${status}`;
         };
 
-        const deduped = new Map<string, any>();
-        rawChallans.forEach((challan: any) => {
+        const deduped = new Map<string, ChallanRecord>();
+        (rawChallans as ChallanRecord[]).forEach((challan) => {
             const key = getDedupKey(challan);
             const existing = deduped.get(key);
             deduped.set(key, existing ? mergeChallan(existing, challan) : challan);
@@ -216,11 +351,11 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     const normalizeChallanStatus = (status?: string) => (status || '').trim().toUpperCase();
     const isDisposedStatus = (status?: string) =>
         ['DISPOSED', 'PAID', 'CASH'].includes(normalizeChallanStatus(status));
-    const disposedChallans = challanDetails.filter((c: any) =>
+    const disposedChallans = challanDetails.filter((c) =>
         isDisposedStatus(c.challan_status)
     );
 
-    const pendingChallans = challanDetails.filter((c: any) =>
+    const pendingChallans = challanDetails.filter((c) =>
         !isDisposedStatus(c.challan_status)
     );
 
@@ -246,7 +381,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             return sum + (isNaN(amount) ? 0 : amount);
         }, 0);
     }, [challanDetails]);
-    const ChallanCard = ({ challan }: { challan: any }) => {
+    const ChallanCard = ({ challan }: { challan: ChallanRecord }) => {
         const normalizedStatus = normalizeChallanStatus(challan.challan_status);
         const isDisposed = isDisposedStatus(challan.challan_status);
         const displayStatus = normalizedStatus === 'CASH' ? 'PAID' : (challan.challan_status || 'UNPAID');
@@ -284,7 +419,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         {challan.challan_date_time && (
                             <div>
-                                <div className="text-xs font-semibold text-gray-500 mb-1">Date</div>
+                                <div className="text-xs font-semibold text-gray-500 mb-1">Occurrence Date</div>
                                 <div className="text-sm text-gray-900">
                                     {formatDate(challan.challan_date_time)}
                                 </div>
@@ -362,7 +497,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                         </Badge>
                                     </div>
                                     <div className="space-y-3">
-                                        {challanDetails.map((challan: any, index: number) => (
+                                        {challanDetails.map((challan: ChallanRecord, index: number) => (
                                             <ChallanCard key={index} challan={challan} />
                                         ))}
                                     </div>
@@ -389,6 +524,27 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                     )}
                                 </TabsTrigger>
                             </TabsList>
+                            {hasMaskedRecords && (
+                                <div className="flex flex-col items-end mt-2">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={handleUnmask}
+                                        disabled={unmaskLoading || !vehicle?.registrationNumber}
+                                        className="h-9 gap-1.5 whitespace-nowrap bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-sm"
+                                    >
+                                        {unmaskLoading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Unlock className="h-4 w-4" />
+                                        )}
+                                        {unmaskLoading ? 'Unlocking…' : 'Unlock Masked Records'}
+                                    </Button>
+                                    {unmaskError && (
+                                        <div className="text-xs text-red-600 mt-1">{unmaskError}</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Verification */}
@@ -475,7 +631,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                                                 </Badge>
                                                             </div>
                                                             <div className="space-y-3">
-                                                                {pendingChallans.map((challan: any, index: number) => (
+                                                                {pendingChallans.map((challan: ChallanRecord, index: number) => (
                                                                     <ChallanCard key={index} challan={challan} />
                                                                 ))}
                                                             </div>
@@ -497,7 +653,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                                                 </Badge>
                                                             </div>
                                                             <div className="space-y-3">
-                                                                {disposedChallans.map((challan: any, index: number) => (
+                                                                {disposedChallans.map((challan: ChallanRecord, index: number) => (
                                                                     <ChallanCard key={index} challan={challan} />
                                                                 ))}
                                                             </div>
@@ -520,7 +676,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                                 </Badge>
                                             </div>
                                             <div className="space-y-3">
-                                                {challanDetails.map((challan: any, index: number) => (
+                                                {challanDetails.map((challan: ChallanRecord, index: number) => (
                                                     <ChallanCard key={index} challan={challan} />
                                                 ))}
                                             </div>

@@ -43,7 +43,15 @@ serve(async (req) => {
 
     console.log(`Updating submission: ${submission_id}`);
 
-    const updateData: any = {
+    interface FormSubmissionUpdateData {
+      updated_at: string;
+      comments?: unknown;
+      status?: unknown;
+      acknowledged_by_name?: unknown;
+      acknowledged_at?: unknown;
+    }
+
+    const updateData: FormSubmissionUpdateData = {
       updated_at: new Date().toISOString()
     };
 

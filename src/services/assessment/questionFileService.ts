@@ -1,22 +1,39 @@
 import { supabase } from '@/integrations/supabase/client';
 import { FileItem } from '@/types/fileTypes';
 
-export interface QuestionFileItem {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  url: string;
-  path: string;
-  uploadedAt: Date;
+export type AttachmentInput = { id: string; name: string; type: string; file?: File; url?: string; path?: string };
+export type UploadedAttachment = { id: string; name: string; type: string; url: string; path: string; size?: number };
+
+export interface AttachmentGroup {
+  key: string;
+  bucket: string;
+  attachments: AttachmentInput[];
+  templateName?: string;
+  questionId?: string;
+  assessmentId?: string | number;
 }
 
-export interface UploadFileInput {
-  file: File;
-  id: string;
+export interface GroupUploadResult {
+  key: string;
+  attachments: UploadedAttachment[];
+  error?: string;
 }
 
 export const questionFileService = {
+  // Shared "skip the network call entirely if there's nothing to upload"
+  // guard — used everywhere a general/closure/rework attachment array is
+  // conditionally uploaded (Draft, Submit, Complete, Rework all repeated
+  // this exact `arr.length > 0 ? await uploadX(...) : []` shape).
+  uploadIfPresent: async <T, R>(
+    attachments: T[] | undefined | null,
+    uploadFn: () => Promise<R[]>
+  ): Promise<R[]> => {
+    if (!attachments || attachments.length === 0) {
+      return [];
+    }
+    return uploadFn();
+  },
+
   // Sanitize filename for storage
   sanitizeFileName: (fileName: string): string => {
     return fileName
@@ -34,18 +51,6 @@ export const questionFileService = {
       .replace(/^_+|_+$/g, '');
   },
 
-  // Generate file path for question files
-  generateFilePath: (
-    clientId: string,
-    employeeId: string,
-    assessmentName: string,
-    questionNumber: number,
-    fileName: string
-  ): string => {
-    const sanitizedAssessmentName = assessmentName.replace(/[^a-zA-Z0-9-_]/g, '_');
-    return `${clientId}/${employeeId}/${sanitizedAssessmentName}/question_${questionNumber}/${fileName}`;
-  },
-
   // Generate file path for answer attachments
   // Uses template name to match the existing question file structure
   generateAttachmentFilePath: (
@@ -59,144 +64,6 @@ export const questionFileService = {
     // Extract question number from questionId if it follows pattern question_X or use questionId directly
     const questionNumber = questionId.match(/question[_-]?(\d+)/)?.[1] || questionId.replace(/[^a-zA-Z0-9-_]/g, '_');
     return `${clientId}/${employeeId}/${sanitizedTemplateName}/question_${questionNumber}/attachments/${fileName}`;
-  },
-
-  // Upload files for a specific question using File objects directly
-  uploadQuestionFiles: async (
-    uploadInputs: UploadFileInput[],
-    clientId: string,
-    employeeId: string,
-    assessmentName: string,
-    questionNumber: number
-  ): Promise<QuestionFileItem[]> => {
-    console.log('Starting file upload process...', { 
-      fileCount: uploadInputs.length, 
-      clientId, 
-      employeeId, 
-      assessmentName, 
-      questionNumber 
-    });
-
-    const uploadPromises = uploadInputs.map(async ({ file, id }) => {
-      try {
-        console.log(`Processing file: ${file.name}`, { 
-          size: file.size, 
-          type: file.type 
-        });
-
-        // Allowed file types: PDF, DOC, DOCX, PNG, JPEG, JPG
-        const ALLOWED_FILE_TYPES = [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'image/png',
-          'image/jpeg',
-          'image/jpg'
-        ];
-        const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.png', '.jpeg', '.jpg'];
-        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-        // Validate file before upload
-        if (file.size === 0) {
-          throw new Error(`File ${file.name} is empty`);
-        }
-
-        // Validate file size (10MB limit)
-        if (file.size > MAX_FILE_SIZE) {
-          throw new Error(`File ${file.name} exceeds the 10MB size limit. Maximum file size is 10MB.`);
-        }
-
-        // Validate file type
-        const isValidType = ALLOWED_FILE_TYPES.includes(file.type) || 
-          ALLOWED_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext));
-        
-        if (!isValidType) {
-          throw new Error(`File ${file.name} has an invalid format. Allowed formats: PDF, DOC, DOCX, PNG, JPEG, JPG.`);
-        }
-
-        // Generate unique file name to avoid conflicts
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(2, 8);
-        const sanitizedFileName = questionFileService.sanitizeFileName(file.name);
-        const uniqueFileName = `${timestamp}_${randomSuffix}_${sanitizedFileName}`;
-        const filePath = questionFileService.generateFilePath(
-          clientId,
-          employeeId,
-          assessmentName,
-          questionNumber,
-          uniqueFileName
-        );
-
-        console.log(`Uploading to path: ${filePath}`);
-
-        // Upload File object directly to Supabase storage
-        const { data, error } = await supabase.storage
-          .from('assessment-question-files')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (error) {
-          console.error('Supabase upload error:', error);
-          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
-        }
-
-        console.log('Upload successful:', data);
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('assessment-question-files')
-          .getPublicUrl(filePath);
-
-        const result = {
-          id: id,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          url: urlData.publicUrl,
-          path: filePath,
-          uploadedAt: new Date()
-        };
-
-        console.log('File upload completed:', result);
-        return result;
-      } catch (error) {
-        console.error('Error processing file:', file.name, error);
-        throw new Error(`Failed to upload ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    });
-
-    try {
-      const results = await Promise.all(uploadPromises);
-      console.log('All files uploaded successfully:', results);
-      return results;
-    } catch (error) {
-      console.error('Error in batch upload:', error);
-      throw error;
-    }
-  },
-
-  // Legacy method for backward compatibility
-  uploadQuestionFilesLegacy: async (
-    files: FileItem[],
-    clientId: string,
-    employeeId: string,
-    assessmentName: string,
-    questionNumber: number
-  ): Promise<QuestionFileItem[]> => {
-    const uploadInputs: UploadFileInput[] = files.map(file => ({
-      file: new File([file.base64], file.name, { type: file.type }),
-      id: file.id
-    }));
-    
-    return questionFileService.uploadQuestionFiles(
-      uploadInputs,
-      clientId,
-      employeeId,
-      assessmentName,
-      questionNumber
-    );
   },
 
   // Delete a question file
@@ -276,153 +143,231 @@ export const questionFileService = {
     };
   },
 
-  // Upload answer attachments for a specific question
-  // Uses template name to match the existing question file structure
-  uploadAnswerAttachments: async (
-    attachments: Array<{ id: string; name: string; type: string; file?: File; url?: string }>,
+  // Generate file path for an assessment-level attachment (submission or closure)
+  // Structure: {clientId}/{employeeId}/{assessmentId}/{fileName}
+  generateSubmissionAttachmentFilePath: (
     clientId: string,
     employeeId: string,
-    templateName: string,
-    questionId: string
-  ): Promise<Array<{ id: string; name: string; type: string; url: string; path: string; size?: number }>> => {
-    console.log('Starting answer attachment upload...', { 
-      attachmentCount: attachments.length, 
-      clientId, 
-      employeeId, 
-      templateName, 
-      questionId 
-    });
+    assessmentId: string | number,
+    fileName: string
+  ): string => {
+    return `${clientId}/${employeeId}/${assessmentId}/${fileName}`;
+  },
 
-    const uploadedAttachments: Array<{ id: string; name: string; type: string; url: string; path: string; size?: number }> = [];
+  // Shared low-level upload primitive: takes any number of attachment
+  // groups (e.g. one per question, plus one for a general/closure/rework
+  // attachment array) and uploads all of them via exactly ONE call to the
+  // edge function, regardless of how many groups there are — path
+  // generation + authorization happens server-side (the edge function
+  // derives clientId/employeeId from the caller's own session), which
+  // hands back a short-lived signed upload URL per file, and the actual
+  // file bytes then go straight to storage per-file (Supabase storage has
+  // no multi-file signed-upload API, so that part stays one PUT per file).
+  uploadAttachmentGroups: async (groups: AttachmentGroup[]): Promise<GroupUploadResult[]> => {
+    type Pending = { attachment: AttachmentInput; file: File };
+    const resultByIdPerGroup = new Map<string, Map<string, UploadedAttachment>>();
+    const pendingByGroup = new Map<string, Pending[]>();
+    const groupErrors = new Map<string, string>();
 
-    for (const attachment of attachments) {
-      try {
-        // If attachment already has a path/url (already uploaded), skip
-        if (attachment.url && attachment.url.startsWith('http')) {
-          console.log('Attachment already uploaded, skipping:', attachment.name);
-          // Extract path from URL if possible, or use a placeholder
-          const existingPath = attachment.url.includes('assessment-question-files') 
-            ? attachment.url.split('assessment-question-files/')[1] 
-            : `assessment-question-files/${clientId}/${employeeId}/${templateName.replace(/[^a-zA-Z0-9-_]/g, '_')}/question_${questionId}/attachments/${attachment.name}`;
-          
-          uploadedAttachments.push({
-            id: attachment.id,
-            name: attachment.name,
-            type: attachment.type,
-            url: attachment.url,
-            path: `assessment-question-files/${existingPath}`
-          });
-          continue;
-        }
+    for (const group of groups) {
+      const resultById = new Map<string, UploadedAttachment>();
+      const pending: Pending[] = [];
 
-        // If we have a File object, upload it
-        if (attachment.file) {
-          const timestamp = Date.now();
-          const randomSuffix = Math.random().toString(36).substring(2, 8);
-          const sanitizedFileName = questionFileService.sanitizeFileName(attachment.name);
-          const uniqueFileName = `${timestamp}_${randomSuffix}_${sanitizedFileName}`;
-              const filePath = questionFileService.generateAttachmentFilePath(
-                clientId,
-                employeeId,
-                templateName,
-                questionId,
-                uniqueFileName
-              );
-
-          console.log(`Uploading attachment to path: ${filePath}`);
-
-          const { data, error } = await supabase.storage
-            .from('assessment-question-files')
-            .upload(filePath, attachment.file, {
-              cacheControl: '3600',
-              upsert: false
-            });
-
-          if (error) {
-            console.error('Supabase upload error:', error);
-            throw new Error(`Failed to upload ${attachment.name}: ${error.message}`);
-          }
-
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from('assessment-question-files')
-            .getPublicUrl(filePath);
-
-          uploadedAttachments.push({
+      for (const attachment of group.attachments) {
+        // Already uploaded (has a real storage path) — reuse the path as-is
+        // and (re)derive the public URL from it, the same way employee
+        // document uploads do (useDocumentManagement.ts: store the path,
+        // compute the URL from it at use-time). The real uploaded path has
+        // a server-generated timestamp/index/random-suffix prefix that we
+        // can't reproduce client-side, so we never try to regenerate it —
+        // only trust the path that's already there. No network call needed.
+        if (attachment.path) {
+          const { data: urlData } = supabase.storage.from(group.bucket).getPublicUrl(attachment.path);
+          resultById.set(attachment.id, {
             id: attachment.id,
             name: attachment.name,
             type: attachment.type,
             url: urlData.publicUrl,
-            path: filePath,
-            size: attachment.file.size
+            path: attachment.path
           });
-
-          console.log('Attachment upload completed:', uploadedAttachments[uploadedAttachments.length - 1]);
-        } else {
-          // If no file object and no URL, this is likely a blob URL - try to fetch it
-          if (attachment.url && attachment.url.startsWith('blob:')) {
-            try {
-              const response = await fetch(attachment.url);
-              const blob = await response.blob();
-              const file = new File([blob], attachment.name, { type: attachment.type });
-
-              const timestamp = Date.now();
-              const randomSuffix = Math.random().toString(36).substring(2, 8);
-              const sanitizedFileName = questionFileService.sanitizeFileName(attachment.name);
-              const uniqueFileName = `${timestamp}_${randomSuffix}_${sanitizedFileName}`;
-              const filePath = questionFileService.generateAttachmentFilePath(
-                clientId,
-                employeeId,
-                templateName,
-                questionId,
-                uniqueFileName
-              );
-
-              console.log(`Uploading attachment from blob URL to path: ${filePath}`);
-
-              const { data, error } = await supabase.storage
-                .from('assessment-question-files')
-                .upload(filePath, file, {
-                  cacheControl: '3600',
-                  upsert: false
-                });
-
-              if (error) {
-                console.error('Supabase upload error:', error);
-                throw new Error(`Failed to upload ${attachment.name}: ${error.message}`);
-              }
-
-              // Get public URL
-              const { data: urlData } = supabase.storage
-                .from('assessment-question-files')
-                .getPublicUrl(filePath);
-
-              uploadedAttachments.push({
-                id: attachment.id,
-                name: attachment.name,
-                type: attachment.type,
-                url: urlData.publicUrl,
-                path: filePath,
-                size: file.size
-              });
-
-              console.log('Attachment upload from blob completed:', uploadedAttachments[uploadedAttachments.length - 1]);
-            } catch (fetchError) {
-              console.error('Error fetching blob or uploading:', fetchError);
-              throw new Error(`Failed to process ${attachment.name}: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
-            }
-          } else {
-            // If no file and no valid URL, skip with warning
-            console.warn('Skipping attachment with no file object or valid URL:', attachment);
-          }
+          continue;
         }
-      } catch (error) {
-        console.error('Error processing attachment:', attachment.name, error);
-        throw new Error(`Failed to upload ${attachment.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+        let fileToUpload = attachment.file;
+        if (!fileToUpload && attachment.url && attachment.url.startsWith('blob:')) {
+          const response = await fetch(attachment.url);
+          const blob = await response.blob();
+          fileToUpload = new File([blob], attachment.name, { type: attachment.type });
+        }
+
+        if (!fileToUpload) {
+          console.warn('Skipping attachment with no file object or valid URL:', attachment);
+          continue;
+        }
+
+        pending.push({ attachment, file: fileToUpload });
+      }
+
+      resultByIdPerGroup.set(group.key, resultById);
+      if (pending.length > 0) {
+        pendingByGroup.set(group.key, pending);
       }
     }
 
-    console.log('All attachments uploaded successfully:', uploadedAttachments);
-    return uploadedAttachments;
+    if (pendingByGroup.size > 0) {
+      const items = groups
+        .filter(g => pendingByGroup.has(g.key))
+        .map(g => ({
+          key: g.key,
+          bucket: g.bucket,
+          fileNames: pendingByGroup.get(g.key)!.map(p => p.attachment.name),
+          templateName: g.templateName,
+          questionId: g.questionId,
+          assessmentId: g.assessmentId
+        }));
+
+      // One network call for every group's pending files, no matter how
+      // many groups there are — this is the whole point of this primitive.
+      const { data: uploadUrlData, error: uploadUrlError } = await supabase.functions.invoke(
+        'generate-assessment-attachment-upload-url',
+        { body: { items } }
+      );
+
+      if (uploadUrlError || !uploadUrlData?.success) {
+        throw new Error(uploadUrlData?.error || uploadUrlError?.message || 'Failed to get upload URLs');
+      }
+
+      type ItemResult = { key: string; success: boolean; results?: Array<{ fileName: string; success: boolean; path?: string; token?: string; publicUrl?: string; error?: string }>; error?: string };
+      const itemResultsByKey = new Map<string, ItemResult>(
+        (uploadUrlData.results as ItemResult[]).map((r) => [r.key, r])
+      );
+
+      await Promise.all(
+        groups.map(async (group) => {
+          const pending = pendingByGroup.get(group.key);
+          if (!pending) return;
+
+          const resultById = resultByIdPerGroup.get(group.key)!;
+          const itemResult = itemResultsByKey.get(group.key);
+          const uploadErrors: string[] = [];
+
+          if (!itemResult?.success || !itemResult.results) {
+            uploadErrors.push(itemResult?.error || 'Failed to get upload URLs for this group');
+          } else {
+            await Promise.all(
+              pending.map(async ({ attachment, file }, index) => {
+                const fileResult = itemResult.results![index];
+
+                if (!fileResult?.success) {
+                  uploadErrors.push(`${attachment.name}: ${fileResult?.error || 'Failed to get upload URL'}`);
+                  return;
+                }
+
+                const { error } = await supabase.storage
+                  .from(group.bucket)
+                  .uploadToSignedUrl(fileResult.path!, fileResult.token!, file);
+
+                if (error) {
+                  console.error('Supabase upload error:', error);
+                  uploadErrors.push(`${attachment.name}: ${error.message}`);
+                  return;
+                }
+
+                resultById.set(attachment.id, {
+                  id: attachment.id,
+                  name: attachment.name,
+                  type: attachment.type,
+                  url: fileResult.publicUrl!,
+                  path: fileResult.path!,
+                  size: file.size
+                });
+              })
+            );
+          }
+
+          if (uploadErrors.length > 0) {
+            groupErrors.set(group.key, `Failed to upload ${uploadErrors.length} attachment(s): ${uploadErrors.join('; ')}`);
+          }
+        })
+      );
+    }
+
+    return groups.map(group => ({
+      key: group.key,
+      // Preserve the original attachment order in the result.
+      attachments: group.attachments
+        .map(a => resultByIdPerGroup.get(group.key)!.get(a.id))
+        .filter((a): a is UploadedAttachment => a !== undefined),
+      error: groupErrors.get(group.key)
+    }));
+  },
+
+  // Shared upload routine for assessment-level attachments (submission/closure),
+  // parameterized by destination bucket
+  uploadAttachmentsToBucket: async (
+    bucketName: string,
+    attachments: AttachmentInput[],
+    clientId: string,
+    employeeId: string,
+    assessmentId: string | number
+  ): Promise<UploadedAttachment[]> => {
+    const [result] = await questionFileService.uploadAttachmentGroups([
+      { key: 'default', bucket: bucketName, attachments, assessmentId }
+    ]);
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    return result.attachments;
+  },
+
+  // Upload the general (assessment-level) submission attachments to the
+  // dedicated assessment-submission-attachments bucket
+  uploadSubmissionAttachments: async (
+    attachments: AttachmentInput[],
+    clientId: string,
+    employeeId: string,
+    assessmentId: string | number
+  ): Promise<UploadedAttachment[]> => {
+    return questionFileService.uploadAttachmentsToBucket(
+      'assessment-submission-attachments',
+      attachments,
+      clientId,
+      employeeId,
+      assessmentId
+    );
+  },
+
+  // Upload closure attachments to the dedicated assessment-closure-attachments bucket
+  uploadClosureAttachments: async (
+    attachments: AttachmentInput[],
+    clientId: string,
+    employeeId: string,
+    assessmentId: string | number
+  ): Promise<UploadedAttachment[]> => {
+    return questionFileService.uploadAttachmentsToBucket(
+      'assessment-closure-attachments',
+      attachments,
+      clientId,
+      employeeId,
+      assessmentId
+    );
+  },
+
+  // Upload answer attachments for a specific question, via the same
+  // edge-function-issued signed-URL batching as uploadAttachmentsToBucket.
+  uploadAnswerAttachments: async (
+    attachments: AttachmentInput[],
+    clientId: string,
+    employeeId: string,
+    templateName: string,
+    questionId: string
+  ): Promise<UploadedAttachment[]> => {
+    const [result] = await questionFileService.uploadAttachmentGroups([
+      { key: 'default', bucket: 'assessment-question-files', attachments, templateName, questionId }
+    ]);
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    return result.attachments;
   }
 };

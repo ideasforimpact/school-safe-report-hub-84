@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, Dispatch, SetStateAction } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,60 +20,65 @@ import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
 import WizardProgress from '@/components/ui/wizard-progress';
 import { EMPLOYEE_COMPLIANCE_DOCUMENTS } from '@/constants/employeeComplianceDocuments';
 import { fileToBase64 } from '@/utils/fileToBase64';
+import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS,
+  EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_PERSONAL_INFO_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS,
+  isValidReligion, getReligionErrorMessage, isValidNationality, getNationalityErrorMessage } from '@/constant/employeeConstant';
+import { capitalizeWords } from '@/lib/formatUtils';
 
-import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_PERSONAL_INFO_CONSTANTS, STAFF_ID_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS } from '@/constant/employeeConstant';
+type AddUserFormData = {
+  firstName: string;
+  lastName: string;
+  personalDetails?: {
+    middleName?: string;
+    fatherName?: string;
+    staffId?: string;
+    experience?: string;
+    qualification?: string;
+    gender?: string;
+    dob?: string;
+    religion?: string;
+    nationality?: string;
+    bloodGroup?: string;
+    residenceAddress?: string;
+  };
+
+  email: string;
+  phone?: string;
+  designation?: string;
+  tags?: string[];
+  employeeId?: string;
+  employeeType?: EmployeeType;
+  department?: DepartmentType;
+  joiningDate?: string;
+  professionalOtherDetails?: {
+    aadharNo?: string;
+    panNo?: string;
+    esiNo?: string;
+    pfNo?: string;
+    exitDate?: string;
+    biometricUserId?: string;
+  };
+  moduleAccessPayload?: ModuleAccessItem[];
+
+  documents?: Array<{
+    key?: string;
+    fileName: string;
+    filePath?: string;
+    uploadedAt: string;
+    fileData?: string;
+    contentType?: string;
+  }>;
+  clientId?: string;
+  is_cpd_involved?: boolean;
+};
+
 
 interface AddUserDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  formData: {
-    firstName: string;
-    lastName: string;
-    personalDetails?: {
-      middleName?: string;
-      fatherName?: string;
-      staffId?: string;
-      experience?: string;
-      qualification?: string;
-      gender?: string;
-      dob?: string;
-      religion?: string;
-      nationality?: string;
-      bloodGroup?: string;
-      residenceAddress?: string;
-    };
-
-    email: string;
-    phone?: string;
-    designation?: string;
-    tags?: string[];
-    employeeId?: string;
-    employeeType?: EmployeeType;
-    department?: DepartmentType;
-    joiningDate?: string;
-    professionalOtherDetails?: {
-      aadharNo?: string;
-      panNo?: string;
-      esiNo?: string;
-      pfNo?: string;
-      exitDate?: string;
-      biometricUserId?: string;
-    };
-    moduleAccessPayload?: ModuleAccessItem[];
-
-    documents?: Array<{
-      key?: string;
-      fileName: string;
-      filePath?: string;
-      uploadedAt: string;
-      fileData?: string;
-      contentType?: string;
-    }>;
-    clientId?: string;
-    is_cpd_involved?: boolean;
-  };
-  setFormData: (data: any) => void;
-  onSubmit: (formData?: any) => void;
+  formData: AddUserFormData;
+  setFormData: Dispatch<SetStateAction<AddUserFormData>>;
+  onSubmit: (formData?: AddUserFormData) => void;
   resetForm: () => void;
   isLoading: boolean;
   clientId?: string;
@@ -454,6 +459,16 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
   };
 
+  // Resigning date must have already happened — today itself doesn't count.
+  const isStrictlyPastDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return false;
+    date.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date.getTime() < today.getTime();
+  };
+
   const getProfessionalOtherDetailsErrors = () => {
     const aadharNo = (professionalOtherDetails.aadharNo || '').trim();
     const panNo = (professionalOtherDetails.panNo || '').trim().toUpperCase();
@@ -483,8 +498,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
           ? `Biometric User ID must be between ${BIOMETRIC_USER_ID_CONSTANTS.MIN_LENGTH} and ${BIOMETRIC_USER_ID_CONSTANTS.MAX_LENGTH} characters`
           : '',
       exitDate:
-        professionalOtherDetails.exitDate && new Date(professionalOtherDetails.exitDate) > new Date()
-          ? 'Resigning date cannot be in the future'
+        professionalOtherDetails.exitDate && !isStrictlyPastDate(professionalOtherDetails.exitDate)
+          ? 'Resigning date must be a past date'
           : '',
     };
   };
@@ -535,8 +550,14 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
         !/^[a-zA-Z\s.,-]+$/.test((personalDetails.qualification || '').trim())
         ? 'Qualification can only contain letters, commas, spaces, dots, and hyphens'
         : '',
-      religion: validateOptionalTextField(personalDetails.religion || '', 'Religion'),
-      nationality: validateOptionalTextField(personalDetails.nationality || '', 'Nationality'),
+      religion:
+        personalDetails.religion && !isValidReligion(personalDetails.religion)
+          ? getReligionErrorMessage()
+          : '',
+      nationality:
+        personalDetails.nationality && !isValidNationality(personalDetails.nationality)
+          ? getNationalityErrorMessage()
+          : '',
       bloodGroup:
         (personalDetails.bloodGroup || '').trim() &&
         !/^(A|A1|A2|B|AB|OH|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test((personalDetails.bloodGroup || '').trim()
@@ -549,8 +570,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
           : '',
 
       residenceAddress:
-        (personalDetails.residenceAddress || '').trim().length > 500
-          ? 'Address cannot exceed 500 characters'
+        (personalDetails.residenceAddress || '').trim().length > 100
+          ? 'Address cannot exceed 100 characters'
           : '',
     };
   };
@@ -835,7 +856,7 @@ const canProceedToNextStep = () => {
                     <Input
                       id="firstName"
                       value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, firstName: capitalizeWords(e.target.value) })}
                       maxLength={EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH}
                       minLength={EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH}
                       required
@@ -862,7 +883,7 @@ const canProceedToNextStep = () => {
                     <Input
                       id="lastName"
                       value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, lastName: capitalizeWords(e.target.value) })}
                       maxLength={EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH}
                       minLength={EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH}
                       required
@@ -953,6 +974,7 @@ const canProceedToNextStep = () => {
                       })
                     }
                     placeholder="Enter residence address"
+                    maxLength={250}
                     className={`min-h-[90px] w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${personalDetailsErrors.residenceAddress ? 'border-red-500' : 'border-input'}`}
                   />
                   {personalDetailsErrors.residenceAddress && (
@@ -1470,34 +1492,6 @@ const canProceedToNextStep = () => {
                       </div>
                     </div>
                   )}
-                </div>
-
-                  <div className="space-y-2 pt-2 border-t border-gray-100 mt-3 mb-4">
-                  <Label htmlFor="cpd-toggle">CPD Involved</Label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      id="cpd-toggle"
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          is_cpd_involved: !formData.is_cpd_involved,
-                        })
-                      }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        formData.is_cpd_involved ? 'bg-emerald-500' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          formData.is_cpd_involved ? 'translate-x-5' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm text-gray-600">
-                      {formData.is_cpd_involved ? 'Included in CPD tracking' : 'Not included in CPD tracking'}
-                    </span>
-                  </div>
                 </div>
 
               </div>

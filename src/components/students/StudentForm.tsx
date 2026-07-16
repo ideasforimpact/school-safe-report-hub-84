@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -85,10 +85,10 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   const [sections, setSections] = useState<Section[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   
-  // Selection states - track both IDs and names
-  const [selectedCampus, setSelectedCampus] = useState<string>(defaultValues?.campus || '');
+  // Selection states - IDs are the source of truth (names can collide across
+  // campuses/grades, e.g. "Grade 1" exists per-campus, so selecting/filtering
+  // by name risks resolving the wrong record's id - see campusId/gradeId below).
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
-  const [selectedGrade, setSelectedGrade] = useState<string>(defaultValues?.grade || '');
   const [selectedGradeId, setSelectedGradeId] = useState<string>('');
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   
@@ -103,6 +103,8 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   const [studentIdValidationMessage, setStudentIdValidationMessage] = useState<string>('');
   
   const debouncedStudentId = useDebounce(studentIdInput, 500);
+  const lastValidatedId = useRef<string | null>(null);
+  const fetchStructureInProgress = useRef(false);
   const { employeeData } = useAuth();
   const lang = useLang();
   const gradeLabel = lang.structure.grade;
@@ -157,6 +159,12 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         return;
       }
 
+      // Avoid duplicate validation for the same ID
+      if (debouncedStudentId === lastValidatedId.current) {
+        return;
+      }
+
+      lastValidatedId.current = debouncedStudentId;
       setIsCheckingStudentId(true);
       try {
         const exists = await checkStudentIdExists(debouncedStudentId, employeeData.clientId);
@@ -201,47 +209,26 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   // after submit/save when defaultValues may change, which was causing a
   // brief "Loading educational structure data..." flash.
     const fetchEducationalStructure = useCallback(async () => {
-      if (!employeeData?.clientId) {
-        console.log('No client ID available, skipping data fetch');
-        setDataLoading(false);
+      if (!employeeData?.clientId || fetchStructureInProgress.current) {
+        console.log('Skipping educational structure fetch: No clientId or fetch already in progress');
+        if (!employeeData?.clientId) setDataLoading(false);
         return;
       }
 
+      fetchStructureInProgress.current = true;
       setDataLoading(true);
       try {
         console.log('Fetching educational structure for client:', employeeData.clientId);
         
-        const clientTypeId = employeeData.clientType?.id;
-
-        // Fetch campuses filtered by client_id and client_type_id
-        let campusQuery = supabase
-          .from('campuses')
-          .select('id, name')
-          .eq('client_id', employeeData.clientId);
-        if (clientTypeId) campusQuery = campusQuery.eq('client_type_id', clientTypeId);
-        const { data: campusData, error: campusError } = await campusQuery;
-
-        if (campusError) throw campusError;
-
-        // Fetch grades filtered by client_id and client_type_id
-        let gradeQuery = supabase
-          .from('grades')
-          .select('id, name, campus_id')
-          .eq('client_id', employeeData.clientId);
-        if (clientTypeId) gradeQuery = gradeQuery.eq('client_type_id', clientTypeId);
-        const { data: gradeData, error: gradeError } = await gradeQuery;
-
-        if (gradeError) throw gradeError;
-
-        // Fetch sections filtered by client_id and client_type_id
-        let sectionQuery = supabase
-          .from('sections')
-          .select('id, name, grade_id')
-          .eq('client_id', employeeData.clientId);
-        if (clientTypeId) sectionQuery = sectionQuery.eq('client_type_id', clientTypeId);
-        const { data: sectionData, error: sectionError } = await sectionQuery;
+        // Use consolidated edge function instead of multiple direct queries
+        const { data, error } = await supabase.functions.invoke('student-management', {
+          body: { client_id: employeeData.clientId },
+          headers: { path: 'get-form-data' }
+        });
         
-        if (sectionError) throw sectionError;
+        if (error) throw error;
+        
+        const { campuses: campusData, grades: gradeData, sections: sectionData } = data;
         
         console.log('Fetched data:', { campusData, gradeData, sectionData });
         
@@ -302,65 +289,65 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         toast.error('Failed to load educational structure data');
       } finally {
         setDataLoading(false);
+        fetchStructureInProgress.current = false;
       }
     }, [employeeData?.clientId, defaultValues, form]);
 
     useEffect(() => {
       fetchEducationalStructure();
     }, [fetchEducationalStructure]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
 
-  // Filter grades based on selected campus
+  // Filter grades based on selected campus (by id - grade names like "Grade 1"
+  // repeat across campuses, so filtering/matching by name can silently resolve
+  // to another campus's grade).
   useEffect(() => {
-    if (selectedCampus) {
-      const campusObj = campuses.find(c => c.name === selectedCampus);
-      if (campusObj) {
-        setSelectedCampusId(campusObj.id);
-        form.setValue('campusId', campusObj.id);
-        const campusGrades = grades.filter(g => g.campusId === campusObj.id);
-        setFilteredGrades(campusGrades);
-      }
-      
-      // Reset grade and section when campus changes (unless in edit mode with matching values)
-      if (!defaultValues?.grade || (defaultValues.campus !== selectedCampus)) {
+    if (selectedCampusId) {
+      const campusGrades = grades.filter(g => g.campusId === selectedCampusId);
+      setFilteredGrades(campusGrades);
+
+      // Only clear the grade/section selection if the currently selected grade
+      // no longer belongs to this campus - not on every grades/sections refetch
+      // (e.g. a realtime update from an unrelated campus), which previously wiped
+      // an in-progress selection out from under the user.
+      setSelectedGradeId(prevGradeId => {
+        if (prevGradeId && campusGrades.some(g => g.id === prevGradeId)) {
+          return prevGradeId;
+        }
         form.setValue('grade', '');
         form.setValue('gradeId', '');
-        setSelectedGrade('');
-        setSelectedGradeId('');
         form.setValue('section', '');
         form.setValue('sectionId', '');
         setSelectedSectionId('');
-      }
+        return '';
+      });
     } else {
       setFilteredGrades([]);
-      setSelectedCampusId('');
+      setSelectedGradeId('');
       form.setValue('campusId', '');
     }
-  }, [selectedCampus, campuses, grades, form, defaultValues]);
+  }, [selectedCampusId, grades, form]);
 
-  // Filter sections based on selected grade
+  // Filter sections based on selected grade (by id, for the same reason as above -
+  // section names like "Section A" repeat across grades).
   useEffect(() => {
-    if (selectedGrade) {
-      const gradeObj = grades.find(g => g.name === selectedGrade);
-      if (gradeObj) {
-        setSelectedGradeId(gradeObj.id);
-        form.setValue('gradeId', gradeObj.id);
-        const gradeSections = sections.filter(s => s.classId === gradeObj.id);
-        setFilteredSections(gradeSections);
-      }
-      
-      // Reset section when grade changes (unless in edit mode with matching values)
-      if (!defaultValues?.section || (defaultValues.grade !== selectedGrade)) {
+    if (selectedGradeId) {
+      const gradeSections = sections.filter(s => s.classId === selectedGradeId);
+      setFilteredSections(gradeSections);
+
+      setSelectedSectionId(prevSectionId => {
+        if (prevSectionId && gradeSections.some(s => s.id === prevSectionId)) {
+          return prevSectionId;
+        }
         form.setValue('section', '');
         form.setValue('sectionId', '');
-        setSelectedSectionId('');
-      }
+        return '';
+      });
     } else {
       setFilteredSections([]);
-      setSelectedGradeId('');
-      form.setValue('gradeId', '');
+      setSelectedSectionId('');
     }
-  }, [selectedGrade, grades, sections, form, defaultValues]);
+  }, [selectedGradeId, sections, form]);
 
   // Custom form submission handler
   const handleFormSubmit = (data: FormValues) => {
@@ -382,9 +369,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   const handleCancel = () => {
     form.reset();
     setStudentIdInput('');
-    setSelectedCampus('');
     setSelectedCampusId('');
-    setSelectedGrade('');
     setSelectedGradeId('');
     setSelectedSectionId('');
     setFilteredGrades([]);
@@ -523,14 +508,14 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
             <FormItem>
               <FormLabel>Campus <span className="text-red-500">*</span></FormLabel>
               <FormControl>
-                <Select 
-                  value={field.value} 
-                  onValueChange={(value) => {
-                    const campus = campuses.find(c => c.name === value);
+                <Select
+                  value={selectedCampusId}
+                  onValueChange={(campusId) => {
+                    const campus = campuses.find(c => c.id === campusId);
                     if (campus) {
-                      field.onChange(value);
+                      field.onChange(campus.name);
                       form.setValue('campusId', campus.id);
-                      setSelectedCampus(value);
+                      setSelectedCampusId(campus.id);
                     }
                   }}
                 >
@@ -539,7 +524,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
                   </SelectTrigger>
                   <SelectContent>
                     {campuses.map((campus) => (
-                      <SelectItem key={campus.id} value={campus.name}>{campus.name}</SelectItem>
+                      <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -557,23 +542,23 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
               <FormLabel>{gradeLabel} <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Select
-                  value={field.value}
-                  onValueChange={(value) => {
-                    const grade = filteredGrades.find(g => g.name === value);
+                  value={selectedGradeId}
+                  onValueChange={(gradeId) => {
+                    const grade = filteredGrades.find(g => g.id === gradeId);
                     if (grade) {
-                      field.onChange(value);
+                      field.onChange(grade.name);
                       form.setValue('gradeId', grade.id);
-                      setSelectedGrade(value);
+                      setSelectedGradeId(grade.id);
                     }
                   }}
-                  disabled={!selectedCampus || filteredGrades.length === 0}
+                  disabled={!selectedCampusId || filteredGrades.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={!selectedCampus ? "Select campus first" : `Select ${gradeLabel.toLowerCase()}`} />
+                    <SelectValue placeholder={!selectedCampusId ? "Select campus first" : "Select grade"} />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredGrades.map((grade) => (
-                      <SelectItem key={grade.id} value={grade.name}>{grade.name}</SelectItem>
+                      <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -591,23 +576,23 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
               <FormLabel>{sectionLabel} <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Select
-                  value={field.value}
-                  onValueChange={(value) => {
-                    const section = filteredSections.find(s => s.name === value);
+                  value={selectedSectionId}
+                  onValueChange={(sectionId) => {
+                    const section = filteredSections.find(s => s.id === sectionId);
                     if (section) {
-                      field.onChange(value);
+                      field.onChange(section.name);
                       form.setValue('sectionId', section.id);
                       setSelectedSectionId(section.id);
                     }
                   }}
-                  disabled={!selectedGrade || filteredSections.length === 0}
+                  disabled={!selectedGradeId || filteredSections.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={!selectedGrade ? `Select ${gradeLabel.toLowerCase()} first` : `Select ${sectionLabel.toLowerCase()}`} />
+                    <SelectValue placeholder={!selectedGradeId ? "Select grade first" : "Select section"} />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredSections.map((section) => (
-                      <SelectItem key={section.id} value={section.name}>{section.name}</SelectItem>
+                      <SelectItem key={section.id} value={section.id}>{section.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -628,8 +613,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
               Cancel
             </Button>
             <Button 
-              type="button" 
-              onClick={() => form.handleSubmit(handleFormSubmit)()}
+              type="submit" 
               disabled={
                 isSubmitting || 
                 studentIdExists || 
@@ -657,7 +641,6 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
             </Button>
             <Button 
               type="submit" 
-              onClick={() => form.handleSubmit(handleFormSubmit)()}
               disabled={
                 isSubmitting || 
                 studentIdExists || 

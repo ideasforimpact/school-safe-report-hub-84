@@ -1,5 +1,26 @@
 import { supabase } from '@/integrations/supabase/client';
-import { AssessmentQuestion, AssessmentTemplate } from '@/types/assessment';
+import { AssessmentQuestion, AssessmentTemplate, QuestionFile } from '@/types/assessment';
+import type { Json } from '@/integrations/supabase/types';
+
+// A question's `files` entries can be a raw browser File (pending upload), a wrapper
+// with a `.file` property (from prepareQuestionsWithFiles), or an already-processed
+// QuestionFile — convertFilesToBase64 below normalizes all three.
+type PendingQuestionFile = File | (Partial<QuestionFile> & { file?: File });
+
+interface Base64QuestionFile {
+  id: string;
+  name?: string;
+  size?: number;
+  type?: string;
+  fileData?: string;
+  url?: string;
+  path?: string;
+  uploadedAt?: string;
+}
+
+interface ProcessedQuestion extends Omit<AssessmentQuestion, 'files'> {
+  files?: Base64QuestionFile[];
+}
 
 export interface CreateTemplateRequest {
   title: string;
@@ -10,7 +31,6 @@ export interface CreateTemplateRequest {
   clientId: string;
   employeeId: string;
   templateId?: string; // For updates
-  clientTypeId?: string;
 }
 
 export interface CreateTemplateResponse {
@@ -35,9 +55,9 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 // Convert pending files to base64 format for the edge function
-async function convertFilesToBase64(questions: AssessmentQuestion[]): Promise<any[]> {
+async function convertFilesToBase64(questions: AssessmentQuestion[]): Promise<ProcessedQuestion[]> {
   const processedQuestions = await Promise.all(
-    questions.map(async (question) => {
+    questions.map(async (question): Promise<ProcessedQuestion> => {
       if (!question.files || question.files.length === 0) {
         return question;
       }
@@ -45,11 +65,11 @@ async function convertFilesToBase64(questions: AssessmentQuestion[]): Promise<an
       // Convert files to base64 format
       console.log(`Converting files for question ${question.id}:`, question.files);
       const base64Files = await Promise.all(
-        question.files.map(async (file: any) => {
+        (question.files as PendingQuestionFile[]).map(async (file) => {
           console.log('Processing file in convertFilesToBase64:', file);
           console.log('File instanceof File:', file instanceof File);
-          console.log('File.file instanceof File:', file.file instanceof File);
-          console.log('File.fileData:', file.fileData);
+          console.log('File.file instanceof File:', 'file' in file && file.file instanceof File);
+          console.log('File.fileData:', 'fileData' in file ? file.fileData : undefined);
           // If file is already a File object (from pending files), convert to base64
           if (file instanceof File) {
             console.log('File is instanceof File, converting to base64');
@@ -105,42 +125,30 @@ export const templateService = {
   // Get all templates for a client
   getTemplates: async (clientId: string, clientTypeId?: string): Promise<AssessmentTemplate[]> => {
     try {
-      let query = supabase
-        .from('assessment_templates')
-        .select(`
-          id,
-          title,
-          description,
-          category_id,
-          is_active,
-          questions,
-          created_at,
-          created_by,
-          employees:created_by(first_name, last_name),
-          template_categories(
-            id,
-            name,
-            description
-          )
-        `)
-        .eq('client_id', clientId);
-      if (clientTypeId) {
-        query = query.eq('client_type_id', clientTypeId);
-      }
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data: result, error } = await supabase.functions.invoke('list-assessments', {
+        body: { client_id: clientId, client_type_id: clientTypeId },
+        headers: { path: 'templates' },
+      });
 
       if (error) {
         console.error('Error fetching templates:', error);
         throw new Error(`Failed to fetch templates: ${error.message}`);
       }
 
-      console.log({
-        data,
-        clientId
-      },"assessment validation");
-      
+      const data = result?.templates as Array<{
+        id: string;
+        title: string;
+        description: string;
+        template_categories?: { name?: string };
+        category_id: string;
+        questions: unknown;
+        created_at: string;
+        created_by: string;
+        is_active: boolean;
+      }> | undefined;
+
       // Transform data to include type from category relationship
-      const templates = data?.map(template => ({
+      const templates = data?.map((template) => ({
         id: template.id,
         title: template.title,
         description: template.description,
@@ -148,9 +156,7 @@ export const templateService = {
         category_id: template.category_id,
         questions: template.questions as unknown as AssessmentQuestion[],
         createdAt: template.created_at,
-        createdBy: template.employees
-          ? `${(template.employees as any).first_name || ''} ${(template.employees as any).last_name || ''}`.trim()
-          : (template.created_by || 'System'),
+        createdBy: template.created_by,
         isActive: template.is_active
       })) || [];
 
@@ -162,7 +168,14 @@ export const templateService = {
   },
 
   // Create template (legacy method for backward compatibility)
-  createTemplate: async (templateData: any): Promise<string> => {
+  createTemplate: async (templateData: {
+    title: string;
+    description: string;
+    category_id: string;
+    questions?: AssessmentQuestion[];
+    clientId?: string;
+    createdBy?: string;
+  }): Promise<string> => {
     try {
       // This is a simplified version that doesn't handle files
       // For file handling, use createOrUpdateTemplate instead
@@ -172,10 +185,9 @@ export const templateService = {
           title: templateData.title,
           description: templateData.description,
           category_id: templateData.category_id,
-          questions: templateData.questions || [],
+          questions: (templateData.questions || []) as unknown as Json,
           created_by: templateData.createdBy || '',
-          client_id: templateData.clientId || '',
-          client_type_id: templateData.clientTypeId || null
+          client_id: templateData.clientId || ''
         })
         .select()
         .single();
@@ -192,16 +204,29 @@ export const templateService = {
   },
 
   // Update template (legacy method for backward compatibility)
-  updateTemplate: async (id: string, updates: any): Promise<void> => {
+  updateTemplate: async (id: string, updates: {
+    title?: string;
+    description?: string;
+    category_id?: string;
+    questions?: AssessmentQuestion[];
+    isActive?: boolean;
+  }): Promise<void> => {
     try {
-      const updateData: any = {};
-      
+      const updateData: {
+        title?: string;
+        description?: string;
+        category_id?: string;
+        questions?: Json;
+        is_active?: boolean;
+        updated_at?: string;
+      } = {};
+
       if (updates.title) updateData.title = updates.title;
       if (updates.description) updateData.description = updates.description;
       if (updates.category_id) updateData.category_id = updates.category_id;
-      if (updates.questions) updateData.questions = updates.questions;
+      if (updates.questions) updateData.questions = updates.questions as unknown as Json;
       if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
-      
+
       updateData.updated_at = new Date().toISOString();
 
       const { error } = await supabase
@@ -258,8 +283,7 @@ export const templateService = {
           questions: processedQuestions,
           clientId: request.clientId,
           employeeId: request.employeeId,
-          templateId: request.templateId,
-          clientTypeId: request.clientTypeId
+          templateId: request.templateId // Will be undefined for creates
         }
       });
 

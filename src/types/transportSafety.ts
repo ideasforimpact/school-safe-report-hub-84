@@ -28,7 +28,7 @@ export interface VehicleDocument {
 
 export interface VehicleVerificationField {
   field: string;
-  value: any;
+  value: string | number | boolean | null | Record<string, unknown> | unknown[];
   verified: boolean;
 }
 
@@ -38,17 +38,17 @@ export interface VerificationLogItem {
 
 export interface VehicleVerificationData {
   field: string;
-  value: any;
+  value: string | number | boolean | null | Record<string, unknown> | unknown[];
   verified: boolean;
 }
 
 export interface VehicleChallans {
   id: string;
   vehicle_id: string;
-  latest_challan_data: any;
+  latest_challan_data: Record<string, unknown>;
   challan_status: boolean;
   challan_status_code: string | null;
-  challan_history_log: any;
+  challan_history_log: Record<string, unknown> | null;
   provider: string | null;
   success_api_count: number;
   error_api_count: number;
@@ -80,12 +80,15 @@ export interface Vehicle {
   verificationStatus?: string;
   verificationDate?: string;
   verificationData?: VehicleVerificationData[];
-  verification_log?: Record<string, any>; // Legacy field, keeping for backward compatibility
+  verification_log?: Record<string, unknown>; // Legacy field, keeping for backward compatibility
   // RC API fields
-  currentRcData?: any; // current_rc_data from vehicles table
+  currentRcData?: Record<string, unknown>; // current_rc_data from vehicles table
   provider?: string | null; // surepass or quickeyc
   statusCode?: string | null; // status_code from API
   rcStatus?: string | null; // success or error
+  vehicleChasiNumber?: string | null; // real (unmasked) chassis number
+  vehicleEngineNumber?: string | null; // real (unmasked) engine number
+  vehicleOwnerName?: string | null; // real (unmasked) owner name
   // Challan data
   vehicleChallans?: VehicleChallans | null;
 }

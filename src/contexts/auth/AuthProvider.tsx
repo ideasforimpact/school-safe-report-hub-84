@@ -1,6 +1,6 @@
 import React, { createContext, useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType, ClientIntegration, LogoutReason, ClientChoiceRow } from './types';
-import type { PendingClientChoices } from './hooks/useAuthHandlers';
+import type { PendingClientChoices, EmployeeAuthRecord } from './hooks/useAuthHandlers';
 import { ClientPickerDialog } from '@/components/auth/ClientPickerDialog';
 import { 
   logoutUser, 
@@ -54,6 +54,8 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+const ALL_TAB_SYNC_ENABLED = import.meta.env.VITE_ALL_TAB_LOGIN_LOGOUT === 'true';
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,7 +84,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const crossTabSyncRef = useRef<boolean>(false);
   const currentTabIdRef = useRef<string>(`tab_${Date.now()}_${Math.random()}`);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
-  const ALL_TAB_SYNC_ENABLED =import.meta.env.VITE_ALL_TAB_LOGIN_LOGOUT === 'true';
 
   // Use session refresh hook for automatic session validation
   const { refreshSession } = useSessionRefresh(5); // Check every 5 minutes
@@ -124,7 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       let clientIntegration: ClientIntegration[] | null = null;
       try {
         console.log('🔍 Fetching client_integration for client_id:', clientId);
-        const { data: integrationData, error: integrationError } = await (supabase as any)
+        const { data: integrationData, error: integrationError } = await (supabase as unknown as { rpc: (fn: string, args: Record<string, string>) => Promise<{ data: ClientIntegration[] | null; error: { message?: string; code?: string; details?: string; hint?: string } | null }> })
           .rpc('get_client_integration_for_auth', { p_client_id: clientId });
 
         if (integrationError) {
@@ -142,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } else if (integrationData && Array.isArray(integrationData)) {
           if (integrationData.length > 0) {
-            clientIntegration = integrationData.map((item: any) => ({
+            clientIntegration = integrationData.map((item: ClientIntegration) => ({
               id: item.id,
               client_id: item.client_id,
               target_client_id: item.target_client_id,
@@ -265,9 +266,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }).current;
 
   // Add setUser function that can be called directly
-  const handleSetUser = (user: User | null) => {
+  const handleSetUser = useCallback((user: User | null) => {
     dispatch(setCurrentUser(user));
-  };
+  }, [dispatch]);
 
   // Multi-client picker state. Populated by useAuthHandlers when a Google
   // or Azure SSO login resolves to more than one active employees row.
@@ -297,7 +298,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!pendingClientChoices) return;
     setShowAuthLoading(true);
     try {
-      await completeAuthForEmployee(row as any, pendingClientChoices.supabaseUser);
+      await completeAuthForEmployee(row as unknown as EmployeeAuthRecord, pendingClientChoices.supabaseUser);
     } finally {
       setPendingClientChoicesState(null);
       setShowAuthLoading(false);
@@ -400,6 +401,8 @@ const handleLogoutBroadcast = useCallback(() => {
     }
     if (crossTabSyncRef.current) return;
     crossTabSyncRef.current = true;
+
+    const currentTabId = currentTabIdRef.current;
 
     if (typeof BroadcastChannel !== 'undefined') {
       broadcastChannelRef.current = new BroadcastChannel('supabase_auth_channel');
@@ -544,7 +547,7 @@ const handleLogoutBroadcast = useCallback(() => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
       clearInterval(heartbeatInterval);
-      localStorage.removeItem(currentTabIdRef.current);
+      localStorage.removeItem(currentTabId);
       crossTabSyncRef.current = false;
     };
   }, [currentUser, handleUserAuthentication, handleLoginSync, handleLogoutSync, location.pathname, isBackofficeUser, navigate]);
@@ -808,10 +811,12 @@ const handleLogoutBroadcast = useCallback(() => {
     };
 
     checkSupabaseAuth();
-  }, []); // Empty dependency array to run only once
+    // initializationCompleteRef/authCheckInProgressRef guard re-entry, so this
+    // effectively still only runs its body once despite tracking real deps.
+  }, [currentUser, dispatch, handleUserAuthentication, location.pathname, navigate]);
 
   // Handle login - REMOVED backoffice logic, now only handles regular users and SSO
-  const handleLogin = async (email: string, password: string): Promise<boolean> => {
+  const handleLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
     dispatch(setAuthError(null));
     setShowAuthLoading(true);
     
@@ -925,10 +930,10 @@ const handleLogoutBroadcast = useCallback(() => {
       setShowAuthLoading(false);
       return false;
     }
-  };
+  }, [dispatch, users, handleLoginBroadcast, fetchClientInfo, setCurrentUserWithClientInfo]);
 
   // Simplified logout with immediate state clearing
-  const handleLogout = async (reason?: LogoutReason, message?: string): Promise<void> => {
+  const handleLogout = useCallback(async (reason?: LogoutReason, message?: string): Promise<void> => {
     // Check if logout is already in progress
     if (!authCoordinator.startLogout()) {
       return;
@@ -988,10 +993,10 @@ const handleLogoutBroadcast = useCallback(() => {
         dispatch(setLogoutState(false));
       }, 1000);
     }
-  };
+  }, [dispatch, handleLogoutBroadcast, isBackofficeUser, navigate, location.pathname]);
 
   // Add new user
-  const handleAddUser = (userData: any): void => {
+  const handleAddUser = (userData: Omit<UserWithPassword, 'id' | 'isActive'> & { isActive?: boolean }): void => {
     const newUser: UserWithPassword = { 
       ...userData,
       id: Date.now().toString(), 
@@ -1069,7 +1074,7 @@ const handleLogoutBroadcast = useCallback(() => {
   };
 
   // Change password
-  const handleChangePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+  const handleChangePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
     if (!currentUser) {
       toast.error("No user logged in");
       return false;
@@ -1085,7 +1090,7 @@ const handleLogoutBroadcast = useCallback(() => {
       toast.error("Current password is incorrect");
       return false;
     }
-  };
+  }, [currentUser, users]);
 
   // Context value with useMemo to ensure updates when Redux state changes
   const contextValue: AuthContextType = useMemo(() => ({
@@ -1123,6 +1128,8 @@ const handleLogoutBroadcast = useCallback(() => {
     pendingClientChoices,
     confirmClientChoice,
     cancelClientChoice,
+    handleSetUser,
+    handleUserAuthentication
   ]);
 
   if (isInitializing) {

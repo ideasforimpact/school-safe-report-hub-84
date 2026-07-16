@@ -1,5 +1,6 @@
 import React from 'react';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
+import { NOTES__MAX_LENGTH } from '@/components/constants';
 
 interface LearningPointsProps {
   learningPoints: string;
@@ -22,10 +23,10 @@ const LearningPoints: React.FC<LearningPointsProps> = ({
           onChange={(e) => setLearningPoints(e.target.value)}
           placeholder="What can we learn from this incident to prevent similar issues in the future?"
           className="min-h-[100px] text-md"
-          maxLength={200}
+          maxLength={NOTES__MAX_LENGTH}
         />
         <div className="text-right text-sm text-gray-500">
-          {learningPoints.length}/200 characters
+          {learningPoints.length}/{NOTES__MAX_LENGTH} characters
         </div>
       </div>
     </div>

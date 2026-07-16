@@ -7,7 +7,7 @@ interface ChartPieViewProps {
   colors: string[];
   activeIndex: number | null;
   total: number;
-  onPieEnter: (_: any, index: number) => void;
+  onPieEnter: (_: unknown, index: number) => void;
   onPieLeave: () => void;
 }
 

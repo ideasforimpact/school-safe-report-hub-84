@@ -15,12 +15,12 @@ const BACKOFFICE_AUTH_STORAGE_KEY = 'auth_state_backoffice';
 const LEGACY_AUTH_STORAGE_KEY = 'auth_state';
 
 export interface PersistedAuthState {
-  currentUser: any | null;
+  currentUser: Record<string, unknown> | null;
   isAuthenticated: boolean;
   isBackofficeUser: boolean;
   authError: string | null;
-  configuredModules: any[] | null;
-  employeeData: any | null;
+  configuredModules: Record<string, unknown>[] | null;
+  employeeData: Record<string, unknown> | null;
   activeClientId?: string | null;
   homeClientId?: string | null;
   isSwitchedContext?: boolean;

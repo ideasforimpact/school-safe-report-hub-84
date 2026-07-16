@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { reportTypeService, ReportTypeItem } from '@/services/incident/reportTypeService';
 import { useAuth } from '@/contexts/auth/useAuth';
 
@@ -8,7 +8,7 @@ export function useReportTypes(clientTypeId?: string) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchReportTypes = async (activeOnly: boolean = false) => {
+  const fetchReportTypes = useCallback(async (activeOnly: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -21,20 +21,20 @@ export function useReportTypes(clientTypeId?: string) {
         // Then sort by name alphabetically
         return a.name.localeCompare(b.name);
       });
-      
+
       setReportTypes(sortedTypes);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching report types:", err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
       setReportTypes([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientTypeId]);
 
   useEffect(() => {
     fetchReportTypes();
-  }, [clientTypeId]);
+  }, [fetchReportTypes]);
 
   return {
     reportTypes,
@@ -51,27 +51,27 @@ export function useActiveReportTypes() {
   const [error, setError] = useState<string | null>(null);
 
   const { employeeData, user } = useAuth();
-  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? undefined;
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? undefined;
 
-  const fetchReportTypes = async () => {
+  const fetchReportTypes = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const types = await reportTypeService.getReportTypes(true, clientTypeId);
       const sortedTypes = (types || []).sort((a, b) => a.name.localeCompare(b.name));
       setReportTypes(sortedTypes);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching active report types:", err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
       setReportTypes([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientTypeId]);
 
   useEffect(() => {
     fetchReportTypes();
-  }, [clientTypeId]);
+  }, [fetchReportTypes]);
 
   return {
     reportTypes,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth/useAuth';
 import { FileItem } from '@/types/fileTypes';
 import {
   IncidentType,
@@ -9,12 +10,12 @@ import {
   IncidentLocation,
   Person
 } from '@/types/incident';
-
+ 
 interface ConfigItem {
   id: string;
   name: string;
 }
-
+ 
 interface FormData {
   typeId: string;
   categoryId: string;
@@ -28,8 +29,11 @@ interface FormData {
   owner: string;
   status: string;
 }
-
+ 
 export const useIncidentForm = () => {
+  const { employeeData } = useAuth();
+  const clientId = employeeData?.clientId;
+  const clientTypeId = employeeData?.clientType?.id;
   const [nextTicketId, setNextTicketId] = useState<string>('');
   const [formData, setForm] = useState<FormData>({
     typeId: '',
@@ -53,61 +57,83 @@ export const useIncidentForm = () => {
   const [subcategories, setSubcategories] = useState<ConfigItem[]>([]);
   const [priorities, setPriorities] = useState<ConfigItem[]>([]);
   const [users, setUsers] = useState<ConfigItem[]>([]);
-
+ 
   useEffect(() => {
+    if (!clientId) return;
+ 
     const fetchData = async () => {
       try {
-        const { data: locationsData, error: locationsError } = await supabase
+        let locationsQuery = supabase
           .from('campuses')
-          .select('*');
+          .select('*')
+          .eq('client_id', clientId);
+        if (clientTypeId) locationsQuery = locationsQuery.eq('client_type_id', clientTypeId);
+        const { data: locationsData, error: locationsError } = await locationsQuery;
         if (locationsError) {
           throw locationsError;
         }
         setLocations(locationsData || []);
-
-        const { data: facilitiesData, error: facilitiesError } = await supabase
+ 
+        let facilitiesQuery = supabase
           .from('facilities')
-          .select('*');
+          .select('*')
+          .eq('client_id', clientId);
+        if (clientTypeId) facilitiesQuery = facilitiesQuery.eq('client_type_id', clientTypeId);
+        const { data: facilitiesData, error: facilitiesError } = await facilitiesQuery;
         if (facilitiesError) {
           throw facilitiesError;
         }
         setFacilities(facilitiesData || []);
-
-        const { data: reportTypesData, error: reportTypesError } = await supabase
+ 
+        let reportTypesQuery = supabase
           .from('incident_report_types')
-          .select('*');
+          .select('*')
+          .eq('client_id', clientId);
+        if (clientTypeId) reportTypesQuery = reportTypesQuery.eq('client_type_id', clientTypeId);
+        const { data: reportTypesData, error: reportTypesError } = await reportTypesQuery;
         if (reportTypesError) {
           throw reportTypesError;
         }
         setReportTypes(reportTypesData || []);
-
-        const { data: categoriesData, error: categoriesError } = await supabase
+ 
+        let categoriesQuery = supabase
           .from('incident_categories')
-          .select('*');
+          .select('*')
+          .eq('client_id', clientId);
+        if (clientTypeId) categoriesQuery = categoriesQuery.eq('client_type_id', clientTypeId);
+        const { data: categoriesData, error: categoriesError } = await categoriesQuery;
         if (categoriesError) {
           throw categoriesError;
         }
         setCategories(categoriesData || []);
-
-        const { data: subcategoriesData, error: subcategoriesError } = await supabase
+ 
+        let subcategoriesQuery = supabase
           .from('incident_subcategories')
-          .select('*');
+          .select('*')
+          .eq('client_id', clientId);
+        if (clientTypeId) subcategoriesQuery = subcategoriesQuery.eq('client_type_id', clientTypeId);
+        const { data: subcategoriesData, error: subcategoriesError } = await subcategoriesQuery;
         if (subcategoriesError) {
           throw subcategoriesError;
         }
         setSubcategories(subcategoriesData || []);
-
-        const { data: prioritiesData, error: prioritiesError } = await supabase
+ 
+        let prioritiesQuery = supabase
           .from('incident_priorities')
-          .select('*');
+          .select('*')
+          .eq('client_id', clientId);
+        if (clientTypeId) prioritiesQuery = prioritiesQuery.eq('client_type_id', clientTypeId);
+        const { data: prioritiesData, error: prioritiesError } = await prioritiesQuery;
         if (prioritiesError) {
           throw prioritiesError;
         }
         setPriorities(prioritiesData || []);
-
+ 
         const { data: usersData, error: usersError } = await supabase
           .from('employees')
-          .select('id, first_name, last_name');
+          .select('id, first_name, last_name')
+          .eq('client_id', clientId)
+          .eq('is_secondary_super_admin', false);
         if (usersError) {
           throw usersError;
         }
@@ -123,23 +149,23 @@ export const useIncidentForm = () => {
         toast.error('Could not load form configuration data');
       }
     };
-
+ 
     fetchData();
-  }, []);
-
+  }, [clientId, clientTypeId]);
+ 
   useEffect(() => {
     const generateId = () => {
       const newTicketId = `INC-${Math.floor(Math.random() * 10000)}`;
       setNextTicketId(newTicketId);
     };
-
+ 
     generateId();
   }, []);
-
+ 
   const handleChange = (name: string, value: string) => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
-
+ 
   const handleSelectChange = (name: string, value: string) => {
     if (name === 'categoryId') {
       setForm((prev) => ({ ...prev, categoryId: value, subcategoryId: '' }));
@@ -147,20 +173,20 @@ export const useIncidentForm = () => {
       setForm((prev) => ({ ...prev, [name]: value }));
     }
   };
-
+ 
   const handleMultiSelectChange = (fields: Partial<FormData>) => {
     setForm((prev) => ({ ...prev, ...fields }));
   };
-
+ 
   const handleDateTimeChange = (name: string, value: Date | string) => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
-
+ 
   const handlePersonChange = (
     index: number,
     field: keyof Person,
     value: string,
-    additionalFields?: Record<string, any>
+    additionalFields?: Record<string, string>
   ) => {
     const updatedPeople = [...peopleInvolved];
     const updatedPerson = { ...updatedPeople[index], [field]: value };
@@ -173,36 +199,36 @@ export const useIncidentForm = () => {
     updatedPeople[index] = updatedPerson;
     setPeople(updatedPeople);
   };
-
+ 
   const addPerson = () => {
     setPeople([...peopleInvolved, { name: '', role: 'Student', notes: '' }]);
   };
-
+ 
   const removePerson = (index: number) => {
     const updatedPeople = peopleInvolved.filter((_, i) => i !== index);
     setPeople(updatedPeople);
   };
-
+ 
   const handleFilesChange = (newFiles: FileItem[]) => {
     setSupportingFiles(newFiles);
   };
-
+ 
   const getSelectedLocation = (locationId: string) => {
     return locations.find((location) => location.id === locationId);
   };
-
+ 
   const getSelectedFacility = (facilityId: string) => {
     return facilities.find((facility) => facility.id === facilityId);
   };
-
+ 
   const setFormData = (newFormData: Partial<FormData>) => {
     setForm(prev => ({ ...prev, ...newFormData }));
   };
-
+ 
   const setPeopleInvolved = (newPeople: Person[]) => {
     setPeople(newPeople);
   };
-
+ 
   return {
     nextTicketId,
     formData,

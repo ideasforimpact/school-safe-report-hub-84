@@ -10,6 +10,7 @@ export type NotificationType =
   | 'incident_reminder_10_days'
   | 'employee_verified'
   | 'assessment_assigned'
+  | 'assessment_reassigned'
   | 'assessment_submitted'
   | 'assessment_completed'
   | 'assessment_rework_required'
@@ -42,7 +43,7 @@ export interface NotificationData {
   clientId: string;
   variables: Record<string, string | number | Date>;
   priority?: NotificationPriority;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean | null | undefined>;
 }
 
 export interface NotificationRule {
@@ -75,7 +76,7 @@ export interface NotificationLog {
   errorMessage?: string;
   sentAt?: string;
   createdAt: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean | null | undefined>;
 }
 
 // Incident-specific notification data

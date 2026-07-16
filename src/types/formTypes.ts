@@ -33,7 +33,7 @@ export interface FormSubmission {
   submitter_email?: string;
   submitter_phone?: string;
   submitter_type?: 'parent' | 'student' | 'staff' | 'other';
-  responses: Record<string, any>; // Field ID -> Response value
+  responses: Record<string, string | string[] | number | boolean | null>; // Field ID -> Response value
   attachments?: Array<{
     filename: string;
     url: string;

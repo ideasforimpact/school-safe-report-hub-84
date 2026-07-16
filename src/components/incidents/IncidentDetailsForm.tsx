@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { FileItem } from '@/types/fileTypes';
-import { useIncidentFormData } from '@/hooks/useIncidentFormData';
+import { useIncidentFormData, IncidentFormData } from '@/hooks/useIncidentFormData';
 import AssignmentSection from './sections/AssignmentSection';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { DESCRIPTION_MAX_LENGTH } from '../constants';
@@ -15,14 +15,29 @@ import Loader from '../common/Loader';
 import { Sparkles, X, Loader2, ChevronRight } from 'lucide-react';
 import { useIncidentCategorySuggestion } from '@/hooks/useIncidentCategorySuggestion';
 
+interface IncidentDetailsFormValues {
+  typeId: string;
+  categoryId: string;
+  subcategoryId: string;
+  description: string;
+  date: string;
+  time: string;
+  locationId: string;
+  facilityId: string;
+  priorityId: string;
+  owner: string;
+}
+
 interface IncidentDetailsFormProps {
-  formData: any;
+  formData: IncidentDetailsFormValues;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSelectChange: (name: string, value: string) => void;
   onApplySuggestion: (categoryId: string, subcategoryId: string | null) => void;
   onDateTimeChange: (date: Date | undefined, timeString?: string) => void;
   supportingFiles: FileItem[];
   onFilesChange: (files: FileItem[]) => void;
+  configData?: IncidentFormData;
+  configLoading?: boolean;
 }
 
 const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
@@ -33,9 +48,19 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   onDateTimeChange,
   supportingFiles,
   onFilesChange,
+  configData: propConfigData,
+  configLoading: propConfigLoading,
 }) => {
-  const { formData: configData, loading: configLoading } = useIncidentFormData();
-
+  // Get form configuration data from database
+  const hookData = useIncidentFormData();
+  const configData = propConfigData || hookData.formData;
+  const configLoading = propConfigLoading !== undefined ? propConfigLoading : hookData.loading;
+  const employees = (hookData.employees || []).map((emp: { id: string; first_name: string; last_name: string; email?: string }) => ({
+    id: emp.id,
+    firstName: emp.first_name,
+    lastName: emp.last_name,
+    email: emp.email || '',
+  }));
   const { suggestions, loading: suggestionLoading, noMatch, clearSuggestions } = useIncidentCategorySuggestion(
     formData.description ?? '',
     configData.categories,
@@ -313,6 +338,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         <AssignmentSection
           owner={formData.owner || ''}
           onSelectChange={onSelectChange}
+          employees={employees}
         />
 
         {/* Supporting Files */}

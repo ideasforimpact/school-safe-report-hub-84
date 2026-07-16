@@ -15,6 +15,15 @@ interface Employee {
   status?: boolean;
 }
 
+interface AssessmentNotificationAssessment {
+  id: string;
+  title: string;
+  client_id: string;
+  created_by: string;
+  assigned_to: string;
+  target_completion_date?: string | null;
+}
+
 // Assessment notification data interface
 interface AssessmentNotificationData extends NotificationData {
   metadata: {
@@ -41,9 +50,9 @@ export class AssessmentNotificationService {
    * Queue assessment assigned notification
    */
   async queueAssessmentAssignedNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     assignedEmployee: Employee, 
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       // Validate required employee data — only id + email are required for delivery.
@@ -104,9 +113,87 @@ export class AssessmentNotificationService {
         recipientEmail: assignedEmployee.email
       });
 
-      return await notificationService.queueNotification(notificationData, currentEmployeeData);
+      const { success, emailQueueId } = await notificationService.queueNotificationWithId(notificationData, currentEmployeeData);
+      if (success) {
+        await this.triggerImmediateEmailProcessing(emailQueueId);
+      }
+      return success;
     } catch (error) {
       console.error('Error queueing assessment assigned notification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Queue assessment reassigned notification
+   */
+  async queueAssessmentReassignedNotification(
+    assessment: AssessmentNotificationAssessment,
+    assignedEmployee: Employee,
+    currentEmployeeData?: EmployeeData
+  ): Promise<boolean> {
+    try {
+      if (!assignedEmployee?.id || !assignedEmployee?.email) {
+        console.error('Invalid assigned employee data:', assignedEmployee);
+        return false;
+      }
+
+      if (!assessment?.id || !assessment?.title || !assessment?.client_id) {
+        console.error('Invalid assessment data:', assessment);
+        return false;
+      }
+
+      const recipientDisplayName = formatEmployeeName(assignedEmployee);
+
+      const notificationData: NotificationData = {
+        module: 'assessment',
+        type: 'assessment_reassigned' as NotificationType,
+        recipientId: assignedEmployee.id,
+        recipientEmail: assignedEmployee.email,
+        recipientName: recipientDisplayName,
+        clientId: assessment.client_id,
+        priority: 'medium',
+        variables: {
+          User_Name: recipientDisplayName,
+          Assessment_ID: assessment.id,
+          Assessment_Title: assessment.title,
+          created_by: assessment.created_by,
+          assigned_to: assessment.assigned_to,
+          Reassigned_Date: new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          Due_Date: assessment.target_completion_date ? new Date(assessment.target_completion_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          }) : 'Not specified',
+          Assessment_URL: `${this.getBaseUrl()}/assessments`
+        },
+        metadata: {
+          assessmentId: assessment.id,
+          createdBy: assessment.created_by,
+          assignedTo: assessment.assigned_to,
+          actionBy: assessment.created_by
+        }
+      };
+
+      console.log('Queueing assessment reassigned notification:', {
+        assessmentId: assessment.id,
+        recipientId: assignedEmployee.id,
+        recipientEmail: assignedEmployee.email
+      });
+
+      const { success, emailQueueId } = await notificationService.queueNotificationWithId(notificationData, currentEmployeeData);
+      if (success) {
+        await this.triggerImmediateEmailProcessing(emailQueueId);
+      }
+      return success;
+    } catch (error) {
+      console.error('Error queueing assessment reassigned notification:', error);
       return false;
     }
   }
@@ -115,9 +202,9 @@ export class AssessmentNotificationService {
    * Queue assessment submitted notification
    */
   async queueAssessmentSubmittedNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     submittedBy: Employee, 
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const createdByEmployee = await this.getEmployeeById(assessment.created_by);
@@ -161,7 +248,11 @@ export class AssessmentNotificationService {
         }
       };
 
-      return await notificationService.queueNotification(notificationData, currentEmployeeData);
+      const { success, emailQueueId } = await notificationService.queueNotificationWithId(notificationData, currentEmployeeData);
+      if (success) {
+        await this.triggerImmediateEmailProcessing(emailQueueId);
+      }
+      return success;
     } catch (error) {
       console.error('Error queueing assessment submitted notification:', error);
       return false;
@@ -172,9 +263,9 @@ export class AssessmentNotificationService {
    * Queue assessment completed notification
    */
   async queueAssessmentCompletedNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     completedBy: Employee,
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(assessment.assigned_to);
@@ -229,10 +320,10 @@ export class AssessmentNotificationService {
    * Queue assessment rework required notification
    */
   async queueAssessmentReworkRequiredNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     requestedBy: Employee, 
     reworkReason: string,
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(assessment.assigned_to);
@@ -270,7 +361,11 @@ export class AssessmentNotificationService {
         }
       };
 
-      return await notificationService.queueNotification(notificationData, currentEmployeeData);
+      const { success, emailQueueId } = await notificationService.queueNotificationWithId(notificationData, currentEmployeeData);
+      if (success) {
+        await this.triggerImmediateEmailProcessing(emailQueueId);
+      }
+      return success;
     } catch (error) {
       console.error('Error queueing assessment rework required notification:', error);
       return false;
@@ -281,9 +376,9 @@ export class AssessmentNotificationService {
    * Queue assessment due in 5 days notification
    */
   async queueAssessmentDueReminderNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     assignedEmployee: Employee,
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const recipientDisplayName = formatEmployeeName(assignedEmployee);
@@ -328,10 +423,10 @@ export class AssessmentNotificationService {
    * Queue assessment overdue notification
    */
   async queueAssessmentOverdueNotification(
-    assessment: any, 
+    assessment: AssessmentNotificationAssessment, 
     assignedEmployee: Employee,
     overdueDays: number,
-    currentEmployeeData?: any
+    currentEmployeeData?: EmployeeData
   ): Promise<boolean> {
     try {
       const recipientDisplayName = formatEmployeeName(assignedEmployee);
@@ -370,6 +465,28 @@ export class AssessmentNotificationService {
     } catch (error) {
       console.error('Error queueing assessment overdue notification:', error);
       return false;
+    }
+  }
+
+  /**
+   * Process the email queue immediately after queueing a notification, instead
+   * of waiting for the periodic cron to pick it up. Failures here are logged
+   * but never block the caller — the row stays queued for the cron either way.
+   *
+   * When emailQueueId is provided, only that specific row is processed —
+   * this guarantees it's sent right away even if there's a backlog of older
+   * unsent rows that would otherwise push it outside the cron's batch window.
+   * Falls back to a full batch-scan invoke if no id is available.
+   */
+  private async triggerImmediateEmailProcessing(emailQueueId?: string): Promise<void> {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      await supabase.functions.invoke(
+        'process-email-queue',
+        emailQueueId ? { body: { emailQueueId } } : undefined
+      );
+    } catch (error) {
+      console.error('Error triggering immediate email queue processing:', error);
     }
   }
 

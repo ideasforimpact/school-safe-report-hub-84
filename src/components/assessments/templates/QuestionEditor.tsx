@@ -49,6 +49,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     });
   };
 
+  const handleCorrectAnswerChange = (correctAnswer: string) => {
+    onChange({
+      ...question,
+      correctAnswer
+    });
+  };
+
   const handleFilesChange = (files: QuestionFile[]) => {
     onChange({
       ...question,
@@ -80,6 +87,29 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         />
         
         <div className="space-y-2">
+          <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+            <Label className="text-sm font-medium">Correct answer</Label>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id={`correct-yes-${index}`}
+                  checked={(question.correctAnswer ?? 'yes') === 'yes'}
+                  onCheckedChange={() => handleCorrectAnswerChange('yes')}
+                />
+                <Label htmlFor={`correct-yes-${index}`} className="text-sm">Yes</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id={`correct-no-${index}`}
+                  checked={question.correctAnswer === 'no'}
+                  onCheckedChange={() => handleCorrectAnswerChange('no')}
+                />
+                <Label htmlFor={`correct-no-${index}`} className="text-sm">No</Label>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center space-x-2">
             <Checkbox 
               id={`required-${index}`} 

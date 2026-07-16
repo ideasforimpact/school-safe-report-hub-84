@@ -1,9 +1,13 @@
 
 import React from 'react';
 
+interface SubcategoryChartTooltipPayloadEntry {
+  value: number;
+}
+
 interface SubcategoryChartTooltipProps {
   active?: boolean;
-  payload?: Array<any>;
+  payload?: Array<SubcategoryChartTooltipPayloadEntry>;
   label?: string;
   total: number;
 }

@@ -23,7 +23,7 @@ interface ModuleAccess {
   module_id: string;
   is_admin: boolean;
   is_enabled: boolean;
-  level?: Record<string, any>;
+  level?: Record<string, unknown>;
 }
 
 export interface ModuleInfo {
@@ -43,10 +43,10 @@ interface ModuleAccessTabProps {
 }
 
 // Debounce utility function
-const useDebounce = (callback: Function, delay: number) => {
+const useDebounce = <T extends (...args: unknown[]) => unknown>(callback: T, delay: number) => {
   const timeoutRef = useRef<NodeJS.Timeout>();
-  
-  return useCallback((...args: any[]) => {
+
+  return useCallback((...args: Parameters<T>) => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -207,6 +207,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
     return () => {
       mountedRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Effect to initialize state when modules are available
@@ -225,7 +226,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
       console.log("Syncing state changes to parent:", currentModuleInfoArray);
       debouncedUpdate(currentModuleInfoArray);
     }
-  }, [currentModuleInfoArray, debouncedUpdate]);
+  }, [currentModuleInfoArray, debouncedUpdate, moduleAccessState.length]);
 
   // Handle module checkbox changes
   const handleModuleCheckboxChange = useCallback((moduleId: string, checked: boolean) => {
@@ -255,14 +256,16 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
     initialized: initializedRef.current
   });
 
+  const visibleModules = modules.filter((module) => module.name?.toLowerCase() !== 'cpd');
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <label className="font-medium text-lg">Module Access</label>
-        
-        {loading ? (          
+
+        {loading ? (
           <Loader text="Loading modules..." />
-        ) : modules.length === 0 ? (
+        ) : visibleModules.length === 0 ? (
           <div className="flex items-center justify-center h-40">
             <p className="text-muted-foreground">No modules available</p>
           </div>
@@ -277,7 +280,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {modules.map((module) => {
+                {visibleModules.map((module) => {
                   const moduleAccess = moduleAccessState.find(m => m.module_id === module.id);
                   const moduleEnabled = moduleAccess?.is_enabled || false;
                   const isAdminEnabled = moduleAccess?.is_admin || false;

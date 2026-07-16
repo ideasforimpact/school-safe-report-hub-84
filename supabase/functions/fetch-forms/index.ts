@@ -27,8 +27,8 @@ serve(async (req) => {
       }
     );
 
-    const { client_id } = await req.json();
-    
+    const { client_id, client_type_id } = await req.json();
+
     if (!client_id) {
       return new Response(
         JSON.stringify({ 
@@ -64,11 +64,16 @@ serve(async (req) => {
 
     console.log(`Fetching forms for client: ${client_id}`);
 
-    const { data, error } = await supabaseClient
+    let formsQuery = supabaseClient
       .from('custom_forms')
       .select('*')
-      .eq('client_id', client_id)
-      .order('created_at', { ascending: false });
+      .eq('client_id', client_id);
+
+    if (client_type_id) {
+      formsQuery = formsQuery.eq('client_type_id', client_type_id);
+    }
+
+    const { data, error } = await formsQuery.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching forms:', error);

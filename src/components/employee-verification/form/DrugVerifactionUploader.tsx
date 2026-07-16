@@ -52,11 +52,11 @@ const DrugVerifactionUploader: React.FC<DrugVerifactionUploaderProps> = ({
         title: 'Download Started',
         description: 'Consent form download has been initiated.',
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error downloading consent form:', error);
       toast({
         title: 'Download Failed',
-        description: error.message || 'Failed to download consent form. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to download consent form. Please try again.',
         variant: 'destructive',
       });
     } finally {

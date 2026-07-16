@@ -116,9 +116,11 @@ const BackofficeEmployeeDetails: React.FC<BackofficeEmployeeDetailsProps> = ({ e
               <p className="text-sm text-gray-500 mb-2">Status & Type</p>
               <div className="flex gap-2">
                 {getStatusBadge(employee.status)}
-                <Badge className={getEmployeeTypeColor(employee.employeeType)}>
-                  {formatEmployeeType(employee.employeeType)}
-                </Badge>
+                {employee.employeeType && (
+                  <Badge className={getEmployeeTypeColor(employee.employeeType)}>
+                    {formatEmployeeType(employee.employeeType)}
+                  </Badge>
+                )}
               </div>
             </div>
           </div>

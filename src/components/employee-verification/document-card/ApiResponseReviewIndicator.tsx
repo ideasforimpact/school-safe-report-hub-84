@@ -19,7 +19,7 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
   const [govPopupOpen, setGovPopupOpen] = useState(false);
   const [selectedGovType, setSelectedGovType] =
     useState<GovernmentDocumentType>("aadhar");
-  const [selectedGovData, setSelectedGovData] = useState<any>(null);
+  const [selectedGovData, setSelectedGovData] = useState<Record<string, unknown> | null>(null);
 
   // Determine badge content and variant
   const getBadgeContent = () => {
