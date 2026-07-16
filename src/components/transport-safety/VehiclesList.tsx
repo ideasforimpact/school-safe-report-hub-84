@@ -273,13 +273,15 @@ return (
       </div>
     </div>
     {/* --- Only this part changes based on filter/search results --- */}
-    <div className="relative">
-      {loading && (
-        <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10 rounded-md">
-          <Loader text="Searching..." />
+    <div>
+      {/* Show a centered loading spinner for any fetch in progress — initial
+          load, search/filter, or a pagination page change alike — before the
+          new data arrives. */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader text="Loading vehicles..." />
         </div>
-      )}
-      {filteredVehicles.length === 0 && !loading ? (
+      ) : filteredVehicles.length === 0 ? (
         <EmptyVehiclesState
           setShowAddVehicle={setShowAddVehicle}
           statusFilter={statusFilter}

@@ -14,6 +14,7 @@ import {
 import { VehicleTypeOption } from '@/types/transportSafety';
 import { useAuth } from '@/contexts/auth';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { ensureMinDuration } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
@@ -118,17 +119,25 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     try {
       setLoading(true);
 
-      const result = await fetchVehiclesPaginated({
+      // Wrapped with a minimum duration so the loading spinner is reliably
+      // visible even when the response is very fast — otherwise pagination
+      // clicks can resolve within a single frame and the spinner never
+      // appears to flash.
+      const result = await ensureMinDuration(fetchVehiclesPaginated({
         clientId: cid,
         page,
         pageSize: PAGE_SIZE,
         search,
         status,
         typeId,
-      });
+      }));
 
-      // Drop result if this request was superseded
-      if (controller.signal.aborted) return;
+      // Drop result only if a newer request has superseded this one. Checking
+      // controller.signal.aborted here is not enough — a signal can be aborted
+      // (e.g. by an effect cleanup, including React StrictMode's phantom
+      // mount/cleanup/mount cycle) without any replacement fetch ever being
+      // queued, which would otherwise leave `loading` stuck forever.
+      if (abortControllerRef.current !== controller) return;
 
       setVehicles(result.vehicles);
       if (result.vehicleTypes.length > 0) setVehicleTypes(result.vehicleTypes);
@@ -138,12 +147,12 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       pageRef.current = result.page;
       setError(null);
     } catch (err) {
-      if (controller.signal.aborted) return; // silently drop aborted request errors
+      if (abortControllerRef.current !== controller) return; // silently drop superseded request errors
       console.error('Failed to fetch vehicles:', err);
       setError('Failed to load vehicles. Please try again later.');
       toast.error('Failed to load vehicles');
     } finally {
-      if (!controller.signal.aborted) {
+      if (abortControllerRef.current === controller) {
         setHasFetched(true);
         setLoading(false);
       }
@@ -172,19 +181,29 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
 
     const enteringModule = isTransportListRoute && !wasOnTransport;
     if (enteringModule) {
-      fetchVehicles();
+      // Reset to page 1 on re-entry rather than resuming the page the user
+      // was previously on — matches how the other modules behave, since
+      // their page-level components unmount/remount on navigation and lose
+      // page state naturally, while this context stays mounted app-wide.
+      fetchVehicles({ page: 1 });
     }
 
     return () => {
       abortControllerRef.current?.abort();
-      // Reset so that StrictMode's second run (and real re-mounts) also trigger a fetch
-      prevIsTransportListRef.current = false;
+      // Deliberately NOT resetting prevIsTransportListRef here: the ref is
+      // already kept in sync with the real current route above (so leaving
+      // the module correctly flips it back to false for the next entry).
+      // Resetting it unconditionally in cleanup made an unrelated dependency
+      // change (e.g. clientId settling shortly after auth resolves) look like
+      // a fresh "entering the module" transition, firing a second, redundant
+      // fetch right after the first — visible as a double loading spinner.
     };
   }, [clientId, isUsersRoute, isTransportListRoute, fetchVehicles]);
 
   // ── Pagination ────────────────────────────────────────────────────────────
 
   const setCurrentPage = useCallback((page: number) => {
+    if (page === pageRef.current) return;
     pageRef.current = page;
     setCurrentPageState(page);
     fetchVehicles({ page });

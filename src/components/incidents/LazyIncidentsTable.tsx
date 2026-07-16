@@ -4,8 +4,7 @@ import { IncidentRecord } from '@/services/incidentService';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Loader2, Sparkles } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Sparkles } from 'lucide-react';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIncidentPermissions } from '@/utils/incidentPermissions';
@@ -150,52 +149,18 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   };
 
 
-  // Show loading skeleton during initial load (when loading and no data yet)
-  if (loading && incidents.length === 0) {
+  // Show a centered loading spinner for any fetch in progress — initial load
+  // or a pagination page change alike — before the new page's data arrives.
+  if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-          <Loader text="Loading incidents..." />
-        
-        
-        {/* Loading skeleton table */}
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">Ticket #</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Facility</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created By</TableHead>
-                <TableHead>Assigned to</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-16" /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+      <div className="bg-white rounded-lg shadow overflow-hidden flex items-center justify-center py-20">
+        <Loader text="Loading incidents..." />
       </div>
     );
   }
 
   // Show no results message if no incidents and not loading
-  if (incidents.length === 0 && !loading) {
+  if (incidents.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow">
         <div className="p-8 text-center">
@@ -374,13 +339,6 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
           itemLabel="incidents"
           onPageChange={onPageChange}
         />
-      )}
-      
-      {/* Loading indicator for page changes */}
-      {loading && incidents.length > 0 && (
-        <div className="border-t">
-          <Loader text="Loading incidents..." />
-        </div>
       )}
     </div>
   );
