@@ -37,7 +37,7 @@ import GroupDetailsDialog from '@/components/sop/GroupDetailsDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
-import { useAssignedSopList, useSopCategories, sopKeys } from '@/hooks/sop/useSopQueries';
+import { useAssignedSopList, sopKeys } from '@/hooks/sop/useSopQueries';
 
 interface SOP {
   id: string;
@@ -89,6 +89,7 @@ const AssignedSOPPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
 
   const [signoffDialogOpen, setSignoffDialogOpen] = useState(false);
   const [signoffSOP, setSignoffSOP] = useState<SOP | null>(null);
@@ -121,7 +122,17 @@ const AssignedSOPPage = () => {
   const employeeTotalSOPsSignedOff = signedOffCount;
   const employeeTotalSOPsToBeDone = Math.max(0, totalCount - signedOffCount);
 
-  const { data: categories = [] } = useSopCategories(resolvedClientId, !!resolvedClientId);
+  // Build category filter options from current page data
+  useEffect(() => {
+    if (!data?.data?.length) return;
+    const seen = new Set<string>();
+    setCategories(
+      (data.data as SOP[])
+        .filter((s) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
+        .map((s) => ({ id: s.category_id, category_name: s.category_name as string }))
+        .sort((a, b) => a.category_name.localeCompare(b.category_name))
+    );
+  }, [data]);
 
   const invalidateAssignedSops = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: sopKeys.assignedLists() });
@@ -329,7 +340,7 @@ const AssignedSOPPage = () => {
                           {renderTextWithTooltip(sop.description, 25)}
                         </TableCell>
                         <TableCell>
-                          {sop.category_name || '-'}
+                          {renderTextWithTooltip(sop.category_name, 25)}
                         </TableCell>
                         <TableCell>
                           {sop.assignments && sop.assignments.length > 0 ? (

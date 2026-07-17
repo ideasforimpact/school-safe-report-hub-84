@@ -52,7 +52,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import CompletedEmployeesDialog from './CompletedEmployeesDialog';
 import Loader from '@/components/common/Loader';
-import { useSopList, useSopCategories, useDeleteSop, sopKeys } from '@/hooks/sop/useSopQueries';
+import { useSopList, useDeleteSop, sopKeys } from '@/hooks/sop/useSopQueries';
 
 interface SOP {
   id: string;
@@ -112,6 +112,7 @@ const SOPPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
   const { state } = useEmployeeStore();
@@ -151,7 +152,17 @@ const SOPPage = () => {
     totalSOPsToBeDone: sops.reduce((sum, s) => sum + (s.to_be_done_count || 0), 0),
   }), [sopData, sops]);
 
-  const { data: categories = [] } = useSopCategories(resolvedClientId, !!resolvedClientId);
+  // Build the category filter list from page-1 data; keep it stable while paging
+  useEffect(() => {
+    if (currentPage === 1 && sops.length) {
+      const seen = new Set<string>();
+      const cats = sops
+        .filter((s) => s.category_id && s.category_name && !seen.has(s.category_id) && seen.add(s.category_id))
+        .map((s) => ({ id: s.category_id, category_name: s.category_name as string }))
+        .sort((a, b) => a.category_name.localeCompare(b.category_name));
+      if (cats.length) setCategories(cats);
+    }
+  }, [sops, currentPage]);
 
   // Reset to page 1 whenever filters change; React Query re-fetches automatically via key change
   useEffect(() => {
