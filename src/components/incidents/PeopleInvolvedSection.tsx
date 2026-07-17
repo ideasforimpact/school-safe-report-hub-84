@@ -432,7 +432,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       const availableStaff = staffMembers.filter(staff => {
         const fullName = `${staff.firstName} ${staff.lastName}`;
         const aadharName = staff.aadharVerifiedName || '';
-        return !selectedStaffNames.includes(fullName) && (!aadharName || !selectedStaffNames.includes(aadharName));
+        return !!staff.email &&
+          !selectedStaffNames.includes(fullName) && (!aadharName || !selectedStaffNames.includes(aadharName));
       });
       
       return searchQuery
