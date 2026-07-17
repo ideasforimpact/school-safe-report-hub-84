@@ -32,6 +32,8 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'fetch_resources':
         return await fetchResources(supabaseAdmin, data)
+      case 'fetch_titles':
+        return await fetchTitles(supabaseAdmin, data)  
       case 'add_resource':
         return await addResource(supabaseAdmin, data)
       case 'update_resource':
