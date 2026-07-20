@@ -9,7 +9,7 @@ import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
 import VehicleTypeIcon from './VehicleTypeIcon';
-import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
+import { VehiclePagination } from './filters/useVehicleFilters';
 import { cn } from '@/lib/utils';
 import { 
   getDocumentStatus, 
@@ -23,6 +23,7 @@ import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedConte
 
 interface VehiclesListViewProps {
   vehicles: Vehicle[];
+  pagination: VehiclePagination;
   onRefresh?: () => void;
   onEditVehicle?: (vehicle: Vehicle) => void;
   isReadOnly?: boolean;
@@ -30,6 +31,7 @@ interface VehiclesListViewProps {
 
 const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   vehicles,
+  pagination,
   onRefresh,
   onEditVehicle,
   isReadOnly = false
@@ -37,9 +39,11 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
     const shouldHideWriteActions = isReadOnly || isReadOnlySwitchedContext;
 
-    const { currentPage, setCurrentPage, totalPages, totalCount, pageSize } = useTransportSafety();
+    const { currentPage, totalPages, totalCount, pageSize, onPageChange } = pagination;
 
-    // Vehicles are already sorted and paginated from the server
+    // `vehicles` is already the correctly paginated slice for the active
+    // filter mode (server-paginated, or client-paginated over the full
+    // filtered set — see useVehicleFilters)
     const paginatedItems = vehicles;
 
   const getDocumentIcon = (status: string) => {
@@ -263,7 +267,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
         totalCount={totalCount}
         pageSize={pageSize}
         itemLabel="vehicles"
-        onPageChange={setCurrentPage}
+        onPageChange={onPageChange}
       />
 
     </div>
