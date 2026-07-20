@@ -33,13 +33,6 @@ interface AssessmentData {
   assigned_to: string;
   target_completion_date?: string;
   answers?: unknown;
-  // The current employee's own independent copy — reads/writes should
-  // always prefer these over the shared fields above, which reflect
-  // whichever assignee last wrote them.
-  my_status?: string | null;
-  my_answers?: unknown;
-  my_submit_comment?: string | null;
-  my_submit_attachment?: unknown;
   template?: {
     title?: string;
     name?: string;
@@ -89,9 +82,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
 
         const { data: responseData, error: fnError } = await supabase
         .functions.invoke('list-assessments', {
-          body: { assessment_id: assessmentIdNum,
-          client_id: clientId,
-          employee_id: employeeData?.id },
+          body: { assessment_id: assessmentIdNum, 
+          client_id: clientId },
           headers: { path: 'get' },
         });
 
@@ -118,16 +110,12 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
 
             setTemplate({ ...currentTemplate, questions });
 
-            // My own answers, not whichever assignee last wrote the shared
-            // parent row — falls back to the parent for legacy single-
-            // assignee assessments predating per-assignee answer tracking.
-            const myAnswers = assessmentData.my_answers ?? assessmentData.answers;
             let existingAnswers: Record<string, unknown>[] = [];
-            if (myAnswers) {
-              if (Array.isArray(myAnswers)) {
-                existingAnswers = myAnswers as Record<string, unknown>[];
-              } else if (typeof myAnswers === 'object') {
-                existingAnswers = Object.values(myAnswers) as Record<string, unknown>[];
+            if (assessmentData.answers) {
+              if (Array.isArray(assessmentData.answers)) {
+                existingAnswers = assessmentData.answers as Record<string, unknown>[];
+              } else if (typeof assessmentData.answers === 'object') {
+                existingAnswers = Object.values(assessmentData.answers) as Record<string, unknown>[];
               }
             }
 
@@ -151,11 +139,10 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
 
             setAnswers(initialAnswers);
 
-            // Restore the general (assessment-level) comment and attachment, if previously saved — mine, not another assignee's
-            setGeneralComment(assessmentData.my_submit_comment ?? assessmentData.submit_comment ?? '');
-            const myAttachment = assessmentData.my_submit_attachment ?? assessmentData.submit_attachment;
+            // Restore the general (assessment-level) comment and attachment, if previously saved
+            setGeneralComment(assessmentData.submit_comment || '');
             setGeneralAttachments(
-              Array.isArray(myAttachment) ? myAttachment : []
+              Array.isArray(assessmentData.submit_attachment) ? assessmentData.submit_attachment : []
             );
           }
         } else {
@@ -288,14 +275,12 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       const { answersWithUploadedAttachments, uploadedGeneralAttachments } =
         await uploadAnswersAndGeneralAttachment('[Draft]');
 
-      const myCurrentStatus = assessment.my_status ?? assessment.status;
-      const currentStatus = myCurrentStatus === 'New' ? 'Draft' : myCurrentStatus;
+      const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
 
       const { error: updateError } = await supabase.functions.invoke('save-assessment-draft/save-draft', {
         body: {
           assessment_id: parseInt(assessmentId),
           client_id: clientId,
-          employee_id: employeeData.id,
           status: currentStatus,
           answers: answersWithUploadedAttachments,
           submit_comment: generalComment.trim() || null,
@@ -310,10 +295,10 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
 
       setAssessment(prev => prev ? {
         ...prev,
-        my_status: currentStatus,
-        my_answers: answersWithUploadedAttachments,
-        my_submit_comment: generalComment.trim() || null,
-        my_submit_attachment: uploadedGeneralAttachments
+        status: currentStatus,
+        answers: answersWithUploadedAttachments,
+        submit_comment: generalComment.trim() || null,
+        submit_attachment: uploadedGeneralAttachments
       } : null);
       setGeneralAttachments(uploadedGeneralAttachments);
       toast.success('Assessment saved as draft successfully!');
@@ -376,7 +361,6 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         body: {
           assessment_id: parseInt(assessmentId!),
           client_id: clientId,
-          employee_id: employeeData.id,
           score,
           answers: answersWithUploadedAttachments,
           submit_comment: generalComment.trim(),
@@ -386,6 +370,12 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             first_name: employeeData?.firstName || '',
             last_name: employeeData?.lastName || '',
             email: employeeData?.email || '',
+          },
+          assessment_info: {
+            id: assessment.id,
+            name: assessment.name,
+            created_by: assessment.created_by,
+            assigned_to: assessment.assigned_to,
           },
         },
       });

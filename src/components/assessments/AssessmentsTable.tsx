@@ -30,7 +30,7 @@ import jsPDF from 'jspdf';
 import JSZip from 'jszip';
 import Loader from '../common/Loader';
 import { formatDate } from '@/lib/Dateformat';
-import { AssessmentAssignee, AssessmentQuestion, QuestionResponse } from '@/types/assessment';
+import { AssessmentQuestion, QuestionResponse } from '@/types/assessment';
 
 interface Assessment {
   id: string;
@@ -44,11 +44,9 @@ interface Assessment {
   created_at: string;
   score: number | null;
   answers: QuestionResponse[];
-  completion_percentage?: number;
   client_id: string;
   creator_name: string;
   assignee_name: string;
-  assignees: AssessmentAssignee[];
   is_reworked?: boolean;
   template?: { questions: AssessmentQuestion[] };
 }
@@ -102,7 +100,8 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
   const [downloadNoticeStats, setDownloadNoticeStats] = useState({ total: 0, unanswered: 0 });
   const [selectedAssessmentForReassign, setSelectedAssessmentForReassign] = useState<{
     id: number;
-    assigneeIds: string[];
+    assignedTo: string | null;
+    assigneeName: string;
     assessmentUuid: string;
     name: string;
     createdBy: string;
@@ -362,14 +361,6 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
   };
 
   const calculateCompletionPercentage = (assessment: Assessment) => {
-    // Server-computed from the real per-assignee answers (list-assessments'
-    // handleList) — assessments.answers itself is no longer written to
-    // once an assignee row exists, so recomputing from it here would be
-    // stale. Fall back to the old client-side calc only if the server
-    // didn't send a value (e.g. an older cached response shape).
-    if (typeof assessment.completion_percentage === 'number') {
-      return assessment.completion_percentage;
-    }
     const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
     const questions = Array.isArray(assessment.template?.questions) ? assessment.template!.questions : [];
     if (questions.length === 0) return 0;
@@ -380,15 +371,15 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
   const handleAnswerQuestions = (id: number) => navigate(`/assessment/answer/${id}`);
   const handleView = (id: number) => { setSelectedAssessmentId(id); setViewDialogOpen(true); };
   const isAnswerButtonEnabled = (status: string) => status === 'New' || status === 'Draft';
-  const isAssignedToCurrentUser = (assignees: AssessmentAssignee[]) =>
-    assignees.some(a => a.id === currentUserEmployeeId);
+  const isAssignedToCurrentUser = (assignedTo: string | null) => assignedTo === currentUserEmployeeId;
   const canReassignAssessment = (a: Assessment) => hasAssessmentAdmin && a.created_by === currentUserEmployeeId;
 
   const handleAssessmentUpdated = () => fetchAssessments(currentPage, true);
   const handleReassign = (a: Assessment) => {
     setSelectedAssessmentForReassign({
       id: a.assessment_id,
-      assigneeIds: a.assignees.map(x => x.id),
+      assignedTo: a.assigned_to,
+      assigneeName: a.assignee_name || 'Unassigned',
       assessmentUuid: a.id,
       name: a.name,
       createdBy: a.created_by,
@@ -900,7 +891,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                           {/* Only show Answer button if user is assigned to this assessment */}
-                            {isAssignedToCurrentUser(assessment.assignees) && (
+                            {isAssignedToCurrentUser(assessment.assigned_to) && (
                               <Button
                               variant="outline"
                               size="sm"
@@ -966,13 +957,14 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
         onAssessmentUpdated={handleAssessmentUpdated}
       />
 
-      {/* Manage Assignees Dialog */}
+      {/* Reassign Assessment Dialog */}
       {selectedAssessmentForReassign && (
         <ReassignAssessmentDialog
           open={reassignDialogOpen}
           onOpenChange={setReassignDialogOpen}
           assessmentId={selectedAssessmentForReassign.id}
-          currentAssigneeIds={selectedAssessmentForReassign.assigneeIds}
+          currentAssigneeId={selectedAssessmentForReassign.assignedTo}
+          currentAssigneeName={selectedAssessmentForReassign.assigneeName}
           assessment={{
             id: selectedAssessmentForReassign.assessmentUuid,
             name: selectedAssessmentForReassign.name,

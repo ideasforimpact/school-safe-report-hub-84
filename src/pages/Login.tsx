@@ -27,15 +27,7 @@ const Login = () => {
   const hasRedirectedRef = useRef(false);
   const hasCheckedErrorRef = useRef(false);
   const isInitializedRef = useRef(false);
-  // Preserve the full pre-login URL (path + query + hash), not just the
-  // pathname — otherwise deep links like an assessment email's
-  // "?assessmentId=..." get silently dropped when the visit bounces
-  // through /login first.
-  const redirectPathRef = useRef(
-    location.state?.from
-      ? `${location.state.from.pathname}${location.state.from.search || ""}${location.state.from.hash || ""}`
-      : "/dashboard"
-  );
+  const redirectPathRef = useRef(location.state?.from?.pathname || "/dashboard");
 
   // Single initialization effect - runs only once on mount
   useEffect(() => {
