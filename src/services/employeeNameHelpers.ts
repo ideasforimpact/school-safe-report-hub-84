@@ -31,3 +31,16 @@ export const employeeTypeName = (
     ''
   );
 };
+
+/**
+ * Get an employee's display name: their Aadhaar-verified name if set
+ * (the source of truth once verification has run), falling back to
+ * first + last name.
+ */
+export const employeeDisplayName = (employee: {
+  first_name: string | null;
+  last_name: string | null;
+  aadhar_verified_name?: string | null;
+}): string =>
+  employee.aadhar_verified_name ||
+  `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim();
