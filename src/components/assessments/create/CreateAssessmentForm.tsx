@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
@@ -25,12 +25,36 @@ import {
   resolveScenarioForAssessment,
 } from '@/demo_client/assessment/assessmentDemo';
 import { ASSESSMENT_TITLE } from '@/components/constants';
-import AssigneeMultiSelect from './AssigneeMultiSelect';
-import { AssigneeEmployee } from '@/types/assessment';
+
+interface EmployeeDepartment {
+  id: string;
+  department_name: string;
+}
+
+interface Employee {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  department: string | null;
+  employee_departments?: EmployeeDepartment | null;
+  aadhar_verified_name: string | null;
+}
+
+const getEmployeeDisplayName = (employee: {
+  first_name: string | null;
+  last_name: string | null;
+  aadhar_verified_name?: string | null;
+}) =>
+  employee.aadhar_verified_name ||
+  `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim();
 
 interface CreateAssessmentFormProps {
   onCancel?: () => void;
 }
+
+const capitalizeFirst = (str: string) =>
+  str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
 
 const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   onCancel,
@@ -40,14 +64,16 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   const { templates } = useAssessment();
 
   // Employee management state
-  const [employees, setEmployees] = useState<AssigneeEmployee[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [formDataLoading, setFormDataLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     templateId: '',
-    assignedTo: [] as string[],
+    assignedTo: '',
     targetCompletionDate: '',
   });
 
@@ -87,7 +113,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
         return;
       }
 
-      setEmployees((data?.employees || []) as unknown as AssigneeEmployee[]);
+      setEmployees((data?.employees || []) as unknown as Employee[]);
       setExistingAssessments(data?.names || []);
     } catch (error) {
       console.error('Error fetching form data:', error);
@@ -100,6 +126,17 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   useEffect(() => {
     fetchFormData();
   }, [fetchFormData]);
+
+  // Find the selected employee
+  const selectedEmployee = employees.find(
+    emp => emp.id === formData.assignedTo
+  );
+
+  const selectedEmployeeDisplay = selectedEmployee
+    ? `${getEmployeeDisplayName(selectedEmployee)} (${selectedEmployee.email ?? ''})`.trim()
+    : employeeData && formData.assignedTo === employeeData.id
+      ? `${employeeData.firstName ?? ''} ${employeeData.lastName ?? ''} (${employeeData.email ?? ''})`.trim()
+      : '';
 
   // Demo Setup: fill name + description + templateId from one of three
   // pre-canned scenarios, and pre-populate assignedTo with the currently
@@ -119,8 +156,12 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     setFormData(prev => ({
       ...prev,
       ...partial,
-      assignedTo: currentEmployeeId ? [currentEmployeeId] : prev.assignedTo,
+      assignedTo: currentEmployeeId || prev.assignedTo,
     }));
+    // Clear any in-flight search state so the newly pre-filled assignee
+    // is what the user sees in the input.
+    setSearchQuery('');
+    setIsSearching(false);
     // Trigger the same name-validation path the user typing would
     // trigger, so the form's existing duplicate / format checks
     // re-evaluate against the demo-filled value.
@@ -163,9 +204,34 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     }
   };
 
-  const handleAssigneesChange = (ids: string[]) => {
-    setFormData(prev => ({ ...prev, assignedTo: ids }));
+  const handleEmployeeSearch = (value: string) => {
+    setSearchQuery(value);
+    setIsSearching(true);
   };
+
+  const handleSelectEmployee = (employee: Employee) => {
+    handleInputChange('assignedTo', employee.id);
+    setIsSearching(false);
+    setSearchQuery('');
+  };
+
+  const filteredEmployees = searchQuery
+    ? employees.filter(employee => {
+        const fullName = getEmployeeDisplayName(employee);
+        const email = employee.email ?? '';
+        const searchTerm = searchQuery.toLowerCase();
+        const departmentName =
+          employee.employee_departments?.department_name ||
+          employee.department ||
+          '';
+
+        return (
+          fullName.toLowerCase().includes(searchTerm) ||
+          email.toLowerCase().includes(searchTerm) ||
+          departmentName.toLowerCase().includes(searchTerm)
+        );
+      })
+    : employees;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,8 +264,8 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       return;
     }
 
-    if (formData.assignedTo.length === 0) {
-      toast.error('Please assign the assessment to at least one staff member');
+    if (!formData.assignedTo) {
+      toast.error('Please assign the assessment to a staff member');
       return;
     }
 
@@ -211,17 +277,8 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     setIsSubmitting(true);
 
     try {
+      const assignee = employees.find(emp => emp.id === formData.assignedTo);
       const createdBy = employeeData?.id || user?.id;
-
-      const assignees = formData.assignedTo
-        .map(id => employees.find(emp => emp.id === id))
-        .filter((emp): emp is AssigneeEmployee => !!emp)
-        .map(emp => ({
-          id: emp.id,
-          first_name: emp.first_name || '',
-          last_name: emp.last_name || '',
-          email: emp.email || '',
-        }));
 
       const { data, error } = await supabase.functions.invoke('create-assessment', {
         body: {
@@ -232,7 +289,12 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
           assigned_to: formData.assignedTo,
           target_completion_date: formData.targetCompletionDate || null,
           created_by: createdBy,
-          assignees,
+          assignee: assignee && formData.assignedTo !== createdBy ? {
+            id: assignee.id,
+            first_name: assignee.first_name || '',
+            last_name: assignee.last_name || '',
+            email: assignee.email || '',
+          } : null,
         },
       });
 
@@ -452,11 +514,88 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                 <span className="text-red-500">*</span>
               </Label>
 
-              <AssigneeMultiSelect
-                employees={employees}
-                selectedIds={formData.assignedTo}
-                onChange={handleAssigneesChange}
-              />
+              <div className="relative">
+                <div className="relative">
+                  <Input
+                    value={
+                      searchQuery ||
+                      (isSearching
+                        ? ''
+                        : selectedEmployeeDisplay)
+                    }
+                    onChange={e =>
+                      handleEmployeeSearch(
+                        e.target.value
+                      )
+                    }
+                    onFocus={() =>
+                      setIsSearching(true)
+                    }
+                    onBlur={() => {
+                      setTimeout(() => {
+                        if (!searchQuery) {
+                          setIsSearching(false);
+                        }
+                      }, 200);
+                    }}
+                    placeholder="Search by name, email, or department..."
+                    className="w-full pr-8"
+                    required
+                  />
+
+                  <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                </div>
+
+                {isSearching &&
+                  filteredEmployees.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                      <ul className="py-1 text-sm">
+                        {filteredEmployees.map(
+                          employee => (
+                            <li
+                              key={employee.id}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() =>
+                                handleSelectEmployee(
+                                  employee
+                                )
+                              }
+                              onMouseDown={e =>
+                                e.preventDefault()
+                              }
+                            >
+                              <div>
+                                <span className="font-medium">
+                                  {getEmployeeDisplayName(employee)}
+                                </span>
+                                <span className="text-gray-500 ml-1">
+                                  ({employee.email ?? ''})
+                                </span>
+                                <div className="text-xs text-gray-400">
+                                  {capitalizeFirst(
+                                    employee.employee_departments?.department_name ||
+                                     
+                                      '-'
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                {isSearching &&
+                  searchQuery &&
+                  filteredEmployees.length === 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
+                      <p className="p-3 text-sm text-gray-500">
+                        No employees found
+                      </p>
+                    </div>
+                  )}
+              </div>
 
               {employees.length === 0 && (
                 <p className="text-sm text-gray-500">
@@ -512,7 +651,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                 !!nameError ||
                 !formData.name.trim() ||
                 !formData.templateId ||
-                formData.assignedTo.length === 0 ||
+                !formData.assignedTo ||
                 !formData.targetCompletionDate
               }
             >
