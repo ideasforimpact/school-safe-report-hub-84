@@ -77,13 +77,21 @@ const VehicleDetailContent: React.FC = () => {
     return <VehicleNotFound />;
   }
 
+  // This page fetches `vehicle` directly (not via the transport-safety context's
+  // `vehicles` list), so VehicleInfoCard's context patch alone never updates it.
+  // Merge updates here too so a fresh safety check reflects immediately in sibling
+  // cards on this page (e.g. Document Status), not just after a full page refetch.
+  const handleVehicleUpdate = (updates: Partial<Vehicle>) => {
+    setVehicle(prev => (prev ? { ...prev, ...updates } : prev));
+  };
+
   return (
     <div className="container mx-auto py-6 max-w-7xl">
       <VehicleHeader />
 
       <div className="flex flex-col md:flex-row gap-6 mb-6">
         <div className="w-full md:w-2/3">
-          <VehicleInfoCard vehicle={vehicle} />
+          <VehicleInfoCard vehicle={vehicle} onVehicleUpdate={handleVehicleUpdate} />
         </div>
 
         <div className="w-full md:w-1/3">
