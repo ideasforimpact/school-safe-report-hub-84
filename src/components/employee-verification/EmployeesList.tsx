@@ -9,7 +9,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
+import {CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
+import Loader from '@/components/common/Loader';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
@@ -146,11 +147,12 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
     return name.split('_').filter(Boolean).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
   };
 
+  // Show a centered loading spinner for any fetch in progress — initial load
+  // or a pagination page change alike — before the new page's data arrives.
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
-        <p className="text-gray-600">Loading employees...</p>
+      <div className="flex items-center justify-center py-20">
+        <Loader text="Loading employees..." />
       </div>
     );
   }

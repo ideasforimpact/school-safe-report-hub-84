@@ -61,7 +61,7 @@ const DebouncedSearchInput: React.FC<DebouncedSearchInputProps> = ({
     <div className={`relative ${className}`}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
       <Input
-        placeholder={triggerOnEnter ? `${placeholder} (press Enter)` : placeholder}
+        placeholder={placeholder}
         value={localValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}

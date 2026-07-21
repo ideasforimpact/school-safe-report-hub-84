@@ -98,8 +98,8 @@ const TablePaginationBar: React.FC<TablePaginationBarProps> = ({
                 <PaginationItem key={page}>
                   <PaginationLink
                     isActive={page === currentPage}
-                    onClick={() => onPageChange(page)}
-                    className="cursor-pointer"
+                    onClick={() => page !== currentPage && onPageChange(page)}
+                    className={page === currentPage ? 'pointer-events-none cursor-default' : 'cursor-pointer'}
                   >
                     {page}
                   </PaginationLink>
