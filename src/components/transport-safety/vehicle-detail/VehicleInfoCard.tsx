@@ -367,14 +367,14 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle, onVehicleUpd
         </div>
         
         {/* Display verification status if available */}
-        {vehicle.verificationStatus && (
-          <div className="mt-2 text-sm text-left">
-            <span className="font-medium">Status:</span> 
-            <span className={`ml-1 ${vehicle.verificationStatus === 'active' ? 'text-green-600' : 'text-amber-600'}`}>
-              {vehicle.verificationStatus.charAt(0).toUpperCase() + vehicle.verificationStatus.slice(1)}
-            </span>
-          </div>
-        )}
+          {vehicle.verificationStatus && (
+            <div className="mt-2 text-sm text-left">
+              <span className="font-medium">RC Status:</span> 
+              <span className={`ml-1 ${vehicle.verificationStatus === 'active' ? 'text-green-600' : 'text-amber-600'}`}>
+                {vehicle.verificationStatus.toUpperCase()}
+              </span>
+            </div>
+          )}
 
         
         {/* Show the "View Latest Verification" button/dialog when there's persisted

@@ -127,7 +127,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               <TableHead className="w-[150px] text-left">Internal Vehicle Name</TableHead>
               <TableHead className="w-[150px] text-left">Vehicle Name</TableHead>
               <TableHead className="w-[150px] text-left">Registration</TableHead>
-              <TableHead className="w-[120px] text-left">Status</TableHead>
+              {/* <TableHead className="w-[120px] text-left">Status</TableHead> */}
               <TableHead className="w-[180px] text-left">Vehicle Status</TableHead>
               <TableHead className="w-[100px] text-left">Challan</TableHead>
               <TableHead className="w-[100px] text-left">Actions</TableHead>
@@ -165,14 +165,14 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                   <TableCell className="text-left">
                     <div className="text-sm font-medium text-gray-700 text-left">{vehicle.registrationNumber}</div>
                   </TableCell>
-                  <TableCell className="text-left">
+                  {/* <TableCell className="text-left">
                     <Badge 
                       variant="outline" 
                       className={cn(getStatusBadgeVariant(vehicle.status))}
                     >
                       {getStatusLabel(vehicle.status)}
                     </Badge>
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell className="text-left">
                     <div className="flex gap-1">
                       <Badge 
