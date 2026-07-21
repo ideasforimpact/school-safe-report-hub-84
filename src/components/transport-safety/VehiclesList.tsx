@@ -67,8 +67,11 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     // Derived values
     vehicleTypes,
     filteredVehicles,
+    filteredTotalCount,
     activeFiltersCount,
-    
+    isFetchingAllMatching,
+    pagination,
+
     // Actions
     toggleDocumentStatusFilter,
     clearAllFilters,
@@ -124,11 +127,11 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
   useEffect(() => {
     onVehiclesChanged({
       total: totalCount,
-      filtered: filteredVehicles.length,
+      filtered: filteredTotalCount,
       hasFetched,
       vehicles,
     });
-  }, [vehicles, filteredVehicles, totalCount, hasFetched, onVehiclesChanged]);
+  }, [vehicles, filteredTotalCount, totalCount, hasFetched, onVehiclesChanged]);
 
   // Export vehicles to Excel
   const exportToExcel = () => {
@@ -274,12 +277,12 @@ return (
     </div>
     {/* --- Only this part changes based on filter/search results --- */}
     <div className="relative">
-      {loading && (
+      {(loading || isFetchingAllMatching) && (
         <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10 rounded-md">
           <Loader text="Searching..." />
         </div>
       )}
-      {filteredVehicles.length === 0 && !loading ? (
+      {filteredTotalCount === 0 && !loading && !isFetchingAllMatching ? (
         <EmptyVehiclesState
           setShowAddVehicle={setShowAddVehicle}
           statusFilter={statusFilter}
@@ -287,6 +290,7 @@ return (
       ) : (
         <VehiclesListView
           vehicles={filteredVehicles}
+          pagination={pagination}
           onRefresh={handleRefresh}
           onEditVehicle={isReadOnlySwitchedContext ? undefined : handleEditVehicle}
           isReadOnly={isReadOnlySwitchedContext}
