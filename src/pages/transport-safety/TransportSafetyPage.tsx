@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, ExternalLink, Car } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,12 @@ import AddVehicleDialog from '@/components/transport-safety/AddVehicleDialog';
 import { useAuth } from '@/contexts';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import {
+  getAllVehiclesWithChallans,
   getPendingChallansFromVehicleChallans,
 } from '@/services/transport-safety/vehicleService';
 
 const TransportSafetyPage = () => {
+  const { employeeData } = useAuth();
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [totalVehicles, setTotalVehicles] = useState(0);
   const [pendingAmount, setPendingAmount] = useState(0);
@@ -19,29 +21,48 @@ const TransportSafetyPage = () => {
 
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const navigate = useNavigate();
-  
 
-const handleVehiclesChanged = useCallback(({ total, vehicles }) => {
-  setTotalVehicles(total);
-  
-  // Recalculate pending challans from vehicle_challans
-  let totalPendingAmount = 0;
-  let totalPendingCount = 0;
-  
-  vehicles.forEach(vehicle => {
-    const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
-    totalPendingCount += pending.length;
-    totalPendingAmount += pending.reduce((sum, c) => {
-      const amount = Number(c.amount || c.challan_amount || 0);
-      return sum + (isNaN(amount) ? 0 : amount);
-    }, 0);
-  });
-  
-  setPendingAmount(totalPendingAmount);
-  setPendingChallanCount(totalPendingCount);
-  console.log({vehicles,totalPendingAmount,totalPendingCount},'happens with the vehicle');
+  const handleVehiclesChanged = useCallback(({ total }) => {
+    setTotalVehicles(total);
+  }, []);
 
-}, []);
+  // Pending challan totals must reflect every vehicle, not just the current
+  // page of VehiclesList, so they're computed from a separate, unpaginated fetch.
+  useEffect(() => {
+    if (!employeeData?.clientId) return;
+
+    let cancelled = false;
+
+    const loadPendingChallans = async () => {
+      try {
+        const vehicles = await getAllVehiclesWithChallans(employeeData.clientId);
+        if (cancelled) return;
+
+        let totalPendingAmount = 0;
+        let totalPendingCount = 0;
+
+        vehicles.forEach(vehicle => {
+          const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+          totalPendingCount += pending.length;
+          totalPendingAmount += pending.reduce((sum, c) => {
+            const amount = Number(c.amount || c.challan_amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+          }, 0);
+        });
+
+        setPendingAmount(totalPendingAmount);
+        setPendingChallanCount(totalPendingCount);
+      } catch (error) {
+        console.error('Failed to load pending challans:', error);
+      }
+    };
+
+    loadPendingChallans();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeData?.clientId, totalVehicles]);
 
 
 

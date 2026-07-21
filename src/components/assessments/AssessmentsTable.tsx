@@ -85,7 +85,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
   const [allAssignees, setAllAssignees] = useState<{ id: string; name: string }[]>([]);
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('filter') || 'all');
   const [createdByFilter, setCreatedByFilter] = useState('all');
   const [assignedToFilter, setAssignedToFilter] = useState('all');
   const [targetDateFrom, setTargetDateFrom] = useState<Date | undefined>(undefined);
@@ -148,6 +148,14 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
       setDebouncedSearch('');
     } else if (urlSearch) {
       setDebouncedSearch(urlSearch);
+    }
+  }, [searchParams]);
+
+  // ── sync status filter from URL (e.g. dashboard card links: ?filter=new) ───
+  useEffect(() => {
+    const urlFilter = searchParams.get('filter');
+    if (urlFilter) {
+      setStatusFilter(urlFilter);
     }
   }, [searchParams]);
 

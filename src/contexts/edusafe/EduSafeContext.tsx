@@ -288,6 +288,9 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
         formData.append('tags', JSON.stringify(updatedResource.tags || []));
         formData.append('client_id', user.clientId);
         formData.append('resource_id', id);
+        if (updatedResource.youtube_link !== undefined) {
+          formData.append('youtube_link', updatedResource.youtube_link || '');
+        }
 
         const { data, error } = await supabase.functions.invoke('edusafe-resource-upload', {
           method: 'PUT',
@@ -311,7 +314,8 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
           title: updatedResource.title,
           description: updatedResource.description,
           category: updatedResource.category,
-          tags: updatedResource.tags
+          tags: updatedResource.tags,
+          youtube_link: updatedResource.youtube_link
         }
       });
 

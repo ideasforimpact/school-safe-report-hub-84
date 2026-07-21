@@ -43,7 +43,7 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center">
+        {/* <div className="flex items-center">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[130px] h-10">
               <SelectValue placeholder="Status" />
@@ -54,7 +54,7 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </div> */}
         
         <div className="flex items-center">
           <Select value={typeFilter} onValueChange={setTypeFilter}>

@@ -30,6 +30,165 @@ interface UpdateIncidentRequest {
     contributing_factor?: any[]
   }
   changedBy?: string
+  // Present only when the caller wants external-student links reconciled
+  // (omit entirely for updates that don't touch people involved).
+  externalStudents?: ExternalStudentInput[]
+}
+
+interface ExternalStudentInput {
+  external_student_id: string
+  external_client_id: string | null
+  name: string
+  student_id?: string | null
+  gender?: string | null
+  email?: string | null
+  status?: string | null
+  grade_id?: string | null
+  section_id?: string | null
+  grades?: unknown
+  sections?: unknown
+  client_id?: string | null
+}
+
+// Creates/updates external_students records and reconciles their links to
+// this incident in incident_external_students, all server-side with the
+// service-role client. Returns the names of any students that failed to
+// process (kept non-fatal, matching prior client-side per-student handling).
+async function syncExternalStudents(
+  incidentId: string,
+  externalStudents: ExternalStudentInput[],
+  applicationClientId: string
+): Promise<string[]> {
+  const failedNames: string[] = []
+  const currentExternalStudentIds = externalStudents
+    .map((s) => s.external_student_id)
+    .filter(Boolean)
+
+  // Remove links for external students no longer present in the submitted list
+  const { data: currentLinks, error: fetchError } = await supabase
+    .from('incident_external_students')
+    .select('id, external_students(external_student_id)')
+    .eq('incident_id', incidentId)
+    .eq('client_id', applicationClientId)
+
+  if (fetchError) {
+    console.error('Error fetching current external student links:', fetchError)
+  } else if (currentLinks && currentLinks.length > 0) {
+    const idsToRemove = currentLinks
+      .filter((link: any) => {
+        const linkedId = link.external_students?.external_student_id
+        return linkedId && !currentExternalStudentIds.includes(linkedId)
+      })
+      .map((link: any) => link.id)
+
+    if (idsToRemove.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('incident_external_students')
+        .delete()
+        .in('id', idsToRemove)
+
+      if (deleteError) {
+        console.error('Error removing external student links:', deleteError)
+      } else {
+        console.log('Removed external student links:', idsToRemove)
+      }
+    }
+  }
+
+  for (const student of externalStudents) {
+    try {
+      if (!student.external_student_id) {
+        console.error('Skipping external student with missing external_student_id:', student)
+        failedNames.push(student.name || 'Unknown')
+        continue
+      }
+
+      const externalStudentRecord = {
+        client_id: applicationClientId,
+        external_client_id: student.external_client_id,
+        external_student_id: student.external_student_id,
+        student_id: student.student_id,
+        name: student.name,
+        is_external: true,
+        is_active: true,
+        student_info: {
+          gender: student.gender ?? null,
+          email: student.email ?? null,
+          status: student.status ?? null,
+          grade_id: student.grade_id ?? null,
+          section_id: student.section_id ?? null,
+          grades: student.grades ?? null,
+          sections: student.sections ?? null,
+          client_id: student.client_id ?? null
+        },
+        updated_at: new Date().toISOString()
+      }
+
+      const { data: existingExternalStudent, error: checkError } = await supabase
+        .from('external_students')
+        .select('id')
+        .eq('external_student_id', student.external_student_id)
+        .eq('client_id', applicationClientId)
+        .maybeSingle()
+
+      if (checkError) {
+        console.error('Error checking existing external student:', checkError)
+        failedNames.push(student.name || 'Unknown')
+        continue
+      }
+
+      let externalStudentTableId: string
+
+      if (existingExternalStudent) {
+        const { data: updated, error: updateError } = await supabase
+          .from('external_students')
+          .update(externalStudentRecord)
+          .eq('id', existingExternalStudent.id)
+          .select('id')
+          .single()
+
+        if (updateError || !updated) {
+          console.error('Error updating external student:', updateError)
+          failedNames.push(student.name || 'Unknown')
+          continue
+        }
+        externalStudentTableId = updated.id
+      } else {
+        const { data: inserted, error: insertError } = await supabase
+          .from('external_students')
+          .insert({ ...externalStudentRecord, created_at: new Date().toISOString() })
+          .select('id')
+          .single()
+
+        if (insertError || !inserted) {
+          console.error('Error inserting external student:', insertError)
+          failedNames.push(student.name || 'Unknown')
+          continue
+        }
+        externalStudentTableId = inserted.id
+      }
+
+      const { error: linkError } = await supabase
+        .from('incident_external_students')
+        .upsert({
+          incident_id: incidentId,
+          external_student_id: externalStudentTableId,
+          external_client_id: student.external_client_id,
+          client_id: applicationClientId,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'incident_id,external_student_id' })
+
+      if (linkError) {
+        console.error('Error linking external student to incident:', linkError)
+        failedNames.push(student.name || 'Unknown')
+      }
+    } catch (err) {
+      console.error('Error processing external student:', err)
+      failedNames.push(student.name || 'Unknown')
+    }
+  }
+
+  return failedNames
 }
 
 // Helper function to check incident permissions
@@ -142,7 +301,7 @@ Deno.serve(async (req) => {
 
     console.log('User attempting to update incident:', user.id)
 
-    const { incidentId, updates, changedBy }: UpdateIncidentRequest = await req.json()
+    const { incidentId, updates, changedBy, externalStudents }: UpdateIncidentRequest = await req.json()
 
     if (!incidentId) {
       throw new Error('Incident ID is required')
@@ -242,6 +401,19 @@ Deno.serve(async (req) => {
 
     console.log('Successfully updated incident:', updatedIncident)
 
+    // Reconcile external-student links (only when the caller included the
+    // field at all — its absence means this update doesn't touch people
+    // involved, so existing links must be left alone).
+    let externalStudentFailures: string[] = []
+    if (externalStudents !== undefined) {
+      try {
+        externalStudentFailures = await syncExternalStudents(incidentId, externalStudents, employee.client_id)
+      } catch (externalStudentError) {
+        console.error('Error syncing external students:', externalStudentError)
+        // Don't fail the whole update if external-student sync fails
+      }
+    }
+
     // Log manual audit entries for non-field updates (like comments, documents)
     if (changedBy) {
       try {
@@ -275,9 +447,10 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        data: updatedIncident 
+      JSON.stringify({
+        success: true,
+        data: updatedIncident,
+        externalStudentFailures
       }),
       { 
         headers: { 
