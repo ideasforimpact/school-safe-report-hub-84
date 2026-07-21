@@ -38,7 +38,17 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
   const insuranceStatus = hasVerificationData ? getDocumentStatus(vehicle, 'insurance') : { status: 'unverified', expiryDate: null };
   const fcStatus = hasVerificationData ? getDocumentStatus(vehicle, 'fitness') : { status: 'unverified', expiryDate: null };
   const pollutionStatus = hasVerificationData ? getDocumentStatus(vehicle, 'pollution') : { status: 'unverified', expiryDate: null };
-  
+
+  // Overall status across the three core documents: worst case wins.
+  const coreStatuses = [insuranceStatus.status, fcStatus.status, pollutionStatus.status];
+  const overallStatus = !hasVerificationData
+    ? { label: 'Not Verified', className: 'bg-gray-100 border-gray-200 text-gray-800' }
+    : coreStatuses.some(status => status === 'expired' || status === 'missing')
+    ? { label: 'Expired', className: 'bg-red-100 border-red-200 text-red-800' }
+    : coreStatuses.some(status => status === 'expiring_soon')
+    ? { label: 'Expiring Soon', className: 'bg-yellow-100 border-yellow-200 text-yellow-800' }
+    : { label: 'Valid', className: 'bg-green-100 border-green-200 text-green-800' };
+
   const getDocumentIcon = (status: string) => {
     switch (status) {
       case 'valid':
@@ -108,7 +118,12 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base text-left">Document Status</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base text-left">Document Status</CardTitle>
+          <Badge variant="outline" className={cn("text-xs px-2 py-1", overallStatus.className)}>
+            {overallStatus.label}
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent>
         {/* Document expiry details section */}
