@@ -29,6 +29,7 @@ interface UserBasicInfo {
   firstName: string;
   lastName: string;
   name: string;
+  email?: string;
 }
 
 // Person as it appears once a student has been selected via the external-student
@@ -605,12 +606,13 @@ const ReportIncident = () => {
 
   // Map employees to the simplified UserBasicInfo type
   const mappedEmployees: UserBasicInfo[] = configEmployees.map((employee) => {
-    const emp = employee as { id: string; first_name: string; last_name: string };
+    const emp = employee as { id: string; first_name: string; last_name: string; email?: string };
     return {
       id: emp.id,
       firstName: emp.first_name,
       lastName: emp.last_name,
-      name: `${emp.first_name} ${emp.last_name}`
+      name: `${emp.first_name} ${emp.last_name}`,
+      email: emp.email || ''
     };
   });
 

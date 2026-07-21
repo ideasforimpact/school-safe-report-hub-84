@@ -228,12 +228,16 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     }, [latestChallanSuccessLog, latestLogTimestamp, challanSnapshot]);
 
 
-    // Verification tab: show user-friendly error when API returned status error or 500
+    // Verification tab: show user-friendly error when API returned status error or 500,
+    // or — when reopening from history rather than a fresh run (no apiResponse) — when
+    // the persisted verification itself is recorded as failed.
     const hasVerificationError = React.useMemo(() => {
         const original = apiResponse?.original;
-        if (!original) return false;
-        return original.status_code === 500 || String(original.status).toLowerCase() === 'error';
-    }, [apiResponse]);
+        if (original) {
+            return original.status_code === 500 || String(original.status).toLowerCase() === 'error';
+        }
+        return String(vehicle?.verificationStatus).toLowerCase() === 'failed';
+    }, [apiResponse, vehicle?.verificationStatus]);
 
     // Challan tab: use server message when type is VALIDATION_ERROR, else use prop
     const challanErrorMessage = React.useMemo(() => {
@@ -554,26 +558,28 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                     Something went wrong. Please contact administrator.
                                 </div>
                             )}
-                            <div className="border rounded-md divide-y">
-                                {rcDataForDisplay.length > 0 ? (
-                                    rcDataForDisplay.map((field, index) => (
-                                        <div key={index} className="px-4 py-3">
-                                            <div className="text-sm font-medium text-gray-500 mb-1">
-                                                {field.label}
+                            {!hasVerificationError && (
+                                <div className="border rounded-md divide-y">
+                                    {rcDataForDisplay.length > 0 ? (
+                                        rcDataForDisplay.map((field, index) => (
+                                            <div key={index} className="px-4 py-3">
+                                                <div className="text-sm font-medium text-gray-500 mb-1">
+                                                    {field.label}
+                                                </div>
+                                                <div className="text-gray-900 break-words">
+                                                    {typeof field.value === 'object' && field.value !== null
+                                                        ? JSON.stringify(field.value, null, 2)
+                                                        : field.value ?? '-'}
+                                                </div>
                                             </div>
-                                            <div className="text-gray-900 break-words">
-                                                {typeof field.value === 'object' && field.value !== null
-                                                    ? JSON.stringify(field.value, null, 2)
-                                                    : field.value ?? '-'}
-                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                            No verification data available
                                         </div>
-                                    ))
-                                ) : !hasVerificationError ? (
-                                    <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                                        No verification data available
-                                    </div>
-                                ) : null}
-                            </div>
+                                    )}
+                                </div>
+                            )}
                         </TabsContent>
 
                         {/* Challan */}

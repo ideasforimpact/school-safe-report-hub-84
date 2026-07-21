@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { FileX, FileCheck, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBadge';
-import { Vehicle, VehicleChallans } from '@/types/transportSafety';
+import { Vehicle } from '@/types/transportSafety';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { 
@@ -28,7 +28,7 @@ interface ChallanLogEntry {
 
 const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) => {
   const { documents } = vehicle;
-  const [vehicleChallans] = useState<VehicleChallans | null>(vehicle.vehicleChallans || null);
+  const vehicleChallans = vehicle.vehicleChallans || null;
   const [showChallanDetails, setShowChallanDetails] = useState(false);
   
   // Check if vehicle has verification data
