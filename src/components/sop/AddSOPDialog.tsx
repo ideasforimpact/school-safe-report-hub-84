@@ -73,7 +73,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
   const clientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
 
   // ─── React Query hooks ──────────────────────────────────────────────────────
-  const { data: categoriesData } = useSopCategories(clientId, open);
+  const { data: categoriesData, isLoading: categoriesLoading } = useSopCategories(clientId, open);
   const categories: SOPCategory[] = categoriesData || [];
 
   const createOrUpdateMutation = useCreateOrUpdateSop();
@@ -332,18 +332,26 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             <Label htmlFor="category">
               Category <span className="text-red-500">*</span>
             </Label>
-            <Select value={categoryId} onValueChange={setCategoryId} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.category_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {categoriesLoading ? (
+              <Select key="categories-loading" disabled value="">
+                <SelectTrigger>
+                  <SelectValue placeholder="Loading categories..." />
+                </SelectTrigger>
+              </Select>
+            ) : (
+              <Select key="categories-loaded" value={categoryId} onValueChange={setCategoryId} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.category_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Description */}
@@ -351,7 +359,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             <Label htmlFor="description">
               Description <span className="text-red-500">*</span>
             </Label>
-<TextareaWithVoice
+          <TextareaWithVoice
             id="description"
             value={description}
             onChange={(e) => {
