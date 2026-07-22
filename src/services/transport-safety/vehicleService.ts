@@ -182,10 +182,24 @@ export const fetchVehiclesPaginated = async (params: FetchVehiclesParams): Promi
   };
 };
 
-// ─── Get all vehicles (no pagination — for challans page, export) ─────────────
+// ─── Get all vehicles (no pagination — for challans page, export, document-status filters) ─
 
-export const getAllVehicles = async (clientId?: string): Promise<Vehicle[]> => {
-  const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_all', { clientId });
+export interface FetchAllVehiclesFilters {
+  search?: string;
+  status?: string;
+  typeId?: string;
+}
+
+export const getAllVehicles = async (
+  clientId?: string,
+  filters?: FetchAllVehiclesFilters,
+): Promise<Vehicle[]> => {
+  const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_all', {
+    clientId,
+    search: filters?.search ?? '',
+    status: filters?.status ?? '',
+    typeId: filters?.typeId ?? '',
+  });
   return (data.vehicles || []).map(mapVehicle);
 };
 

@@ -185,9 +185,9 @@ serve(async (req) => {
         );
       }
 
-      // ── list_all (no pagination — for challans page, export, etc.) ─────────
+      // ── list_all (no pagination — for challans page, export, document-status filters, etc.) ─
       if (operation === 'list_all') {
-        const { clientId } = body;
+        const { clientId, search = '', status = '', typeId = '' } = body;
 
         if (clientId) {
           const ipValidation = await validateIPWhitelist(supabase, req, clientId, url.pathname);
@@ -201,6 +201,12 @@ serve(async (req) => {
 
         let query = supabase.from('vehicles').select('*, vehicle_challans(*)');
         if (clientId) query = query.eq('client_id', clientId);
+        if (search && search.trim()) {
+          const term = search.trim();
+          query = query.or(`registration_number.ilike.%${term}%,make.ilike.%${term}%,model.ilike.%${term}%,internal_vehicle_name.ilike.%${term}%`);
+        }
+        if (status && status !== 'all') query = query.eq('status', status);
+        if (typeId && typeId !== 'all') query = query.eq('type', typeId);
         query = query.order('created_at', { ascending: false });
 
         const { data, error } = await query;

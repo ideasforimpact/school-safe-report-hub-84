@@ -5,6 +5,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getIsBackofficeUser } from '@/store/authSelectors';
 import { useSafeClient } from '@/hooks/useSafeClient';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureMinDuration } from '@/lib/utils';
 
 export interface EmployeeListFilters {
   search?: string;
@@ -127,7 +128,11 @@ export const useEmployeeManagement = () => {
     try {
       const includeStats = !statsLoadedRef.current;
 
-      const { data, error } = await supabase.functions.invoke('employee-management', {
+      // Wrapped with a minimum duration so the loading spinner is reliably
+      // visible even when the response is very fast — otherwise pagination
+      // clicks can resolve within a single frame and the spinner never
+      // appears to flash.
+      const { data, error } = await ensureMinDuration(supabase.functions.invoke('employee-management', {
         body: {
           operation: 'list',
           clientId,
@@ -141,7 +146,7 @@ export const useEmployeeManagement = () => {
             documentStatus: effectiveFilters.documentStatus || 'all',
           },
         },
-      });
+      }));
 
       // A newer call already completed — discard this stale response
       if (myRequestId !== requestIdRef.current) return [];

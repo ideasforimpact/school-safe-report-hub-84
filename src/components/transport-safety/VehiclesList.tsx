@@ -67,8 +67,11 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     // Derived values
     vehicleTypes,
     filteredVehicles,
+    filteredTotalCount,
     activeFiltersCount,
-    
+    isFetchingAllMatching,
+    pagination,
+
     // Actions
     toggleDocumentStatusFilter,
     clearAllFilters,
@@ -124,11 +127,11 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
   useEffect(() => {
     onVehiclesChanged({
       total: totalCount,
-      filtered: filteredVehicles.length,
+      filtered: filteredTotalCount,
       hasFetched,
       vehicles,
     });
-  }, [vehicles, filteredVehicles, totalCount, hasFetched, onVehiclesChanged]);
+  }, [vehicles, filteredTotalCount, totalCount, hasFetched, onVehiclesChanged]);
 
   // Export vehicles to Excel
   const exportToExcel = () => {
@@ -273,13 +276,15 @@ return (
       </div>
     </div>
     {/* --- Only this part changes based on filter/search results --- */}
-    <div className="relative">
-      {loading && (
-        <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10 rounded-md">
-          <Loader text="Searching..." />
+    <div>
+      {/* Show a centered loading spinner for any fetch in progress — initial
+          load, search/filter, or a pagination page change alike — before the
+          new data arrives. */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader text="Loading vehicles..." />
         </div>
-      )}
-      {filteredVehicles.length === 0 && !loading ? (
+      ) : filteredVehicles.length === 0 ? (
         <EmptyVehiclesState
           setShowAddVehicle={setShowAddVehicle}
           statusFilter={statusFilter}
@@ -287,6 +292,7 @@ return (
       ) : (
         <VehiclesListView
           vehicles={filteredVehicles}
+          pagination={pagination}
           onRefresh={handleRefresh}
           onEditVehicle={isReadOnlySwitchedContext ? undefined : handleEditVehicle}
           isReadOnly={isReadOnlySwitchedContext}
