@@ -171,7 +171,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
 
     try {
       setError(null); setIsSaving(true);
-      await priorityService.updatePriority(selectedPriority.id, editPriorityName.trim(), editPriorityDescription.trim(), editPriorityColor, parseInt(editPriorityWeight) || 0);
+      await priorityService.updatePriority(selectedPriority.id, editPriorityName.trim(), editPriorityDescription.trim(), editPriorityColor, parseInt(editPriorityWeight) || 0, clientTypeId);
       await refetch();
       setIsEditDialogOpen(false); setSelectedPriority(null);
     } catch (error) {
