@@ -2,6 +2,9 @@
 import { Client } from '@/contexts/ClientContext';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
+import { mapDbClientToClient, ClientRecord } from '@/types/clientTypes';
+
+export type ClientStatusFilter = 'active' | 'inactive' | 'all';
 
 /**
  * Add a new client
@@ -120,4 +123,40 @@ export const fetchClientNames = async () => {
     console.error('Error in fetchClientNames:', error);
     throw error;
   }
+};
+
+export interface FetchClientsPageParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: ClientStatusFilter;
+}
+
+export interface FetchClientsPageResult {
+  clients: Client[];
+  total: number;
+}
+
+// Filtering/paging happen in the edge function so the full client table is never pulled to the browser.
+export const fetchClientsPage = async ({
+  page,
+  pageSize,
+  search,
+  status = 'active',
+}: FetchClientsPageParams): Promise<FetchClientsPageResult> => {
+  const { data: response, error } = await supabase.functions.invoke('backoffice-client-management', {
+    body: { action: 'fetch-clients', page, pageSize, search, status },
+  });
+
+  if (error) throw error;
+
+  const rows: Array<ClientRecord & { incident_recommended_actions_enabled?: boolean }> =
+    Array.isArray(response?.data) ? response.data : [];
+  const clients: Client[] = rows.map((dbClient) => ({
+    ...mapDbClientToClient(dbClient),
+    clientTypeId: dbClient.client_type_id,
+    incidentRecommendedActionsEnabled: dbClient.incident_recommended_actions_enabled !== false,
+  }));
+
+  return { clients, total: typeof response?.total === 'number' ? response.total : clients.length };
 };
