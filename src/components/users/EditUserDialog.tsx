@@ -11,8 +11,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
-import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, 
         EMPLOYEE_PERSONAL_INFO_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS, 
         isValidReligion, getReligionErrorMessage, isValidNationality, getNationalityErrorMessage } from '@/constant/employeeConstant';
@@ -137,7 +137,8 @@ const EditUserDialog = ({
   const [removedProfilePaths, setRemovedProfilePaths] = useState<string[]>([]);
   const documentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [isUpdating, setIsUpdating] = useState(false);
-  const { clientId } = useEmployeeData();
+  const { state: employeeStoreState } = useEmployeeStore();
+  const clientId = employeeStoreState.employeeData?.clientId || employeeStoreState.clientId || null;
   const { employeeTypes, loading: employeeTypesLoading } = useEmployeeTypes();
   const { employeeDepartments, loading: employeeDepartmentsLoading } = useEmployeeDepartments();
   const [employeeIdValidation, setEmployeeIdValidation] = useState<EmployeeIdValidationStatus>('idle');
@@ -1728,7 +1729,33 @@ const EditUserDialog = ({
                       </div>
                     )}
                   </div>
-
+                {/* <div className="space-y-2 pt-2 border-t border-gray-100 mt-3 mb-4">
+                    <Label htmlFor="cpd-toggle-edit">CPD Involved</Label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        id="cpd-toggle-edit"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            is_cpd_involved: !formData.is_cpd_involved,
+                          })
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          formData.is_cpd_involved ? 'bg-emerald-500' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            formData.is_cpd_involved ? 'translate-x-5' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <span className="text-sm text-gray-600">
+                        {formData.is_cpd_involved ? 'Included in CPD tracking' : 'Not included in CPD tracking'}
+                      </span>
+                    </div>
+                  </div> */}
               </div>
             )}
 

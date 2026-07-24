@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 import { renderIncidentTemplate, IncidentNotificationType } from '../_shared/incidentNotificationTemplates.ts';
+import { toInclusiveDateTo } from '../_shared/dateRangeFilter.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -759,7 +760,7 @@ serve(async (req) => {
       baseQuery = baseQuery.eq('status_id', statusRes.data.id);
     }
     if (dateFrom) baseQuery = baseQuery.gte('date', dateFrom);
-    if (dateTo) baseQuery = baseQuery.lte('date', dateTo);
+    if (dateTo) baseQuery = baseQuery.lte('date', toInclusiveDateTo(dateTo));
 
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;

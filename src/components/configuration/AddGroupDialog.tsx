@@ -233,7 +233,7 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
 
     try {
       setSubmitting(true);
-
+      const trimmedName = name.trim();
       const payload: Record<string, unknown> = {
         action: editingGroup ? 'update' : 'create',
         client_id: clientId,

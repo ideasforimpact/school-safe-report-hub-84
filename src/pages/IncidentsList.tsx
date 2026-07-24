@@ -14,6 +14,7 @@ import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import Loader from '@/components/common/Loader';
+import { ensureMinDuration } from '@/lib/utils';
 
 interface PaginationInfo {
   currentPage: number;
@@ -83,6 +84,10 @@ const IncidentsList = () => {
   // Tracks when the most recent intentional fetch completed so realtime events
   // arriving immediately after don't trigger a redundant second fetch.
   const lastFetchCompletedAtRef = useRef<number>(Date.now());
+  // Guards against a slower in-flight fetch (e.g. a realtime-triggered refresh)
+  // resolving after a newer one (e.g. a pagination click) and clobbering its
+  // result or prematurely clearing the loading spinner.
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (!loading) {
@@ -165,6 +170,7 @@ const IncidentsList = () => {
     forceRefresh = false,
     page = 1
   ) => {
+    const myRequestId = ++requestIdRef.current;
     try {
       setLoading(true);
       setHasFetched(false);
@@ -177,21 +183,24 @@ const IncidentsList = () => {
           .select('client_id')
           .eq('email', user.email.toLowerCase())
           .maybeSingle();
-          
+
         if (empData) {
           clientId = empData.client_id;
         }
       }
 
       if (!clientId) {
-        setLoading(false);
         return;
       }
 
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
-      
-      // Call the service to fetch paginated data from server
-      const response = await incidentDataService.fetchIncidentsForClientWithFilters(
+
+      // Call the service to fetch paginated data from server. Wrapped with a
+      // minimum duration so the loading spinner is reliably visible even when
+      // the response is very fast (e.g. a warm local/cached response) —
+      // otherwise pagination clicks can resolve within a single frame and the
+      // spinner never appears to flash.
+      const response = await ensureMinDuration(incidentDataService.fetchIncidentsForClientWithFilters(
         clientId,
         forceRefresh,
         employeeDataForFiltering,
@@ -199,8 +208,12 @@ const IncidentsList = () => {
         { page, pageSize: pagination.pageSize },
         serverFilters,
         true // We still use returnAllData = true logic but it's now server-side paginated
-      );
-      
+      ));
+
+      // A newer fetch (e.g. a pagination click) was issued while this one was
+      // in flight — drop this stale result instead of clobbering the newer one.
+      if (myRequestId !== requestIdRef.current) return;
+
       if (response.config) {
         setConfig(response.config);
       }
@@ -209,7 +222,7 @@ const IncidentsList = () => {
 
       setOriginalIncidents(response.data);
       setAllIncidents(response.data);
-      
+
       // Update pagination state from server response
       setPagination({
         currentPage: response.currentPage,
@@ -218,16 +231,19 @@ const IncidentsList = () => {
         hasMore: response.hasMore,
         pageSize: pagination.pageSize
       });
-      
+
       setDisplayedIncidents(response.data);
 
     } catch (error) {
+      if (myRequestId !== requestIdRef.current) return;
       console.error('❌ Error fetching incidents:', error);
       toast.error('Failed to load incidents. Please try again.');
     } finally {
-      setLoading(false);
-      setHasFetched(true);
-      lastFetchCompletedAtRef.current = Date.now();
+      if (myRequestId === requestIdRef.current) {
+        setLoading(false);
+        setHasFetched(true);
+        lastFetchCompletedAtRef.current = Date.now();
+      }
     }
   }, [
     user?.email,
@@ -263,10 +279,11 @@ const IncidentsList = () => {
 
   // Pagination handlers
   const goToPage = useCallback((page: number) => {
+    if (page === pagination.currentPage) return;
     if (page >= 1 && page <= pagination.totalPages && !loading) {
       fetchIncidents(filters, false, page);
     }
-  }, [pagination.totalPages, loading, filters, fetchIncidents]);
+  }, [pagination.currentPage, pagination.totalPages, loading, filters, fetchIncidents]);
 
   const changePageSize = useCallback((newPageSize: number) => {
     setPagination(prev => ({ ...prev, pageSize: newPageSize }));
