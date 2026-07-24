@@ -6,11 +6,16 @@ import { AuthProvider } from './contexts/AuthContext';
 import { EmployeeProvider } from './store/EmployeeContext';
 import { ClientProvider } from './contexts/ClientContext';
 
+const STALE_MINUTES = Number(import.meta.env.VITE_QUERY_STALE_TIME_MINUTES) || 3;
+const STALE_TIME = STALE_MINUTES * 60 * 1000;
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: STALE_TIME,
+      gcTime: STALE_TIME * 2,
+      refetchOnWindowFocus: false,
     },
   },
 });

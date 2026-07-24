@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { QuestionResponse } from '@/types/assessment';
+import { AssessmentQuestion, QuestionResponse } from '@/types/assessment';
 import QuestionResponseItem from '../QuestionResponseItem';
 
 interface QuestionsListProps {
-  currentQuestions: any[];
+  currentQuestions: AssessmentQuestion[];
   questionResponses: QuestionResponse[];
   currentSection: number;
-  handleResponseChange: (questionId: string, field: string, value: any) => void;
+  handleResponseChange: (questionId: string, field: keyof QuestionResponse, value: QuestionResponse[keyof QuestionResponse]) => void;
   isCompleted: boolean;
 }
 

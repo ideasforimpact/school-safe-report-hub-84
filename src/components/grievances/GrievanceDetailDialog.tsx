@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Badge, BadgeProps } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
@@ -34,7 +34,7 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
   // Check if user has admin access to acknowledge/update grievances
   const canAcknowledgeGrievance = hasGrievanceAdmin || isSuperAdmin;
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeVariant = (status: string): BadgeProps['variant'] => {
     switch (status) {
       case 'new':
         return 'default';
@@ -87,7 +87,7 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
         <DialogHeader>
           <DialogTitle className="flex justify-between items-center">
             <span>Grievance Details</span>
-            <Badge variant={getStatusBadgeVariant(submission.status) as any}>
+            <Badge variant={getStatusBadgeVariant(submission.status)}>
               {capitalizeStatus(submission.status)}
             </Badge>
           </DialogTitle>

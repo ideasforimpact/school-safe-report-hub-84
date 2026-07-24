@@ -1,7 +1,50 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts'
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts'
+
+interface GroupRecord {
+  id: string;
+  name: string;
+  description?: string;
+  group_type: string;
+  status: boolean;
+  client_id: string;
+  employee_id: string;
+  department_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  group_employees?: Array<{ count: number }>;
+}
+
+interface GroupUpdateData {
+  updated_at: string;
+  name?: string;
+  description?: string;
+  group_type?: string;
+  department_id?: string | null;
+}
+
+interface HandleCreateData {
+  client_id: string;
+  employee_id: string;
+  name: string;
+  description?: string;
+  group_type: string;
+  employee_ids?: string[];
+  department_id?: string;
+}
+
+interface HandleUpdateData {
+  group_id: string;
+  client_id: string;
+  employee_id: string;
+  name?: string;
+  description?: string;
+  group_type?: string;
+  employee_ids?: string[];
+  department_id?: string;
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,6 +123,37 @@ serve(async (req) => {
     }
 
     switch (action) {
+      case 'list': {
+        const { data: groupsData, error: groupsError } = await supabaseClient
+          .from('groups')
+          .select('id, name, description, group_type, status, client_id, employee_id, department_id, created_at, updated_at, group_employees:group_employees(count)')
+          .eq('client_id', client_id)
+          .order('created_at', { ascending: false });
+
+        if (groupsError) throw groupsError;
+
+        const groupIds = (groupsData || []).map((g: GroupRecord) => g.id);
+        let assignedGroupIds: string[] = [];
+
+        if (groupIds.length > 0) {
+          const { data: sopData } = await supabaseClient
+            .from('sop_assigned')
+            .select('group_id')
+            .in('group_id', groupIds)
+            .not('group_id', 'is', null);
+          assignedGroupIds = (sopData || []).map((r: Record<string, unknown>) => r.group_id as string).filter(Boolean);
+        }
+
+        const assignedSet = new Set(assignedGroupIds);
+        const groups = (groupsData || []).map((g: GroupRecord) => ({
+          ...g,
+          member_count: g.group_employees?.[0]?.count ?? 0,
+          is_assigned_to_sop: assignedSet.has(g.id),
+        }));
+
+        return new Response(JSON.stringify({ groups }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
       case 'create':
         return await handleCreate(supabaseClient, { client_id, employee_id, name, description, group_type, employee_ids, department_id });
       case 'update':
@@ -113,7 +187,7 @@ serve(async (req) => {
   }
 });
 
-async function handleCreate(supabaseClient: any, data: any) {
+async function handleCreate(supabaseClient: SupabaseClient, data: HandleCreateData) {
   const { client_id, employee_id, name, description, group_type, employee_ids, department_id } = data;
 
   // Validate required fields for create
@@ -141,6 +215,21 @@ async function handleCreate(supabaseClient: any, data: any) {
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
+    );
+  }
+
+  // Check for duplicate name within the same client (case-insensitive)
+  const { data: existing } = await supabaseClient
+    .from('groups')
+    .select('id')
+    .eq('client_id', client_id)
+    .ilike('name', name.trim())
+    .maybeSingle();
+
+  if (existing) {
+    return new Response(
+      JSON.stringify({ error: `A group with the name "${name.trim()}" already exists` }),
+      { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 

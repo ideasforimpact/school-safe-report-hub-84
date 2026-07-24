@@ -33,3 +33,13 @@ export const EMPLOYEE_COMPLIANCE_DOCUMENTS = [
 ] as const;
 
 export type EmployeeComplianceDocumentKey = (typeof EMPLOYEE_COMPLIANCE_DOCUMENTS)[number]['key'];
+
+/**
+ * Aadhaar/PAN/Passport are edited exclusively from the Employee Verification
+ * module once an employee exists — Edit User only displays them read-only.
+ */
+export const VERIFICATION_MANAGED_DOCUMENT_KEYS = new Set<EmployeeComplianceDocumentKey>([
+  'aadhaarCard',
+  'panCard',
+  'passport',
+]);

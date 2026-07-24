@@ -1,6 +1,6 @@
 
 import { User, UserRole, ModulePermissions, UserWithPassword } from './types';
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 export function validateUserEmail(users: UserWithPassword[], email: string, currentUserId?: string): boolean {
   const emailExists = users.some(u => u.email === email && (currentUserId ? u.id !== currentUserId : true));

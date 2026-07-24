@@ -1,22 +1,88 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
-import { toast } from 'sonner';
 import { Search, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FormErrors } from '@/hooks/incident-form/useIncidentFormValidation';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 import { NOTES_MAX_LENGTH } from '../constants';
-import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+
+/** Student as returned by the edge function or transformClientStudent */
+interface ApiStudent {
+  id: string;
+  student_id: string | null;
+  name: string;
+  gender: string | null;
+  email: string | null;
+  status: string | null;
+  grade_id: string | null;
+  section_id: string | null;
+  client_id: string | null;
+  external_client_id?: string | null;
+  grades: { id: string | null; name: string } | null;
+  sections: { id: string | null; name: string } | null;
+  is_external: boolean;
+  // Legacy fields kept for backward compat
+  studentId?: string;
+  grade?: string;
+  section?: string;
+  isExternal?: boolean;
+}
+
+/** Data passed as additionalFields when a student is selected */
+interface StudentInfo {
+  id: string | null;
+  student_id: string | null;
+  name: string;
+  is_external: boolean;
+  gender: string | null;
+  email: string | null;
+  status: string | null;
+  grade_id: string | null;
+  section_id: string | null;
+  client_id: string | null;
+  grades: { id: string | null; name: string } | null;
+  sections: { id: string | null; name: string } | null;
+  external_client_id?: string | null;
+  external_student_id?: string | null;
+}
+
+/** Sentinel option: user must type more characters */
+interface MinCharsOption {
+  id: 'min-chars';
+  name: string;
+  isMinCharsMessage: true;
+}
+/** Sentinel option: API search in progress */
+interface LoadingOption {
+  id: 'loading';
+  name: string;
+  isLoading: true;
+}
+/** Sentinel option: no results found */
+interface NoStudentOption {
+  id: 'no-student-found';
+  name: string;
+  isNoStudentOption: true;
+}
+/** Sentinel option: add new student link */
+interface AddStudentOption {
+  id: 'add-student';
+  name: string;
+  isAddOption: true;
+}
+
+type StudentDropdownOption = ApiStudent | MinCharsOption | LoadingOption | NoStudentOption | AddStudentOption;
 
 interface UserBasicInfo {
   id: string;
   firstName: string;
   lastName: string;
   name: string;
+  email?: string;
 }
 
 interface Employee {
@@ -24,6 +90,7 @@ interface Employee {
   firstName: string;
   lastName: string;
   email: string;
+  aadharVerifiedName?: string;
 }
 
 interface PeopleInvolvedSectionProps {
@@ -49,21 +116,25 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 }) => {
   const { employeeData } = useAuth();
   const { isIntegrationEnabled } = useClientIntegrationEnabled();
-  const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
+  const staffMembers = useMemo<Employee[]>(
+    () =>
+      employees.map((employee) => ({
+        id: employee.id,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        email: employee.email || '',
+      })),
+    [employees]
+  );
   const [fetchedStudents, setFetchedStudents] = useState<Student[]>([]);
-  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const isLoadingStaff = false;
+  const isLoadingStudents = false;
   
   // Get client type from auth context
   const clientType = employeeData?.client?.client_type?.key || employeeData?.clientType?.key || '';
-  const isSchoolClient = clientType.toLowerCase() === 'school';
-  
-  console.log('Auth employeeData in incidents:', employeeData);
-  console.log('Client type from auth:', clientType);
-  console.log('Is school client:', isSchoolClient);
-  console.log("isIntegrationEnabled",isIntegrationEnabled);
-  
-  
+  const showStudentRole = clientType.toLowerCase() === 'school' || clientType.toLowerCase() === 'institute';
+
+
   // State for search functionality
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
   const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
@@ -77,117 +148,13 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const [currentPersonData, setCurrentPersonData] = useState<Person | null>(null);
   const [hadSearchQuery, setHadSearchQuery] = useState(false);
 
-  // Fetch client type information
   useEffect(() => {
-    const fetchClientType = async () => {
-      if (!employeeData?.clientId) return;
-
-      try {
-        const { data: clientData, error } = await supabase
-          .from('clients')
-          .select('institution_type')
-          .eq('id', employeeData.clientId)
-          .single();
-
-        if (error) {
-          console.error('Error fetching client type:', error);
-          return;
-        }
-
-        console.log('Fetched client data:', clientData);
-      } catch (error) {
-        console.error('Error fetching client type:', error);
-      }
-    };
-
-    fetchClientType();
-  }, [employeeData?.clientId]);
-
-  // Fetch staff members when component mounts
-    const fetchStaffMembers = useCallback(async () => {
-      if (!employeeData?.clientId) return;
-
-      try {
-        setIsLoadingStaff(true);
-        const { data: staffData, error } = await supabase
-          .from('employees')
-          .select('id, first_name, last_name, email')
-          .eq('client_id', employeeData.clientId)
-          .eq('status', true);
-
-        if (error) throw error;
-
-        setStaffMembers(
-        staffData.map(emp => ({
-          id: emp.id,
-          firstName: emp.first_name,
-          lastName: emp.last_name,
-          email: emp.email
-        }))
-        );
-      } catch (error) {
-        console.error('Error fetching staff members:', error);
-        toast.error('Failed to load staff members');
-      } finally {
-        setIsLoadingStaff(false);
-      }
-    }, [employeeData?.clientId]);
-
-    useEffect(() => {
-      fetchStaffMembers();
-    }, [fetchStaffMembers]);
-
-  // Fetch students filtered by client_id - only if integration is NOT enabled
-  const fetchStudents = useCallback(async () => {
-    // Don't fetch client-side students if integration is enabled
     if (isIntegrationEnabled) {
-      console.log('[PeopleInvolvedSection] Integration enabled - skipping client-side student fetch');
       setFetchedStudents([]);
       return;
     }
-
-    if (!employeeData?.clientId) return;
-
-    try {
-      setIsLoadingStudents(true);
-      const { data: studentData, error } = await supabase
-        .from('students')
-        .select('id, student_id, name, grade, section, campus')
-        .eq('client_id', employeeData.clientId);
-
-      if (error) {
-        console.error('Error fetching students:', error);
-        toast.error('Failed to load students');
-        return;
-      }
-
-      const mappedStudents = studentData.map(student => ({
-        id: student.id,
-        studentId: student.student_id,
-        name: student.name,
-        grade: student.grade,
-        section: student.section,
-        campus: student.campus,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
-
-      console.log('[PeopleInvolvedSection] Updated student list:', {
-        totalStudents: mappedStudents.length,
-        students: mappedStudents.map(s => ({ id: s.id, name: s.name, studentId: s.studentId }))
-      });
-      setFetchedStudents(mappedStudents);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-      toast.error('Failed to load students');
-    } finally {
-      setIsLoadingStudents(false);
-    }
-  }, [employeeData?.clientId, isIntegrationEnabled]);
-
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
+    setFetchedStudents(students || []);
+  }, [students, isIntegrationEnabled]);
 
   // Log when people are added
   useEffect(() => {
@@ -200,6 +167,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       })),
       fetchedStudentsCount: fetchedStudents.length
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [peopleInvolved.length, fetchedStudents.length]);
 
   // Search students using edge function
@@ -242,7 +210,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       if (result.success && Array.isArray(result.data)) {
         // Return data in the same format as transformStudent from edge function
         // This ensures consistent format for both internal and external students
-        return result.data.map((student: any) => ({
+        return result.data.map((student: ApiStudent) => ({
           id: student.id,
           student_id: student.student_id, // Keep original field name from API
           name: student.name,
@@ -319,16 +287,19 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     if (role === 'Staff') {
       const staff = person as Employee;
       // Update both name and id in a single atomic update
-      const additionalFields = staff.id ? { id: staff.id } : undefined;
-      onPersonChange(index, 'name', `${staff.firstName} ${staff.lastName}`, additionalFields);
+      const additionalFields = {
+        ...(staff.id ? { id: staff.id } : {}),
+        ...(staff.aadharVerifiedName ? { aadhar_verified_name: staff.aadharVerifiedName } : {})
+      };
+      onPersonChange(index, 'name', staff.aadharVerifiedName || `${staff.firstName} ${staff.lastName}`, additionalFields);
     } else {
-      const student = person as Student | any;
-      
+      const student = person as ApiStudent;
+
       // Check if this is an external student (from API) or internal student (from client-side)
       const isExternal = student.is_external === true || student.isExternal === true;
-      
+
       // Prepare all student information - use all available fields from the student object
-      const studentInfo: any = {
+      const studentInfo: StudentInfo = {
         id: student.id || null,
         student_id: student.student_id || student.studentId || null,
         name: student.name,
@@ -390,7 +361,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     // Don't auto-fill if there was no search query (Scenario 1)
     if (currentPersonIndex !== null && hadSearchQuery) {
       // Prepare all student information for internal student
-      const studentInfo: any = {
+      const studentInfo: StudentInfo = {
         id: newStudent.id || null,
         student_id: newStudent.studentId || null,
         name: newStudent.name,
@@ -413,8 +384,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     setCurrentPersonData(null);
     setHadSearchQuery(false);
     
-    // Refresh the student list to show the newly added student
-    await fetchStudents();
+    // Add student locally for immediate UX feedback
+    if (!isIntegrationEnabled) {
+      setFetchedStudents((prev) => [...prev, newStudent]);
+    }
     
     // Also call the parent callback if provided
     if (onStudentAdded) {
@@ -423,7 +396,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   // Transform client-side student to match API format (from transformStudent in edge function)
-  const transformClientStudent = (student: Student): any => {
+  const transformClientStudent = (student: Student): ApiStudent => {
     return {
       id: student.id,
       student_id: student.studentId,
@@ -458,15 +431,19 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     if (role === 'Staff') {
       const availableStaff = staffMembers.filter(staff => {
         const fullName = `${staff.firstName} ${staff.lastName}`;
-        return !selectedStaffNames.includes(fullName);
+        const aadharName = staff.aadharVerifiedName || '';
+        return !!staff.email &&
+          !selectedStaffNames.includes(fullName) && (!aadharName || !selectedStaffNames.includes(aadharName));
       });
       
       return searchQuery
         ? availableStaff.filter(staff => {
             const fullName = `${staff.firstName} ${staff.lastName}`;
+            const aadharName = staff.aadharVerifiedName || '';
             const email = staff.email || '';
             const searchTerm = searchQuery.toLowerCase();
             return fullName.toLowerCase().includes(searchTerm) ||
+                   aadharName.toLowerCase().includes(searchTerm) ||
                    email.toLowerCase().includes(searchTerm);
           })
         : availableStaff;
@@ -496,7 +473,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       
       // If search query is less than 3 characters, show message
       if (searchQuery.length > 0 && searchQuery.length < 3) {
-        return [{ id: 'min-chars', name: 'Please type at least 3 characters', isMinCharsMessage: true } as any];
+        return [{ id: 'min-chars', name: 'Please type at least 3 characters', isMinCharsMessage: true } as MinCharsOption];
       }
 
       // Use API search results if available (for Student role with >= 3 characters)
@@ -504,7 +481,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       const isAPILoading = isSearchingAPI[index];
 
       // When integration is disabled, also include local students that match the search
-      let localStudents: any[] = [];
+      let localStudents: ApiStudent[] = [];
       if (!isIntegrationEnabled && searchQuery.length >= 3) {
         const searchTerm = searchQuery.toLowerCase();
         const matchingLocalStudents = fetchedStudents.filter(student => {
@@ -518,7 +495,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 
       // Combine API results and local students, removing duplicates
       const allStudents = [...apiSearchResults, ...localStudents];
-      const uniqueStudents = allStudents.filter((student, index, self) => 
+      const uniqueStudents = allStudents.filter((student, index, self) =>
         index === self.findIndex(s => s.id === student.id || s.student_id === student.student_id)
       );
 
@@ -528,11 +505,11 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         return !selectedStudentNames.includes(studentName);
       });
 
-      const result: any[] = [];
+      const result: StudentDropdownOption[] = [];
 
       // Show loading state
       if (isAPILoading) {
-        result.push({ id: 'loading', name: 'Searching...', isLoading: true } as any);
+        result.push({ id: 'loading', name: 'Searching...', isLoading: true } as LoadingOption);
         return result;
       }
 
@@ -541,12 +518,12 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         result.push(...availableStudents);
       } else if (searchQuery.length >= 3) {
         // No results found after search
-        result.push({ id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as any);
+        result.push({ id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as NoStudentOption);
       }
 
       // Add "Add Student" option at the bottom (only if search query exists and integration is NOT enabled)
       if (searchQuery.length >= 3 && !isIntegrationEnabled) {
-        result.push({ id: 'add-student', name: 'Add Student', isAddOption: true } as any);
+        result.push({ id: 'add-student', name: 'Add Student', isAddOption: true } as AddStudentOption);
       }
 
       return result;
@@ -556,8 +533,15 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 
   const getSelectedDisplay = (person: Person, role: string) => {
     if (role === 'Staff') {
-      const staff = staffMembers.find(s => `${s.firstName} ${s.lastName}` === person.name);
-      return staff ? `${staff.firstName} ${staff.lastName} (${staff.email})` : person.name;
+      const staff = staffMembers.find(s => 
+        s.id === person.id ||
+        `${s.firstName} ${s.lastName}` === person.name || 
+        s.aadharVerifiedName === person.name
+      );
+      if (staff) {
+        return `${staff.aadharVerifiedName || `${staff.firstName} ${staff.lastName}`} (${staff.email})`;
+      }
+      return person.aadhar_verified_name || person.name;
     } else if (role === 'Student') {
       // If the name already includes student ID in parentheses, return as is
       if (person.name.includes('(') && person.name.includes(')')) {
@@ -585,7 +569,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         onRemovePerson(index);
       }
     });
-  }, [staffMembers]);
+  }, [staffMembers, onRemovePerson, peopleInvolved]);
 
   useEffect(() => {
     if (!fetchedStudents.length) return;
@@ -602,7 +586,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         onRemovePerson(index);
       }
     });
-  }, [fetchedStudents]);
+  }, [fetchedStudents, onRemovePerson, peopleInvolved]);
 
 
   const renderNameField = (person: Person, index: number) => {
@@ -620,7 +604,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           index,
           isCurrentlySearching,
           filteredOptionsCount: filteredOptions.length,
-          hasRealStudents: filteredOptions.some(opt => !(opt as any).isAddOption && !(opt as any).isNoStudentOption),
+          hasRealStudents: filteredOptions.some(opt => !('isAddOption' in opt) && !('isNoStudentOption' in opt)),
           isLoading,
           fetchedStudentsCount: fetchedStudents.length
         });
@@ -680,7 +664,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
               <ul className="py-1 text-sm">
                 {filteredOptions.map((option) => {
                   // Check if this is the "Please type at least 3 characters" message
-                  if (person.role === 'Student' && (option as any).isMinCharsMessage) {
+                  if (person.role === 'Student' && 'isMinCharsMessage' in option) {
                     return (
                       <li
                         key="min-chars"
@@ -694,7 +678,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   }
 
                   // Check if this is the loading state
-                  if (person.role === 'Student' && (option as any).isLoading) {
+                  if (person.role === 'Student' && 'isLoading' in option) {
                     return (
                       <li
                         key="loading"
@@ -708,7 +692,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   }
                   
                   // Check if this is the "No Student Found" option
-                  if (person.role === 'Student' && (option as any).isNoStudentOption) {
+                  if (person.role === 'Student' && 'isNoStudentOption' in option) {
                     return (
                       <li
                         key="no-student-found"
@@ -722,7 +706,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   }
                   
                   // Check if this is the "Add Student" option - render it at the bottom (only if integration is NOT enabled)
-                  if (person.role === 'Student' && (option as any).isAddOption && !isIntegrationEnabled) {
+                  if (person.role === 'Student' && 'isAddOption' in option && !isIntegrationEnabled) {
                     return (
                       <li
                         key="add-student"
@@ -749,7 +733,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                         {person.role === 'Staff' ? (
                           <>
                             <span className="font-medium">
-                              {(option as Employee).firstName} {(option as Employee).lastName}
+                              {(option as Employee).aadharVerifiedName || `${(option as Employee).firstName} ${(option as Employee).lastName}`}
                             </span>
                             <span className="text-gray-500 ml-1">
                               ({(option as Employee).email})
@@ -759,19 +743,19 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                           <>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">
-                                {(option as any).name}
+                                {(option as ApiStudent).name}
                               </span>
-                              {(option as any).is_external && (
+                              {(option as ApiStudent).is_external && (
                                 <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
                                   External
                                 </span>
                               )}
                             </div>
                             <div className="text-gray-500 text-xs mt-0.5">
-                              ({(option as any).student_id || (option as Student).studentId})
-                              {((option as any).grades?.name || (option as Student).grade || (option as any).sections?.name || (option as Student).section) && (
+                              ({(option as ApiStudent).student_id || (option as ApiStudent).studentId})
+                              {((option as ApiStudent).grades?.name || (option as ApiStudent).grade || (option as ApiStudent).sections?.name || (option as ApiStudent).section) && (
                                 <span className="ml-1">
-                                  - {((option as any).grades?.name || (option as Student).grade || '').trim()} {((option as any).sections?.name || (option as Student).section || '').trim()}
+                                  - {((option as ApiStudent).grades?.name || (option as ApiStudent).grade || '').trim()} {((option as ApiStudent).sections?.name || (option as ApiStudent).section || '').trim()}
                                 </span>
                               )}
                             </div>
@@ -795,13 +779,13 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           {isCurrentlySearching && !searchQueries[index] && !isLoading && (
             <>
               {/* Show actual students/staff when available */}
-              {filteredOptions.some(opt => 
-                !(opt as any).isAddOption && !(opt as any).isNoStudentOption
+              {filteredOptions.some(opt =>
+                !('isAddOption' in opt) && !('isNoStudentOption' in opt)
               ) && (
                 <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
                   <ul className="py-1 text-sm">
                     {filteredOptions
-                      .filter(opt => !(opt as any).isAddOption && !(opt as any).isNoStudentOption)
+                      .filter(opt => !('isAddOption' in opt) && !('isNoStudentOption' in opt))
                       .map((option) => (
                         <li
                           key={person.role === 'Staff' ? (option as Employee).id : (option as Student).id}
@@ -823,19 +807,19 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                               <>
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">
-                                    {(option as any).name || (option as Student).name}
+                                    {(option as ApiStudent).name || (option as ApiStudent).name}
                                   </span>
-                                  {((option as any).is_external) && (
+                                  {(option as ApiStudent).is_external && (
                                     <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
                                       External
                                     </span>
                                   )}
                                 </div>
                                 <div className="text-gray-500 text-xs mt-0.5">
-                                  ({(option as any).student_id || (option as Student).studentId})
-                                  {((option as any).grades?.name || (option as Student).grade || (option as any).sections?.name || (option as Student).section) && (
+                                  ({(option as ApiStudent).student_id || (option as ApiStudent).studentId})
+                                  {((option as ApiStudent).grades?.name || (option as ApiStudent).grade || (option as ApiStudent).sections?.name || (option as ApiStudent).section) && (
                                     <span className="ml-1">
-                                      - {((option as any).grades?.name || (option as Student).grade || '').trim()} {((option as any).sections?.name || (option as Student).section || '').trim()}
+                                      - {((option as ApiStudent).grades?.name || (option as ApiStudent).grade || '').trim()} {((option as ApiStudent).sections?.name || (option as ApiStudent).section || '').trim()}
                                     </span>
                                   )}
                                 </div>
@@ -863,14 +847,14 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
               )}
               
               {/* Show "Add Student" and "No Student Found" only when no real students are available */}
-              {!filteredOptions.some(opt => 
-                !(opt as any).isAddOption && !(opt as any).isNoStudentOption
+              {!filteredOptions.some(opt =>
+                !('isAddOption' in opt) && !('isNoStudentOption' in opt)
               ) && filteredOptions.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
                   <ul className="py-1 text-sm">
                     {filteredOptions.map((option) => {
                       // Check if this is the "Add Student" option (only if integration is NOT enabled)
-                      if (person.role === 'Student' && (option as any).isAddOption && !isIntegrationEnabled) {
+                      if (person.role === 'Student' && 'isAddOption' in option && !isIntegrationEnabled) {
                         return (
                           <li
                             key="add-student"
@@ -887,7 +871,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                       }
                       
                       // Check if this is the "No Student Found" option
-                      if (person.role === 'Student' && (option as any).isNoStudentOption) {
+                      if (person.role === 'Student' && 'isNoStudentOption' in option) {
                         return (
                           <li
                             key="no-student-found"
@@ -931,8 +915,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const getRoleOptions = () => {
     const options = [];
     
-    // Only show Student option if client type is "school"
-    if (isSchoolClient) {
+    // Only show Student option if client type is "school" or "institute"
+    if (showStudentRole) {
       options.push({ value: 'Student', label: 'Student' });
     }
     
@@ -944,21 +928,6 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     
     return options;
   };
-  useRealTimeSubHook({
-    channelName: 'employees-realtime',
-    table: 'employees',
-    events: '*',
-    enabled: !!employeeData?.clientId,
-    onPayload: fetchStaffMembers,
-  });
-  useRealTimeSubHook({
-    channelName: 'students-realtime',
-    table: 'students',
-    events: '*',
-    enabled: !!employeeData?.clientId && !isIntegrationEnabled,
-    onPayload: fetchStudents,
-  });
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">

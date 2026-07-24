@@ -32,8 +32,10 @@ export interface RawEmployeeData {
   moduleAccessPayload?:  string[];
 }
 
+import { Employee } from '@/contexts/employee/types';
+
 export interface ImportResult {
-  addedEmployees: any[];
+  addedEmployees: Employee[];
   successCount: number;
   errorCount: number;
   errors: string[];

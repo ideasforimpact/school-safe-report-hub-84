@@ -28,6 +28,11 @@ type Job = {
   filesToDelete?: string[]; // Files to delete from storage
 };
 
+type StoredComment = {
+  id: string;
+  [key: string]: unknown;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -103,7 +108,7 @@ serve(async (req) => {
 
       if (operation === 'delete') {
         // Delete operation: remove comment from array and delete files from storage
-        const updatedComments = existingComments.filter((c: any) => c.id !== commentId);
+        const updatedComments = existingComments.filter((c: StoredComment) => c.id !== commentId);
 
         // Delete files from storage
         if (filesToDelete && filesToDelete.length > 0) {

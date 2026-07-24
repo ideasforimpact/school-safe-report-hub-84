@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, FileText, Upload, X, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, AlertCircle, FileText, Upload, X } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,6 +40,7 @@ const EditResourceContent = () => {
   const [youtubeError, setYoutubeError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
+  // YouTube URL validation function (mirrors ResourceUploadForm)
   const isValidYouTubeUrl = (url: string): boolean => {
     const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]+/;
     return youtubeRegex.test(url);
@@ -218,7 +219,7 @@ const EditResourceContent = () => {
     }
 
     setIsUploading(true);
-    
+
     try {
       if (file) {
         await updateResource(resourceId!, {
@@ -226,7 +227,8 @@ const EditResourceContent = () => {
           description: description.trim(),
           category,
           tags,
-          file: file
+          file: file,
+          youtube_link: category === 'youtube' ? youtubeLink.trim() : null
         });
       } else {
         await updateResource(resourceId!, {
@@ -234,7 +236,7 @@ const EditResourceContent = () => {
           description: description.trim(),
           category,
           tags,
-          youtube_link: category === 'youtube' ? youtubeLink.trim() : undefined
+          youtube_link: category === 'youtube' ? youtubeLink.trim() : null
         });
       }
       
@@ -315,12 +317,42 @@ const EditResourceContent = () => {
                     <SelectItem value="policy">Policy</SelectItem>
                     <SelectItem value="guidelines">Guidelines</SelectItem>
                     <SelectItem value="forms">Forms</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
                     <SelectItem value="youtube">YouTube Link</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
+
+              {/* YouTube Link Input - Only show when category is 'youtube' */}
+              {category === 'youtube' && (
+                <div className="space-y-2">
+                  <Label htmlFor="youtubeLink">
+                    YouTube Link <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="youtubeLink"
+                    value={youtubeLink}
+                    onChange={(e) => {
+                      setYoutubeLink(e.target.value);
+                      if (e.target.value.trim() && !isValidYouTubeUrl(e.target.value.trim())) {
+                        setYoutubeError('Please enter a valid YouTube URL');
+                      } else {
+                        setYoutubeError('');
+                      }
+                    }}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    required
+                    className={youtubeError ? 'border-red-500' : ''}
+                  />
+                  {youtubeError && (
+                    <p className="text-xs text-red-500 mt-1">{youtubeError}</p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Enter a valid YouTube URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="tags">Tags</Label>
                 <div className="flex items-center space-x-2">
@@ -366,32 +398,6 @@ const EditResourceContent = () => {
                 )}
               </div>
               
-              {category === 'youtube' && (
-                <div className="space-y-2">
-                  <Label htmlFor="youtubeLink">
-                    YouTube Link <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="youtubeLink"
-                      value={youtubeLink}
-                      onChange={(e) => {
-                        setYoutubeLink(e.target.value);
-                        if (e.target.value.trim() && !isValidYouTubeUrl(e.target.value.trim())) {
-                          setYoutubeError('Please enter a valid YouTube URL');
-                        } else {
-                          setYoutubeError('');
-                        }
-                      }}
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      className={`pl-9 ${youtubeError ? 'border-red-500' : ''}`}
-                    />
-                  </div>
-                  {youtubeError && <p className="text-xs text-red-500">{youtubeError}</p>}
-                </div>
-              )}
-
               {category !== 'youtube' && (
               <div className="space-y-2">
                 <Label>File</Label>
@@ -474,7 +480,7 @@ const EditResourceContent = () => {
               </div>
               )}
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button
                 type="button"
@@ -483,7 +489,10 @@ const EditResourceContent = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isUploading}>
+              <Button
+                type="submit"
+                disabled={isUploading || !!youtubeError || (category === 'youtube' && !youtubeLink.trim())}
+              >
                 {isUploading ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { hasModulePermission, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 /**
  * Component to show current module permissions status
@@ -54,7 +55,7 @@ const ModulePermissionsStatus: React.FC = () => {
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {moduleKeys.map(moduleKey => {
-              const hasAccess = hasModulePermission(state, moduleKey as any);
+              const hasAccess = hasModulePermission(state, moduleKey as keyof ModulePermissions);
               
               return (
                 <div key={moduleKey} className="flex items-center space-x-2">

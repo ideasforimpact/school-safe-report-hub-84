@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -37,7 +37,55 @@ type SwitchClientResponse = {
   error?: string;
 };
 
-let cachedSwitchableClientsByUserId: Record<string, SwitchableClient[]> = {};
+type ConfiguredModuleRow = {
+  module_id: string;
+  enabled?: boolean;
+  access_level?: unknown;
+  modules?: {
+    id?: string;
+    name?: string;
+    icon?: string;
+    level?: string;
+    order?: number;
+    url?: string;
+  } | null;
+};
+
+type NavigationModule = {
+  url?: string;
+};
+
+const cachedSwitchableClientsByUserId: Record<string, SwitchableClient[]> = {};
+const switchClientInflight = new Map<string, Promise<{ data: SwitchClientResponse | null; error: unknown }>>();
+const switchClientRecent = new Map<string, { at: number; value: { data: SwitchClientResponse | null; error: unknown } }>();
+const SWITCH_CLIENT_DEDUPE_MS = 1200;
+
+const invokeSwitchClient = async (body: Record<string, unknown>) => {
+  const key = JSON.stringify(body);
+  const now = Date.now();
+  const recent = switchClientRecent.get(key);
+  if (recent && now - recent.at < SWITCH_CLIENT_DEDUPE_MS) {
+    return recent.value;
+  }
+
+  const existing = switchClientInflight.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const request = supabase.functions
+    .invoke<SwitchClientResponse>('switch-client', { body })
+    .then((value) => {
+      switchClientRecent.set(key, { at: Date.now(), value });
+      return value;
+    })
+    .finally(() => {
+      switchClientInflight.delete(key);
+    });
+
+  switchClientInflight.set(key, request);
+  return request;
+};
 
 interface HeaderClientSwitcherProps {
   currentUser: User | null;
@@ -83,7 +131,7 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
   }, [isBackofficeUser, employeeData?.isSuperAdmin, employeeData?.client?.is_head_office, currentUser?.client?.is_head_office, switchableClients.length, cachedClientsForCurrentUser.length]);
 console.log(shouldShow,'shouldShow');
 
-  const loadConfiguredModules = async (employeeId: string, targetClientId: string, isSuperAdmin: boolean) => {
+  const loadConfiguredModules = useCallback(async (employeeId: string, targetClientId: string, isSuperAdmin: boolean) => {
     try {
       const { data: clientModules, error: clientModulesError } = await supabase
         .from('client_modules')
@@ -114,13 +162,13 @@ console.log(shouldShow,'shouldShow');
         allowedModuleIds = new Set((employeeModules || []).map((row) => row.module_id));
       }
 
-      const modules = (clientModules || [])
-        .filter((row: any) => {
+      const modules = ((clientModules || []) as ConfiguredModuleRow[])
+        .filter((row) => {
           if (isSuperAdmin) return true;
           if (allowedModuleIds.size === 0) return true;
           return allowedModuleIds.has(row.module_id);
         })
-        .map((row: any) => ({
+        .map((row) => ({
           id: row.modules?.id || row.module_id,
           name: row.modules?.name || 'Module',
           key: row.modules?.level || row.module_id,
@@ -140,9 +188,9 @@ console.log(shouldShow,'shouldShow');
       toast.error('Client switched, but module refresh failed');
       return [];
     }
-  };
+  }, [dispatch]);
 
-  const loadSwitchableClients = async () => {
+  const loadSwitchableClients = useCallback(async () => {
     if (!currentUser || !employeeData?.id) return;
 
     // Do not call the edge function unless client switching can apply (same rules as shouldShow).
@@ -169,9 +217,7 @@ console.log(shouldShow,'shouldShow');
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke<SwitchClientResponse>('switch-client', {
-        body: { action: 'list-switchable-clients' },
-      });
+      const { data, error } = await invokeSwitchClient({ action: 'list-switchable-clients' });
 
       if (error || !data?.success) {
         setSwitchableClients([]);
@@ -192,11 +238,9 @@ console.log(shouldShow,'shouldShow');
 
       // Fresh login should always land on Head Office (home client), not previous switched client.
       if (!state.isSwitchedContext && homeId && activeId !== homeId) {
-        const { data: resetData, error: resetError } = await supabase.functions.invoke<SwitchClientResponse>('switch-client', {
-          body: {
-            action: 'switch-client',
-            target_client_id: homeId,
-          },
+        const { data: resetData, error: resetError } = await invokeSwitchClient({
+          action: 'switch-client',
+          target_client_id: homeId,
         });
 
         if (!resetError && resetData?.success) {
@@ -225,11 +269,20 @@ console.log(shouldShow,'shouldShow');
       console.error('Error loading switchable clients:', error);
       setSwitchableClients([]);
     }
-  };
+  }, [
+    currentUser,
+    employeeData,
+    isBackofficeUser,
+    state.activeClientId,
+    state.isSwitchedContext,
+    currentClientId,
+    dispatch,
+    loadConfiguredModules,
+  ]);
 
   useEffect(() => {
     loadSwitchableClients();
-  }, [currentUser?.id, employeeData?.id, employeeData?.isSuperAdmin, isBackofficeUser]);
+  }, [currentUser?.id, employeeData?.id, employeeData?.isSuperAdmin, isBackofficeUser, loadSwitchableClients]);
 
   const handleSwitchClient = async (targetClientId: string) => {
     if (!currentUser || !employeeData?.id || !targetClientId || targetClientId === currentClientId) {
@@ -240,11 +293,9 @@ console.log(shouldShow,'shouldShow');
     try {
       setIsLoading(true);
       dispatch(setLoading(true));
-      const { data, error } = await supabase.functions.invoke<SwitchClientResponse>('switch-client', {
-        body: {
-          action: 'switch-client',
-          target_client_id: targetClientId,
-        },
+      const { data, error } = await invokeSwitchClient({
+        action: 'switch-client',
+        target_client_id: targetClientId,
       });
 
       if (error || !data?.success || !data.selected_client) {
@@ -268,7 +319,7 @@ console.log(shouldShow,'shouldShow');
       setSelectedClientId(selectedClient.id);
 
       const firstAllowedPath = modules
-        .map((module: any) => module.url)
+        .map((module) => module.url)
         .find((url: string | undefined): url is string => typeof url === 'string' && url.length > 0) || '/dashboard';
       if (location.pathname !== firstAllowedPath) {
         navigate(firstAllowedPath, { replace: true });

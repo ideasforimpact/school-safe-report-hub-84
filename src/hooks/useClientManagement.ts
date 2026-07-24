@@ -1,12 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { IPAddress } from '@/components/backoffice/tabs/IPList';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { fetchClientsPage } from '@/services/client/clientService';
 
 export type StatusFilter = 'active' | 'inactive' | 'all';
+
+export const CLIENT_PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+export type ClientPageSize = (typeof CLIENT_PAGE_SIZE_OPTIONS)[number];
+export const DEFAULT_CLIENTS_PAGE_SIZE: ClientPageSize = 10;
 
 export interface ClientFormData {
   id?: string;
@@ -75,7 +80,7 @@ const initialFormData: ClientFormData = {
 
 export const useClientManagement = () => {
   const { state } = useEmployeeStore();
-  const { clients, loading, updateClient, deleteClient, fetchClients } = useClient();
+  const { loading, updateClient, deleteClient, fetchClients } = useClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
@@ -92,15 +97,67 @@ export const useClientManagement = () => {
   const hasDeletePermissionInCurrentContext =
     !state.isSwitchedContext || switchedAccessLevel === 'W/R';
 
-  // Filter clients based on status
-  const filteredClients = useMemo(() => {
-    if (statusFilter === 'all') {
-      return clients;
+  // Server-side search + pagination for the client list. Independent of
+  // ClientContext's `clients` (that context holds the full unpaginated
+  // list for other consumers like the client switcher), so the table only
+  // ever pulls one page of rows at a time. `searchTerm` arrives already
+  // debounced (ClientSearchBar debounces before calling setSearchTerm).
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<ClientPageSize>(DEFAULT_CLIENTS_PAGE_SIZE);
+  const [pageClients, setPageClients] = useState<Client[]>([]);
+  const [totalClients, setTotalClients] = useState(0);
+  const [listLoading, setListLoading] = useState(true);
+  // Tracks the search/status/pageSize this page was fetched for, so a stale
+  // `page` (e.g. page 3 from before the user searched, or changed page
+  // size) is never sent to the server alongside the new value — that
+  // combination can point past the end of the filtered result set and the
+  // API 416s.
+  const appliedFiltersRef = useRef({ search: searchTerm, status: statusFilter, pageSize });
+
+  const loadClientsPage = useCallback(async () => {
+    const filtersChanged =
+      appliedFiltersRef.current.search !== searchTerm ||
+      appliedFiltersRef.current.status !== statusFilter ||
+      appliedFiltersRef.current.pageSize !== pageSize;
+    appliedFiltersRef.current = { search: searchTerm, status: statusFilter, pageSize };
+
+    if (filtersChanged && page !== 1) {
+      // Reset to page 1 first; the resulting re-render re-triggers this
+      // callback with filtersChanged === false and the correct page.
+      setPage(1);
+      return;
     }
-    return clients.filter(client => 
-      statusFilter === 'active' ? client.active : !client.active
-    );
-  }, [clients, statusFilter]);
+
+    setListLoading(true);
+    try {
+      const { clients: rows, total } = await fetchClientsPage({
+        page,
+        pageSize,
+        search: searchTerm,
+        status: statusFilter,
+      });
+
+      // If a delete emptied out the last page, step back one page instead
+      // of showing a stray empty page.
+      if (rows.length === 0 && total > 0 && page > 1) {
+        setPage(prev => Math.max(1, prev - 1));
+        return;
+      }
+
+      setPageClients(rows);
+      setTotalClients(total);
+    } catch (error) {
+      console.error('Error fetching clients page:', error);
+      toast.error('Failed to load clients');
+    } finally {
+      setListLoading(false);
+    }
+  }, [page, pageSize, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    loadClientsPage();
+  }, [loadClientsPage]);
 
   const resetForm = () => {
     setFormData({...initialFormData});
@@ -125,7 +182,7 @@ export const useClientManagement = () => {
       if (data && data.modules) {
         console.log("Modules loaded successfully:", data.modules.length);
         // Enable all modules with admin access by default for new client
-        const moduleInfoArray: ModuleInfo[] = data.modules.map((module: any) => ({
+        const moduleInfoArray: ModuleInfo[] = data.modules.map((module: { id: string; name: string }) => ({
           name: module.name,
           module_id: module.id,
           is_admin: true
@@ -271,6 +328,7 @@ export const useClientManagement = () => {
         resetForm();
         // Refresh the clients list to show the new client
         await fetchClients();
+        await loadClientsPage();
       } else {
         throw new Error('Client creation failed');
       }
@@ -403,18 +461,23 @@ export const useClientManagement = () => {
         }
         console.log('Client modules data:', clientModulesData);
         // Transform client modules data to moduleInfoArray
-        const moduleInfoArray = clientModulesData ? clientModulesData.map((module: any) => {
+        type ClientModuleRow = {
+          module_id: string | null;
+          access_level: Record<string, unknown> | null;
+          modules: { id: string; name: string } | null;
+        };
+        const moduleInfoArray = clientModulesData ? (clientModulesData as ClientModuleRow[]).map((module) => {
           const moduleName = module.modules?.name || '';
-          const accessLevel = module.access_level as Record<string, any> || {};
-          const isAdmin = typeof accessLevel === 'object' && accessLevel !== null ? 
+          const accessLevel = (module.access_level as Record<string, unknown>) || {};
+          const isAdmin = typeof accessLevel === 'object' && accessLevel !== null ?
             !!accessLevel.isAdmin : false;
-          
+
           return {
             name: moduleName,
             module_id: module.module_id || '',
             is_admin: isAdmin
           };
-        }).filter((m: any) => m.module_id) : [];
+        }).filter((m) => m.module_id) : [];
         
         // Fetch ALL super admins for this client. Pre-Feature-2 each client
         // had exactly one (primary); post-Feature-2 a client can have up to
@@ -434,17 +497,17 @@ export const useClientManagement = () => {
         }
 
         const primaryRow = (superAdminRows || []).find(
-          (row: any) => row.is_secondary_super_admin !== true
+          (row) => row.is_secondary_super_admin !== true
         );
         const secondaryRows = (superAdminRows || []).filter(
-          (row: any) => row.is_secondary_super_admin === true
+          (row) => row.is_secondary_super_admin === true
         );
         // employeeData mirrors the legacy single-record fetch so the rest
         // of this function (which still references employeeData?.email)
         // keeps working unchanged.
         const employeeData = primaryRow ? { email: primaryRow.email } : null;
         const secondarySuperAdminEmails: string[] = secondaryRows.map(
-          (row: any) => row.email
+          (row) => row.email
         );
         
         // Fetch whitelisted IPs
@@ -461,7 +524,7 @@ export const useClientManagement = () => {
         }
         
         // Transform IP data to IPAddress format
-        const whitelistedIPs: IPAddress[] = ipData ? ipData.map((ip: any) => ({
+        const whitelistedIPs: IPAddress[] = ipData ? ipData.map((ip: { ip_address: string; name?: string | null }) => ({
           ip: ip.ip_address,
           name: ip.name || undefined
         })) : [];
@@ -666,6 +729,7 @@ export const useClientManagement = () => {
         resetForm();
         // Refresh the clients list to show the updated client
         await fetchClients();
+        await loadClientsPage();
       } else {
         throw new Error('Client update failed');
       }
@@ -684,11 +748,12 @@ export const useClientManagement = () => {
     }
     if (confirm('Are you sure you want to delete this client?')) {
       await deleteClient(id);
+      await loadClientsPage();
     }
   };
 
   return {
-    clients: filteredClients,
+    clients: pageClients,
     loading: loading || isSubmitting,
     formData,
     setFormData,
@@ -711,6 +776,15 @@ export const useClientManagement = () => {
     clientManagementReadOnly,
     canManageClientsInCurrentContext: hasEditPermissionInCurrentContext,
     canDeleteClientsInCurrentContext: hasDeletePermissionInCurrentContext,
+    // Search + server-side pagination
+    searchTerm,
+    setSearchTerm,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    totalClients,
+    listLoading,
   };
 };
 

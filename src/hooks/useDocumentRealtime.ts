@@ -31,16 +31,15 @@ export const useDocumentRealtime = (
               employeeId: payload.new.employee_id,
               documentTypeId: payload.new.document_type_id,
               documentNumber: payload.new.document_number || '',
-              documentImage: payload.new.document_url ? 
-                (() => {
+              documentImage: (() => {
                   if (payload.new.document_url) {
-                    const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+                    const base = import.meta.env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
                     const normalizedBase = base.replace(/\/$/, '');
                     return `${normalizedBase}/employee-documents/${payload.new.document_url}`;
                   }
                   return '';
                 })(),
-              verificationStatus: payload.new.verification_status as any || 'pending',
+              verificationStatus: (payload.new.verification_status as VerificationDocument['verificationStatus']) || 'pending',
               documentStatusId: payload.new.document_status_id,
               employee_docs_log: payload.new.employee_docs_log || [],
               createdAt: payload.new.created_at,

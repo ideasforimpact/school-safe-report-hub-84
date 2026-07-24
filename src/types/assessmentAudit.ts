@@ -9,7 +9,7 @@ export interface AssessmentAuditLogEntry {
   changed_at: string;
   change_type: 'creation' | 'assignment' | 'status_change' | 'completion' | 'closure' | 'rework' | 'score_update' | 'date_update' | 'name_update' | 'description_update' | 'field_update';
   description: string | null;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface AssessmentAuditLogEntryWithUser extends AssessmentAuditLogEntry {

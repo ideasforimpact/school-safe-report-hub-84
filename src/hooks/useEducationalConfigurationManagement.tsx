@@ -1,20 +1,19 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ConfigItem, CampusItem, ClassItem, SectionItem } from '@/contexts/types';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealTimeSubHook } from './useRealTimeSubHook';
-import { getLang } from '@/lang';
+
+const VALID_SUB_TABS = ['campuses', 'classes', 'sections', 'facilities'];
 
 export function useEducationalConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('campuses');
   const { employeeData, user } = useAuth();
-  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? null;
-  const clientTypeKey = employeeData?.clientType?.key ?? (user as any)?.clientType?.key ?? null;
-  const structureLabels = useMemo(() => getLang(clientTypeKey).structure, [clientTypeKey]);
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? null;
   
   // Local states
   const [loading, setLoading] = useState(false);
@@ -23,13 +22,154 @@ export function useEducationalConfigurationManagement() {
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [facilities, setFacilities] = useState<ConfigItem[]>([]);
 
-  // Set initial tab based on URL parameter when component mounts
+  // Set initial tab based on URL parameter when component mounts. The `tab` param
+  // is shared with SettingsPage's own top-level section selector (?tab=educational
+  // picks this whole section) — only apply it here when it's actually one of this
+  // component's own sub-tabs, otherwise it stomps the default 'campuses' selection
+  // with a value ('educational') that matches no TabsTrigger here.
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab) {
+    if (tab && VALID_SUB_TABS.includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
+
+  // Dedupes overlapping calls (e.g. React.StrictMode's dev double-invoke, or this
+  // hook's own mount effect firing all four fetches while a realtime-triggered
+  // refetch is already in flight) without blocking legitimate sequential re-fetches.
+  const campusesInflightRef = useRef<Promise<void> | null>(null);
+  const classesInflightRef = useRef<Promise<void> | null>(null);
+  const sectionsInflightRef = useRef<Promise<void> | null>(null);
+  const facilitiesInflightRef = useRef<Promise<void> | null>(null);
+
+  // Fetch campuses
+  const fetchCampuses = useCallback(async () => {
+    if (!employeeData?.clientId) return;
+    if (campusesInflightRef.current) return campusesInflightRef.current;
+
+    setLoading(true);
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('campus-management', {
+          body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
+        });
+
+        if (error) throw error;
+
+        // campus-management's list action only returns `campuses` — grades/sections/
+        // facilities are fetched independently below by their own dedicated calls.
+        // Setting them here from this response (always undefined) used to wipe them
+        // back to [] whenever this ran alongside the others (e.g. on realtime refetch).
+        setCampuses((data.campuses ?? []).map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
+      } catch (error) {
+        console.error("Error fetching campuses:", error);
+        toast.error("Failed to load campuses");
+      } finally {
+        setLoading(false);
+        campusesInflightRef.current = null;
+      }
+    })();
+
+    campusesInflightRef.current = request;
+    return request;
+  }, [employeeData?.clientId, clientTypeId]);
+
+  // Fetch classes/grades
+  const fetchClasses = useCallback(async () => {
+    if (!employeeData?.clientId) return;
+    if (classesInflightRef.current) return classesInflightRef.current;
+
+    setLoading(true);
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('grade-management', {
+          body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
+        });
+
+        if (error) throw error;
+
+        setClasses(data.grades.map((grade: { id: string; name: string; campus_id: string }) => ({
+          id: grade.id,
+          name: grade.name,
+          campusId: grade.campus_id
+        })));
+      } catch (error) {
+        console.error("Error fetching grades:", error);
+        toast.error("Failed to load grades");
+      } finally {
+        setLoading(false);
+        classesInflightRef.current = null;
+      }
+    })();
+
+    classesInflightRef.current = request;
+    return request;
+  }, [employeeData?.clientId, clientTypeId]);
+
+  // Fetch sections with campus_id
+  const fetchSections = useCallback(async () => {
+    if (!employeeData?.clientId) return;
+    if (sectionsInflightRef.current) return sectionsInflightRef.current;
+
+    setLoading(true);
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('section-management', {
+          body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
+        });
+
+        if (error) throw error;
+
+        setSections(data.sections.map((section: { id: string; name: string; grade_id: string; campus_id: string }) => ({
+          id: section.id,
+          name: section.name,
+          classId: section.grade_id,
+          campusId: section.campus_id
+        })));
+      } catch (error) {
+        console.error("Error fetching sections:", error);
+        toast.error("Failed to load sections");
+      } finally {
+        setLoading(false);
+        sectionsInflightRef.current = null;
+      }
+    })();
+
+    sectionsInflightRef.current = request;
+    return request;
+  }, [employeeData?.clientId, clientTypeId]);
+
+  // Fetch facilities
+  const fetchFacilities = useCallback(async () => {
+    if (!employeeData?.clientId) return;
+    if (facilitiesInflightRef.current) return facilitiesInflightRef.current;
+
+    setLoading(true);
+    const request = (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('facility-management', {
+          body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
+        });
+
+        if (error) throw error;
+
+        setFacilities(data.facilities.map((facility: { id: string; name: string; campus_id: string }) => ({
+          id: facility.id,
+          name: facility.name,
+          campusId: facility.campus_id
+        })));
+      } catch (error) {
+        console.error("Error fetching facilities:", error);
+        toast.error("Failed to load facilities");
+      } finally {
+        setLoading(false);
+        facilitiesInflightRef.current = null;
+      }
+    })();
+
+    facilitiesInflightRef.current = request;
+    return request;
+  }, [employeeData?.clientId, clientTypeId]);
 
   // Fetch data from Supabase when client or type changes
   useEffect(() => {
@@ -39,107 +179,7 @@ export function useEducationalConfigurationManagement() {
       fetchSections();
       fetchFacilities();
     }
-  }, [employeeData?.clientId, clientTypeId]);
-
-  // Fetch campuses
-  const fetchCampuses = useCallback(async () => {
-    if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
-      });
-
-      if (error) throw error;
-      
-      setCampuses(data.campuses.map((campus: any) => ({
-        id: campus.id,
-        name: campus.name
-      })));
-    } catch (error) {
-      console.error("Error fetching campuses:", error);
-      toast.error(`Failed to load ${structureLabels.campusPlural.toLowerCase()}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [employeeData?.clientId, clientTypeId, structureLabels.campusPlural]);
-
-  // Fetch classes/grades
-  const fetchClasses = useCallback(async () => {
-    if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
-      });
-
-      if (error) throw error;
-      
-      setClasses(data.grades.map((grade: any) => ({
-        id: grade.id,
-        name: grade.name,
-        campusId: grade.campus_id
-      })));
-    } catch (error) {
-      console.error("Error fetching grades:", error);
-      toast.error(`Failed to load ${structureLabels.gradePlural.toLowerCase()}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [employeeData?.clientId, clientTypeId, structureLabels.gradePlural]);
-
-  // Fetch sections with campus_id
-  const fetchSections = useCallback(async () => {
-    if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
-      });
-
-      if (error) throw error;
-      
-      setSections(data.sections.map((section: any) => ({
-        id: section.id,
-        name: section.name,
-        classId: section.grade_id,
-        campusId: section.campus_id
-      })));
-    } catch (error) {
-      console.error("Error fetching sections:", error);
-      toast.error(`Failed to load ${structureLabels.sectionPlural.toLowerCase()}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [employeeData?.clientId, clientTypeId, structureLabels.sectionPlural]);
-
-  // Fetch facilities
-  const fetchFacilities = useCallback(async () => {
-    if (!employeeData?.clientId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { clientId: employeeData.clientId, clientTypeId, action: 'list' }
-      });
-
-      if (error) throw error;
-      
-      setFacilities(data.facilities.map((facility: any) => ({
-        id: facility.id,
-        name: facility.name,
-        campusId: facility.campus_id
-      })));
-    } catch (error) {
-      console.error("Error fetching facilities:", error);
-      toast.error(`Failed to load ${structureLabels.facilityPlural.toLowerCase()}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [employeeData?.clientId, clientTypeId, structureLabels.facilityPlural]);
+  }, [employeeData?.clientId, clientTypeId, fetchCampuses, fetchClasses, fetchSections, fetchFacilities]);
 
   // Campus management with Supabase
   const handleAddCampus = async (name: string) => {
@@ -157,10 +197,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => [...prev, { id: data.campus.id, name: data.campus.name }]);
-      toast.success(`${structureLabels.campus} added successfully`);
+      toast.success("Campus added successfully");
     } catch (error) {
       console.error("Error adding campus:", error);
-      toast.error(`Failed to add ${structureLabels.campus.toLowerCase()}`);
+      toast.error("Failed to add campus");
     } finally {
       setLoading(false);
     }
@@ -181,10 +221,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => prev.map(c => c.id === id ? { ...c, name } : c));
-      toast.success(`${structureLabels.campus} updated successfully`);
+      toast.success("Campus updated successfully");
     } catch (error) {
       console.error("Error updating campus:", error);
-      toast.error(`Failed to update ${structureLabels.campus.toLowerCase()}`);
+      toast.error("Failed to update campus");
     } finally {
       setLoading(false);
     }
@@ -199,21 +239,21 @@ export function useEducationalConfigurationManagement() {
     // Check if campus has associated classes/grades
     const hasClasses = classes.some(cls => cls.campusId === id);
     if (hasClasses) {
-      toast.error(`Cannot delete ${structureLabels.campus.toLowerCase()} with associated ${structureLabels.gradePlural.toLowerCase()}. Remove the ${structureLabels.gradePlural.toLowerCase()} first.`);
+      toast.error("Cannot delete campus with associated grades. Remove the grades first.");
       return;
     }
     
     // Check if campus has associated facilities
-    const hasFacilities = facilities.some((facility: any) => facility.campusId === id);
+    const hasFacilities = (facilities as (ConfigItem & { campusId?: string })[]).some((facility) => facility.campusId === id);
     if (hasFacilities) {
-      toast.error(`Cannot delete ${structureLabels.campus.toLowerCase()} with associated ${structureLabels.facilityPlural.toLowerCase()}. Remove the ${structureLabels.facilityPlural.toLowerCase()} first.`);
+      toast.error("Cannot delete campus with associated facilities. Remove the facilities first.");
       return;
     }
-    
+
     // Check if campus has associated sections
-    const hasSections = sections.some((section: any) => section.campusId === id);
+    const hasSections = sections.some((section) => section.campusId === id);
     if (hasSections) {
-      toast.error(`Cannot delete ${structureLabels.campus.toLowerCase()} with associated ${structureLabels.sectionPlural.toLowerCase()}. Remove the ${structureLabels.sectionPlural.toLowerCase()} first.`);
+      toast.error("Cannot delete campus with associated sections. Remove the sections first.");
       return;
     }
     
@@ -226,10 +266,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => prev.filter(c => c.id !== id));
-      toast.success(`${structureLabels.campus} deleted successfully`);
+      toast.success("Campus deleted successfully");
     } catch (error) {
       console.error("Error deleting campus:", error);
-      toast.error(`Failed to delete ${structureLabels.campus.toLowerCase()}`);
+      toast.error("Failed to delete campus");
     } finally {
       setLoading(false);
     }
@@ -255,10 +295,10 @@ export function useEducationalConfigurationManagement() {
         name: data.grade.name,
         campusId: data.grade.campus_id
       }]);
-      toast.success(`${structureLabels.grade} added successfully`);
+      toast.success("Grade added successfully");
     } catch (error) {
       console.error("Error adding grade:", error);
-      toast.error(`Failed to add ${structureLabels.grade.toLowerCase()}`);
+      toast.error("Failed to add grade");
     } finally {
       setLoading(false);
     }
@@ -284,10 +324,10 @@ export function useEducationalConfigurationManagement() {
         campusId: data.grade.campus_id 
       } : c));
       
-      toast.success(`${structureLabels.grade} updated successfully`);
+      toast.success("Grade updated successfully");
     } catch (error) {
       console.error("Error updating grade:", error);
-      toast.error(`Failed to update ${structureLabels.grade.toLowerCase()}`);
+      toast.error("Failed to update grade");
     } finally {
       setLoading(false);
     }
@@ -302,7 +342,7 @@ export function useEducationalConfigurationManagement() {
     // Check if class has associated sections
     const hasSections = sections.some(section => section.classId === id);
     if (hasSections) {
-      toast.error(`Cannot delete ${structureLabels.grade.toLowerCase()} with associated ${structureLabels.sectionPlural.toLowerCase()}. Remove the ${structureLabels.sectionPlural.toLowerCase()} first.`);
+      toast.error("Cannot delete grade with associated sections. Remove the sections first.");
       return;
     }
     
@@ -315,10 +355,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setClasses(prev => prev.filter(c => c.id !== id));
-      toast.success(`${structureLabels.grade} deleted successfully`);
+      toast.success("Grade deleted successfully");
     } catch (error) {
       console.error("Error deleting grade:", error);
-      toast.error(`Failed to delete ${structureLabels.grade.toLowerCase()}`);
+      toast.error("Failed to delete grade");
     } finally {
       setLoading(false);
     }
@@ -352,10 +392,10 @@ export function useEducationalConfigurationManagement() {
         classId: data.section.grade_id,
         campusId: data.section.campus_id
       }]);
-      toast.success(`${structureLabels.section} added successfully`);
+      toast.success("Section added successfully");
     } catch (error) {
       console.error("Error adding section:", error);
-      toast.error(`Failed to add ${structureLabels.section.toLowerCase()}`);
+      toast.error("Failed to add section");
     } finally {
       setLoading(false);
     }
@@ -389,10 +429,10 @@ export function useEducationalConfigurationManagement() {
         campusId: data.section.campus_id
       } : section));
       
-      toast.success(`${structureLabels.section} updated successfully`);
+      toast.success("Section updated successfully");
     } catch (error) {
       console.error("Error updating section:", error);
-      toast.error(`Failed to update ${structureLabels.section.toLowerCase()}`);
+      toast.error("Failed to update section");
     } finally {
       setLoading(false);
     }
@@ -413,10 +453,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setSections(prev => prev.filter(section => section.id !== id));
-      toast.success(`${structureLabels.section} deleted successfully`);
+      toast.success("Section deleted successfully");
     } catch (error) {
       console.error("Error deleting section:", error);
-      toast.error(`Failed to delete ${structureLabels.section.toLowerCase()}`);
+      toast.error("Failed to delete section");
     } finally {
       setLoading(false);
     }
@@ -442,10 +482,10 @@ export function useEducationalConfigurationManagement() {
         name: data.facility.name,
         campusId: data.facility.campus_id
       }]);
-      toast.success(`${structureLabels.facility} added successfully`);
+      toast.success("Facility added successfully");
     } catch (error) {
       console.error("Error adding facility:", error);
-      toast.error(`Failed to add ${structureLabels.facility.toLowerCase()}`);
+      toast.error("Failed to add facility");
     } finally {
       setLoading(false);
     }
@@ -471,10 +511,10 @@ export function useEducationalConfigurationManagement() {
         campusId: data.facility.campus_id
       } : f));
       
-      toast.success(`${structureLabels.facility} updated successfully`);
+      toast.success("Facility updated successfully");
     } catch (error) {
       console.error("Error updating facility:", error);
-      toast.error(`Failed to update ${structureLabels.facility.toLowerCase()}`);
+      toast.error("Failed to update facility");
     } finally {
       setLoading(false);
     }
@@ -495,10 +535,10 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setFacilities(prev => prev.filter(f => f.id !== id));
-      toast.success(`${structureLabels.facility} deleted successfully`);
+      toast.success("Facility deleted successfully");
     } catch (error) {
       console.error("Error deleting facility:", error);
-      toast.error(`Failed to delete ${structureLabels.facility.toLowerCase()}`);
+      toast.error("Failed to delete facility");
     } finally {
       setLoading(false);
     }

@@ -19,6 +19,7 @@ import {
 import { useIncidentAuditTrail } from '@/hooks/useIncidentAuditTrail';
 import { Skeleton } from '@/components/ui/skeleton';
 import {formatDate} from '@/lib/Dateformat';
+import { FormattedAuditEntry } from '@/services/incident/auditLogService';
 interface AuditTrailProps {
   incidentId?: string;
   maxHeight?: string;
@@ -39,7 +40,7 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
 
 
   // Get icon based on activity type and action
-  const getActivityIcon = (activity: any) => {
+  const getActivityIcon = (activity: FormattedAuditEntry) => {
     if (activity.activity === 'create') {
       if (activity.type === 'comment') return <MessageSquare className="h-4 w-4" />;
       if (activity.type === 'action') return <FileText className="h-4 w-4" />;
@@ -53,7 +54,7 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
   };
 
   // Get color based on activity type
-  const getActivityColor = (activity: any) => {
+  const getActivityColor = (activity: FormattedAuditEntry) => {
     switch (activity.type) {
       case 'incident':
         return activity.activity === 'create' 
@@ -155,7 +156,7 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
   };
 
   // Render highlighted change based on parsed content
-  const renderHighlightedChange = (parsed: any) => {
+  const renderHighlightedChange = (parsed: ReturnType<typeof parseAndHighlightText>) => {
     if (!parsed) return null;
 
     switch (parsed.type) {

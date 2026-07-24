@@ -171,7 +171,7 @@ export const useAssessmentAccess = () => {
     });
     
     return hasAdmin;
-  }, [isSuperAdmin, employeeState.configuredModules]);
+  }, [isSuperAdmin, employeeState, authEmployeeData]);
 
   // Get current user's employee ID
   const currentUserEmployeeId = employeeState.employeeData?.id || authEmployeeData?.id;

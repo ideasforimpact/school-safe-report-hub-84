@@ -86,8 +86,8 @@ const getActiveRawClient = () => (isBackofficePath() ? backofficeRawClient : sso
 let activeAutoRefresh: 'backoffice' | 'sso' | null = null;
 
 const stopAllAutoRefresh = (): void => {
-  try { ssoRawClient.auth.stopAutoRefresh(); } catch {}
-  try { backofficeRawClient.auth.stopAutoRefresh(); } catch {}
+  try { ssoRawClient.auth.stopAutoRefresh(); } catch { /* ignore */ }
+  try { backofficeRawClient.auth.stopAutoRefresh(); } catch { /* ignore */ }
 };
 
 export function syncSupabaseAutoRefreshToActivePath(): void {

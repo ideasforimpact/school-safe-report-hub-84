@@ -7,10 +7,23 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, FileText, Clock, User, Target, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { AssessmentQuestion } from '@/types/assessment';
+
+interface AssessmentSummary {
+  status: string;
+  target_completion_date?: string;
+}
+
+interface TemplateSummary {
+  title: string;
+  description?: string;
+  type?: string;
+  questions?: AssessmentQuestion[];
+}
 
 interface AssessmentAnswerHeaderProps {
-  assessment: any;
-  template: any;
+  assessment: AssessmentSummary;
+  template: TemplateSummary;
   progress: number;
 }
 
@@ -28,7 +41,7 @@ const AssessmentAnswerHeader = ({ assessment, template, progress }: AssessmentAn
       transition={{ duration: 0.5 }}
     >
       {/* Back Button */}
-      <div className="mb-4">
+      <div className="mb-4 print:hidden">
         <Button
           variant="outline"
           onClick={handleBackToAssessments}

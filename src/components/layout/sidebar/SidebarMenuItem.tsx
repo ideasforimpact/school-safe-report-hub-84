@@ -8,7 +8,7 @@ interface SidebarMenuItemProps {
   label: string;
   path: string;
   isActive: boolean;
-  accessLevel?: any; // Add accessLevel prop
+  accessLevel?: unknown; // Add accessLevel prop
 }
 
 const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive, accessLevel }: SidebarMenuItemProps) => {

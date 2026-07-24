@@ -2,10 +2,19 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
+import {
   fetchModules,
   convertModulesToSidebarItems
 } from './sidebarConfig';
+import type { LucideIcon } from 'lucide-react';
+
+interface SidebarMenuItemData {
+  icon: LucideIcon | string;
+  label: string;
+  path: string;
+  allowed: boolean;
+  accessLevel?: Record<string, unknown>;
+}
 import SidebarMenuItem from './SidebarMenuItem';
 import ClientModulesList from './ClientModulesList';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -17,7 +26,7 @@ const SidebarContent = () => {
   const { user, isSaasOwner } = useAuth();
   const { state: employeeState } = useEmployeeStore();
   const configuredModules = getConfiguredModules(employeeState);
-  const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
+  const [dynamicMenuItems, setDynamicMenuItems] = useState<SidebarMenuItemData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   
@@ -120,7 +129,7 @@ const SidebarContent = () => {
       setHasInitialized(true);
     }
     
-  }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules]);
+  }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules, location.pathname]);
 
   // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {

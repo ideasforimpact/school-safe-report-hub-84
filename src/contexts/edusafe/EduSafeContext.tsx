@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { EduSafeResource } from '@/types/eduSafeTypes';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { EduSafeResource, ResourceCategory } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -56,13 +56,14 @@ export const useEduSafe = () => {
   return context;
 };
 
-export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialFetch?: boolean }> = ({ children, skipInitialFetch = false }) => {
   const [resources, setResources] = useState<EduSafeResource[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!skipInitialFetch);
   const { user } = useAuth();
   const location = useLocation();
+  const fetchedForClientRef = useRef<string | null>(null);
 
-  const fetchResources = async () => {
+  const fetchResources = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -93,26 +94,26 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
 
         // Transform the data to match EduSafeResource structure
-        const transformedResources: EduSafeResource[] = (resourcesData?.resources || []).map((resource: any) => ({
+        const transformedResources: EduSafeResource[] = (resourcesData?.resources || []).map((resource: Record<string, unknown>) => ({
           id: resource.id,
           title: resource.title,
-          description: resource.description || '',
+          description: (resource.description as string) || '',
           category: resource.category,
           tags: Array.isArray(resource.tags) ? resource.tags : [],
           uploadDate: resource.uploadDate,
           uploaderId: resource.uploaderId,
-          uploaderName: resource.uploaderName || user?.client?.name || 'Unknown',
+          uploaderName: (resource.uploaderName as string) || user?.client?.name || 'Unknown',
           ownerType: resource.ownerType,
           clientId: resource.clientId,
           resourceType: resource.resourceType,
           document_url: resource.document_url,
-          youtube_link: (resource as any)?.youtube_link as string | undefined,
+          youtube_link: resource.youtube_link as string | undefined,
           file: {
-            id: `file-${resource.id}`,
-            name: extractFileNameFromUrl(resource.document_url, resource.title),
+            id: `file-${resource.id as string}`,
+            name: extractFileNameFromUrl(resource.document_url as string | undefined, resource.title as string),
             type: 'application/pdf',
-            size: resource.file?.size || resource.file_size || 0,
-            base64: resource.document_url
+            size: (resource.file as Record<string, unknown>)?.size as number || (resource.file_size as number) || 0,
+            base64: resource.document_url as string
           }
         }));
 
@@ -132,7 +133,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const clientTypeId = user?.client?.client_type?.id || user?.clientType?.id;
 
         // Fetch backoffice resources using the edge function with client_type_id
-        let backofficeResources = [];
+        let backofficeResources: Array<{ id: string; title: string; description?: string; category: string; tags?: unknown; created_at: string; uploaded_by?: string; document_url: string; youtube_link?: string }> = [];
         if (clientTypeId) {
           const { data: backofficeData, error: backofficeError } = await supabase.functions.invoke('backoffice-edusafe-resource', {
             body: { 
@@ -153,12 +154,13 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Process regular edusafe_resources
         (regularResources || []).forEach(record => {
-          const youtubeLink = (record as any)?.youtube_link as string | undefined;
+          const extRecord = record as typeof record & { youtube_link?: string; file_size?: number };
+          const youtubeLink = extRecord.youtube_link;
           transformedResources.push({
             id: record.id,
             title: record.title,
             description: record.description || '',
-            category: record.category as any,
+            category: record.category as ResourceCategory,
             tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
             uploadDate: record.created_at,
             uploaderId: record.uploaded_by || 'unknown',
@@ -172,7 +174,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
               id: `file-${record.id}`,
               name: extractFileNameFromUrl(record.document_url, record.title),
               type: 'application/pdf',
-              size: (record as any).file_size || 0,
+              size: extRecord.file_size || 0,
               base64: record.document_url
             }
           });
@@ -180,12 +182,12 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Process backoffice resources (Global Resources)
         backofficeResources.forEach(record => {
-          const youtubeLink = (record as any)?.youtube_link as string | undefined;
+          const youtubeLink = record.youtube_link;
           transformedResources.push({
             id: `backoffice-${record.id}`,
             title: record.title,
             description: record.description || '',
-            category: record.category as any,
+            category: record.category as ResourceCategory,
             tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
             uploadDate: record.created_at,
             uploaderId: record.uploaded_by || 'unknown',
@@ -220,38 +222,49 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, location.pathname]);
 
   useEffect(() => {
+    if (skipInitialFetch) {
+      setLoading(false);
+      return;
+    }
     if (user?.clientId) {
+      if (fetchedForClientRef.current === user.clientId) return;
+      fetchedForClientRef.current = user.clientId;
       fetchResources();
     } else {
-      // Set loading to false and clear resources when no client ID
+      fetchedForClientRef.current = null;
       setLoading(false);
       setResources([]);
     }
-  }, [user?.clientId]);
+  }, [user?.clientId, skipInitialFetch, fetchResources]);
 
   const addResource = async (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType' | 'resourceType'>) => {
     try {
-      const { data, error } = await supabase
-        .from('edusafe_resources')
-        .insert({
-          title: resource.title,
-          description: resource.description,
-          category: resource.category,
-          tags: resource.tags,
-          document_url: resource.document_url || resource.file?.base64,
-          uploaded_by: user?.id,
-          client_id: user?.role === 'saas_owner' ? null : user?.clientId
-        })
-        .select()
-        .single();
+      const clientId = user?.role === 'saas_owner' ? null : user?.clientId;
+
+      const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
+        body: {
+          action: 'add_resource',
+          data: {
+            client_id: clientId,
+            resource: {
+              title: resource.title,
+              description: resource.description,
+              category: resource.category,
+              tags: resource.tags,
+              uploaderId: user?.id,
+              file: { url: resource.document_url || resource.file?.base64 }
+            }
+          }
+        }
+      });
 
       if (error) throw error;
 
       toast.success('Resource added successfully');
-      await fetchResources(); // Refresh the list
+      await fetchResources();
     } catch (error) {
       console.error('Error adding resource:', error);
       toast.error('Failed to add resource');
@@ -275,6 +288,9 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         formData.append('tags', JSON.stringify(updatedResource.tags || []));
         formData.append('client_id', user.clientId);
         formData.append('resource_id', id);
+        if (updatedResource.youtube_link !== undefined) {
+          formData.append('youtube_link', updatedResource.youtube_link || '');
+        }
 
         const { data, error } = await supabase.functions.invoke('edusafe-resource-upload', {
           method: 'PUT',
@@ -286,8 +302,6 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error(data.error || 'Failed to update resource');
         }
 
-        // toast.success('Resource updated successfully');
-        await fetchResources(); // Refresh the list
         return;
       }
 
@@ -301,7 +315,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           description: updatedResource.description,
           category: updatedResource.category,
           tags: updatedResource.tags,
-          youtube_link: updatedResource.youtube_link ?? null
+          youtube_link: updatedResource.youtube_link
         }
       });
 
@@ -309,8 +323,6 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (!data.success) {
         throw new Error(data.error || 'Failed to update resource');
       }
-      
-      await fetchResources(); // Refresh the list
     } catch (error) {
       console.error('Error updating resource:', error);
       toast.error('Failed to update resource');
@@ -320,15 +332,18 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const deleteResource = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('edusafe_resources')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
+        body: {
+          action: 'delete_resource',
+          data: { id, client_id: user?.clientId }
+        }
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error('Failed to delete resource');
 
       toast.success('Resource deleted successfully');
-      await fetchResources(); // Refresh the list
+      await fetchResources();
     } catch (error) {
       console.error('Error deleting resource:', error);
       toast.error('Failed to delete resource');

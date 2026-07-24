@@ -7,11 +7,12 @@ import {
   getCriticalIncidents,
   getIndividualsFromIncidents,
   getReportingPeriodText,
+  IncidentReportRow,
 } from "../utils";
 
 interface Props {
   month: string;
-  incidents: any[];
+  incidents: IncidentReportRow[];
 }
 
 export const IncidentPage = ({ month, incidents }: Props) => {
@@ -22,12 +23,12 @@ export const IncidentPage = ({ month, incidents }: Props) => {
   const individuals = getIndividualsFromIncidents(incidents);
 
   const overdueCount = critical.filter(
-    (i: any) =>
+    (i) =>
       i.incident_status?.name?.toLowerCase() === "overdue"
   ).length;
 
   const inProgressCount = critical.filter(
-    (i: any) =>
+    (i) =>
       i.incident_status?.name?.toLowerCase() === "in progress"
   ).length;
 
@@ -104,7 +105,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
           <Text style={styles.incidentCol}>OPEN</Text>
         </View>
 
-        {categories.map((c: any, i: number) => (
+        {categories.map((c, i: number) => (
           <View key={i} style={styles.incidentTableRow}>
             <Text style={styles.incidentCol1}>{c.name}</Text>
             <Text style={styles.incidentCol}>{c.total}</Text>
@@ -147,7 +148,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             <Text style={styles.colStudentDate}>DATE</Text>
           </View>
 
-          {individuals.slice(0, 10).map((p: any, i: number) => (
+          {individuals.slice(0, 10).map((p, i: number) => (
             <View key={i} style={styles.studentRow}>
               <Text style={styles.colStudentName}>{p.name}</Text>
               <Text style={styles.colStudentGrade}>{p.grade}</Text>
@@ -192,7 +193,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             </Text>
           </View>
 
-          {critical.slice(0, 6).map((inc: any, idx: number) => {
+          {critical.slice(0, 6).map((inc, idx: number) => {
             const status =
               inc.incident_status?.name?.toLowerCase() || "";
             const severity =

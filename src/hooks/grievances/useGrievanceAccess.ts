@@ -119,7 +119,7 @@ export const useGrievanceAccess = () => {
     console.log(`${hasAdmin ? '✅' : '❌'} Final grievance admin access result:`, hasAdmin);
     
     return hasAdmin;
-  }, [isSuperAdmin, employeeState.configuredModules]);
+  }, [isSuperAdmin, employeeState, authEmployeeData]);
 
   return {
     hasGrievanceAdmin,

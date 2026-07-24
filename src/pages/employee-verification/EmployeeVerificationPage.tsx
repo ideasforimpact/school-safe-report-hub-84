@@ -11,7 +11,7 @@ import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import Loader from "@/components/common/Loader";
 
 const EmployeeVerificationPage = () => {
-  const { fetchEmployees, employees } = useEmployeeVerification();
+  const { fetchEmployees, employees, totalEmployeesCount, verifiedEmployeesCount } = useEmployeeVerification();
   const [searchParams] = useSearchParams();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -19,33 +19,18 @@ const EmployeeVerificationPage = () => {
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
-  const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
+  // Read the initial status straight from the URL so the very first fetch already uses
+  // it — setting it later in an effect caused a race where an unfiltered "all employees"
+  // fetch fired first and only settled to "pending" (etc.) on the next render.
+  const [documentStatusFilter, setDocumentStatusFilter] = useState(() => {
+    const filterParam = searchParams.get('filter');
+    return filterParam === 'verified' || filterParam === 'pending' || filterParam === 'failed'
+      ? filterParam
+      : 'all';
+  });
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   
-  // Filter employees based on all criteria
-  // Helper function to get overall status based on priority logic
-  const getOverallStatus = (employee) => {
-    const documents = employee.documents || [];
-    if (documents.length === 0) return 'no-documents';
-    
-    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
-    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
-    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress');
-    
-    // Priority-based status logic: Failed > Pending > Verified
-    // If ANY document failed → Overall status is "Failed"
-    // If no failures but ANY pending → Overall status is "Pending"  
-    // If ALL documents verified → Overall status is "Verified"
-    if (failed.length > 0) {
-      return 'failed';
-    } else if (pending.length > 0) {
-      return 'pending';
-    } else {
-      return 'verified';
-    }
-  };
-
   const departments = useMemo(() => {
     const uniqueDepartments = new Set(
       employees
@@ -56,104 +41,31 @@ const EmployeeVerificationPage = () => {
     return Array.from(uniqueDepartments);
   }, [employees]);
 
-  const filteredEmployees = useMemo(() => {
-    return employees.filter((employee) => {
-      const documents = employee.documents || [];
+  // Filtering (search, department, document type, document status) is applied server-side
+  // by fetchEmployees below. Re-filtering here was not just redundant but actively broken
+  // for department: employee.department holds the department NAME while departmentFilter
+  // holds its UUID, so the comparison never matched and picking a department emptied the
+  // whole list even though the server had already returned the right employees.
+  const filteredEmployees = employees;
 
-      if (documentTypeFilter !== 'all' && documents.length === 0) {
-        return false;
-      }
-
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        const matchesSearch = 
-          employee.name.toLowerCase().includes(searchLower) ||
-          employee.email.toLowerCase().includes(searchLower) ||
-          employee.employeeId.toLowerCase().includes(searchLower) ||
-          (employee.address && employee.address.toLowerCase().includes(searchLower));
-        
-        if (!matchesSearch) return false;
-      }
-
-      if (departmentFilter !== 'all') {
-        if (employee.department !== departmentFilter) {
-          return false;
-        }
-      }
-
-      if (documentTypeFilter !== 'all') {
-        const matchingDoc = documents.find((doc) => {
-          if (doc.documentTypeId !== documentTypeFilter) return false;
-
-          if (documentStatusFilter === 'all') return true;
-
-          if (documentStatusFilter === 'verified') {
-            return ['verified', 'completed'].includes(doc.verificationStatus);
-          }
-
-          if (documentStatusFilter === 'pending') {
-            return ['pending', 'in-progress'].includes(doc.verificationStatus);
-          }
-
-          if (documentStatusFilter === 'failed') {
-            return ['failed', 'rejected'].includes(doc.verificationStatus);
-          }
-
-          return false;
-        });
-
-        if (!matchingDoc) return false;
-      }
-
-      if (documentTypeFilter === 'all' && documentStatusFilter !== 'all') {
-        const overallStatus = getOverallStatus(employee);
-        if (overallStatus !== documentStatusFilter) return false;
-      }
-
-      return true;
-    });
-  }, [employees, searchTerm, documentStatusFilter, documentTypeFilter, departmentFilter]);
-
-  // Parse URL parameters and set initial filters
-  useEffect(() => {
-    const filterParam = searchParams.get('filter');
-    if (filterParam) {
-      console.log('🔍 Employee Verification - URL filter parameter found:', filterParam);
-      
-      // Map filter parameter to document status filter
-      let initialStatus = '';
-      switch (filterParam) {
-        case 'verified':
-          initialStatus = 'verified';
-          break;
-        case 'pending':
-          initialStatus = 'pending';
-          break;
-        case 'failed':
-          initialStatus = 'failed';
-          break;
-        default:
-          initialStatus = '';
-      }
-      
-      if (initialStatus) {
-        console.log('🎯 Setting initial document status filter to:', initialStatus);
-        setDocumentStatusFilter(initialStatus);
-      }
-    }
-  }, [searchParams]);
-
-  // Fetch employees when component mounts
+  // Re-fetch from the server whenever a filter changes, resetting to page 1. Filtering
+  // must happen server-side (not just on the currently loaded page) — otherwise matches
+  // like "pending" get scattered across pages instead of appearing together.
   useEffect(() => {
     const loadEmployees = async () => {
       setLoading(true);
-      await fetchEmployees();
+      await fetchEmployees({
+        search: searchTerm,
+        departmentId: departmentFilter,
+        documentTypeId: documentTypeFilter,
+        documentStatus: documentStatusFilter,
+      }, 1);
       setLoading(false);
     };
 
     loadEmployees();
-  }, [fetchEmployees]);  
-  
+  }, [fetchEmployees, searchTerm, departmentFilter, documentTypeFilter, documentStatusFilter]);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     setLoading(true);
@@ -172,18 +84,11 @@ const EmployeeVerificationPage = () => {
     setDocumentTypeFilter('all');
     setDepartmentFilter('all');
   };
-  const employeeAnalyticsStats = useMemo(() => {
-    const totalEmployees = employees.length;
-
-    const verifiedEmployees = employees.filter(
-      (employee) => getOverallStatus(employee) === 'verified'
-    ).length;
-
-    return {
-      totalEmployees,
-      verifiedEmployees,
-    };
-  }, [employees]);
+  // Global counts across all pages — not just the currently loaded page of `employees`.
+  const employeeAnalyticsStats = {
+    totalEmployees: totalEmployeesCount,
+    verifiedEmployees: verifiedEmployeesCount,
+  };
 
 
   const handleEmployeesRealtime = useCallback(() => {

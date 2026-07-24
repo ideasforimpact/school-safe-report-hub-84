@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Upload, X, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { VerificationDocument, Employee } from '@/types/employeeVerification';
+import { FileItem } from '@/types/fileTypes';
 import DocumentFileUploader from '@/components/employee-verification/form/DocumentFileUploader';
 import { useFilesManagement } from '@/hooks/useFilesManagement';
 import { backofficeDocumentService } from '@/services/employee/backofficeDocumentService';
@@ -31,7 +32,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
   const [actualFile, setActualFile] = useState<File | null>(null);
 
   // Get the client ID - try both field names for compatibility
-  const clientId = employee.clientId || (employee as any).client_id;
+  const clientId = employee.clientId || (employee as Employee & { client_id?: string }).client_id;
 
   console.log('DocumentReUploadDialog - Rendered with:', {
     documentId: document.id,
@@ -48,16 +49,17 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
   };
 
   // Override the files change to restrict to single file and capture actual File object
-  const handleSingleFileChange = (files: any[]) => {
+  const handleSingleFileChange = (files: FileItem[]) => {
     console.log('DocumentReUploadDialog - Files changed:', files);
     // Restrict to single file
     const singleFile = files.slice(0, 1);
     handleFilesChange(singleFile);
     
     // Extract the actual File object if available
-    if (singleFile.length > 0 && singleFile[0].file) {
-      console.log('DocumentReUploadDialog - Actual file set:', singleFile[0].file.name);
-      setActualFile(singleFile[0].file);
+    const firstFile = singleFile[0] as (FileItem & { file?: File }) | undefined;
+    if (firstFile?.file) {
+      console.log('DocumentReUploadDialog - Actual file set:', firstFile.file.name);
+      setActualFile(firstFile.file);
     }
   };
 
@@ -92,7 +94,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
     setIsUploading(true);
     try {
       // Use the actual File object if available, otherwise fall back to supportingFiles
-      const fileToUpload = actualFile || (supportingFiles[0] as any)?.file;
+      const fileToUpload = actualFile || (supportingFiles[0] as (FileItem & { file?: File }) | undefined)?.file;
       
       console.log('DocumentReUploadDialog - File to upload:', fileToUpload?.name);
       

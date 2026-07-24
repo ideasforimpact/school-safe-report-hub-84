@@ -38,6 +38,36 @@ const assessmentTemplates: Partial<Record<NotificationType, NotificationTemplate
     updatedAt: new Date().toISOString()
   },
 
+  assessment_reassigned: {
+    id: 'frontend-assessment-reassigned',
+    module: 'assessment',
+    type: 'assessment_reassigned',
+    subject: 'Assessment Reassigned to You – [{{Assessment_Title}}]',
+    body: `<div style="${assessmentBaseStyles}">
+<div style="${assessmentHeaderStyles}">
+<h2 style="margin:0;color:#1f2937;font-size:24px;">🔄 Assessment Reassigned</h2>
+</div>
+<div style="${assessmentContentStyles}">
+<p style="margin:0 0 20px;font-size:16px;">Hello <strong>{{User_Name}}</strong>,</p>
+<p style="margin:0 0 20px;font-size:16px;">This assessment has been reassigned to you.</p>
+<div style="background-color:#dbeafe;padding:16px;border-radius:6px;border-left:4px solid #3b82f6;margin:20px 0;">
+<h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Assessment Details:</h3>
+<p style="margin:6px 0;"><strong>Assessment Name:</strong> {{Assessment_Title}}</p>
+<p style="margin:6px 0;"><strong>Reassigned On:</strong> {{Reassigned_Date}}</p>
+<p style="margin:6px 0;"><strong>Due Date:</strong> {{Due_Date}}</p>
+</div>
+<p style="margin:20px 0;font-size:16px;color:#6b7280;">Please review and complete it within the given timeline. <a href="{{Assessment_URL}}?assessmentId={{Assessment_ID}}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
+</div>
+<div style="${assessmentFooterStyles}">
+<p style="margin:0;font-size:14px;">Regards,<br/><strong>Safe School Team</strong></p>
+</div>
+</div>`,
+    variables: ['User_Name','Assessment_ID','Assessment_Title','Reassigned_Date','Due_Date','Assessment_URL'],
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+
   assessment_submitted: {
     id: 'frontend-assessment-submitted',
     module: 'assessment',

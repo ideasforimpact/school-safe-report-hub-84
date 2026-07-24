@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Action } from '@/types/incident';
+import { Action, Incident } from '@/types/incident';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import IncidentActions from './IncidentActions';
@@ -21,6 +21,9 @@ const ActionsManager: React.FC<ActionsManagerProps> = ({
   handleActionSubmit,
   closureMode = false // Default to false, only true during closure
 }) => {
+  // State to toggle the action form visibility
+  const [isAddingAction, setIsAddingAction] = useState(false);
+
   // Do not render this component unless we're in closure mode
   if (!closureMode) {
     return (
@@ -31,9 +34,6 @@ const ActionsManager: React.FC<ActionsManagerProps> = ({
       </Alert>
     );
   }
-
-  // State to toggle the action form visibility
-  const [isAddingAction, setIsAddingAction] = useState(false);
 
   // Format dates for consistent display
   const formatDate = (date: Date) => {
@@ -65,7 +65,7 @@ const ActionsManager: React.FC<ActionsManagerProps> = ({
       {/* Show action form when isAddingAction is true */}
       {isAddingAction && (
         <IncidentActions 
-          incident={{ id: incidentId, actions: actions } as any} 
+          incident={{ id: incidentId, actions: actions } as unknown as Incident}
           handleActionSubmit={(action) => {
             handleActionSubmit(action);
             setIsAddingAction(false); // Close form after submission

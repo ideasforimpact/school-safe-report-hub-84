@@ -32,6 +32,8 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'fetch_resources':
         return await fetchResources(supabaseAdmin, data)
+      case 'fetch_titles':
+        return await fetchTitles(supabaseAdmin, data)  
       case 'add_resource':
         return await addResource(supabaseAdmin, data)
       case 'update_resource':
@@ -163,6 +165,46 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+}
+
+async function fetchTitles(supabase: any, { client_id }: { client_id: string }) {
+  try {
+    console.log(`Fetching EduSafe resource titles for client: ${client_id}`)
+
+    const { data: orgResources, error } = await supabase
+      .from('edusafe_resources')
+      .select('title')
+      .eq('client_id', client_id)
+
+    if (error) {
+      console.error('Error fetching resource titles:', error)
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch resource titles' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const titles = (orgResources || []).map((resource: any) => resource.title.toLowerCase())
+
+    return new Response(
+      JSON.stringify({ titles }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
+  } catch (error) {
+    console.error('Error in fetchTitles:', error)
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch resource titles' }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }

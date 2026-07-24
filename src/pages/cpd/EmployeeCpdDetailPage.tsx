@@ -150,7 +150,7 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
     if (!open) return;
     let cancelled = false;
     (async () => {
-      const { data, error: err } = await (supabase as any)
+      const { data, error: err } = await (supabase as unknown as { from: (table: string) => { select: (cols: string) => { eq: (col: string, val: unknown) => { order: (col: string) => Promise<{ data: unknown[] | null; error: unknown }> } } } })
         .from('cpd_learning_category')
         .select('id, name')
         .eq('active', true)
@@ -471,7 +471,7 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
     if (!open) return;
     let cancelled = false;
     (async () => {
-      const { data, error: err } = await (supabase as any)
+      const { data, error: err } = await (supabase as unknown as { from: (table: string) => { select: (cols: string) => { eq: (col: string, val: unknown) => { order: (col: string) => Promise<{ data: unknown[] | null; error: unknown }> } } } })
         .from('cpd_learning_category')
         .select('id, name')
         .eq('active', true)

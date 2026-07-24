@@ -26,8 +26,6 @@ import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { CategoryItem, SubcategoryItem } from '@/services/incident/categoryService';
 import { EditDialog } from './EditDialog';
 import { useAuth } from '@/contexts/auth/useAuth';
-import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Loader from '../common/Loader';
 
 // Validation: allow any characters, up to 50 characters
@@ -66,7 +64,6 @@ export const SubcategoryTab = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { employeeData } = useAuth();
-  const [subcategoryReferences, setSubcategoryReferences] = useState<Record<string, IncidentReferenceCheck>>({});
   
   const handleAddSubcategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,9 +89,9 @@ export const SubcategoryTab = ({
       // Client ID check is now handled in the hook and service
       await addSubcategory(selectedCategoryId, newSubcategoryName.trim());
       setNewSubcategoryName('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error in handleAddSubcategory:', error);
-      setError(error.message || 'Failed to add subcategory');
+      setError(error instanceof Error ? error.message : 'Failed to add subcategory');
     } finally {
       setIsAdding(false);
     }
@@ -118,9 +115,9 @@ export const SubcategoryTab = ({
         await deleteSubcategory(selectedCategoryId, subcategoryToDelete.id);
         setDeleteDialogOpen(false);
         setSubcategoryToDelete(null);
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error in handleConfirmDelete:', error);
-        setDeleteError(error.message || 'Failed to delete subcategory');
+        setDeleteError(error instanceof Error ? error.message : 'Failed to delete subcategory');
         // Don't close the dialog on error - let user see the error message
       } finally {
         setIsDeleting(false);
@@ -156,9 +153,9 @@ export const SubcategoryTab = ({
           updatedName.trim()
         );
         handleEditClose();
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error in handleEditSave:', error);
-        setError(error.message || 'Failed to update subcategory');
+        setError(error instanceof Error ? error.message : 'Failed to update subcategory');
       } finally {
         setIsUpdating(false);
       }
@@ -179,43 +176,6 @@ export const SubcategoryTab = ({
   // Find currently selected category name
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
-  // Pre-load reference info for subcategories of the selected category
-  useEffect(() => {
-    const clientId = employeeData?.clientId || employeeData?.client_id;
-    if (!clientId || !selectedCategoryId || currentSubcategories.length === 0) {
-      setSubcategoryReferences({});
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchReferences = async () => {
-      try {
-        const results = await Promise.all(
-          currentSubcategories.map(async (subcat) => {
-            const refInfo = await incidentReferenceService.checkSubcategoryReferences(subcat.id, clientId);
-            return { id: subcat.id, refInfo };
-          })
-        );
-
-        if (isCancelled) return;
-
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
-        setSubcategoryReferences(map);
-      } catch (error) {
-        console.error('Error preloading subcategory reference info:', error);
-      }
-    };
-
-    fetchReferences();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [currentSubcategories, employeeData, selectedCategoryId]);
   
   return (
     <Card>
@@ -311,58 +271,15 @@ export const SubcategoryTab = ({
                           <Pencil className="h-4 w-4" />
                         </Button>
                         
-                        {(() => {
-                          const refInfo = subcategoryReferences[subcategory.id];
-                          const isLinked = refInfo?.hasReferences;
-
-                          if (isLinked) {
-                            const message =
-                              refInfo?.message ||
-                              `This subcategory is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
-
-                            return (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="inline-flex">
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon"
-                                        aria-disabled="true"
-                                        className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent 
-                                    side="left" 
-                                    align="center" 
-                                    sideOffset={8} 
-                                    className="max-w-xs whitespace-normal text-left"
-                                  >
-                                    <p className="text-xs leading-snug text-left">
-                                      {message}
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            );
-                          }
-
-                          // Not linked → regular enabled delete button
-                          return (
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => handleDeleteClick(subcategory)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              disabled={isRefreshing}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          );
-                        })()}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(subcategory)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          disabled={isRefreshing}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                       )}
                     </TableCell>

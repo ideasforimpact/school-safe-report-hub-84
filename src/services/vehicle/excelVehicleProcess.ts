@@ -90,8 +90,8 @@ const parseVehicleExcelFile = async (
           defval: '',
         });
 
-        const vehicles: RawVehicleData[] = jsonData.map((row: any) => {
-          const keys = Object.keys(row).reduce<Record<string, any>>(
+        const vehicles: RawVehicleData[] = jsonData.map((row: Record<string, unknown>) => {
+          const keys = Object.keys(row).reduce<Record<string, unknown>>(
             (acc, key) => {
               acc[key.toLowerCase()] = row[key];
               return acc;
@@ -101,14 +101,11 @@ const parseVehicleExcelFile = async (
 
           return {
             registrationNumber:
-              keys['registration number'] ||
-              '',
+              String(keys['registration number'] ?? ''),
             internalVehicleName:
-              keys['internal vehicle name'] ||
-              '',
+              String(keys['internal vehicle name'] ?? ''),
             vehicleType:
-              keys['vehicle type'] ||
-              '',
+              String(keys['vehicle type'] ?? ''),
           };
         });
 

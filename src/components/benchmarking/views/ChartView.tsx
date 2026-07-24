@@ -11,11 +11,12 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { BenchmarkingChartData } from '@/hooks/benchmarking/types';
 
 interface ChartViewProps {
   selectedCategory: string;
   showSubcategories: boolean;
-  chartData: any[];
+  chartData: BenchmarkingChartData[];
   selectedCities: string[];
 }
 

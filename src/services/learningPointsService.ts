@@ -26,35 +26,46 @@ export interface PaginatedLearningPoints {
   subcategories: string[];
 }
 
+const learningPointsInflight = new Map<string, Promise<unknown[]>>();
+
 export async function fetchLearningPoints(
   clientId: string,
   page = 1,
   pageSize = 10,
   filters: LearningPointFilters = {}
 ): Promise<PaginatedLearningPoints> {
-  const anyClient = supabase as any;
-  // Base select with required joins
-  let query = anyClient
-    .from('incidents')
-    .select(
-      `id, ticket_id, learning_points, created_at,
-       incident_categories:category_id(name),
-       incident_subcategories:subcategory_id(name),
-       created_by_employee:employees!created_by(id, first_name, last_name)`,
-      { count: 'exact' }
-    )
-    .eq('client_id', clientId)
-    .not('learning_points', 'is', null)
-    .neq('learning_points', '')
-    .order('created_at', { ascending: false });
+  // Fetch (and de-dupe concurrent fetches) via the fetch-incidents edge function;
+  // search/category/subcategory filters and pagination are still applied client-side below.
+  let request = learningPointsInflight.get(clientId);
+  if (!request) {
+    request = (async () => {
+      const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+        body: { operation: 'get_learning_points', clientId },
+      });
 
-  // Note: For simplicity and reliability across DBs, do text filters client-side
-  const { data, error } = await query;
-  if (error) {
-    throw error;
+      if (error) throw error;
+      if (!data?.success) throw new Error('Failed to fetch learning points');
+
+      return (data.data || []) as unknown[];
+    })();
+
+    learningPointsInflight.set(clientId, request);
+    request.finally(() => learningPointsInflight.delete(clientId));
   }
 
-  const records: LearningPointRecord[] = (data || []).map((row: any) => ({
+  const data = await request;
+
+  interface LearningPointQueryRow {
+    id: string;
+    ticket_id: string;
+    learning_points: string | null;
+    created_at: string;
+    incident_categories: { name: string } | null;
+    incident_subcategories: { name: string } | null;
+    created_by_employee: { id: string; first_name: string; last_name: string } | null;
+  }
+
+  const records: LearningPointRecord[] = (data as LearningPointQueryRow[] || []).map((row) => ({
     id: row.id,
     incidentId: row.ticket_id,
     category: row.incident_categories?.name || 'Unknown',

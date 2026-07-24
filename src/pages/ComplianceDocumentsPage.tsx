@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter, ShieldCheck, X } from 'lucide-react';
@@ -30,6 +30,25 @@ import Loader from '@/components/common/Loader';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData } from '@/store/employeeSelectors';
+
+interface ComplianceFileRow {
+  path?: string;
+  folder_name?: string;
+  is_delete?: boolean | number;
+  [key: string]: unknown;
+}
+
+interface ComplianceDataRow {
+  id: string;
+  folder_id: string;
+  folder_exists: boolean;
+  parent_folder_id?: string | null;
+  is_valid?: boolean;
+  valid_date?: string | null;
+  files?: ComplianceFileRow[];
+  [key: string]: unknown;
+}
+
 const ComplianceDocumentsPage: React.FC = () => {
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const { user } = useAuth();
@@ -39,8 +58,8 @@ const ComplianceDocumentsPage: React.FC = () => {
     state.activeClientId ||
     employeeData?.clientId ||
     employeeData?.client?.id ||
-    (user as any)?.client_id ||
-    (user as any)?.clientId ||
+    (user as Record<string, unknown>)?.client_id as string ||
+    (user as Record<string, unknown>)?.clientId as string ||
     '';
   const { getEmployeeId } = useEmployeeAccess();
   const employeeId = getEmployeeId();
@@ -92,7 +111,7 @@ const ComplianceDocumentsPage: React.FC = () => {
   const [validityDialogOpen, setValidityDialogOpen] = useState(false);
   const [validityMode, setValidityMode] = useState<"none" | "date">("none");
   const [validityDate, setValidityDate] = useState<Date | undefined>(undefined);
-  const [selectedFile, setSelectedFile] = useState<any | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{ rowId: string; is_valid?: boolean; valid_date?: Date | string | null; path?: string } | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<{
     id: string;
     folder_id: string;
@@ -109,7 +128,7 @@ const ComplianceDocumentsPage: React.FC = () => {
     setSearchTerm('');
     setStatusFilter('all');
   };
-  const handleSetValidityClick = (item: any) => {
+  const handleSetValidityClick = (item: { rowId: string; is_valid?: boolean; valid_date?: Date | string | null }) => {
   setSelectedFile(item);
 
   if (item.is_valid && item.valid_date) {
@@ -162,10 +181,10 @@ const ComplianceDocumentsPage: React.FC = () => {
 
       setValidityDialogOpen(false);
       await refresh();
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Failed to save validity",
-        description: err?.message || "Please try again.",
+        description: err instanceof Error ? err.message : "Please try again.",
         variant: "destructive",
       });
     }
@@ -194,8 +213,8 @@ const ComplianceDocumentsPage: React.FC = () => {
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
-  const matchesStatusFilter = (isValid?: boolean, validDate?: Date | null) => {
-    const status = getValidityStatus(isValid, validDate); 
+  const matchesStatusFilter = useCallback((isValid?: boolean, validDate?: Date | null) => {
+    const status = getValidityStatus(isValid, validDate);
 
     if (statusFilter === "all") return true;
 
@@ -209,15 +228,15 @@ const ComplianceDocumentsPage: React.FC = () => {
       return status === "expired";
     }
     return true;
-  };
+  }, [statusFilter]);
 
- const filterFileList = <T extends { path: string; is_valid?: boolean; valid_date?: any }>(
+ const filterFileList = useCallback(<T extends { path: string; is_valid?: boolean; valid_date?: Date | string | null }>(
     files: T[]
   ): T[] => {
     return files.filter((it) =>
       matchesStatusFilter(it.is_valid, it.valid_date as Date | null)
     );
-  };
+  }, [matchesStatusFilter]);
 
   const filterFolderList = <T extends { name: string }>(list: T[]): T[] => list;
 
@@ -232,7 +251,7 @@ const ComplianceDocumentsPage: React.FC = () => {
       const findFolderById = (id: string) =>
         allFolders.find((f) => f.id === id);
 
-      matchingFiles.forEach((file: any) => {
+      matchingFiles.forEach((file) => {
         let folderRowId: string | null | undefined = file.parentFolderId;
 
         while (folderRowId) {
@@ -245,24 +264,24 @@ const ComplianceDocumentsPage: React.FC = () => {
       });
 
       return map;
-    }, [allFiles, allFolders, statusFilter]);
+    }, [allFiles, allFolders, statusFilter, filterFileList]);
 
 
     let visibleRootFolders = !currentFolderId ? filterFolderList(folders) : folders;
     
     if (!currentFolderId && folderHasMatchingFiles && statusFilter !== 'all') {
-      visibleRootFolders = visibleRootFolders.filter((f: any) =>
+      visibleRootFolders = visibleRootFolders.filter((f) =>
         folderHasMatchingFiles[f.id]
       );
     }
     const visibleRootFiles = !currentFolderId ? filterFileList(rootFiles): rootFiles;
     let visibleChildFolders = currentFolderId ? filterFolderList(childFolders) : childFolders;
     if (currentFolderId && folderHasMatchingFiles && statusFilter !== 'all') {
-      visibleChildFolders = visibleChildFolders.filter((f: any) =>
+      visibleChildFolders = visibleChildFolders.filter((f) =>
         folderHasMatchingFiles[f.id]
       );
     }
-  const visibleCurrentFolderFiles = currentFolderId ? filterFileList(currentFolderFiles as any) : currentFolderFiles;
+  const visibleCurrentFolderFiles = currentFolderId ? filterFileList(currentFolderFiles) : currentFolderFiles;
   const noResults =
       (!currentFolderId &&
         visibleRootFolders.length === 0 &&
@@ -294,7 +313,7 @@ const ComplianceDocumentsPage: React.FC = () => {
         }));
 
       const fileResults = allFiles
-        .filter((f: any) => {
+        .filter((f) => {
           const name = (f.fileName || getFileNameFromPath(f.path)).toLowerCase();
           const matchesText = name.includes(term); 
           const matchesStatus = matchesStatusFilter(
@@ -304,7 +323,7 @@ const ComplianceDocumentsPage: React.FC = () => {
           return matchesText && matchesStatus;
         })
         .slice(0, Math.max(10 - folderResults.length, 0))
-        .map((f: any, idx: number) => ({
+        .map((f, idx: number) => ({
           type: 'file' as const,
           id: `${f.rowId}-${idx}`,
           name: f.fileName || getFileNameFromPath(f.path),
@@ -327,7 +346,7 @@ const ComplianceDocumentsPage: React.FC = () => {
     }
 
     return results;
-  }, [normalizedSearch, allFolders, allFiles, statusFilter]);
+  }, [normalizedSearch, allFolders, allFiles, matchesStatusFilter]);
 
     const showSearchDropdown = !!normalizedSearch && searchResults.length > 0;
 
@@ -340,7 +359,7 @@ const ComplianceDocumentsPage: React.FC = () => {
   };
 
   const bucketName = 'compliance_documents';
-  const storageBaseUrl = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL as string | undefined;
+  const storageBaseUrl = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
 
   // Aggregate progress for the overlay widget
   const totalProgress = React.useMemo(() => {
@@ -349,28 +368,27 @@ const ComplianceDocumentsPage: React.FC = () => {
     return Math.floor(sum / uploadItems.length);
   }, [uploading, uploadItems]);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!clientId) return;
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from('compliance_documents')
-      .select('id, folder_exists, folder_id, parent_folder_id, files,is_valid,valid_date')
-      .eq('client_id', clientId)
-      .eq('is_delete', 0); // Only fetch non-deleted records
+    const { data: result, error } = await supabase.functions.invoke('compliance-docs', {
+      body: { action: 'list', clientId },
+    });
     if (error) throw error;
+    const data = result?.data ?? [];
       
     const folderRowsAll = (data || []).filter(
-      (r: any) => r.folder_exists === true
+      (r: ComplianceDataRow) => r.folder_exists === true
     );
 
-    const folderRowById: Record<string, any> = {};
-    folderRowsAll.forEach((r: any) => {
+    const folderRowById: Record<string, ComplianceDataRow> = {};
+    folderRowsAll.forEach((r: ComplianceDataRow) => {
       folderRowById[r.id] = r;
     });
 
-    const buildFolderPath = (row: any): string => {
+    const buildFolderPath = (row: ComplianceDataRow): string => {
       const segments: string[] = [];
-      let current: any = row;
+      let current: ComplianceDataRow | undefined = row;
       while (current) {
         const nm: string =
           current.files?.[0]?.folder_name ||
@@ -388,7 +406,7 @@ const ComplianceDocumentsPage: React.FC = () => {
       return segments.join(' / ');
     };
 
-    const allFolderList = folderRowsAll.map((r: any) => {
+    const allFolderList = folderRowsAll.map((r: ComplianceDataRow) => {
       const structuredName: string | undefined = r.files?.[0]?.folder_name;
       const firstPath: string | undefined = r.files?.[0]?.path;
       const parts = (firstPath || '').split('/');
@@ -410,19 +428,19 @@ const ComplianceDocumentsPage: React.FC = () => {
     setAllFolders(allFolderList);
 
     const allFileRows = (data || []).filter(
-      (r: any) => r.folder_exists === false
+      (r: ComplianceDataRow) => r.folder_exists === false
     );
 
-    const allFilesFlattened = allFileRows.flatMap((r: any) => {
+    const allFilesFlattened = allFileRows.flatMap((r: ComplianceDataRow) => {
       const parentFolder = r.parent_folder_id
         ? folderRowById[r.parent_folder_id]
         : null;
       const folderPath = parentFolder ? buildFolderPath(parentFolder) : '';
       return (r.files || [])
         .filter(
-          (f: any) =>
+          (f: ComplianceFileRow) =>
             !f.is_delete || f.is_delete === 0 || f.is_delete === false
-        ).map((f: any) => {
+        ).map((f: ComplianceFileRow) => {
           const fileName =
             (f.path || '').split('/').pop() || f.fileName || 'file';
           const fullPath = folderPath
@@ -460,18 +478,18 @@ const ComplianceDocumentsPage: React.FC = () => {
       // - Folders: rows with folder_exists = true and no parent_folder_id
       // - Files: rows with folder_exists = false and no parent_folder_id
       const folderRows = (data || []).filter(
-        (r: any) =>
+        (r: ComplianceDataRow) =>
           r.folder_exists === true &&
           (r.parent_folder_id === null || typeof r.parent_folder_id === 'undefined')
       );
 
       const fileRows = (data || []).filter(
-        (r: any) =>
+        (r: ComplianceDataRow) =>
           r.folder_exists === false &&
           (r.parent_folder_id === null || typeof r.parent_folder_id === 'undefined')
       );
 
-      const folderList = folderRows.map((r: any) => {
+      const folderList = folderRows.map((r: ComplianceDataRow) => {
         // Prefer structured folder_name if present
         const structuredName: string | undefined = r.files?.[0]?.folder_name;
         if (structuredName) {
@@ -486,10 +504,10 @@ const ComplianceDocumentsPage: React.FC = () => {
       // Each non-folder row represents one or more files at root.
       // For new data there should be exactly one file per row, but we
       // still flatten for backward compatibility.
-      const files = fileRows.flatMap((r: any) =>
+      const files = fileRows.flatMap((r: ComplianceDataRow) =>
         (r.files || [])
-          .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
-          .map((f: any) => ({ ...f, rowId: r.id,is_valid:r.is_valid ,valid_date:r.valid_date}))
+          .filter((f: ComplianceFileRow) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
+          .map((f: ComplianceFileRow) => ({ ...f, rowId: r.id,is_valid:r.is_valid ,valid_date:r.valid_date}))
       );
 
       setFolders(folderList);
@@ -502,23 +520,23 @@ const ComplianceDocumentsPage: React.FC = () => {
       // - current folder row is identified by folder_id
       // - child folders: folder_exists = true and parent_folder_id = current folder row id
       // - files: folder_exists = false and parent_folder_id = current folder row id
-      const folderRow = (data || []).find((r: any) => r.folder_id === currentFolderId);
+      const folderRow = (data || []).find((r: ComplianceDataRow) => r.folder_id === currentFolderId);
 
       if (folderRow) {
         const fileRows = (data || []).filter(
-          (r: any) => r.folder_exists === false && r.parent_folder_id === folderRow.id
+          (r: ComplianceDataRow) => r.folder_exists === false && r.parent_folder_id === folderRow.id
         );
 
-        const files = fileRows.flatMap((r: any) =>
+        const files = fileRows.flatMap((r: ComplianceDataRow) =>
           (r.files || [])
-            .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
-            .map((f: any) => ({ ...f, rowId: r.id,is_valid:r.is_valid ,valid_date:r.valid_date}))
+            .filter((f: ComplianceFileRow) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
+            .map((f: ComplianceFileRow) => ({ ...f, rowId: r.id,is_valid:r.is_valid ,valid_date:r.valid_date}))
         );
         setCurrentFolderFiles(files);
 
         const children = (data || [])
-          .filter((r: any) => r.parent_folder_id === folderRow.id && r.folder_exists === true)
-          .map((r: any) => ({
+          .filter((r: ComplianceDataRow) => r.parent_folder_id === folderRow.id && r.folder_exists === true)
+          .map((r: ComplianceDataRow) => ({
             id: r.id as string,
             name: r.files?.[0]?.folder_name || 'Folder',
             folder_id: r.folder_id as string,
@@ -527,7 +545,7 @@ const ComplianceDocumentsPage: React.FC = () => {
 
         // Build breadcrumb path from this row up to root using in-memory data
         const path: { rowId: string; name: string; folderId: string }[] = [];
-        let walker: any = folderRow;
+        let walker: ComplianceDataRow | undefined = folderRow;
         while (walker) {
           path.unshift({
             rowId: walker.id,
@@ -535,7 +553,7 @@ const ComplianceDocumentsPage: React.FC = () => {
             folderId: walker.folder_id as string,
           });
           if (!walker.parent_folder_id) break;
-          walker = (data || []).find((r: any) => r.id === walker.parent_folder_id);
+          walker = (data || []).find((r: ComplianceDataRow) => r.id === walker?.parent_folder_id);
           if (!walker) break;
         }
         setBreadcrumb(path);
@@ -549,36 +567,39 @@ const ComplianceDocumentsPage: React.FC = () => {
       }
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    refresh();
   }, [clientId, currentFolderId]);
+
+  const fetchedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!clientId) return;
+    const key = `${clientId}::${currentFolderId ?? ''}`;
+    if (fetchedKeyRef.current === key) return;
+    fetchedKeyRef.current = key;
+    refresh();
+  }, [clientId, currentFolderId, refresh]);
 
   // Build a flat list of all files for export (independent of current folder view)
   const fetchAllFilesForExport = async () => {
     if (!clientId) return [];
 
-    const { data, error } = await (supabase as any)
-      .from('compliance_documents')
-      .select('id, folder_exists, files, is_valid, valid_date, is_delete, parent_folder_id')
-      .eq('client_id', clientId)
-      .eq('is_delete', 0);
+    const { data: result, error } = await supabase.functions.invoke('compliance-docs', {
+      body: { action: 'list', clientId },
+    });
 
     if (error) throw error;
 
-    const rows: any[] = data || [];
+    const rows: ComplianceDataRow[] = result?.data ?? [];
 
     // Map of folder row id -> folder row for building full folder chain
-    const folderMap = new Map<string, any>();
+    const folderMap = new Map<string, ComplianceDataRow>();
     rows
-      .filter((r: any) => r.folder_exists === true)
-      .forEach((r: any) => {
+      .filter((r: ComplianceDataRow) => r.folder_exists === true)
+      .forEach((r: ComplianceDataRow) => {
         folderMap.set(r.id as string, r);
       });
 
     // Helper to compute full folder path (Folder1/Folder2/...)
-    const buildFolderPath = (row: any): string => {
+    const buildFolderPath = (row: ComplianceDataRow): string => {
       const segments: string[] = [];
       let parentId: string | null | undefined = row.parent_folder_id;
 
@@ -613,13 +634,13 @@ const ComplianceDocumentsPage: React.FC = () => {
 
     const fileRecords =
       rows
-        .filter((r: any) => r.folder_exists === false)
-        .flatMap((r: any) => {
+        .filter((r: ComplianceDataRow) => r.folder_exists === false)
+        .flatMap((r: ComplianceDataRow) => {
           const baseFolderPath = buildFolderPath(r);
 
           return (r.files || [])
-            .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
-            .map((f: any) => {
+            .filter((f: ComplianceFileRow) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
+            .map((f: ComplianceFileRow) => {
               const fullStoragePath: string = f.path as string;
               const parts = (fullStoragePath || '').split('/');
               const fileName = parts[parts.length - 1] || '';
@@ -656,14 +677,14 @@ const ComplianceDocumentsPage: React.FC = () => {
 
       // Separate files by validity flag
       const withValidity = allFiles.filter(
-        (f: any) => f.is_valid && f.valid_date
+        (f) => f.is_valid && f.valid_date
       );
       const withoutValidity = allFiles.filter(
-        (f: any) => !f.is_valid || !f.valid_date
+        (f) => !f.is_valid || !f.valid_date
       );
 
       // Sort files with validity by ascending validity date
-      withValidity.sort((a: any, b: any) => {
+      withValidity.sort((a, b) => {
         const da = a.valid_date ? new Date(a.valid_date).getTime() : 0;
         const db = b.valid_date ? new Date(b.valid_date).getTime() : 0;
         return da - db;
@@ -671,7 +692,7 @@ const ComplianceDocumentsPage: React.FC = () => {
 
       const orderedFiles = [...withValidity, ...withoutValidity];
 
-      const exportRows = orderedFiles.map((file: any) => {
+      const exportRows = orderedFiles.map((file) => {
         // displayPath already contains Folder1/Folder2/FileName with cleaned folder names
         const fullDisplayPath: string = file.displayPath || '';
 
@@ -741,11 +762,11 @@ const ComplianceDocumentsPage: React.FC = () => {
         title: 'Export started',
         description: 'Your compliance documents have been exported successfully.',
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error exporting compliance documents:', error);
       toast({
         title: 'Export failed',
-        description: error?.message || 'Unable to export compliance documents. Please try again.',
+        description: error instanceof Error ? error.message : 'Unable to export compliance documents. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -756,15 +777,15 @@ const ComplianceDocumentsPage: React.FC = () => {
   // Realtime sync: refresh UI when metadata worker updates the table
   useEffect(() => {
     if (!clientId) return;
-    const channel = (supabase as any)
+    const channel = supabase
       .channel(`compliance-docs-${clientId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'compliance_documents', filter: `client_id=eq.${clientId}` },
         () => {
           // Avoid thrashing: debounce a bit
-          clearTimeout((window as any).__cdocs_rtimer);
-          (window as any).__cdocs_rtimer = setTimeout(() => {
+          clearTimeout((window as unknown as Record<string, ReturnType<typeof setTimeout>>).__cdocs_rtimer);
+          (window as unknown as Record<string, ReturnType<typeof setTimeout>>).__cdocs_rtimer = setTimeout(() => {
             refresh();
           }, 150);
         }
@@ -772,9 +793,9 @@ const ComplianceDocumentsPage: React.FC = () => {
       .subscribe();
 
     return () => {
-      try { (supabase as any).removeChannel(channel); } catch (_) { /* noop */ }
+      try { supabase.removeChannel(channel); } catch (_) { /* noop */ }
     };
-  }, [clientId]);
+  }, [clientId, refresh]);
 
   const onChooseFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isReadOnlySwitchedContext) {
@@ -845,11 +866,13 @@ const ComplianceDocumentsPage: React.FC = () => {
 
     const uploadOne = async (file: File, idx: number) => {
       const objectPath = `${baseFolderSlug}/${file.name}`;
-      // Create signed upload URL
-      const signed = await supabase.storage.from(bucketName).createSignedUploadUrl(objectPath);
-      if (signed.error || !signed.data?.signedUrl) throw new Error(signed.error?.message || 'Failed to create signed upload URL');
+      // Create signed upload URL via edge function
+      const { data: signedData, error: signError } = await supabase.functions.invoke('compliance-docs', {
+        body: { action: 'create_signed_upload_url', clientId, objectPath },
+      });
+      if (signError || !signedData?.signedUrl) throw new Error(signError?.message || 'Failed to create signed upload URL');
 
-      await xhrPut(signed.data.signedUrl, file, (pct) => {
+      await xhrPut(signedData.signedUrl, file, (pct) => {
         setUploadItems((prev) => prev.map((it, i) => i === idx ? { ...it, progress: pct } : it));
       });
 
@@ -906,8 +929,8 @@ const ComplianceDocumentsPage: React.FC = () => {
         toast({ title: 'Upload complete', description: `${successCount} file(s) uploaded successfully` });
       }
       await refresh();
-    } catch (err: any) {
-      const errorMsg = err?.message || 'Unknown error';
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       setUploadError(errorMsg);
       toast({ 
         title: 'Upload failed', 
@@ -955,8 +978,8 @@ const ComplianceDocumentsPage: React.FC = () => {
       setFolderName('');
       setFolderError(null);
       await refresh();
-    } catch (error: any) {
-      const errorMsg = error?.message || 'An error occurred while creating the folder.';
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'An error occurred while creating the folder.';
       setFolderError(errorMsg);
       toast({
         title: 'Failed to create folder',
@@ -1025,8 +1048,8 @@ const ComplianceDocumentsPage: React.FC = () => {
       await deleteFileViaEdge({ clientId, rowId, path });
       toast({ title: 'File deleted' });
       await refresh();
-    } catch (e: any) {
-      toast({ title: 'Delete failed', description: e?.message || 'Unknown error' });
+    } catch (e) {
+      toast({ title: 'Delete failed', description: e instanceof Error ? e.message : 'Unknown error' });
     } finally {
       setDeletingPath(null);
       setIsDeleting(false);

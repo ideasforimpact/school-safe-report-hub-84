@@ -2,7 +2,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { isValidEmail } from './BasicInfoTab';
+import { isValidClientFormEmail as isValidEmail } from '@/services/employee/utils/employeeValidationUtils';
 
 // Maximum extra super admins allowed beyond the primary, per the feature
 // spec. Hard-coded rather than env-driven because the env flag is a

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileItem } from '@/types/incident';
+import { FileItem, User } from '@/types/incident';
 import { Separator } from '@/components/ui/separator';
 import {
   Select,
@@ -44,7 +44,7 @@ interface IncidentDetailsProps {
   availableSubcategories: {id: string, name: string}[];
   locations: ConfigItem[];
   facilities: ConfigItem[];
-  users: any[];
+  users: User[];
   getCategoriesForType: (type: string) => ConfigItem[];
 }
 

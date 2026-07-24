@@ -11,7 +11,7 @@ export interface StudentWellbeingAuditEntry {
   changed_at: string;
   change_type: string;
   description: string | null;
-  changes: any[] | null;
+  changes: Record<string, unknown>[] | null;
   created_at: string;
 }
 
@@ -38,7 +38,7 @@ export interface FormattedStudentWellbeingAuditEntry {
 export const fetchStudentWellbeingAuditLog = async (
   wellbeingId: string
 ): Promise<StudentWellbeingAuditEntry[]> => {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await (supabase as unknown as typeof supabase)
     // Cast to any because this table is not yet in the generated Supabase types
     .from('student_wellbeing_audit_log')
     .select(
@@ -113,7 +113,7 @@ const resolveTypeOfConcernName = async (id: string | null): Promise<string | nul
   const cached = typeOfConcernNameCache.get(id);
   if (cached) return cached;
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (supabase as unknown as typeof supabase)
       .from('general_concern')
       .select('name')
       .eq('id', id)
@@ -211,7 +211,7 @@ export const formatStudentWellbeingAuditEntries = async (
       fromLabel = fromPretty;
       toLabel = toPretty;
     } else if (entry.change_type === 'field_update') {
-      const statusChange = changesArray?.find((c: any) => c.field === 'status');
+      const statusChange = changesArray?.find((c: Record<string, unknown>) => c.field === 'status');
       if (statusChange) {
         badgeLabel = 'Status Changed';
         badgeClass = 'bg-blue-100 text-blue-800 border border-blue-200';
@@ -223,7 +223,7 @@ export const formatStudentWellbeingAuditEntries = async (
         toLabel = toPretty;
       } else if (changesArray && changesArray.length > 0) {
         // Multiple field updates
-        const fieldNames = changesArray.map((c: any) => formatFieldLabel(c.field));
+        const fieldNames = changesArray.map((c: Record<string, unknown>) => formatFieldLabel(c.field as string));
         const primary = changesArray[0];
         const fieldLabel = formatFieldLabel(primary.field);
         let oldVal = primary.old_value ?? '';

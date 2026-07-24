@@ -1,10 +1,9 @@
-// @ts-nocheck
 /**
  * Persists per-vehicle API attempt metrics to `vehicle_verification_api_calls`.
  * Mirrors employee_verification_api_calls: totals include all providers; fallback-only
  * counts go to other_provider_*; audit_log is an append-only event array.
  *
- * Primary / fallback must match vehicle-verify/index.ts routing (currently SurePass primary, QuickEKYC fallback).
+ * Primary / fallback must match vehicle-verify/index.ts routing (env-driven via PRIMARY_RC; default SurePass primary, QuickEKYC fallback).
  */
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -54,21 +53,26 @@ function normalizeAuditLog(existing: unknown): VehicleAuditEvent[] {
   if (!Array.isArray(existing)) return [];
   return existing
     .filter((x) => x && typeof x === "object")
-    .map((x: any) => ({
-      ts: String(x.ts ?? new Date().toISOString()),
-      provider: String(x.provider ?? "unknown"),
-      role: x.role === "fallback" ? "fallback" : "primary",
-      operation: x.operation === "challan" ? "challan" : "rc",
-      result: x.result === "success" ? "success" : "failed",
-      rc_counts_after: {
-        success: Number(x?.rc_counts_after?.success ?? 0),
-        failed: Number(x?.rc_counts_after?.failed ?? 0),
-      },
-      challan_counts_after: {
-        success: Number(x?.challan_counts_after?.success ?? 0),
-        failed: Number(x?.challan_counts_after?.failed ?? 0),
-      },
-    }));
+    .map((x) => {
+      const obj = x as Record<string, unknown>;
+      const rcCountsAfter = (obj.rc_counts_after ?? {}) as Record<string, unknown>;
+      const challanCountsAfter = (obj.challan_counts_after ?? {}) as Record<string, unknown>;
+      return {
+        ts: String(obj.ts ?? new Date().toISOString()),
+        provider: String(obj.provider ?? "unknown"),
+        role: obj.role === "fallback" ? "fallback" : "primary",
+        operation: obj.operation === "challan" ? "challan" : "rc",
+        result: obj.result === "success" ? "success" : "failed",
+        rc_counts_after: {
+          success: Number(rcCountsAfter.success ?? 0),
+          failed: Number(rcCountsAfter.failed ?? 0),
+        },
+        challan_counts_after: {
+          success: Number(challanCountsAfter.success ?? 0),
+          failed: Number(challanCountsAfter.failed ?? 0),
+        },
+      };
+    }) as VehicleAuditEvent[];
 }
 
 export async function recordVehicleVerificationApiCall(
@@ -150,8 +154,8 @@ export async function recordVehicleVerificationApiCall(
     const curFailedObj = nextOtherFailed[String(provider)] ?? {};
     const curProviderSuccess = getNestedNumber(curSuccessObj, "success");
     const curProviderFailed = getNestedNumber(curFailedObj, "failed");
-    (nextOtherSuccess as any)[String(provider)] = { success: curProviderSuccess + successInc };
-    (nextOtherFailed as any)[String(provider)] = { failed: curProviderFailed + failedInc };
+    nextOtherSuccess[String(provider)] = { success: curProviderSuccess + successInc };
+    nextOtherFailed[String(provider)] = { failed: curProviderFailed + failedInc };
   }
 
   const isMultipleFlag =
@@ -209,6 +213,22 @@ export async function recordVehicleVerificationApiCall(
     .eq("id", existing.id);
 }
 
-/** Primary / fallback labels — keep in sync with vehicle-verify/index.ts call order */
-export const VEHICLE_VERIFY_PRIMARY_PROVIDER = "surepass";
-export const VEHICLE_VERIFY_FALLBACK_PROVIDER = "quickeyc";
+/**
+ * Provider order is env-driven so swapping primary/fallback needs NO code change.
+ * Set PRIMARY_RC=surepass (default) for SurePass primary + QuickEKYC fallback, or
+ * PRIMARY_RC=quickekyc for the reverse. Values must match the provider labels stored
+ * in the DB ('surepass' / 'quickeyc'). Keep in sync with vehicle-verify/index.ts.
+ */
+export type VehicleVerifyProvider = "surepass" | "quickeyc";
+
+export function resolveVehicleVerifyPrimaryProvider(): VehicleVerifyProvider {
+  const raw = (Deno.env.get("PRIMARY_RC") || "").trim().toLowerCase();
+  if (["quickekyc", "quickeyc", "qkyc", "quick", "ekyc"].includes(raw)) return "quickeyc";
+  if (["surepass", "surepare", "sure"].includes(raw)) return "surepass";
+  return "surepass"; // default when unset/unrecognized
+}
+
+export const VEHICLE_VERIFY_PRIMARY_PROVIDER: VehicleVerifyProvider =
+  resolveVehicleVerifyPrimaryProvider();
+export const VEHICLE_VERIFY_FALLBACK_PROVIDER: VehicleVerifyProvider =
+  VEHICLE_VERIFY_PRIMARY_PROVIDER === "quickeyc" ? "surepass" : "quickeyc";

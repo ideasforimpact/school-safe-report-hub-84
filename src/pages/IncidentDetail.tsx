@@ -11,12 +11,13 @@ import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 import { useIncidents } from '@/contexts/incident';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useIncidentDetail as useIncidentDetailHook } from '@/hooks/incident/useIncidentDetail';
-import { FileItem, ContributingFactor, Action } from '@/types/incident';
+import { FileItem, IncidentStatus } from '@/types/incident';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();
@@ -28,11 +29,14 @@ const IncidentDetail = () => {
   const previousClientContextRef = useRef<string | null>(currentClientContextId);
   
   // Use the incident detail hook to fetch fresh data
-  const { incident: fetchedIncident, isLoading: isFetchingIncident, error: fetchError, reload } = useIncidentDetailHook(id);
+  const { incident: fetchedIncident, contributingFactors: fetchedContributingFactors, isLoading: isFetchingIncident, reload } = useIncidentDetailHook(id);
   
   const [incident, setIncident] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
+  const [closureAttachments, setClosureAttachments] = useState<FileItem[]>([]);
+  // Prevents realtime events from triggering a duplicate reload within 3 seconds of a recent fetch
+  const lastReloadAtRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const previousClientContextId = previousClientContextRef.current;
@@ -63,27 +67,29 @@ const IncidentDetail = () => {
       const convertedIncident = {
         id: fetchedIncident.id,
         ticketId: fetchedIncident.ticket_id,
-        type: fetchedIncident.type.name,
-        category: fetchedIncident.category.name,
-        subcategory: fetchedIncident.subcategory.name,
+        type: fetchedIncident.type?.name || 'Unknown',
+        category: fetchedIncident.category?.name || 'Unknown',
+        subcategory: fetchedIncident.subcategory?.name || '',
         description: fetchedIncident.description,
         date: new Date(fetchedIncident.date),
-        location: fetchedIncident.location.name,
+        location: fetchedIncident.location?.name || 'Unknown',
         peopleInvolved: Array.isArray(fetchedIncident.people_involved) ? fetchedIncident.people_involved : [],
-        status: fetchedIncident.status.name,
+        status: fetchedIncident.status?.name || 'Unknown',
         reportedBy: {
-          id: fetchedIncident.created_by.id,
-          name: `${fetchedIncident.created_by.first_name} ${fetchedIncident.created_by.last_name}`
+          id: fetchedIncident.created_by?.id || '',
+          name: fetchedIncident.created_by
+            ? `${fetchedIncident.created_by.first_name} ${fetchedIncident.created_by.last_name}`
+            : 'Unknown'
         },
         owner: fetchedIncident.assigned_to ? {
           id: fetchedIncident.assigned_to.id,
           name: `${fetchedIncident.assigned_to.first_name} ${fetchedIncident.assigned_to.last_name}`
         } : undefined,
-        facility: fetchedIncident.facility.name,
+        facility: fetchedIncident.facility?.name || '',
         documents: Array.isArray(fetchedIncident.documents) ? fetchedIncident.documents : [],
         createdAt: new Date(fetchedIncident.date),
         updatedAt: new Date(fetchedIncident.date),
-        priority: fetchedIncident.priority.name,
+        priority: fetchedIncident.priority?.name || 'Medium',
         comments: Array.isArray(fetchedIncident.comments) ? fetchedIncident.comments : [],
         reopen: fetchedIncident.reopen || 0,
         // Map closure fields to expected UI field names
@@ -105,6 +111,30 @@ const IncidentDetail = () => {
       };
       console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
       setIncident(convertedIncident);
+
+      // Pre-compute closure attachment URLs from already-loaded data (no extra network call)
+      const rawAttachments: Array<Record<string, unknown>> = Array.isArray(fetchedIncident.closure_attachments)
+        ? fetchedIncident.closure_attachments
+        : [];
+      const precomputedAttachments: FileItem[] = rawAttachments
+        .filter((a): a is Record<string, unknown> & { id: string; path: string } =>
+          !!a && typeof a.id === 'string' && typeof a.path === 'string')
+        .map((a) => {
+          const { data: { publicUrl } } = supabase.storage
+            .from('incident-closure-attachments')
+            .getPublicUrl(a.path);
+          return {
+            id: a.id,
+            name: typeof a.name === 'string' ? a.name : '',
+            type: typeof a.type === 'string' ? a.type : 'application/octet-stream',
+            size: typeof a.size === 'number' ? a.size : 0,
+            base64: publicUrl,
+            url: publicUrl,
+            path: a.path,
+          };
+        });
+      setClosureAttachments(precomputedAttachments);
+
       setIsLoading(false);
     } else if (id && Array.isArray(incidents) && incidents.length > 0) {
       // Fall back to context data if fetch failed
@@ -130,9 +160,8 @@ const IncidentDetail = () => {
   
   // Refresh function to reload incident data without full page refresh
   const handleRefreshIncident = useCallback(async () => {
-    console.log('Refreshing incident details...');
+    lastReloadAtRef.current = Date.now();
     try {
-      // Use the reload function from the hook to fetch fresh data
       if (reload) {
         await reload();
       }
@@ -141,6 +170,12 @@ const IncidentDetail = () => {
     }
   }, [reload]);
 
+  // Realtime-triggered refresh: skip if a fetch completed within the last 3 seconds
+  const handleRealtimeRefresh = useCallback(() => {
+    if (Date.now() - lastReloadAtRef.current < 3000) return;
+    handleRefreshIncident();
+  }, [handleRefreshIncident]);
+
   // Handle close button click - open the closure form
   const handleCloseButtonClick = async () => {
     if (isReadOnlySwitchedContext) return;
@@ -148,13 +183,7 @@ const IncidentDetail = () => {
   };
 
   // Handle closure form submission
-  const handleClosureFormSubmit = (data: {
-    rootCause: string;
-    contributingFactors: ContributingFactor[];
-    actions: Action[];
-  }) => {
-    // The IncidentClosureForm component handles the actual closing logic
-    // After successful closure, close the form and refresh
+  const handleClosureFormSubmit = () => {
     setIsClosureFormOpen(false);
     handleRefreshIncident();
   };
@@ -169,17 +198,17 @@ const IncidentDetail = () => {
     } catch (error) {
       console.error('Error updating status:', error);
     }
-  }, [incidentDetailProps.handleStatusChange, statusUpdate, handleRefreshIncident]);
+  }, [incidentDetailProps, statusUpdate, handleRefreshIncident, id]);
   
   useRealTimeSubHook({
     channelName: `incident-comments-${id}`,
     events: '*',
     table: 'incidents',
     enabled: !!id,
-    onPayload: handleRefreshIncident,
+    onPayload: handleRealtimeRefresh,
   });
  
-  if ((isLoading || isFetchingIncident) && !incident) {
+  if (isLoading || isFetchingIncident) {
     return (
       <Layout>
         <Loader text="Loading incident details..." />
@@ -225,7 +254,7 @@ const IncidentDetail = () => {
   const contentProps = {
     incident,
     statusUpdate,
-    setStatusUpdate: (status: string) => setStatusUpdate(status as any),
+    setStatusUpdate: (status: string) => setStatusUpdate(status as IncidentStatus),
     incidentActivities: Array.isArray(incidentDetailProps.incidentActivities) ? incidentDetailProps.incidentActivities : [],
     commentText: '',
     setCommentText: () => {},
@@ -287,6 +316,8 @@ const IncidentDetail = () => {
         isOpen={isClosureFormOpen && !incident?.isVoided && !isReadOnlySwitchedContext}
         onClose={() => setIsClosureFormOpen(false)}
         onSubmit={handleClosureFormSubmit}
+        factorOptions={fetchedContributingFactors}
+        preloadedClosureAttachments={closureAttachments}
       />
     </Layout>
   );

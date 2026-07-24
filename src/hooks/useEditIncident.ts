@@ -5,7 +5,7 @@ import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Person, IncidentStatus } from '@/types/incident';
+import { Person, IncidentStatus, Incident } from '@/types/incident';
 
 export const useEditIncident = () => {
   const { getIncident, users } = useIncidents();
@@ -35,7 +35,7 @@ export const useEditIncident = () => {
   // Add state for void dialog
   const [showVoidDialog, setShowVoidDialog] = useState(false);
   const [voidReason, setVoidReason] = useState('');
-  const [incident, setIncident] = useState<any>(null);
+  const [incident, setIncident] = useState<Incident | null>(null);
 
   // Fetch incident data
   useEffect(() => {
@@ -72,7 +72,7 @@ export const useEditIncident = () => {
   }, [id, getIncident, navigate]);
 
   // Handle form submission using edge function
-  const handleSubmit = async ({ formData, peopleInvolved }: { formData: any, peopleInvolved: Person[] }) => {
+  const handleSubmit = async ({ formData, peopleInvolved }: { formData: typeof formData, peopleInvolved: Person[] }) => {
     if (!id) return;
     
     // Basic validation

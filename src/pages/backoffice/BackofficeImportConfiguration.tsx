@@ -23,7 +23,7 @@ const BackofficeImportConfiguration = () => {
       supabase.from('clients').select('id,name,client_type:client_type_id(id,key,name)').order('name'),
       supabase.from('configuration_import_logs').select('id,client_id,response_status,response_code,created_at').order('created_at', { ascending: false }),
     ]);
-    setClients((clientData as any[] || []) as ClientRow[]);
+    setClients((clientData as unknown as ClientRow[]) || []);
     setLogs(logData || []);
   };
 
@@ -40,8 +40,8 @@ const BackofficeImportConfiguration = () => {
         toast.success('Import completed — all 3 client types imported');
       }
       await fetchClientsAndLogs();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to import');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to import');
     } finally {
       setLoading(false);
     }
@@ -120,5 +120,3 @@ const BackofficeImportConfiguration = () => {
 };
 
 export default BackofficeImportConfiguration;
-
-

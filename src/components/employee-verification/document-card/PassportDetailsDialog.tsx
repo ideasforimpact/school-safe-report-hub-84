@@ -22,7 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface PassportDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  passportDetails: any;
+  passportDetails: Record<string, unknown>;
   documentId?: string;
   onVerificationUpdate?: () => void;
   readOnly?: boolean;
@@ -45,12 +45,12 @@ const PassportDetailsDialog: React.FC<PassportDetailsDialogProps> = ({
   const { user, employeeData } = useAuth();
   
   // Extract relevant information from the passport response (normalize nested shapes)
-  const payload = (passportDetails?.data?.data ?? passportDetails?.data ?? {}) as any;
+  const payload = (passportDetails?.data?.data ?? passportDetails?.data ?? {}) as Record<string, unknown>;
   const isSuccessful = passportDetails?.success && passportDetails?.status_code === 200;
   
   // Prepare profile image source supporting URL or raw base64 string
   const profileImageSrc = (() => {
-    const value = (payload as any)?.profile_image || (payload as any)?.photo || (payload as any)?.image || (payload as any)?.image_url;
+    const value = payload?.profile_image || payload?.photo || payload?.image || payload?.image_url;
     if (!value || typeof value !== 'string') return undefined;
     if (value.startsWith('http') || value.startsWith('https') || value.startsWith('data:')) return value;
     return `data:image/jpeg;base64,${value}`;

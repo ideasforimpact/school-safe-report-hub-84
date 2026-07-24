@@ -138,13 +138,14 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
             setIsVerified(false);
             setValidationErrors([]);
             toast.success('File uploaded successfully');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Could not read file:', err);
 
+            const error = err as { name?: string; message?: string };
             const message =
-                err?.name === 'NotReadableError' ||
-                    err?.message?.includes('FileReader') ||
-                    err?.message?.includes('read')
+                error?.name === 'NotReadableError' ||
+                    error?.message?.includes('FileReader') ||
+                    error?.message?.includes('read')
                     ? 'The file is currently open or locked by Excel. Please close it and try again.'
                     : 'Failed to load file. Please try again.';
 

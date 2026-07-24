@@ -38,7 +38,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const { toast } = useToast();
 
   // Get the client ID - try both field names for compatibility
-  const clientId = employee.clientId || (employee as any).client_id;
+  const clientId = employee.clientId || (employee as Employee & { client_id?: string }).client_id;
   
   console.log('BackofficeDocumentCard - Document:', {
     id: document.id,
@@ -175,12 +175,12 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
   // Helper function to check if document has comments
   const hasVerificationHistory = (): boolean => {
-    const verificationHistory = (document.params as any)?.verification_history;
+    const verificationHistory = document.params?.verification_history;
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
 
   // Handle updating verification history with proper backend call
-  const handleUpdateHistory = async (updatedHistory: any[]) => {
+  const handleUpdateHistory = async (updatedHistory: NonNullable<VerificationDocument['params']>['verification_history']) => {
     try {
       console.log('BackofficeDocumentCard - Updating verification history:', updatedHistory);
       
@@ -316,11 +316,11 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                 )}
 
                 {/* Show verification history if available but no comments icon */}
-                {document.params && (document.params as any).verification_history && !showCommentsIcon && (
+                {document.params && document.params.verification_history && !showCommentsIcon && (
                   <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
                     <p className="text-sm font-medium mb-2">Verification History:</p>
                     <div className="space-y-2 text-sm">
-                      {((document.params as any).verification_history || []).map((entry: any, index: number) => (
+                      {(document.params.verification_history || []).map((entry, index: number) => (
                         <div key={index} className="border-l-2 border-yellow-300 pl-3">
                           <div className="flex items-center justify-between">
                             <span className="font-medium capitalize">{entry.action}</span>
@@ -340,7 +340,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
             
             <div className="flex items-center gap-2 ml-4">
               {/* Files button - visible when document has documents_files */}
-              {Array.isArray((document as any).documents_files) && (document as any).documents_files.length > 0 && (
+              {Array.isArray(document.documents_files) && document.documents_files.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -515,10 +515,10 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
             setBackofficeVerificationDialogOpen(false);
             onRefresh();
-          } catch (error: any) {
+          } catch (error) {
             toast({
               title: 'Verification Failed',
-              description: error?.message || 'Failed to verify from backoffice.',
+              description: error instanceof Error ? error.message : 'Failed to verify from backoffice.',
               variant: 'destructive',
             });
           } finally {

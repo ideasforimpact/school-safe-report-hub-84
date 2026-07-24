@@ -2,10 +2,10 @@
 import { useState, useEffect } from 'react';
 import { SubcategoryItem } from '@/contexts/types';
 
-export function useSubcategories(
-  categoryId: string, 
+export function useSubcategories<T extends { subcategory: string }>(
+  categoryId: string,
   subcategoryMappings: Record<string, SubcategoryItem[]>,
-  setFormData: React.Dispatch<React.SetStateAction<any>>
+  setFormData: React.Dispatch<React.SetStateAction<T>>
 ) {
   // State for available subcategories based on selected category
   const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);

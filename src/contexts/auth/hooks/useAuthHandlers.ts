@@ -66,13 +66,13 @@ interface LinkUserResponse {
 
 interface UseAuthHandlersProps {
   user: User | null;
-  users: any[];
+  users: User[];
   setUser: (user: User | null) => void;
-  setUsers: (users: any[]) => void;
+  setUsers: (users: User[]) => void;
   setAuthError: (error: string | null) => void;
   authInitCompleteRef: React.MutableRefObject<boolean>;
   setEmployeeData: (employeeData: EmployeeData | null) => void;
-  dispatch?: any; // Add dispatch prop for Redux actions
+  dispatch?: (action: { type: string; payload?: unknown }) => void;
   navigate: NavigateFunction; // Add navigate function for proper routing
   // Multi-client picker integration. When the SSO user resolves to more than
   // one active employees row, the hook stores both the rows and the live
@@ -129,7 +129,7 @@ export const useAuthHandlers = ({
       let clientIntegration: ClientIntegration[] | null = null;
       try {
         console.log('🔍 Fetching client_integration for client_id:', clientId);
-        const { data: integrationData, error: integrationError } = await (supabase as any)
+        const { data: integrationData, error: integrationError } = await (supabase as unknown as { rpc: (fn: string, args: Record<string, string>) => Promise<{ data: ClientIntegration[] | null; error: { message?: string; code?: string; details?: string; hint?: string } | null }> })
           .rpc('get_client_integration_for_auth', { p_client_id: clientId });
 
         if (integrationError) {
@@ -147,7 +147,7 @@ export const useAuthHandlers = ({
           }
         } else if (integrationData && Array.isArray(integrationData)) {
           if (integrationData.length > 0) {
-            clientIntegration = integrationData.map((item: any) => ({
+            clientIntegration = integrationData.map((item: ClientIntegration) => ({
               id: item.id,
               client_id: item.client_id,
               target_client_id: item.target_client_id,

@@ -5,20 +5,32 @@ import { EmployeePage } from "./Pages/EmployeePage";
 import { AssessmentPage } from "./Pages/AssessmentPage";
 import { IncidentPage } from "./Pages/IncidentPage";
 import { GrievancePage } from "./Pages/GrievancePage";
+import type {
+  AssessmentReportRow,
+  ChallanReportRow,
+  EmployeeDocumentReportRow,
+  EmployeeReportRow,
+  GrievanceReportRow,
+  IncidentReportRow,
+  VehicleReportRow,
+} from "./utils";
 
-
+interface DocumentTypeRow {
+  id: string;
+  description?: string;
+}
 
 interface Props {
   month: string;
-  vehicles: any[];
-  employees: any[];
-  employeeDocuments: any[];
-  challans: any[];
-  incidents: any[];
+  vehicles: VehicleReportRow[];
+  employees: EmployeeReportRow[];
+  employeeDocuments: EmployeeDocumentReportRow[];
+  challans: ChallanReportRow[];
+  incidents: IncidentReportRow[];
   challanTotal: number;
-  assessments: any[];
-  documentTypes: any[];
-  grievancesSummary: any;
+  assessments: AssessmentReportRow[];
+  documentTypes: DocumentTypeRow[];
+  grievancesSummary: GrievanceReportRow[];
 }
 
 export const MonthlyReportPDF = ({

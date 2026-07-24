@@ -8,7 +8,7 @@ interface LogContext {
   requestId?: string;
   userId?: string;
   path?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const LOG_LEVELS: Record<LogLevel, number> = {

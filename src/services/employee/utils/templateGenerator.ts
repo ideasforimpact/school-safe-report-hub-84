@@ -31,7 +31,7 @@ export interface EmployeeTemplateData {
   'PF No'?: string;
   'Resigning / Termination Date'?: string;
   'Biometric User ID'?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -193,7 +193,7 @@ export const getTemplateFormatInfo = () => ({
   ],
   supportedFormats: ['XLSX', 'XLS', 'CSV'],
   employeeTypes: ['permanent', 'contract', 'temporary', 'intern'],
-  departments: ['operations', 'admin', 'teaching', 'security', 'maintenance', 'transport', 'management'],
+  departments: ['operations', 'admin', 'teaching', 'security', 'maintenance', 'driver', 'management'],
   statuses: ['active', 'inactive', 'terminated'],
   dateFormat: 'YYYY-MM-DD (e.g., 2024-01-15)'
 });

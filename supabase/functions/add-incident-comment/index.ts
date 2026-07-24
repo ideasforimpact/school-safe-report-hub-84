@@ -8,6 +8,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface CommentDocumentInput {
+  name?: string;
+  type?: string;
+  size?: number;
+  url?: string;
+  path?: string;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -131,13 +139,13 @@ serve(async (req) => {
       assignedTo: { id: currentUserId, name: currentUserName },
       status: 'Pending',
       createdBy: { id: currentUserId, name: currentUserName },
-      files: (documents || []).map((doc: any) => ({
+      files: (documents || []).map((doc: CommentDocumentInput | string) => ({
         id: crypto.randomUUID(),
-        name: doc.name || doc,
-        type: doc.type || 'application/octet-stream',
-        size: doc.size || 0,
-        url: doc.url || '',
-        path: doc.path || ''
+        name: (typeof doc === 'string' ? doc : doc.name) || doc,
+        type: (typeof doc === 'string' ? undefined : doc.type) || 'application/octet-stream',
+        size: (typeof doc === 'string' ? undefined : doc.size) || 0,
+        url: (typeof doc === 'string' ? undefined : doc.url) || '',
+        path: (typeof doc === 'string' ? undefined : doc.path) || ''
       })),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

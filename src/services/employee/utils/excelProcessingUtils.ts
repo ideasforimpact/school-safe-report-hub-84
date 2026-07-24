@@ -17,7 +17,23 @@ import { RawEmployeeData } from '../types/importTypes';
  * that are valid in names/addresses (unicode letters etc.). It only removes
  * formatting noise. Validation rules elsewhere are unchanged.
  */
-export const sanitizeCellValue = (value: any): string => {
+/**
+ * Canonicalize a PAN number the same way the Add/Edit User forms do as the
+ * user types (strip non-alphanumeric, uppercase, cap at 10 chars).
+ *
+ * IMPORTANT: only call this on a value that has already passed
+ * `getProfessionalOtherDetailsFieldErrors`'s PAN format check (i.e. after
+ * the Verify step). Applying it earlier — e.g. while parsing the raw Excel
+ * cell — would silently truncate/clean an invalid value (such as an
+ * over-length PAN with trailing junk characters) into something that
+ * *looks* well-formed, hiding the exact error Verify is supposed to catch.
+ * For an already-valid PAN this is a no-op; it exists purely so the stored
+ * value matches the canonical upper-case form manual entry always produces.
+ */
+export const normalizePanNumber = (value: string): string =>
+  (value || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10);
+
+export const sanitizeCellValue = (value: unknown): string => {
   if (value === undefined || value === null) return '';
   return String(value)
     // Strip invisible / formatting characters that copy-paste from
@@ -28,7 +44,7 @@ export const sanitizeCellValue = (value: any): string => {
     //   \u2060 word joiner
     //   \uFEFF BOM / zero-width no-break space
     //   \u00AD soft hyphen
-    .replace(/[\u200B\u200C\u200D\u2060\uFEFF\u00AD]/g, '')
+    .replace(/(\u200B|\u200C|\u200D|\u2060|\uFEFF|\u00AD)/g, '')
     // Normalize exotic whitespace into a regular space so trim() and
     // \s-based regexes treat them like normal whitespace:
     //   \u00A0 non-breaking space
@@ -121,7 +137,7 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
           // Parse data rows
           const jsonData = lines.slice(1).map((line) => {
             const values = parseCsvLine(line, delimiter);
-            const row: any = {};
+            const row: Record<string, string> = {};
             
             headers.forEach((header, i) => {
               const key = header.trim();
@@ -136,8 +152,8 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
           console.log("Raw CSV data:", JSON.stringify(jsonData));
           
           // Use the same mapping logic as Excel
-          const employeeData: RawEmployeeData[] = jsonData.map((row: any, index: number) => {
-          const normalizeDate = (value: any): string => {
+          const employeeData: RawEmployeeData[] = jsonData.map((row: Record<string, string>, index: number) => {
+          const normalizeDate = (value: unknown): string => {
               if (!value) return "";
 
               if (value instanceof Date && !isNaN(value.getTime())) {
@@ -147,7 +163,7 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
                 return `${y}-${m}-${d}`;
               }
 
-              const isExcelNumber = (v: any) =>
+              const isExcelNumber = (v: unknown) =>
                 typeof v === "number" ||
                 (typeof v === "string" && /^[0-9]+$/.test(v));
 
@@ -166,9 +182,16 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               if (typeof value === "string" && value.includes("/")) {
                 const parts = value.split("/");
                 if (parts.length === 3) {
-                  let [d, m, y] = parts.map(v => v.trim());
+                  // Excel/CSV exports render dates in this app's locale as
+                  // M/D/YYYY (e.g. "7/9/2026" = July 9), not D/M/YYYY —
+                  // parsing this as day-first silently shifts the date
+                  // (e.g. "7/9/2026" would become September 7 instead of
+                  // July 9), which can turn a past date into a "future"
+                  // one and trigger false date-range validation errors.
+                  const [m, d] = parts.map(v => v.trim());
+                  let y = parts[2].trim();
 
-                  if (y.length === 2) y = "20" + y; 
+                  if (y.length === 2) y = "20" + y;
 
                   const date = new Date(Number(y), Number(m) - 1, Number(d));
 
@@ -178,7 +201,7 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
                   return `${yy}-${mm}-${dd}`;
                 }
               }
-              const parsed = new Date(value);
+              const parsed = new Date(value as string | number);
               if (!isNaN(parsed.getTime())) {
                 const y = parsed.getFullYear();
                 const m = String(parsed.getMonth() + 1).padStart(2, "0");
@@ -206,7 +229,7 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
                 'Assigned Module', 'Assigned Modules', 'assigned_module',
                 'module_name', 'module(s)'
               ];
-              const foundValues: any[] = [];
+              const foundValues: string[] = [];
               for (const key of Object.keys(row)) {
                 if (knownFieldNames.some(v => v.toLowerCase() === key.toLowerCase())) {
                   foundValues.push(row[key]);
@@ -249,7 +272,10 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
             };
             
             const mappedData: RawEmployeeData = {
-              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']),
+              // Uppercased at parse time to match Add/Edit User, whose employee ID
+              // input uppercases on every keystroke — this keeps import, dedup
+              // checks, and storage all consistent with the same casing.
+              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']).toUpperCase(),
               firstName: getFieldValue(['First Name', 'FirstName', 'firstName', 'first_name', 'First name', 'FIRSTNAME', 'Name', 'First', 'Given Name']),
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),
@@ -359,10 +385,10 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
           console.log("Available columns:", Object.keys(jsonData[0] || {}));
           
           // Map Excel column names to our expected property names
-          const employeeData: RawEmployeeData[] = jsonData.map((row: any, index: number) => {
+          const employeeData: RawEmployeeData[] = jsonData.map((row: Record<string, unknown>, index: number) => {
             // Enhanced mapping for various possible column names
             // First try exact match, then case-insensitive, then with spaces or underscores
-          const normalizeDate = (value: any): string => {
+          const normalizeDate = (value: unknown): string => {
               if (!value) return "";
 
               if (value instanceof Date && !isNaN(value.getTime())) {
@@ -372,7 +398,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
                 return `${y}-${m}-${d}`;
               }
 
-              const isExcelNumber = (v: any) =>
+              const isExcelNumber = (v: unknown) =>
                 typeof v === "number" ||
                 (typeof v === "string" && /^[0-9]+$/.test(v));
 
@@ -391,7 +417,14 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               if (typeof value === "string" && value.includes("/")) {
                 const parts = value.split("/");
                 if (parts.length === 3) {
-                  let [d, m, y] = parts.map(v => v.trim());
+                  // Excel/CSV exports render dates in this app's locale as
+                  // M/D/YYYY (e.g. "7/9/2026" = July 9), not D/M/YYYY —
+                  // parsing this as day-first silently shifts the date
+                  // (e.g. "7/9/2026" would become September 7 instead of
+                  // July 9), which can turn a past date into a "future"
+                  // one and trigger false date-range validation errors.
+                  const [m, d] = parts.map(v => v.trim());
+                  let y = parts[2].trim();
 
                   if (y.length === 2) y = "20" + y; // Convert 25 → 2025
 
@@ -405,7 +438,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               }
 
               // 4. Try standard parsing
-              const parsed = new Date(value);
+              const parsed = new Date(value as string | number);
               if (!isNaN(parsed.getTime())) {
                 const y = parsed.getFullYear();
                 const m = String(parsed.getMonth() + 1).padStart(2, "0");
@@ -471,7 +504,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               'Assigned Module', 'Assigned Modules', 'assigned_module',
               'module_name', 'module(s)'
             ];
-            const foundValues: any[] = [];
+            const foundValues: unknown[] = [];
             for (const key of Object.keys(row)) {
               if (knownFieldNames.some(v => v.toLowerCase() === key.toLowerCase())) {
                 foundValues.push(row[key]);  
@@ -486,7 +519,10 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
 
             // Fix email mapping with enhanced detection
             const mappedData: RawEmployeeData = {
-              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']),
+              // Uppercased at parse time to match Add/Edit User, whose employee ID
+              // input uppercases on every keystroke — this keeps import, dedup
+              // checks, and storage all consistent with the same casing.
+              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']).toUpperCase(),
               firstName: getFieldValue(['First Name', 'FirstName', 'firstName', 'first_name', 'First name', 'FIRSTNAME', 'Name', 'First', 'Given Name']),
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),

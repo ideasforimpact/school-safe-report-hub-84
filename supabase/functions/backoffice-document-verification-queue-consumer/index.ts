@@ -146,8 +146,20 @@ serve(async (req) => {
       const updatedComments = [...existingComments, ...commentObjects];
 
       // Get existing params for verification history
-      const existingParams = (documentRecord.params as Record<string, any>) || {};
-      const history: any[] = existingParams.verification_history || [];
+      interface VerificationHistoryEntry {
+        action: string;
+        timestamp: string;
+        verified_by: string;
+        comments: Array<{ id: string; text: string; sentiment: boolean }>;
+      }
+
+      interface DocumentParams {
+        verification_history?: VerificationHistoryEntry[];
+        [key: string]: unknown;
+      }
+
+      const existingParams = (documentRecord.params as DocumentParams) || {};
+      const history: VerificationHistoryEntry[] = existingParams.verification_history || [];
       
       // Add verification history entry
       const entry = {

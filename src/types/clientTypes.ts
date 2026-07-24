@@ -2,6 +2,7 @@
 import { Database } from '@/integrations/supabase/types';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ModulePermissions } from '@/contexts/auth/types';
+import type { Client } from '@/contexts/ClientContext';
 
 // Use the Supabase generated types as a reference
 export type ClientRecord = Database['public']['Tables']['clients']['Row'];
@@ -70,7 +71,7 @@ const parseAuthProviders = (authProviders: string): { [key in OAuthProviderName]
   };
 };
 
-export const prepareClientForDb = (client: any): Omit<ClientRecord, 'id' | 'creation_date'> => {
+export const prepareClientForDb = (client: Partial<Client> & { client_logo?: string | null }): Omit<ClientRecord, 'id' | 'creation_date'> => {
   return {
     name: client.name,
     email: client.email,

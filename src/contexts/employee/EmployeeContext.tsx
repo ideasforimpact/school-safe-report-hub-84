@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { Employee, EmployeeContextType } from './types';
 import { 
   getEmployeesFromStorage, 
@@ -38,25 +38,11 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [loading, setLoading] = useState(false);
   const location = useLocation();
 
-  // Check if we're on an employee management route
-  const isEmployeeManagementRoute = location.pathname.startsWith('/employees') || 
-                                   location.pathname.includes('/settings');
+  // Only pre-load employees on dedicated employee management routes, not on /settings
+  // (UserManagement tab inside Settings fetches its own list when the tab is opened)
+  const isEmployeeManagementRoute = location.pathname.startsWith('/employees');
 
-  // Initialize employees from storage only on relevant routes
-  useEffect(() => {
-    if (isEmployeeManagementRoute) {
-      fetchEmployees();
-    }
-  }, [isEmployeeManagementRoute]);
-
-  // Save employees to localStorage whenever they change
-  useEffect(() => {
-    if (!loading && isEmployeeManagementRoute) {
-      saveEmployeesToStorage(employees);
-    }
-  }, [employees, loading, isEmployeeManagementRoute]);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     // Only fetch if we're on relevant routes
     if (!isEmployeeManagementRoute) {
       return;
@@ -91,7 +77,21 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     } finally {
       setLoading(false);
     }
-  };
+  }, [isEmployeeManagementRoute]);
+
+  // Initialize employees from storage only on relevant routes
+  useEffect(() => {
+    if (isEmployeeManagementRoute) {
+      fetchEmployees();
+    }
+  }, [isEmployeeManagementRoute, fetchEmployees]);
+
+  // Save employees to localStorage whenever they change
+  useEffect(() => {
+    if (!loading && isEmployeeManagementRoute) {
+      saveEmployeesToStorage(employees);
+    }
+  }, [employees, loading, isEmployeeManagementRoute]);
 
   const addEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -139,9 +139,9 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         
         setEmployees(prev => [...prev, newEmployee]);
         return newEmployee;
-      } catch (apiError: any) {
+      } catch (apiError) {
         // Check if this is our known duplicate email error
-        if (apiError.code === "DUPLICATE_EMAIL") {
+        if (apiError instanceof Error && (apiError as Error & { code?: string }).code === "DUPLICATE_EMAIL") {
           // The toast is already shown in the service
           throw apiError; // Re-throw to propagate the error to the caller
         }

@@ -251,7 +251,7 @@ export const processHeatmapData = (incidents: Incident[]) => {
 
 // Process risk assessment data
 export const processRiskData = (incidents: Incident[]) => {
-  const categoryRiskMap = new Map<string, { count: number, severity: number, incidents: any[] }>();
+  const categoryRiskMap = new Map<string, { count: number, severity: number, incidents: Incident[] }>();
   
   incidents.forEach(incident => {
     const category = incident.category;

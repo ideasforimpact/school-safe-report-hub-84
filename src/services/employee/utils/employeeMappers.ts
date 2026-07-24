@@ -1,5 +1,5 @@
 
-import { Employee } from '@/contexts/employee/types';
+import { Employee, EmployeeType, DepartmentType } from '@/contexts/employee/types';
 
 // Interface to represent the database record structure
 interface DbEmployeeRecord {
@@ -20,8 +20,10 @@ interface DbEmployeeRecord {
 
 // Map a database record to our Employee type
 export const mapDbRecordToEmployee = (dbRecord: DbEmployeeRecord): Employee => {
-  // Handle employee_type - can be UUID string or joined object
-  let employeeTypeValue: string = 'permanent';
+  // Handle employee_type - can be UUID string or joined object.
+  // Default to '' (not 'permanent') when unset, so an employee created without a
+  // configured type doesn't appear to have one — matches employeeRetrievalService's ?? ''.
+  let employeeTypeValue: string = '';
   if (typeof dbRecord.employee_type === 'string') {
     // If it's a UUID, we can't resolve it here, but we'll handle it in retrieval service
     employeeTypeValue = dbRecord.employee_type;
@@ -30,8 +32,9 @@ export const mapDbRecordToEmployee = (dbRecord: DbEmployeeRecord): Employee => {
     employeeTypeValue = dbRecord.employee_type.type_name;
   }
 
-  // Handle department - can be UUID string or joined object
-  let departmentValue: string = 'admin';
+  // Handle department - can be UUID string or joined object.
+  // Same reasoning as employee_type above: default to '' rather than a real department name.
+  let departmentValue: string = '';
   if (typeof dbRecord.department === 'string') {
     // If it's a UUID, we can't resolve it here, but we'll handle it in retrieval service
     departmentValue = dbRecord.department;
@@ -46,8 +49,8 @@ export const mapDbRecordToEmployee = (dbRecord: DbEmployeeRecord): Employee => {
     firstName: dbRecord.first_name,
     lastName: dbRecord.last_name,
     email: dbRecord.email,
-    employeeType: employeeTypeValue as any,
-    department: departmentValue as any,
+    employeeType: employeeTypeValue as EmployeeType,
+    department: departmentValue as DepartmentType,
     joiningDate: dbRecord.joining_date,
     status: dbRecord.status ? 'active' : 'inactive', // Convert boolean to string status
     clientId: dbRecord.client_id,

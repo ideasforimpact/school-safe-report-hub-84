@@ -10,12 +10,12 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText, Download, X, Eye } from 'lucide-react';
+import { Edit, Trash2, UserX, UserCheck, Loader2, AlertCircle, FileText, Download, X, Eye } from 'lucide-react';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Badge } from '@/components/ui/badge';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmployeeUser } from '@/pages/UserManagement';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
@@ -25,6 +25,7 @@ import { formatDate } from "@/lib/Dateformat";
 import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { getEmployeeTypeLabel } from '@/constant/employeeConstant';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import {
   fetchEmployeeProfileDocuments,
@@ -35,6 +36,17 @@ import {
   VerificationDocumentRow,
 } from '@/services/employee/employeeProfileDocumentService';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { capitalizeWords } from '@/lib/formatUtils';
+
+// Existing records may have been created before name capitalization was enforced
+// on entry, so normalize casing at display time rather than trusting stored data.
+const getUserDisplayName = (user: { firstName?: string; lastName?: string; aadharVerifiedName?: string }) =>
+  capitalizeWords(user.aadharVerifiedName || `${user.firstName || ''} ${user.lastName || ''}`.trim());
+
+const getDepartmentBadgeColor = (department?: string) => {
+  if (department?.toLowerCase() === 'admin') return 'bg-blue-100 text-blue-700';
+  return 'bg-gray-100 text-gray-700';
+};
 
 interface UserListProps {
   users: EmployeeUser[];
@@ -45,18 +57,30 @@ interface UserListProps {
   hasAdminAccess?: boolean;
   onRefresh?: () => void;
   canEditUsers?: boolean;
+  // When provided, pagination is server-driven: `users` is treated as already
+  // being just the current page's data (no further client-side slicing), and
+  // page navigation calls onPageChange instead of managing state locally.
+  currentPage?: number;
+  totalItems?: number;
+  itemsPerPage?: number;
+  onPageChange?: (page: number) => void;
 }
 
-const UserList = ({ 
-  users, 
-  onEditClick, 
-  onDeleteUser, 
-  onDeactivateUser, 
-  onReactivateUser, 
+const UserList = ({
+  users,
+  onEditClick,
+  onDeleteUser,
+  onDeactivateUser,
+  onReactivateUser,
   hasAdminAccess = false,
   onRefresh,
   canEditUsers = true,
+  currentPage: serverCurrentPage,
+  totalItems: serverTotalItems,
+  itemsPerPage: serverItemsPerPage,
+  onPageChange,
 }: UserListProps) => {
+  const isServerPaginated = serverTotalItems !== undefined && onPageChange !== undefined;
   const { employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [isTableLoading, setIsTableLoading] = useState(false);
@@ -70,9 +94,10 @@ const UserList = ({
   const [verificationDocsForDialog, setVerificationDocsForDialog] = useState<VerificationDocumentRow[]>([]);
   const [verificationDocsLoading, setVerificationDocsLoading] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  // Pagination state (only used when not server-paginated)
+  const [internalCurrentPage, setInternalCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(serverItemsPerPage ?? 10);
+  const currentPage = isServerPaginated ? serverCurrentPage! : internalCurrentPage;
   const shouldHideWriteActions = isReadOnlySwitchedContext || !canEditUsers;
 
 
@@ -88,19 +113,13 @@ const UserList = ({
 
     const fetchReferences = async () => {
       try {
-        const results = await Promise.all(
-          users.map(async (user) => {
-            const refInfo = await incidentReferenceService.checkEmployeeReferences(user.id, clientId);
-            return { id: user.id, refInfo };
-          })
+        const map = await incidentReferenceService.checkBatchReferences(
+          users.map((user) => ({ type: 'employee' as const, id: user.id })),
+          clientId
         );
 
         if (isCancelled) return;
 
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
         setEmployeeReferences(map);
       } catch (error) {
         console.error('Error preloading employee reference info:', error);
@@ -155,14 +174,14 @@ const UserList = ({
     return () => {
       cancelled = true;
     };
-  }, [documentDialogUser?.id]);
+  }, [documentDialogUser?.id, documentDialogUser?.clientId, employeeData?.clientId]);
 
   console.log("UserList component - Users:", users);
   console.log("UserList component - hasAdminAccess:", hasAdminAccess);
 
   // Pagination logic
-  const totalItems = users.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalItems = isServerPaginated ? serverTotalItems! : users.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
     const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
@@ -171,22 +190,28 @@ const UserList = ({
     });
   }, [users]);
   const paginatedUsers = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
+    // When server-paginated, `users` is already just the current page's data.
+    if (isServerPaginated) return sortedUsers;
+    const startIndex = (internalCurrentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return sortedUsers.slice(startIndex, endIndex);
-  }, [sortedUsers, currentPage, itemsPerPage]);
-  // Reset to first page when items per page changes
+  }, [sortedUsers, internalCurrentPage, itemsPerPage, isServerPaginated]);
+  // Reset to first page when items per page changes (client-paginated mode only)
   React.useEffect(() => {
-    setCurrentPage(1);
-  }, [itemsPerPage]);
+    if (!isServerPaginated) setInternalCurrentPage(1);
+  }, [itemsPerPage, isServerPaginated]);
 
-  // Reset to first page when users array changes
+  // Reset to first page when users array changes (client-paginated mode only)
   React.useEffect(() => {
-    setCurrentPage(1);
-  }, [users.length]);
+    if (!isServerPaginated) setInternalCurrentPage(1);
+  }, [users.length, isServerPaginated]);
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    if (isServerPaginated) {
+      onPageChange!(page);
+      return;
+    }
+    setInternalCurrentPage(page);
   };
 
   const handleItemsPerPageChange = (value: string) => {
@@ -258,8 +283,10 @@ const UserList = ({
     }
   };
 
-  // Handle deactivate user with database update
-  const handleDeactivateUser = async (userId: string, employeeId: string, clientId: string) => {
+  // Handle deactivate user — the actual status update (and clearing the
+  // employee's module/permission grants) happens server-side via the
+  // onDeactivateUser prop, which invokes the employee-management edge function.
+  const handleDeactivateUser = async (userId: string) => {
     if (isReadOnlySwitchedContext) {
       toast.error('Read-only users cannot deactivate users');
       return;
@@ -267,33 +294,10 @@ const UserList = ({
 
     try {
       setIsTableLoading(true);
-      
-      // Update the employee status in the database
-      const { data, error } = await supabase
-        .from('employees')
-        .update({ 
-          status: false, // Set active = 0 (false)
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .eq('client_id', clientId);
-
-      if (error) {
-        console.error('Error deactivating employee:', error);
-        toast.error('Failed to deactivate employee');
-        return;
-      }
-
-      console.log('Employee deactivated successfully:', data);
-      
-      // Call the parent's deactivate function
       await onDeactivateUser(userId);
-      
-      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
-      
     } catch (error) {
       console.error('Error deactivating employee:', error);
       toast.error('Failed to deactivate employee');
@@ -303,8 +307,9 @@ const UserList = ({
     }
   };
 
-  // Handle activate user with database update
-  const handleActivateUser = async (userId: string, employeeId: string, clientId: string) => {
+  // Handle activate user — the actual status update happens server-side via
+  // the onReactivateUser prop, which invokes the employee-management edge function.
+  const handleActivateUser = async (userId: string) => {
     if (isReadOnlySwitchedContext) {
       toast.error('Read-only users cannot activate users');
       return;
@@ -312,33 +317,10 @@ const UserList = ({
 
     try {
       setIsTableLoading(true);
-      
-      // Update the employee status in the database
-      const { data, error } = await supabase
-        .from('employees')
-        .update({ 
-          status: true, // Set active = 1 (true)
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .eq('client_id', clientId);
-
-      if (error) {
-        console.error('Error activating employee:', error);
-        toast.error('Failed to activate employee');
-        return;
-      }
-
-      console.log('Employee activated successfully:', data);
-      
-      // Call the parent's reactivate function
       await onReactivateUser(userId);
-      
-      // Refresh the list with loading state
       if (onRefresh) {
         await onRefresh();
       }
-      
     } catch (error) {
       console.error('Error activating employee:', error);
       toast.error('Failed to activate employee');
@@ -396,16 +378,34 @@ const UserList = ({
                     </Tooltip>
                   </TooltipProvider>
                 )}
+                {user.department?.toLowerCase() === 'driver' && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-blue-300 bg-blue-50 text-xs font-semibold text-blue-700 cursor-default">
+                          D
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        className="relative bg-slate-800 text-white border-slate-800 px-3 py-1.5 text-sm after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-2 after:w-2 after:rotate-45 after:bg-slate-800"
+                      >
+                        Driver
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
             </TableCell>
             <TableCell>
               <div className="flex flex-col">
-                <span className="font-medium text-gray-900">{user.firstName} {user.lastName}</span>
+                <span className="font-medium text-gray-900">{getUserDisplayName(user)}</span>
                 {(() => {
+                  const extUser = user as unknown as { tags?: string[]; designation?: string };
                   const tags =
-                    Array.isArray((user as any).tags) && (user as any).tags.length > 0
-                      ? (user as any).tags
-                      : ((user as any).designation || '')
+                    Array.isArray(extUser.tags) && (extUser.tags?.length ?? 0) > 0
+                      ? extUser.tags
+                      : (extUser.designation || '')
                           .split(',')
                           .map((tag: string) => tag.trim())
                           .filter(Boolean)
@@ -424,12 +424,20 @@ const UserList = ({
             <TableCell className="max-w-[200px]">
                 <span className="block truncate" title={user.email}>{user.email}</span>
               </TableCell>
-            <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
+            <TableCell>
+              {user.department ? (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getDepartmentBadgeColor(user.department)}`}>
+                  {user.department.charAt(0).toUpperCase() + user.department.slice(1)}
+                </span>
+              ) : (
+                <span>-</span>
+              )}
+            </TableCell>
             <TableCell className="text-center">
               <button
                 type="button"
                 className="text-blue-600 hover:text-blue-700 disabled:text-gray-300"
-                aria-label={`View documents for ${user.firstName} ${user.lastName}`}
+                aria-label={`View documents for ${getUserDisplayName(user)}`}
                 onClick={() =>{ 
                   console.log("Selected User:", user);
                   setDocumentDialogUser(user);
@@ -484,14 +492,14 @@ const UserList = ({
                         <AlertDialogHeader>
                           <AlertDialogTitle>Deactivate User</AlertDialogTitle>
                           <AlertDialogDescription>
-                              Are you sure you want to deactivate {user.firstName} {user.lastName}? They will no longer be able to log in to the system.
+                              Are you sure you want to deactivate {getUserDisplayName(user)}? They will no longer be able to log in to the system.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
                           <AlertDialogAction 
                             className="bg-amber-600 hover:bg-amber-700"
-                              onClick={() => handleDeactivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              onClick={() => handleDeactivateUser(user.id)}
                               disabled={isTableLoading}
                           >
                             Deactivate
@@ -515,14 +523,14 @@ const UserList = ({
                           <AlertDialogHeader>
                             <AlertDialogTitle>Activate User</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to activate {user.firstName} {user.lastName}? They will be able to log in to the system again.
+                              Are you sure you want to activate {getUserDisplayName(user)}? They will be able to log in to the system again.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
                             <AlertDialogAction 
                               className="bg-green-600 hover:bg-green-700"
-                              onClick={() => handleActivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              onClick={() => handleActivateUser(user.id)}
                               disabled={isTableLoading}
                             >
                               Activate
@@ -629,88 +637,15 @@ const UserList = ({
 
     {/* Pagination Controls */}
     {totalItems > 0 && (
-      <div className="flex items-center justify-center space-x-6 lg:space-x-8 py-4">
-          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-            Page {currentPage} of {totalPages}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => handlePageChange(1)}
-              disabled={currentPage === 1}
-            >
-              <span className="sr-only">Go to first page</span>
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <span className="sr-only">Go to previous page</span>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            
-            {/* Page Numbers */}
-            <div className="flex items-center space-x-1">
-              {Array.from({ length: totalPages }, (_, index) => {
-                const pageNumber = index + 1;
-                const isCurrentPage = pageNumber === currentPage;
-                
-                // Show first page, last page, current page, and pages around current page
-                const shouldShow = 
-                  pageNumber === 1 || 
-                  pageNumber === totalPages || 
-                  (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1);
-                
-                if (!shouldShow) {
-                  // Show ellipsis if there's a gap
-                  if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
-                    return (
-                      <span key={`ellipsis-${pageNumber}`} className="px-2 text-sm text-gray-500">
-                        ...
-                      </span>
-                    );
-                  }
-                  return null;
-                }
-                
-                return (
-                  <Button
-                    key={pageNumber}
-                    variant={isCurrentPage ? "default" : "outline"}
-                    className="h-8 w-8 p-0"
-                    onClick={() => handlePageChange(pageNumber)}
-                  >
-                    {pageNumber}
-                  </Button>
-                );
-              })}
-            </div>
-            
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <span className="sr-only">Go to next page</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => handlePageChange(totalPages)}
-              disabled={currentPage === totalPages}
-            >
-              <span className="sr-only">Go to last page</span>
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <TablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalItems}
+        pageSize={itemsPerPage}
+        itemLabel="users"
+        onPageChange={handlePageChange}
+      />
+    )}
 
       <Dialog open={!!documentDialogUser} onOpenChange={(open) => !open && setDocumentDialogUser(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
@@ -725,7 +660,7 @@ const UserList = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <h1 className="text-xl font-semibold leading-tight truncate">
-                        {valueOrNotSet(`${documentDialogUser.firstName || ''} ${documentDialogUser.lastName || ''}`.trim())}
+                        {valueOrNotSet(getUserDisplayName(documentDialogUser))}
                       </h1>
                       <p className="text-sm text-slate-500 truncate">{valueOrNotSet(documentDialogUser.employeeId)}</p>
                     </div>
@@ -765,22 +700,22 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">First Name</p>
-                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.firstName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(capitalizeWords(documentDialogUser.firstName))}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Last Name</p>
-                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.lastName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(capitalizeWords(documentDialogUser.lastName))}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Email</p>
                   <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.email)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Phone</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).phone)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.phone)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Address</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.residenceAddress || (documentDialogUser as any).residenceAddress)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.residenceAddress || (documentDialogUser as unknown as { residenceAddress?: string }).residenceAddress)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Tags</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as unknown as { designation?: string }).designation)}</p>
                   </div>
                 </div>
               </div>
@@ -795,39 +730,39 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">Middle Name</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.middleName || (documentDialogUser as any).middleName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.middleName || (documentDialogUser as unknown as { middleName?: string }).middleName)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Father's Name</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.fatherName || (documentDialogUser as any).fatherName)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.fatherName || (documentDialogUser as unknown as { fatherName?: string }).fatherName)}</p>
                   </div>
 
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Experience</p>
                     <p className="font-medium break-words">{valueOrNotSet(
-                        (documentDialogUser as any).personalDetails?.experience)}
+                        documentDialogUser.personalDetails?.experience)}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Qualification</p>
                     <p className="font-medium break-words">{valueOrNotSet(
-                        (documentDialogUser as any).personalDetails?.qualification)}
+                        documentDialogUser.personalDetails?.qualification)}
                     </p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Gender</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.gender || (documentDialogUser as any).gender)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.gender || (documentDialogUser as unknown as { gender?: string }).gender)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Date of Birth</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.dob || (documentDialogUser as any).dob)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.dob || (documentDialogUser as unknown as { dob?: string }).dob)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Religion</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.religion || (documentDialogUser as any).religion)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.religion || (documentDialogUser as unknown as { religion?: string }).religion)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Nationality</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.nationality || (documentDialogUser as any).nationality)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.nationality || (documentDialogUser as unknown as { nationality?: string }).nationality)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Blood Group</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).personalDetails?.bloodGroup || (documentDialogUser as any).bloodGroup)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.personalDetails?.bloodGroup || (documentDialogUser as unknown as { bloodGroup?: string }).bloodGroup)}</p>
                   </div>
                 </div>
               </div>
@@ -846,13 +781,13 @@ const UserList = ({
                   </div>
                   
                   <div><p className="text-sm text-slate-400 mb-1">Designation</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as unknown as { designation?: string }).designation)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Department</p>
                   <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.department)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Employee Type</p>
-                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.employeeType)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(getEmployeeTypeLabel(documentDialogUser.employeeType))}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Joining Date</p>
                   <p className="font-medium mb-4 break-words">{documentDialogUser.joiningDate ? formatDate(documentDialogUser.joiningDate) : 'Not Set'}</p>
@@ -867,22 +802,22 @@ const UserList = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><p className="text-sm text-slate-400 mb-1">Aadhaar No</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.aadharNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.aadharNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">PAN No</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.panNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.panNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">ESI No</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.esiNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.esiNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">PF No</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.pfNo)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.pfNo)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Resigning / Termination Date</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.exitDate)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.exitDate)}</p>
                   </div>
                   <div><p className="text-sm text-slate-400 mb-1">Biometric User ID</p>
-                  <p className="font-medium break-words">{valueOrNotSet((documentDialogUser as any).professionalOtherDetails?.biometricUserId)}</p>
+                  <p className="font-medium break-words">{valueOrNotSet(documentDialogUser.professionalOtherDetails?.biometricUserId)}</p>
                   </div>
                 </div>
               </div>

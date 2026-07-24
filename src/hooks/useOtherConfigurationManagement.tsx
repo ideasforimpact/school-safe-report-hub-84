@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { toast } from 'sonner';
@@ -21,10 +21,10 @@ export function useOtherConfigurationManagement() {
   // Local state
   const [loading, setLoading] = useState(false);
   const [designations, setDesignations] = useState<ConfigItem[]>(contextDesignations);
-  const [campuses, setCampuses] = useState<any[]>([]);
-  const [classes, setClasses] = useState<any[]>([]);
+  const [campuses, setCampuses] = useState<{ id: string; name: string }[]>([]);
+  const [classes, setClasses] = useState<{ id: string; name: string; campusId: string }[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
-  const [facilities, setFacilities] = useState<any[]>([]);
+  const [facilities, setFacilities] = useState<{ id: string; name: string; campusId: string }[]>([]);
 
   // Update local state when context changes
   useEffect(() => {
@@ -39,19 +39,9 @@ export function useOtherConfigurationManagement() {
     }
   }, [searchParams]);
 
-  // Fetch data from Supabase when employeeData changes
-  useEffect(() => {
-    if (employeeData?.clientId) {
-      fetchCampuses();
-      fetchGrades();
-      fetchSections();
-      fetchFacilities();
-    }
-  }, [employeeData?.clientId]);
-
-  const fetchCampuses = async () => {
+  const fetchCampuses = useCallback(async () => {
     if (!employeeData?.clientId) return;
-    
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('campus-management', {
@@ -59,8 +49,8 @@ export function useOtherConfigurationManagement() {
       });
 
       if (error) throw error;
-      
-      setCampuses(data.campuses.map((campus: any) => ({
+
+      setCampuses(data.campuses.map((campus: Record<string, unknown>) => ({
         id: campus.id,
         name: campus.name
       })));
@@ -70,11 +60,11 @@ export function useOtherConfigurationManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeData?.clientId]);
 
-  const fetchGrades = async () => {
+  const fetchGrades = useCallback(async () => {
     if (!employeeData?.clientId) return;
-    
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('grade-management', {
@@ -82,8 +72,8 @@ export function useOtherConfigurationManagement() {
       });
 
       if (error) throw error;
-      
-      setClasses(data.grades.map((grade: any) => ({
+
+      setClasses(data.grades.map((grade: Record<string, unknown>) => ({
         id: grade.id,
         name: grade.name,
         campusId: grade.campus_id
@@ -94,11 +84,11 @@ export function useOtherConfigurationManagement() {
     } finally {
       setLoading(false);
     }
-  };
-  
-  const fetchSections = async () => {
+  }, [employeeData?.clientId]);
+
+  const fetchSections = useCallback(async () => {
     if (!employeeData?.clientId) return;
-    
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('section-management', {
@@ -106,8 +96,8 @@ export function useOtherConfigurationManagement() {
       });
 
       if (error) throw error;
-      
-      setSections(data.sections.map((section: any) => ({
+
+      setSections(data.sections.map((section: Record<string, unknown>) => ({
         id: section.id,
         name: section.name,
         classId: section.grade_id
@@ -118,11 +108,11 @@ export function useOtherConfigurationManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeData?.clientId]);
 
-  const fetchFacilities = async () => {
+  const fetchFacilities = useCallback(async () => {
     if (!employeeData?.clientId) return;
-    
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('facility-management', {
@@ -130,8 +120,8 @@ export function useOtherConfigurationManagement() {
       });
 
       if (error) throw error;
-      
-      setFacilities(data.facilities.map((facility: any) => ({
+
+      setFacilities(data.facilities.map((facility: Record<string, unknown>) => ({
         id: facility.id,
         name: facility.name,
         campusId: facility.campus_id
@@ -142,7 +132,17 @@ export function useOtherConfigurationManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeData?.clientId]);
+
+  // Fetch data from Supabase when employeeData changes
+  useEffect(() => {
+    if (employeeData?.clientId) {
+      fetchCampuses();
+      fetchGrades();
+      fetchSections();
+      fetchFacilities();
+    }
+  }, [employeeData?.clientId, fetchCampuses, fetchGrades, fetchSections, fetchFacilities]);
 
   // Designation management
   const handleAddDesignation = (name: string) => {
@@ -226,14 +226,14 @@ export function useOtherConfigurationManagement() {
     }
 
     // Check if campus has associated classes/grades
-    const hasClasses = classes.some((cls: any) => cls.campusId === id);
+    const hasClasses = classes.some((cls) => cls.campusId === id);
     if (hasClasses) {
       toast.error("Cannot delete campus with associated grades. Remove the grades first.");
       return;
     }
     
     // Check if campus has associated facilities
-    const hasFacilities = facilities.some((facility: any) => facility.campusId === id);
+    const hasFacilities = facilities.some((facility) => facility.campusId === id);
     if (hasFacilities) {
       toast.error("Cannot delete campus with associated facilities. Remove the facilities first.");
       return;
@@ -304,7 +304,7 @@ export function useOtherConfigurationManagement() {
 
       if (error) throw error;
       
-      setClasses(prev => prev.map((c: any) => c.id === id ? { 
+      setClasses(prev => prev.map((c) => c.id === id ? {
         ...c, 
         name: data.grade.name, 
         campusId: data.grade.campus_id 
@@ -321,7 +321,7 @@ export function useOtherConfigurationManagement() {
 
   const deleteClass = async (id: string) => {
     // Check if class has associated sections
-    const hasSections = sections.some((section: any) => section.classId === id);
+    const hasSections = sections.some((section) => section.classId === id);
     if (hasSections) {
       toast.error("Cannot delete grade with associated sections. Remove the sections first.");
       return;
@@ -335,7 +335,7 @@ export function useOtherConfigurationManagement() {
 
       if (error) throw error;
       
-      setClasses(prev => prev.filter((c: any) => c.id !== id));
+      setClasses(prev => prev.filter((c) => c.id !== id));
       toast.success("Grade deleted successfully");
     } catch (error) {
       console.error("Error deleting grade:", error);
@@ -455,7 +455,7 @@ export function useOtherConfigurationManagement() {
 
       if (error) throw error;
       
-      setFacilities(prev => prev.map((f: any) => f.id === id ? { 
+      setFacilities(prev => prev.map((f) => f.id === id ? {
         ...f, 
         name: data.facility.name,
         campusId: data.facility.campus_id
@@ -493,7 +493,7 @@ export function useOtherConfigurationManagement() {
 
       if (error) throw error;
       
-      setFacilities(prev => prev.filter((f: any) => f.id !== id));
+      setFacilities(prev => prev.filter((f) => f.id !== id));
       toast.success("Facility deleted successfully");
     } catch (error) {
       console.error("Error deleting facility:", error);

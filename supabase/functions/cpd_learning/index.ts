@@ -39,7 +39,7 @@ serve(async (req) => {
       ? body.attachments
       : [];
     const documentUrlsExisting: { path: string; name: string }[] | null = Array.isArray(body.document_urls_existing)
-      ? body.document_urls_existing.filter((d: any) => d && typeof d.path === "string" && typeof d.name === "string")
+      ? body.document_urls_existing.filter((d: unknown) => d !== null && typeof d === "object" && typeof (d as Record<string, unknown>).path === "string" && typeof (d as Record<string, unknown>).name === "string")
       : null;
 
     if (!clientId || !employeeId) {
@@ -186,7 +186,7 @@ serve(async (req) => {
       );
     }
 
-    const threshold = (domain as any).threshold ?? 0;
+    const threshold = (domain as Record<string, unknown>).threshold ?? 0;
 
     // For edit, fetch existing entry to adjust domain/hours calculations and document_urls
     let currentEntryHour = 0;

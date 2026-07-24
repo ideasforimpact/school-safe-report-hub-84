@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
 import VehicleStatusBadge from '@/components/transport-safety/VehicleStatusBadge';
 import { toast } from 'sonner';
-import { Vehicle } from '@/types/transportSafety';
+import { Vehicle, VehicleVerificationData } from '@/types/transportSafety';
 import { formatDate } from '@/lib/Dateformat';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,10 +42,29 @@ import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedConte
 
 interface VehicleInfoCardProps {
   vehicle: Vehicle;
+  // Detail page keeps its own local `vehicle` state (fetched once via getVehicleById)
+  // rather than reading from the transport-safety context's `vehicles` list, so
+  // patchVehicleLocal alone never reaches it. This lets a fresh safety check update
+  // the page's local state too, so sibling cards (Document Status) reflect it immediately.
+  onVehicleUpdate?: (updates: Partial<Vehicle>) => void;
 }
 
-const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
-  const { verifyDocument, deleteVehicle, updateVehicle } = useTransportSafety();
+// Verification API response shape varies by provider; only the fields this
+// component reads are named, the rest is preserved via the index signature.
+interface VehicleVerificationApiResponse {
+  status?: string;
+  verificationDate?: string;
+  transformed?: VehicleVerificationData[];
+  [key: string]: unknown;
+}
+
+interface ChallanLogEntry {
+  data?: { status_code?: number };
+  provider?: string;
+}
+
+const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle, onVehicleUpdate }) => {
+  const { verifyDocument, deleteVehicle, patchVehicleLocal } = useTransportSafety();
   const { state } = useEmployeeStore();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [isChecking, setIsChecking] = useState(false);
@@ -54,14 +73,14 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showVerificationResults, setShowVerificationResults] = useState(false);
-  const [verificationData, setVerificationData] = useState<any>(null);
-  const [apiResponseData, setApiResponseData] = useState<any>(null);
+  const [verificationData, setVerificationData] = useState<VehicleVerificationApiResponse | null>(null);
+  const [apiResponseData, setApiResponseData] = useState<VehicleVerificationApiResponse | null>(null);
   const [showSafetyCheckConsent, setShowSafetyCheckConsent] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [challanError, setChallanError] = useState<string | null>(null);
   const [hasChallanData, setHasChallanData] = useState<boolean>(true);
-  const [vehicleChallans, setVehicleChallans] = useState<VehicleChallans | null>(null);
+  const [vehicleChallans, setVehicleChallans] = useState<VehicleChallans | null>(vehicle.vehicleChallans || null);
 
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
@@ -87,22 +106,6 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     
     return false;
   }, [isSuperAdmin, state.configuredModules]);
-
-  // Fetch vehicle_challans when component mounts
-  useEffect(() => {
-    const fetchVehicleChallans = async () => {
-      if (vehicleId) {
-        try {
-          const challans = await getVehicleChallans(vehicleId);
-          setVehicleChallans(challans);
-        } catch (error) {
-          console.error('Error fetching vehicle_challans:', error);
-        }
-      }
-    };
-
-    fetchVehicleChallans();
-  }, [vehicleId]);
 
   const getLatestVerificationData = () => {
     if (!vehicle.verificationData) return null;
@@ -133,7 +136,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     
     try {
       // Call the Supabase Edge Function to verify the vehicle
-      const { data, error } = await supabase.functions.invoke('vehicle-verify', {
+      const { data, error } = await supabase.functions.invoke<{ data: VehicleVerificationApiResponse }>('vehicle-verify', {
         body: { registrationNumber, vehicleId }
       });
       
@@ -149,8 +152,17 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       setApiResponseData(data.data); // Store API response for dialog
       setLastCheckTime(new Date());
       
-      // Update the vehicle in context with verification data (minimal update)
-      updateVehicle(vehicleId, {
+      // Update the vehicle in context with verification data. The vehicle-verify
+      // edge function already persisted these fields to the DB server-side, so this
+      // is a local-only patch (not another DB round-trip) — it makes the fresh data
+      // visible immediately to every consumer of this vehicle (e.g. the Document
+      // Status card), instead of leaving them stale until the next realtime refresh.
+      patchVehicleLocal(vehicleId, {
+        verificationStatus: data.data.status,
+        verificationDate: data.data.verificationDate,
+        verificationData: data.data.transformed
+      });
+      onVehicleUpdate?.({
         verificationStatus: data.data.status,
         verificationDate: data.data.verificationDate,
         verificationData: data.data.transformed
@@ -160,7 +172,11 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       try {
         const updatedChallans = await getVehicleChallans(vehicleId);
         setVehicleChallans(updatedChallans);
-        
+        // Also patch the shared vehicle so sibling components (e.g. the Document
+        // Status card) see the fresh challan data immediately, not just this card.
+        patchVehicleLocal(vehicleId, { vehicleChallans: updatedChallans });
+        onVehicleUpdate?.({ vehicleChallans: updatedChallans });
+
         // Check challan status from vehicle_challans
         if (updatedChallans) {
           // Check if we have challan data (even if API call failed, we might have error data)
@@ -226,13 +242,13 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     navigate('/transport-safety');
   };
   
-  const formatVerificationData = (data: any) => {
+  const formatVerificationData = (data: VehicleVerificationData[] | null | undefined) => {
     if (!data || !Array.isArray(data)) return [];
-    
+
     // Filter out the verification_log, last_response, status, challan_details, client identifiers,
     // and noisy metadata like response_metadata or less_info
-    let finalResponse = data
-      .filter((item: any) => {
+    const finalResponse = data
+      .filter((item) => {
         const fieldName = item.field.toLowerCase();
         return fieldName !== 'verification_log' && 
                fieldName !== 'last_response' && 
@@ -248,7 +264,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                fieldName !== 'less_info' &&
                !fieldName.includes('less info');
       })
-      .map((item: any) => ({
+      .map((item) => ({
         label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
           word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
         value: item.value
@@ -265,7 +281,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     if (!logs || typeof logs !== 'object') return null;
 
     const successLogs = Object.entries(logs).filter(
-      ([_, entry]: any) => entry?.data?.status_code === 200
+      ([, entry]: [string, ChallanLogEntry]) => entry?.data?.status_code === 200
     );
 
     if (successLogs.length === 0) return null;
@@ -274,7 +290,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
     );
 
-    const [timestamp, log]: any = successLogs[0];
+    const [timestamp, log] = successLogs[0] as [string, ChallanLogEntry];
 
     return {
       timestamp,
@@ -316,7 +332,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         </div>
         
         <div className="flex justify-start space-x-3">
-          {!isReadOnlySwitchedContext && (
+          {/* {!isReadOnlySwitchedContext && (
             <Button 
               onClick={() => setShowDeleteConfirm(true)} 
               variant="outline"
@@ -325,7 +341,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
               <Trash2 className="h-4 w-4 mr-2" />
               Delete Vehicle
             </Button>
-          )}
+          )} */}
           
           {/* Only show Run Safety Check button if user has admin access */}
           {!isReadOnlySwitchedContext && hasAdminAccess && (
@@ -351,18 +367,23 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         </div>
         
         {/* Display verification status if available */}
-        {vehicle.verificationStatus && (
-          <div className="mt-2 text-sm text-left">
-            <span className="font-medium">Status:</span> 
-            <span className={`ml-1 ${vehicle.verificationStatus === 'active' ? 'text-green-600' : 'text-amber-600'}`}>
-              {vehicle.verificationStatus.charAt(0).toUpperCase() + vehicle.verificationStatus.slice(1)}
-            </span>
-          </div>
-        )}
+          {vehicle.verificationStatus && (
+            <div className="mt-2 text-sm text-left">
+              <span className="font-medium">RC Status:</span> 
+              <span className={`ml-1 ${vehicle.verificationStatus === 'active' ? 'text-green-600' : 'text-amber-600'}`}>
+                {vehicle.verificationStatus.toUpperCase()}
+              </span>
+            </div>
+          )}
 
         
-        {/* Only show the "View Latest Verification" button */}
-        {latestVerificationData && (
+        {/* Show the "View Latest Verification" button/dialog when there's persisted
+            history OR we just ran a fresh check this session — a fresh check can
+            complete without the vehicle's persisted verification_data being updated
+            (e.g. the edge function's "documents up to date" skip path reuses cached
+            data), so relying on latestVerificationData alone could leave the dialog
+            unable to open right after a successful check. */}
+        {(latestVerificationData || apiResponseData) && (
           <div className="mt-3">
             <Dialog open={showVerificationResults} onOpenChange={setShowVerificationResults}>
               <DialogTrigger asChild>
@@ -381,6 +402,15 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 challanError={
                   latestChallanSuccessLog ? null : 'No successful challan check available.'
                 }
+                onUnmasked={(values) => {
+                  const updates = {
+                    vehicleChasiNumber: values.chasi ?? undefined,
+                    vehicleEngineNumber: values.engine ?? undefined,
+                    vehicleOwnerName: values.owner ?? undefined,
+                  };
+                  patchVehicleLocal(vehicleId, updates);
+                  onVehicleUpdate?.(updates);
+                }}
               />
             </Dialog>
           </div>

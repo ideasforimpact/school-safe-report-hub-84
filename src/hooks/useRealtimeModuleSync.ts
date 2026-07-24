@@ -5,6 +5,7 @@ import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 import { setConfiguredModules } from '@/store/employeeActions';
 import { toast } from 'sonner';
 import { useLocation, useNavigate } from 'react-router-dom';
+import type { Module } from '@/store/types';
 
 /**
  * Hook to sync module access in real-time when changes occur
@@ -44,7 +45,7 @@ export const useRealtimeModuleSync = () => {
 
       const isSuperAdmin = employeeData?.is_super_admin || false;
       
-      let configuredModules: any[] = [];
+      let configuredModules: Module[] = [];
       
       if (isSuperAdmin) {
         // For super admins, fetch all modules enabled for the client

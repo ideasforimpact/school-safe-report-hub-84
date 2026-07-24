@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
-const sb: any = supabase as any;
+// sb is unused — supabase client used directly below
 import { CustomForm, FormField } from '@/types/formTypes';
 import { FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -29,25 +29,21 @@ const PublicFormPage = () => {
   const [form, setForm] = useState<CustomForm | null>(null);
   const [clientName, setClientName] = useState<string | null>(null);
   const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
+  const [clientTypeKey, setClientTypeKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [files, setFiles] = useState<Record<string, FileItem[]>>({});
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const altchaRef = useRef<{ value: string | null } | null>(null);
   const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
-  const [clientTypeKey, setClientTypeKey] = useState<string | null>(null);
+  // Latest-value ref so fetchForm can read the current clientName without
+  // needing clientName in its own dependency array (which would recreate
+  // fetchForm — and re-trigger the fetch effect — every time it's set).
+  const clientNameRef = useRef<string | null>(null);
+  clientNameRef.current = clientName;
 
-  useEffect(() => {
-    const token = formIdQS || previewUrl;
-    if (token && token !== 'undefined') {
-      fetchForm(token);
-    } else {
-      setLoading(false);
-    }
-  }, [previewUrl, formIdQS]);
-
-  const normalizeFields = (rawFields: any): FormField[] => {
+  const normalizeFields = useCallback((rawFields: unknown): FormField[] => {
     try {
       if (Array.isArray(rawFields)) return rawFields as FormField[];
       if (typeof rawFields === 'string') return JSON.parse(rawFields) as FormField[];
@@ -67,48 +63,48 @@ const PublicFormPage = () => {
     return relation?.key ?? null;
   };
 
-  const fetchForm = async (token: string) => {
+  const fetchForm = useCallback(async (token: string) => {
     try {
       setLoading(true);
 
       const trimmed = decodeURIComponent(token);
       const prefixed = trimmed.startsWith('form/') ? trimmed : `form/${trimmed}`;
 
-      let data: any = null;
+      let data: Record<string, unknown> | null = null;
 
       if (formIdQS) {
-        const byId = await (supabase as any)
-          .from('custom_forms')
-          .select('*, client_type:client_type_id(key)')
+        const byId = await supabase
+          .from('custom_forms' as const)
+          .select('*')
           .eq('id', trimmed)
           .eq('is_active', true)
           .maybeSingle();
-        if (byId.data && (!clientIdQS || byId.data.client_id === clientIdQS)) {
-          data = byId.data;
+        if (byId.data && (!clientIdQS || (byId.data as Record<string, unknown>).client_id === clientIdQS)) {
+          data = byId.data as Record<string, unknown>;
         }
       }
 
       if (!data) {
-        const viaPreview1 = await (supabase as any)
-          .from('custom_forms')
-          .select('*, client_type:client_type_id(key)')
+        const viaPreview1 = await supabase
+          .from('custom_forms' as const)
+          .select('*')
           .eq('preview_url', prefixed)
           .eq('is_active', true)
           .maybeSingle();
-        if (viaPreview1.data && (!clientIdQS || viaPreview1.data.client_id === clientIdQS)) {
-          data = viaPreview1.data;
+        if (viaPreview1.data && (!clientIdQS || (viaPreview1.data as Record<string, unknown>).client_id === clientIdQS)) {
+          data = viaPreview1.data as Record<string, unknown>;
         }
       }
 
       if (!data) {
-        const viaPreview2 = await (supabase as any)
-          .from('custom_forms')
-          .select('*, client_type:client_type_id(key)')
+        const viaPreview2 = await supabase
+          .from('custom_forms' as const)
+          .select('*')
           .eq('preview_url', trimmed)
           .eq('is_active', true)
           .maybeSingle();
-        if (viaPreview2.data && (!clientIdQS || viaPreview2.data.client_id === clientIdQS)) {
-          data = viaPreview2.data;
+        if (viaPreview2.data && (!clientIdQS || (viaPreview2.data as Record<string, unknown>).client_id === clientIdQS)) {
+          data = viaPreview2.data as Record<string, unknown>;
         }
       }
 
@@ -117,52 +113,58 @@ const PublicFormPage = () => {
         return;
       }
 
-      const formClientTypeKey = getClientTypeKeyFromRelation((data as any).client_type);
-      const fields = normalizeFields((data as any).fields);
+      const fields = normalizeFields(data.fields);
       const mapped: CustomForm = {
-        id: (data as any).id,
-        client_id: (data as any).client_id,
-        title: (data as any).title,
-        description: (data as any).description,
+        id: data.id as string,
+        client_id: data.client_id as string,
+        title: data.title as string,
+        description: data.description as string,
         fields,
-        is_active: (data as any).is_active ?? true,
-        preview_url: (data as any).preview_url ?? '',
-        client_logo: (data as any).client_logo ?? undefined,
-        created_at: (data as any).created_at,
-        updated_at: (data as any).updated_at,
-        created_by: (data as any).created_by ?? undefined,
+        is_active: (data.is_active as boolean) ?? true,
+        preview_url: (data.preview_url as string) ?? '',
+        client_logo: (data.client_logo as string) ?? undefined,
+        created_at: data.created_at as string,
+        updated_at: data.updated_at as string,
+        created_by: (data.created_by as string) ?? undefined,
       };
+
+      setForm(mapped);
+
+      // Needed so grievance forms show the right "Who is raising this
+      // grievance?" options (school vs. workplace wording) — see renderField.
+      const { data: clientTypeRow } = await supabase
+        .from('clients')
+        .select('client_type:client_type_id(key)')
+        .eq('id', mapped.client_id)
+        .maybeSingle();
+      setClientTypeKey(
+        ((clientTypeRow as Record<string, unknown> | null)?.client_type as { key?: string } | null)?.key || null
+      );
 
       // Build logo URL from path if needed
       const { buildClientLogoUrl } = await import('@/lib/utils');
       const logoUrl = buildClientLogoUrl(mapped.client_logo);
       setClientLogoUrl(logoUrl || null);
 
-      // Fetch client details for header display and as a fallback client type source.
-      let resolvedClientTypeKey = formClientTypeKey;
-      const { data: clientRow } = await supabase
-        .from('clients')
-        .select('name, logo, client_logo, client_type:client_type_id(key)')
-        .eq('id', mapped.client_id)
-        .maybeSingle();
-      if (clientRow) {
-        setClientName((clientRow as any).name || null);
-        resolvedClientTypeKey = resolvedClientTypeKey ?? getClientTypeKeyFromRelation((clientRow as any).client_type);
-        if (!logoUrl) {
-          const fallbackLogoUrl = buildClientLogoUrl((clientRow as any).client_logo || (clientRow as any).logo);
-          setClientLogoUrl(fallbackLogoUrl || null);
+      // Fallback: fetch client name/logo if not present on form
+      if (!logoUrl || !clientName) {
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('name, logo, client_logo')
+          .eq('id', mapped.client_id)
+          .maybeSingle();
+        if (clientRow) {
+          const row = clientRow as Record<string, unknown>;
+          setClientName((row.name as string) || null);
+          if (!logoUrl) {
+            const fallbackLogoUrl = buildClientLogoUrl((row.client_logo as string) || (row.logo as string));
+            setClientLogoUrl(fallbackLogoUrl || null);
+          }
         }
       }
 
-      setClientTypeKey(resolvedClientTypeKey);
-      const normalizedFields = normalizeGrievanceSubmitterFields(fields, resolvedClientTypeKey);
-      setForm({
-        ...mapped,
-        fields: normalizedFields,
-      });
-
-      const initialData: Record<string, any> = {};
-      normalizedFields.forEach((field: FormField) => {
+      const initialData: Record<string, unknown> = {};
+      fields.forEach((field: FormField) => {
         initialData[field.id] = '';
       });
       setFormData(initialData);
@@ -172,13 +174,22 @@ const PublicFormPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [formIdQS, clientIdQS, clientName, normalizeFields]);
+
+  useEffect(() => {
+    const token = formIdQS || previewUrl;
+    if (token && token !== 'undefined') {
+      fetchForm(token);
+    } else {
+      setLoading(false);
+    }
+  }, [previewUrl, formIdQS, fetchForm]);
 
   useEffect(() => {
     // No extra init needed for ALTCHA
   }, [form]);
 
-  const handleInputChange = (fieldId: string, value: any) => {
+  const handleInputChange = (fieldId: string, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       [fieldId]: value
@@ -194,15 +205,16 @@ const PublicFormPage = () => {
 
   const uploadFiles = async (submissionId: string) => {
     // Deprecated in favor of server-side upload via Edge Function
-    const attachments: Record<string, any[]> = {};
+    const attachments: Record<string, unknown[]> = {};
     return attachments;
   };
 
-  const queueGrievanceNotification = async (submission: any, form: CustomForm) => {
+  const queueGrievanceNotification = async (submission: Record<string, unknown>, form: CustomForm) => {
     try {
       console.log('🔔 Queueing grievance notification using notification service for submission:', submission.id);
 
-      const responses = submission.responses || {};
+      // Extract grievance details from form responses
+      const responses = (submission.responses as Record<string, unknown>) || {};
       const grievanceTitle =  responses.subject || 'Grievance Submission';
       const grievanceDescription = responses.description || responses.details || responses.grievance_description || 'No description provided';
       const submitterName = clientName || submission.submitter_name || responses.name || 'Anonymous';
@@ -319,28 +331,26 @@ const PublicFormPage = () => {
       }
 
       // Single call to Edge Function: create submission and upload attachments server-side
-      const { data: fnData, error: fnError } = await (supabase as any).functions.invoke('submit-form', {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('submit-form', {
         body: { formData: baseSubmission, files: filesPayload },
       });
 
-      if (fnError || !fnData?.data) {
+      if (fnError || !(fnData as Record<string, unknown>)?.data) {
         throw new Error(fnError?.message || 'Failed to submit form');
       }
 
       toast.success('Grievance submitted successfully!');
 
-      const inserted = fnData.data;
-      
-      // Queue grievance notification if this is a grievance form
-      if (true) {
-        try {
-          await queueGrievanceNotification(inserted, form!);
-        } catch (notificationError) {
-          console.error('Error queueing grievance notification:', notificationError);
-          // Don't fail the submission if notification fails
-        }
+      const inserted = (fnData as Record<string, unknown>).data as Record<string, unknown>;
+
+      // Queue grievance notification for all grievance form submissions
+      try {
+        await queueGrievanceNotification(inserted, form!);
+      } catch (notificationError) {
+        console.error('Error queueing grievance notification:', notificationError);
+        // Don't fail the submission if notification fails
       }
-      
+
       // Redirect to success page after successful submission
       const successUrl = `/public-form-submission-success?formTitle=${encodeURIComponent(form!.title)}&submissionId=${inserted.id}&formId=${encodeURIComponent(form!.id)}&clientId=${encodeURIComponent(form!.client_id)}`;
       navigate(successUrl);
@@ -349,9 +359,9 @@ const PublicFormPage = () => {
       setFormData({});
       setFiles({});
       setCaptchaToken(null);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error submitting form:', error);
-      const msg = error?.message || 'Failed to submit form. Please try again.';
+      const msg = error instanceof Error ? error.message : 'Failed to submit form. Please try again.';
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -499,9 +509,9 @@ const PublicFormPage = () => {
                   e.preventDefault();
                 }
               }}
-              onBeforeInput={(e: any) => {
-                const data = e?.nativeEvent?.data as string | null;
-                if (data && !/^\d$/.test(data)) {
+              onBeforeInput={(e: React.FormEvent<HTMLInputElement> & { nativeEvent?: { data?: string } }) => {
+                const inputData = e?.nativeEvent?.data ?? null;
+                if (inputData && !/^\d$/.test(inputData)) {
                   e.preventDefault();
                 }
                 const target = e.currentTarget as HTMLInputElement;
@@ -510,7 +520,7 @@ const PublicFormPage = () => {
                 }
               }}
               onPaste={(e) => {
-                const text = (e.clipboardData || (window as any).clipboardData).getData('text');
+                const text = (e.clipboardData || (window as unknown as { clipboardData: DataTransfer }).clipboardData).getData('text');
                 if (!/^\d+$/.test(text)) {
                   e.preventDefault();
                 }
@@ -634,20 +644,20 @@ const PublicFormPage = () => {
           </div>
         );
 
-      case 'file':
+      case 'file': {
         // Map allowedFileTypes to MIME types for ReusableFileUploader
         const getAllowedTypes = (): string[] => {
           if (!field.allowedFileTypes || field.allowedFileTypes.length === 0) {
             return ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
           }
-          
+
           const typeMap: Record<string, string[]> = {
             'image/*': ['image/jpeg', 'image/jpg', 'image/png'],
             'application/pdf': ['application/pdf'],
             'application/msword': ['application/msword'],
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
           };
-          
+
           const allowedTypes: string[] = [];
           field.allowedFileTypes.forEach(type => {
             if (typeMap[type]) {
@@ -656,17 +666,17 @@ const PublicFormPage = () => {
               allowedTypes.push(type);
             }
           });
-          
+
           return allowedTypes.length > 0 ? allowedTypes : ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
         };
-        
+
         const getAcceptString = (): string => {
           if (!field.allowedFileTypes || field.allowedFileTypes.length === 0) {
             return '.pdf,image/*';
           }
           return field.allowedFileTypes.join(',');
         };
-        
+
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
@@ -686,8 +696,9 @@ const PublicFormPage = () => {
             />
           </div>
         );
+      }
 
-      case 'captcha':
+      case 'captcha': {
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
@@ -695,9 +706,10 @@ const PublicFormPage = () => {
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
             {/* ALTCHA widget replaces math captcha */}
-            <AltchaWidget ref={altchaRef as any} onStateChange={(ev) => setCaptchaToken((ev as any)?.detail?.payload || null)} />
+            <AltchaWidget ref={altchaRef as unknown as React.Ref<{ value: string | null }>} onStateChange={(ev) => setCaptchaToken((ev as CustomEvent<{ payload?: string }>)?.detail?.payload || null)} />
           </div>
         );
+      }
 
       default:
         return null;

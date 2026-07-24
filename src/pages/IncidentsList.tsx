@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
 import { incidentDataService } from '@/services/incident/incidentDataService';
@@ -12,9 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { useFilterOptions } from '@/hooks/filters/useFilterOptions';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import Loader from '@/components/common/Loader';
+import { ensureMinDuration } from '@/lib/utils';
 
 interface PaginationInfo {
   currentPage: number;
@@ -66,20 +66,28 @@ const IncidentsList = () => {
     dateFrom: '',
     dateTo: ''
   });
+  const [config, setConfig] = useState<{
+    categories?: { name: string }[];
+    subcategories?: { name: string }[];
+    priorities?: { name: string }[];
+    locations?: { name: string }[];
+    statuses?: { name: string }[];
+  } | null>(null);
+  const [globalStats, setGlobalStats] = useState({ total: 0, open: 0, closed: 0 });
 
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  // Get filter options from database
-  const { 
-    statusOptions: dbStatusOptions, 
-    priorityOptions: dbPriorityOptions,
-    categoryOptions: dbCategoryOptions,
-    subcategoryOptions: dbSubcategoryOptions,
-    locationOptions: dbLocationOptions 
-  } = useFilterOptions();
+  const initFetchKeyRef = useRef<string | null>(null);
+  // Tracks when the most recent intentional fetch completed so realtime events
+  // arriving immediately after don't trigger a redundant second fetch.
+  const lastFetchCompletedAtRef = useRef<number>(Date.now());
+  // Guards against a slower in-flight fetch (e.g. a realtime-triggered refresh)
+  // resolving after a newer one (e.g. a pagination click) and clobbering its
+  // result or prematurely clearing the loading spinner.
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (!loading) {
@@ -97,6 +105,17 @@ const IncidentsList = () => {
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [isSuperAdmin, employeeState.configuredModules]);
 
+
+  // Fetch global stats (unaffected by page filters) so the stats box always shows totals
+  useEffect(() => {
+    const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+    const employeeDataForStats = employeeState.employeeData || authEmployeeData;
+    if (!clientId || !employeeDataForStats) return;
+
+    incidentDataService.getIncidentStats(clientId, employeeDataForStats, hasIncidentAdmin).then(stats => {
+      setGlobalStats({ total: stats.total, open: stats.open, closed: stats.closed });
+    });
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, hasIncidentAdmin, authEmployeeData, employeeState.employeeData]);
 
   // Client-side pagination function
   const applyClientSidePagination = useCallback((incidents: IncidentRecord[], page: number, pageSize: number) => {
@@ -117,58 +136,49 @@ const IncidentsList = () => {
     console.log(`📄 Client-side pagination: Page ${page}/${totalPages}, showing ${paginatedData.length} of ${incidents.length} total incidents`);
   }, []);
 
-  const fetchOriginalIncidents = useCallback(async () => {
-    let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
-    if (!clientId) return [];
+  const applyClientSideFilters = useCallback((sourceIncidents: IncidentRecord[], activeFilters: ServerFilters) => {
+    const normalize = (value: string) => value.trim().toLowerCase();
 
-    const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
+    return sourceIncidents.filter((incident) => {
+      if (activeFilters.search) {
+        const search = normalize(activeFilters.search);
+        const ticket = normalize(incident.ticket_id || '');
+        const description = normalize(incident.description || '');
+        if (!ticket.includes(search) && !description.includes(search)) return false;
+      }
 
-    const response = await incidentDataService.fetchIncidentsForClientWithFilters(
-      clientId,
-      true, 
-      employeeDataForFiltering,
-      hasIncidentAdmin,
-      { page: 1, pageSize: pagination.pageSize },
-      {},
-      true
-    );
-    
-    setOriginalIncidents(response.data);
-    return response.data;
-  }, [employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
+      if (activeFilters.category && incident.category !== activeFilters.category) return false;
+      if (activeFilters.subcategory && incident.subcategory !== activeFilters.subcategory) return false;
+      if (activeFilters.status && incident.status !== activeFilters.status) return false;
+      if (activeFilters.priority && incident.priority !== activeFilters.priority) return false;
+      if (activeFilters.location && incident.location !== activeFilters.location) return false;
+      if (activeFilters.facility && incident.facility !== activeFilters.facility) return false;
 
+      if (activeFilters.dateFrom || activeFilters.dateTo) {
+        const incidentDate = new Date(incident.date);
+        if (activeFilters.dateFrom && incidentDate < new Date(activeFilters.dateFrom)) return false;
+        if (activeFilters.dateTo && incidentDate > new Date(activeFilters.dateTo)) return false;
+      }
 
-  // Main fetch function with server-side filtering (eager loading)
+      return true;
+    });
+  }, []);
+
+  // Main fetch function with server-side filtering and pagination
   const fetchIncidents = useCallback(async (
     serverFilters: ServerFilters = {},
-    forceRefresh = false
+    forceRefresh = false,
+    page = 1
   ) => {
+    const myRequestId = ++requestIdRef.current;
     try {
       setLoading(true);
       setHasFetched(false);
-      console.log(`🔄 Fetching ALL incidents with filters (EAGER LOADING):`, serverFilters);
-
-      // Get client ID. Priority order:
-      //   1. Redux employeeData.clientId (set by Feature 3's auth flow)
-      //   2. JWT app_metadata.client_id (authoritative source post-login)
-      //   3. DB fallback by (email, client_id) — but scoped to the JWT's
-      //      client_id when present, so multi-client users (whose email
-      //      maps to N rows) get a deterministic row instead of a random
-      //      first match.
+      // Get client ID
       let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
 
-      if (!clientId) {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        const jwtClientId = (
-          currentSession?.user?.app_metadata as Record<string, unknown> | undefined
-        )?.client_id as string | undefined;
-        if (jwtClientId) {
-          clientId = jwtClientId;
-        }
-      }
-
       if (!clientId && user?.email) {
-        const { data: empData } = await supabase
+        const { data: empData, error } = await supabase
           .from('employees')
           .select('client_id')
           .eq('email', user.email.toLowerCase())
@@ -180,87 +190,75 @@ const IncidentsList = () => {
       }
 
       if (!clientId) {
-        console.log('No client ID found');
-        setAllIncidents([]);
-        setDisplayedIncidents([]);
-        setPagination({
-          currentPage: 1,
-          totalPages: 0,
-          totalCount: 0,
-          hasMore: false,
-          pageSize: 10
-        });
-        setLoading(false);
         return;
       }
 
-      // Clear cache if force refresh
-      if (forceRefresh) {
-        const employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
-        incidentDataService.clearCache(clientId, employeeId);
-        console.log('🗑️ Cache cleared due to force refresh');
-      }
-
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
-      
-      // Call the service to fetch ALL matching incidents (returnAllData = true)
-      const response = await incidentDataService.fetchIncidentsForClientWithFilters(
+
+      // Call the service to fetch paginated data from server. Wrapped with a
+      // minimum duration so the loading spinner is reliably visible even when
+      // the response is very fast (e.g. a warm local/cached response) —
+      // otherwise pagination clicks can resolve within a single frame and the
+      // spinner never appears to flash.
+      const response = await ensureMinDuration(incidentDataService.fetchIncidentsForClientWithFilters(
         clientId,
         forceRefresh,
         employeeDataForFiltering,
         hasIncidentAdmin,
-        { page: 1, pageSize: pagination.pageSize }, // Not used when returnAllData = true
+        { page, pageSize: pagination.pageSize },
         serverFilters,
-        true // returnAllData = true - get ALL incidents for client-side pagination
-      );
-      
+        true // We still use returnAllData = true logic but it's now server-side paginated
+      ));
 
-      console.log(`✅ Server returned ${response.totalCount} total incidents (ALL matching records)`);
+      // A newer fetch (e.g. a pagination click) was issued while this one was
+      // in flight — drop this stale result instead of clobbering the newer one.
+      if (myRequestId !== requestIdRef.current) return;
 
-      // Always preserve original incidents for restoration
-    
-
-      // Apply URL-driven client-side filter: students_involved => include incidents with at least one Student
-      const studentsFilterActive = searchParams.get('filter') === 'students_involved';
-      const filteredByStudents = studentsFilterActive
-        ? response.data.filter((incident: any) => {
-            const people = (incident as any)?.peopleInvolved || (incident as any)?.people_involved;
-            if (!Array.isArray(people) || people.length === 0) return false;
-            return people.some((p: any) => (p?.role || '').toLowerCase() === 'student');
-          })
-        : response.data;
-
-      // Store incidents after optional filter
-      setAllIncidents(filteredByStudents);
-
-      // Apply client-side pagination to show first page
-      applyClientSidePagination(filteredByStudents, 1, pagination.pageSize);
-
-    } catch (error: any) {
-      console.error('❌ Error fetching incidents:', error);
-      if (error.message?.includes('timeout')) {
-        toast.error('Request timed out. Please try again or contact support if the issue persists.');
-      } else {
-        toast.error('Failed to load incidents. Please try again.');
+      if (response.config) {
+        setConfig(response.config);
       }
+
+      console.log(`✅ Server returned ${response.data.length} incidents (Total matching: ${response.totalCount})`);
+
+      setOriginalIncidents(response.data);
+      setAllIncidents(response.data);
+
+      // Update pagination state from server response
+      setPagination({
+        currentPage: response.currentPage,
+        totalPages: response.totalPages,
+        totalCount: response.totalCount,
+        hasMore: response.hasMore,
+        pageSize: pagination.pageSize
+      });
+
+      setDisplayedIncidents(response.data);
+
+    } catch (error) {
+      if (myRequestId !== requestIdRef.current) return;
+      console.error('❌ Error fetching incidents:', error);
+      toast.error('Failed to load incidents. Please try again.');
     } finally {
-      setLoading(false);
-      setHasFetched(true);
+      if (myRequestId === requestIdRef.current) {
+        setLoading(false);
+        setHasFetched(true);
+        lastFetchCompletedAtRef.current = Date.now();
+      }
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin, pagination.pageSize, applyClientSidePagination]);
+  }, [
+    user?.email,
+    hasIncidentAdmin,
+    authEmployeeData,
+    employeeState.employeeData,
+    pagination.pageSize,
+  ]);
 
   // Handle filter changes (triggers server request)
-  const handleFilterChange = useCallback((field: string, value: any) => {
+  const handleFilterChange = useCallback((field: string, value: string) => {
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
-    
-    console.log(`🔧 Filter changed: ${field} = ${value}`);
-    
-    // Fetch with new filters (this will load ALL matching records)
-    fetchIncidents(newFilters, false);
+    fetchIncidents(newFilters, true, 1);
   }, [filters, fetchIncidents]);
-
-  // Handle query parameter removal - restore original incidents
 
   // Clear all filters (triggers server request)
   const clearFilters = useCallback(() => {
@@ -276,41 +274,40 @@ const IncidentsList = () => {
       dateTo: ''
     };
     setFilters(emptyFilters);
-    console.log('🧹 All filters cleared');
-    fetchIncidents(emptyFilters, false);
+    fetchIncidents(emptyFilters, true, 1);
   }, [fetchIncidents]);
 
-  // Client-side pagination handlers (NO API calls)
+  // Pagination handlers
   const goToPage = useCallback((page: number) => {
+    if (page === pagination.currentPage) return;
     if (page >= 1 && page <= pagination.totalPages && !loading) {
-      console.log(`📄 Navigating to page ${page} (CLIENT-SIDE)`);
-      applyClientSidePagination(allIncidents, page, pagination.pageSize);
+      fetchIncidents(filters, false, page);
     }
-  }, [pagination.totalPages, pagination.pageSize, loading, allIncidents, applyClientSidePagination]);
+  }, [pagination.currentPage, pagination.totalPages, loading, filters, fetchIncidents]);
 
   const changePageSize = useCallback((newPageSize: number) => {
-    console.log(`📏 Changing page size to ${newPageSize} (CLIENT-SIDE)`);
-    applyClientSidePagination(allIncidents, 1, newPageSize); // Reset to page 1 when changing page size
-  }, [allIncidents, applyClientSidePagination]);
+    setPagination(prev => ({ ...prev, pageSize: newPageSize }));
+    fetchIncidents(filters, false, 1);
+  }, [filters, fetchIncidents]);
 
   // Initial fetch and navigation handling with improved logic
- useEffect(() => {
-  const init = async () => {
-    const ready =
-      (employeeState.employeeData?.clientId ||
-        authEmployeeData?.clientId ||
-        user?.email) &&
-      employeeState.configuredModules;
-
-    if (!ready) return;
-
-    await fetchOriginalIncidents();
+  useEffect(() => {
+    const clientIdentity = employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email || '';
+    if (!clientIdentity || !employeeState.configuredModules) return;
 
     const filterParam = searchParams.get('filter');
-    let tableFilters: ServerFilters = {};
+    const tableFilters: ServerFilters = {};
 
     if (filterParam === 'open') tableFilters.status = 'Open';
     if (filterParam === 'closed') tableFilters.status = 'Closed';
+
+    const initKey = `${clientIdentity}_${location.pathname}_${tableFilters.status || 'all'}`;
+    if (initFetchKeyRef.current === initKey) return;
+    
+    // Only proceed if we have a proper identity
+    if (!clientIdentity) return;
+    
+    initFetchKeyRef.current = initKey;
 
       setFilters({
         search: '',
@@ -324,18 +321,21 @@ const IncidentsList = () => {
         dateTo: ''
       });
 
-    fetchIncidents(tableFilters, false);
-  };
-
-  init();
-}, [
-  employeeState.employeeData?.clientId,
-  authEmployeeData?.clientId,
-  user?.email,
-  employeeState.configuredModules,
-  hasIncidentAdmin,
-  location.pathname
-]);
+    // Initial fetch
+    fetchIncidents(tableFilters, true);
+  }, [
+    employeeState.employeeData?.clientId,
+    authEmployeeData?.clientId,
+    user?.email,
+    employeeState.configuredModules,
+    hasIncidentAdmin,
+    location.pathname,
+    searchParams,
+    // fetchIncidents is safe to include: initFetchKeyRef guards the actual
+    // fetch call, so extra effect re-runs from an unstable fetchIncidents
+    // reference are no-ops.
+    fetchIncidents,
+  ]);
 
   console.log('📋 IncidentsList render (EAGER LOADING) - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);
   console.log('📊 Total incidents cached:', allIncidents.length, 'Currently displayed:', displayedIncidents.length);
@@ -348,12 +348,56 @@ const incidentAnalyticsStats = useMemo(() => {
     closed: originalIncidents.filter(i => i.status === 'Closed').length,
   };
 }, [originalIncidents]);
-  const handleIncidentsRealtime = useCallback(
-    (payload: any) => {
-      fetchOriginalIncidents();
+  const handleIncidentsRealtime = useCallback(() => {
+    // Skip if a fresh fetch just completed within the last 3 seconds to avoid
+    // a duplicate request when realtime fires immediately after initial load.
+    if (Date.now() - lastFetchCompletedAtRef.current < 3000) return;
+    fetchIncidents(filters, true);
+  }, [fetchIncidents, filters]);
+
+  const refreshIncidents = useCallback(async () => {
+    // Refresh incidents with current filters
+    await fetchIncidents(filters, true);
+  }, [fetchIncidents, filters]);
+
+  const dbCategoryOptions = useMemo(
+    () => {
+      if (config?.categories) return Array.from(new Set(config.categories.map((c) => c.name).filter(Boolean))).sort();
+      return Array.from(new Set(originalIncidents.map((inc) => inc.category).filter(Boolean))).sort();
     },
-    [fetchOriginalIncidents]
+    [originalIncidents, config]
   );
+  const dbSubcategoryOptions = useMemo(
+    () => {
+      if (config?.subcategories) return Array.from(new Set(config.subcategories.map((c) => c.name).filter(Boolean))).sort();
+      return Array.from(new Set(originalIncidents.map((inc) => inc.subcategory).filter(Boolean))).sort();
+    },
+    [originalIncidents, config]
+  );
+  const dbPriorityOptions = useMemo(
+    () => {
+      if (config?.priorities) return Array.from(new Set(config.priorities.map((p) => p.name).filter(Boolean))).sort();
+      return Array.from(new Set(originalIncidents.map((inc) => inc.priority).filter(Boolean))).sort();
+    },
+    [originalIncidents, config]
+  );
+  const dbLocationOptions = useMemo(
+    () => {
+      if (config?.locations) return Array.from(new Set(config.locations.map((l) => l.name).filter(Boolean))).sort();
+      return Array.from(new Set(originalIncidents.map((inc) => inc.location).filter(Boolean))).sort();
+    },
+    [originalIncidents, config]
+  );
+  const dbStatusOptions = useMemo(() => {
+    if (config?.statuses) {
+      const statuses = Array.from(new Set(config.statuses.map((s) => s.name).filter(Boolean)));
+      if (!statuses.includes('Reopen')) statuses.push('Reopen');
+      return statuses.sort();
+    }
+    const statuses = Array.from(new Set(originalIncidents.map((inc) => inc.status).filter(Boolean)));
+    if (!statuses.includes('Reopen')) statuses.push('Reopen');
+    return statuses.sort();
+  }, [originalIncidents, config]);
 
   useRealTimeSubHook({
     channelName: 'incidents-realtime',
@@ -383,21 +427,21 @@ const incidentAnalyticsStats = useMemo(() => {
               <div className='ms-16'>
                 <p className="text-sm text-gray-500">Total Incidents</p>
                 <p className="text-3xl font-semibold text-gray-900">
-                  {incidentAnalyticsStats.total}
+                  {globalStats.total}
                 </p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500">Open Incidents</p>
                 <p className="text-3xl font-semibold text-orange-600">
-                  {incidentAnalyticsStats.open}
+                  {globalStats.open}
                 </p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500">Closed Incidents</p>
                 <p className="text-3xl font-semibold text-green-600">
-                  {incidentAnalyticsStats.closed}
+                  {globalStats.closed}
                 </p>
               </div>
             </div>
@@ -426,10 +470,7 @@ const incidentAnalyticsStats = useMemo(() => {
             pagination={pagination}
             onPageChange={goToPage}
             onPageSizeChange={changePageSize}
-            onRefreshIncidents={async () => {
-              // Refresh incidents with current filters
-              await fetchIncidents(filters, true);
-            }}
+            onRefreshIncidents={refreshIncidents}
           />
         </div>
       </div>

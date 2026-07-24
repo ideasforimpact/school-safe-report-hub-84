@@ -355,7 +355,7 @@ export const VehiclePage = ({ month, vehicles, vehiclesTotalCount, challans }: P
           <Text style={{ width: "20%", fontSize: 8 }}>VEHICLE</Text>
           <Text style={{ width: "25%", fontSize: 8 }}>OWNER</Text>
           <Text style={{ width: "15%", fontSize: 8 }}>AMOUNT</Text>
-          <Text style={{ width: "20%", fontSize: 8 }}>DATE</Text>
+          <Text style={{ width: "20%", fontSize: 8 }}>OCCURRENCE DATE</Text>
           <Text style={{ width: "20%", fontSize: 8 }}>STATUS</Text>
         </View>
 

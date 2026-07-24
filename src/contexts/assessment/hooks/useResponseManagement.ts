@@ -1,11 +1,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { AssessmentResponse, AssessmentTemplate } from '@/types/assessment';
+import { AssessmentAssignment, AssessmentResponse, AssessmentTemplate } from '@/types/assessment';
 
 export const useResponseManagement = (
   templates: AssessmentTemplate[],
-  updateAssignment: (id: string, updates: Partial<any>) => void
+  updateAssignment: (id: string, updates: Partial<AssessmentAssignment>) => void
 ) => {
   const [responses, setResponses] = useState<AssessmentResponse[]>([]);
   
