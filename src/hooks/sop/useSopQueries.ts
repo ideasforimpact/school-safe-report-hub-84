@@ -67,6 +67,7 @@ export function useSopList(params: SopListParams) {
     },
     enabled: !!params.clientId,
     placeholderData: (prev) => prev,
+    staleTime: 0, // list is paged/filtered/searched — always refetch so the spinner shows on every change
   });
 }
 
@@ -92,6 +93,7 @@ export function useAssignedSopList(params: AssignedSopListParams) {
     },
     enabled: !!params.clientId && !!params.employeeId,
     placeholderData: (prev) => prev,
+    staleTime: 0, // list is paged/filtered/searched — always refetch so the spinner shows on every change
   });
 }
 
