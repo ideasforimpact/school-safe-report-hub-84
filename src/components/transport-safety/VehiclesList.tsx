@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import VehiclesListView from './VehiclesListView';
 import VehicleSearchBar from './filters/VehicleSearchBar';
@@ -7,7 +7,6 @@ import VehicleBasicFilters from './filters/VehicleBasicFilters';
 import EmptyVehiclesState from './EmptyVehiclesState';
 import AddVehicleDialog from './AddVehicleDialog';
 import { useVehicleFilters } from './filters/useVehicleFilters';
-import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, FileText, FileUp, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -28,29 +27,21 @@ import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedConte
 interface VehiclesListProps {
   showAddVehicle: boolean;
   setShowAddVehicle: (show: boolean) => void;
-  onVehiclesChanged: (data: {
-    total: number;
-    filtered: number;
-    hasFetched: boolean;
-    vehicles: Vehicle[];
-  }) => void;
 }
 
-const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle,onVehiclesChanged }) => {
-  const { vehicles, loading, error, hasFetched, fetchVehicles, totalCount } = useTransportSafety();
+// The parent (TransportSafetyPage) now reads vehicle counts/loading state
+// directly from useTransportSafety() and gates the very first render on
+// that — so by the time this component ever mounts, the context's initial
+// fetch has already resolved. There's no longer an onVehiclesChanged prop
+// or an initial-load gate here; the inline `loading` check further below
+// still covers every subsequent fetch (pagination, search, filter, refresh).
+const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle }) => {
+  const { vehicles, loading, error, fetchVehicles } = useTransportSafety();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   // State for edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [initialLoaded, setInitialLoaded] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | undefined>(undefined);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-
-  // Show full-page loader only on the very first load; after that use inline loading state
-  useEffect(() => {
-    if (!loading && !initialLoaded) {
-      setTimeout(() => setInitialLoaded(true), 300);
-    }
-  }, [loading, initialLoaded]);
 
   const {
     // State
@@ -67,7 +58,6 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     // Derived values
     vehicleTypes,
     filteredVehicles,
-    filteredTotalCount,
     activeFiltersCount,
     isFetchingAllMatching,
     pagination,
@@ -124,15 +114,6 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
       pucUpto: pucField?.value || 'N/A'
     };
   };
-  useEffect(() => {
-    onVehiclesChanged({
-      total: totalCount,
-      filtered: filteredTotalCount,
-      hasFetched,
-      vehicles,
-    });
-  }, [vehicles, filteredTotalCount, totalCount, hasFetched, onVehiclesChanged]);
-
   // Export vehicles to Excel
   const exportToExcel = () => {
     try {
@@ -176,28 +157,6 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     }
   };
   
-  // Loading state
-  // if (loading) {
-  //   return (
-  //     <div>
-  //       <div className="mb-6 flex flex-col space-y-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-  //         <Skeleton className="h-10 w-full" />
-  //         <Skeleton className="h-8 w-1/3" />
-  //       </div>
-  //       <div className="space-y-4">
-  //         <Skeleton className="h-64 w-full" />
-  //       </div>
-  //     </div>
-  //   );
-  // }
-  if (!initialLoaded) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader text="Loading vehicles..." />
-      </div>
-    );
-  }
-    
   // Error state
   if (error) {
     return (
@@ -277,9 +236,11 @@ return (
     </div>
     {/* --- Only this part changes based on filter/search results --- */}
     <div>
-      {/* Show a centered loading spinner for any fetch in progress — initial
-          load, search/filter, or a pagination page change alike — before the
-          new data arrives. */}
+      {/* Show a centered loading spinner for any fetch in progress after the
+          initial page load — search, filter, or a pagination page change —
+          before the new data arrives. (The initial load itself is gated by
+          TransportSafetyPage, so `loading` is already false the first time
+          this component mounts.) */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader text="Loading vehicles..." />
