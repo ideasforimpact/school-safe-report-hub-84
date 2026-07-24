@@ -20,6 +20,7 @@ import {
   getPendingChallansFromVehicleChallans,
   getVehiclesWithPendingChallans,
 } from '@/services/transport-safety/vehicleService';
+import Loader from '@/components/common/Loader';
 
 const PendingChallansList = () => {
   const { employeeData } = useAuth();
@@ -81,7 +82,7 @@ const PendingChallansList = () => {
   }, [employeeData?.clientId]);
 
   if (loading) {
-    return <p className="p-4 text-sm text-gray-500">Loading...</p>;
+    return <Loader text="Loading Challans..." />;
   }
 
 
