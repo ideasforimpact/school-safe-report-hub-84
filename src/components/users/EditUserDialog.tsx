@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, 
         EMPLOYEE_PERSONAL_INFO_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS, 
