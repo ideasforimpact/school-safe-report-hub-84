@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -72,7 +72,12 @@ export function EditWellBeingRecordDialog({
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
- 
+
+  // Latest `record` without making the concern-types effect below re-run whenever
+  // it changes identity — that effect should only fire on open/clientId changes.
+  const recordRef = useRef(record);
+  recordRef.current = record;
+
   useEffect(() => {
     if (!open) return;
     if (record) {
@@ -116,32 +121,32 @@ export function EditWellBeingRecordDialog({
   }, [open, record]);
  
   useEffect(() => {
-    if (!open) return;
+    if (!open || !clientId) return;
     let cancelled = false;
     setLoadingOptions(true);
     const load = async () => {
-      const { data, error } = await (supabase as any)
-        .from('general_concern')
-        .select('id, name')
-        .eq('active', true)
-        .order('name');
+      const { data, error } = await supabase.functions.invoke('fetch-general-concerns', {
+        method: 'POST',
+        body: { clientId },
+      });
       if (cancelled) return;
       setLoadingOptions(false);
-      if (error) {
+      if (error || data?.error) {
         toast.error('Failed to load concern types');
         return;
       }
-      const list: { id: string; name: string }[] = Array.isArray(data) ? data : [];
+      const list: { id: string; name: string }[] = Array.isArray(data?.data) ? data.data : [];
       setGeneralConcernOptions(list);
-      if (list.length > 0 && record && !record.type_of_concern_id) {
+      const currentRecord = recordRef.current;
+      if (list.length > 0 && currentRecord && !currentRecord.type_of_concern_id) {
         const general = list.find((r) => r.name === 'General Concern');
         setTypeOfConcernId(general?.id ?? list[0].id);
       }
     };
     load();
     return () => { cancelled = true; };
-  }, [open, record]);
- 
+  }, [open, clientId]);
+
   const validate = (): boolean => {
     const next: Record<string, string> = {};
     if (!student) next.student = 'Please select a student';

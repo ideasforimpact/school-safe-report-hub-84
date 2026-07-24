@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { ConfigItem } from '@/contexts/types';
 import { getAllCampuses } from '@/services/campus/campusService';
+import { useAuth } from '@/contexts/auth/useAuth';
 
 interface LocationOption {
   value: string;
@@ -16,6 +17,7 @@ interface FacilityItem extends ConfigItem {
 
 export function useLocationOptions(locationId: string) {
   const { facilities } = useIncidents();
+  const { employeeData } = useAuth();
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   const [facilityOptions, setFacilityOptions] = useState<LocationOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,8 +27,7 @@ export function useLocationOptions(locationId: string) {
     const fetchLocations = async () => {
       setLoading(true);
       try {
-        const campuses = await getAllCampuses();
-        
+        const campuses = await getAllCampuses(employeeData?.clientId, employeeData?.clientType?.id);
         const options = campuses.map(campus => ({
           value: campus.id,
           label: campus.name
@@ -41,7 +42,7 @@ export function useLocationOptions(locationId: string) {
     };
     
     fetchLocations();
-  }, []);
+  }, [employeeData?.clientId, employeeData?.clientType?.id]);
 
   // Update facility options when location changes
   useEffect(() => {
@@ -53,7 +54,7 @@ export function useLocationOptions(locationId: string) {
     // Since the ConfigItem type doesn't include locationId,
     // we need to use a more appropriate filter method
     // that doesn't assume all facilities have a locationId
-    const filteredFacilities = facilities.filter((facility: any) => {
+    const filteredFacilities = (facilities as FacilityItem[]).filter((facility) => {
       // Check if the facility has a locationId property
       return facility.locationId === locationId;
     });

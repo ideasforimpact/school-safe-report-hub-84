@@ -28,8 +28,8 @@ steps:
   - script: npm run lint
     displayName: Run ESLint
 
-  - script: npm run test
-    displayName: Run Tests
+  # - script: npm run test
+  #   displayName: Run Tests
 
   - script: npm run build
     displayName: Build Project

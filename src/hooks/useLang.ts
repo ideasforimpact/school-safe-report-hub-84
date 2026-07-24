@@ -15,7 +15,7 @@ export function useLang(): ClientLang {
   const { employeeData, user } = useAuth();
   const typeKey =
     employeeData?.clientType?.key ??
-    (user as any)?.clientType?.key ??
+    user?.clientType?.key ??
     null;
 
   return useMemo(() => getLang(typeKey), [typeKey]);

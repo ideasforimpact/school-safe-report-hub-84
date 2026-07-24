@@ -1,4 +1,31 @@
 import React from 'react';
+
+interface ChallanEntry {
+  challan_number?: string;
+  challan_no?: string;
+  number?: string;
+  challan_status?: string;
+  accused_name?: string;
+  challan_date_time?: string;
+  challan_date?: string;
+  amount?: string | number;
+  challan_amount?: string | number;
+  challan_place?: string;
+  Info?: string;
+  challan_info?: string;
+  offense_details?: string;
+}
+
+interface ChallanHistoryLogEntry {
+  provider?: string;
+  data?: {
+    status_code?: number;
+    data?: {
+      challan_details?: { challans?: ChallanEntry[] };
+      challan_data?: ChallanEntry[];
+    } | ChallanEntry[];
+  };
+}
 import {
     Dialog,
     DialogContent,
@@ -28,8 +55,8 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
         const logs = vehicleChallans?.challan_history_log;
         if (!logs || typeof logs !== 'object') return null;
 
-        const successLogs = Object.entries(logs).filter(
-            ([_, entry]: any) => entry?.data?.status_code === 200
+        const successLogs = (Object.entries(logs) as [string, ChallanHistoryLogEntry][]).filter(
+            ([_, entry]) => entry?.data?.status_code === 200
         );
 
         if (successLogs.length === 0) return null;
@@ -38,7 +65,7 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
             ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
         );
 
-        const [timestamp, log]: any = successLogs[0];
+        const [timestamp, log] = successLogs[0];
 
         return {
             timestamp,
@@ -77,12 +104,12 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
         return latestSuccessLog.timestamp !== latestLogTimestamp;
     }, [latestSuccessLog, latestLogTimestamp]);
 
-    const disposedChallans = challanDetails.filter((c: any) =>
-        ['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
+    const disposedChallans = challanDetails.filter((c: ChallanEntry) =>
+        ['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase() ?? '')
     );
 
-    const pendingChallans = challanDetails.filter((c: any) =>
-        !['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
+    const pendingChallans = challanDetails.filter((c: ChallanEntry) =>
+        !['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase() ?? '')
     );
 
     // Calculate total amounts
@@ -100,7 +127,7 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
         }, 0);
     }, [disposedChallans]);
 
-    const ChallanCard = ({ challan }: { challan: any }) => {
+    const ChallanCard = ({ challan }: { challan: ChallanEntry }) => {
         const isDisposed = ['DISPOSED', 'PAID'].includes(challan.challan_status?.toUpperCase());
         
         return (
@@ -136,7 +163,7 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         {(challan.challan_date_time || challan.challan_date) && (
                             <div>
-                                <div className="text-xs font-semibold text-gray-500 mb-1">Date</div>
+                                <div className="text-xs font-semibold text-gray-500 mb-1">Occurrence Date</div>
                                 <div className="text-sm text-gray-900">
                                     {formatDateTime(new Date(challan.challan_date_time || challan.challan_date))}
                                 </div>
@@ -233,7 +260,7 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
                                             </Badge>
                                         </div>
                                         <div className="space-y-3">
-                                            {pendingChallans.map((challan: any, index: number) => (
+                                            {pendingChallans.map((challan, index) => (
                                                 <ChallanCard key={index} challan={challan} />
                                             ))}
                                         </div>
@@ -255,7 +282,7 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
                                             </Badge>
                                         </div>
                                         <div className="space-y-3">
-                                            {disposedChallans.map((challan: any, index: number) => (
+                                            {disposedChallans.map((challan, index) => (
                                                 <ChallanCard key={index} challan={challan} />
                                             ))}
                                         </div>

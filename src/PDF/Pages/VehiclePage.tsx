@@ -8,12 +8,14 @@ import {
   getVehiclesRequiringAction,
   getChallanSummary,
   getDateCellStyle,
+  VehicleReportRow,
+  ChallanReportRow,
 } from "../utils";
 
 interface Props {
   month: string;
-  vehicles: any[];
-  challans: any[];
+  vehicles: VehicleReportRow[];
+  challans: ChallanReportRow[];
 }
 
 export const VehiclePage = ({ month, vehicles, challans }: Props) => {
@@ -150,7 +152,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
           <Text style={styles.tableCell}>OWNER</Text>
           <Text style={styles.tableCell}>CHALLAN TYPE</Text>
           <Text style={styles.tableCell}>FINE AMOUNT</Text>
-          <Text style={styles.tableCell}>CHALLAN DATE</Text>
+          <Text style={styles.tableCell}>OCCURRENCE DATE</Text>
           <Text style={styles.tableCell}>STATUS</Text>
         </View>
 

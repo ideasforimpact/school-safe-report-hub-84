@@ -108,12 +108,17 @@ const IntegrationPage = () => {
         return;
       }
 
+      if (!user) {
+        toast.error('You must be signed in to link a school');
+        return;
+      }
+
       await saveClientIntegration({
         clientId,
         targetClientId: schoolId,
         targetClientName: selectedSchool.name,
         isLinked,
-        updatedBy: user?.id!,
+        updatedBy: user.id,
       });
 
       toast.success(

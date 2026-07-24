@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { logVerificationError, logVerificationSuccess } from "../_shared/verificationAuditlog.ts";
@@ -47,9 +46,9 @@ serve(async (req) => {
     const environment = Deno.env.get("ENVIRONMENT") || "development";
     
     // Default base URL and API key
-    let baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL");
+    const baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL");
     
-    let apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
+    const apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
     
     // First, fetch document status IDs for governance, manual and rejected statuses
     const { data: governanceStatus, error: governanceError } = await supabase
@@ -291,7 +290,15 @@ serve(async (req) => {
           }
           
           // API Success: Store response in api_response_data, keep status pending
-          const updateData: any = {
+          const updateData: {
+            api_response_data: unknown;
+            api_verification_status: string;
+            api_verification_method: string;
+            api_verification_date: string;
+            employee_docs_log: unknown[];
+            updated_at: string;
+            personal_info?: unknown;
+          } = {
             api_response_data: data,
             api_verification_status: 'completed',
             api_verification_method: 'api',

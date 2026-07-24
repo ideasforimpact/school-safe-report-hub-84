@@ -217,6 +217,7 @@ serve(async (req) => {
       const questionsWithIds = (template.questions ?? []).map((q: any) => ({
         id: q.id || crypto.randomUUID(),
         text: q.text,
+        correctAnswer: q.correctAnswer ?? 'yes',
         allowComments: q.allowComments ?? false,
         allowAttachments: q.allowAttachments ?? false,
         required: q.required ?? false,

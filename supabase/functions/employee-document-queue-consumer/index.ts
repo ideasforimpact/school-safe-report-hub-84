@@ -87,8 +87,17 @@ serve(async (req) => {
       }));
 
       // Merge with existing documents_files
-      const existingFiles: any[] = Array.isArray((documentRecord as any).documents_files)
-        ? (documentRecord as any).documents_files
+      interface DocumentFileEntry {
+        objectPath: string;
+        fileName: string;
+        contentType: string;
+        size: number;
+        uploadedAt: string;
+      }
+
+      const documentRecordWithFiles = documentRecord as { documents_files?: DocumentFileEntry[] };
+      const existingFiles: DocumentFileEntry[] = Array.isArray(documentRecordWithFiles.documents_files)
+        ? documentRecordWithFiles.documents_files
         : [];
       const allFiles = [...existingFiles, ...newFileObjects];
 

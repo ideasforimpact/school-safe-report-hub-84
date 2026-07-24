@@ -4,14 +4,14 @@ import { IncidentDetail } from './incidentDetailService';
 import { Person, Document, Comment } from '@/types/incident';
 
 // Helper functions for safe type conversion
-const safeArrayCast = <T>(value: any, fallback: T[] = []): T[] => {
+const safeArrayCast = <T>(value: unknown, fallback: T[] = []): T[] => {
   if (Array.isArray(value)) {
     return value as T[];
   }
   return fallback;
 };
 
-const safeObjectCast = <T>(value: any, fallback: T): T => {
+const safeObjectCast = <T>(value: unknown, fallback: T): T => {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return value as T;
   }

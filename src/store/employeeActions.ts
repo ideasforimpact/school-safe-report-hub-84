@@ -11,7 +11,7 @@ import {
   ResetEmployeeAction,
   SetLogoutStateAction
 } from './types';
-import { EmployeeData } from './types';
+import { EmployeeData, Module } from './types';
 
 export const setEmployeeData = (employeeData: EmployeeData | null): SetEmployeeDataAction => {
   return {
@@ -20,7 +20,7 @@ export const setEmployeeData = (employeeData: EmployeeData | null): SetEmployeeD
   };
 };
 
-export const setConfiguredModules = (modules: any[]): SetConfiguredModulesAction => {
+export const setConfiguredModules = (modules: Module[]): SetConfiguredModulesAction => {
   return {
     type: EmployeeActionTypes.SET_CONFIGURED_MODULES,
     payload: modules

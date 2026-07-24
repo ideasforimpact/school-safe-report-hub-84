@@ -135,9 +135,9 @@ const ClientApiCallsPage: React.FC = () => {
           throw new Error(data?.error || 'Failed to fetch API calls');
         }
         setPayload(data.data || null);
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error loading client API calls:', err);
-        toast.error(err?.message || 'Failed to fetch API calls');
+        toast.error(err instanceof Error ? err.message : 'Failed to fetch API calls');
       } finally {
         setLoading(false);
       }

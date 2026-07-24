@@ -14,6 +14,20 @@ interface AssignSOPRequest {
   group_ids: string[];
 }
 
+interface GroupEmployee {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+}
+
+interface GroupWithEmployees {
+  id: string;
+  name: string;
+  group_type: string;
+  group_employees: Array<{ employee: GroupEmployee | null }> | null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -200,12 +214,12 @@ serve(async (req) => {
 
     // Build summary structure
     const groupsSummary =
-      groupsWithEmployees?.map((g: any) => {
+      (groupsWithEmployees as GroupWithEmployees[] | null)?.map((g) => {
         const employees =
           g.group_employees
-            ?.map((ge: any) => ge.employee)
+            ?.map((ge) => ge.employee)
         .filter(Boolean)
-        .map((emp: any) => ({
+        .map((emp) => ({
           id: emp.id,
           name: `${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim(),
           email: emp.email,
@@ -237,12 +251,12 @@ serve(async (req) => {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in assign-sop function:", error);
     return new Response(
       JSON.stringify({
         error: "Internal server error",
-        details: error.message,
+        details: error instanceof Error ? error.message : String(error),
       }),
       {
         status: 500,

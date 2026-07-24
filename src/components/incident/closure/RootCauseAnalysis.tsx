@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
+import { NOTES__MAX_LENGTH } from '@/components/constants';
 
 interface RootCauseAnalysisProps {
   rootCause: string;
@@ -23,11 +24,11 @@ const RootCauseAnalysis: React.FC<RootCauseAnalysisProps> = ({
           onChange={(e) => setRootCause(e.target.value)}
           placeholder="What was the primary cause of this incident?"
           className="min-h-[100px] text-md"
-          maxLength={200}
+          maxLength={NOTES__MAX_LENGTH}
           required
         />
         <div className="text-right text-sm text-gray-500">
-          {rootCause.length}/200 characters
+          {rootCause.length}/{NOTES__MAX_LENGTH} characters
         </div>
       </div>
     </div>

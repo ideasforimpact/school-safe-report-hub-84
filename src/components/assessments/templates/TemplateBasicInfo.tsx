@@ -7,6 +7,7 @@ import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
+import { ASSESSMENT_TITLE } from '@/components/constants';
 
 interface TemplateBasicInfoProps {
   title: string;
@@ -48,7 +49,7 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
         return;
       }
 
-      const categories = data.map((item: any) => item.name);
+      const categories = data.map((item) => item.name);
       setTemplateTypes(categories);
       setLoadingTypes(false);
     };
@@ -84,21 +85,23 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
 
   // Validation function for template title (no special characters allowed)
   const isValidTemplateTitle = (value: string) => {
-    return /^[a-zA-Z0-9\s]{1,25}$/.test(value);
+    return new RegExp(`^[a-zA-Z0-9\\s]{1,${ASSESSMENT_TITLE}}$`).test(value);
   };
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setTitle(value);
-    
+
     // Clear error if field is empty (user is typing)
     if (value === '') {
       setTitleError(null);
       return;
     }
-    
+
     // Validate as user types
-    if (!isValidTemplateTitle(value)) {
+    if (value.length > ASSESSMENT_TITLE) {
+      setTitleError(`Template title cannot exceed ${ASSESSMENT_TITLE} characters`);
+    } else if (!isValidTemplateTitle(value)) {
       setTitleError('Template title can only contain letters, numbers, and spaces');
     } else {
       setTitleError(null);
@@ -118,7 +121,7 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
             value={title}
             onChange={handleTitleChange}
             placeholder="Enter template title"
-            maxLength={25}
+            maxLength={ASSESSMENT_TITLE}
             required
             className={titleError ? 'border-red-500' : ''}
           />

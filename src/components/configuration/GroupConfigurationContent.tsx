@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +8,8 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import AddGroupDialog from './AddGroupDialog';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,11 +44,14 @@ interface Group {
   is_assigned_to_sop?: boolean;
 }
 
+const PAGE_SIZE = 10;
+
 const GroupConfigurationContent = () => {
   const { employeeData, user } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  const clientId = employeeData?.clientId || user?.clientId;
-  const employeeId = employeeData?.id || user?.id;
+  const clientId = useMemo(() => employeeData?.clientId || user?.clientId, [employeeData?.clientId, user?.clientId]);
+  const employeeId = useMemo(() => employeeData?.id || user?.id, [employeeData?.id, user?.id]);
+  const fetchedForClientRef = useRef<string | null>(null);
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,50 +63,22 @@ const GroupConfigurationContent = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  useEffect(() => {
-    if (clientId) {
-      fetchGroups();
-    }
-  }, [clientId]);
-
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     if (!clientId) return;
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('groups' as any)
-        .select('id, name, description, group_type, status, client_id, employee_id, department_id, created_at, updated_at, group_employees:group_employees(count)')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
+      const { data: result, error } = await supabase.functions.invoke('create-group', {
+        body: { action: 'list', client_id: clientId, employee_id: employeeId },
+      });
 
       if (error) throw error;
 
-      // Get all group IDs to check SOP assignments
-      const groupIds = (data || []).map((g: any) => g.id);
+      const data = result?.groups ?? [];
 
-      // Check which groups are assigned to any SOP
-      let assignedGroupIds = new Set<string>();
-      if (groupIds.length > 0) {
-        const { data: sopAssignedData, error: sopAssignedError } = await supabase
-          .from('sop_assigned')
-          .select('group_id')
-          .in('group_id', groupIds)
-          .not('group_id', 'is', null);
-
-        if (sopAssignedError) {
-          console.error('Error checking SOP assignments:', sopAssignedError);
-        } else if (sopAssignedData) {
-          assignedGroupIds = new Set(
-            sopAssignedData
-              .map((item: any) => item.group_id)
-              .filter((id: string | null) => id !== null)
-          );
-        }
-      }
-
-      const mapped = (data || []).map((g: any) => ({
+      const mapped = (data || []).map((g: Record<string, unknown>) => ({
         id: g.id,
         name: g.name,
         description: g.description,
@@ -113,20 +89,24 @@ const GroupConfigurationContent = () => {
         department_id: g.department_id ?? null,
         created_at: g.created_at,
         updated_at: g.updated_at,
-        member_count: Array.isArray(g.group_employees) && g.group_employees.length > 0
-          ? g.group_employees[0].count
-          : 0,
-        is_assigned_to_sop: assignedGroupIds.has(g.id),
+        member_count: g.member_count ?? 0,
+        is_assigned_to_sop: g.is_assigned_to_sop ?? false,
       })) as Group[];
 
       setGroups(mapped);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching groups:', error);
       toast.error('Failed to load groups');
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId, employeeId]);
+
+  useEffect(() => {
+    if (!clientId || fetchedForClientRef.current === clientId) return;
+    fetchedForClientRef.current = clientId;
+    fetchGroups();
+  }, [clientId, fetchGroups]);
 
   const filteredGroups = useMemo(() => {
     let filtered = [...groups];
@@ -154,6 +134,20 @@ const GroupConfigurationContent = () => {
 
     return filtered;
   }, [groups, searchTerm, statusFilter, groupTypeFilter]);
+
+  const totalCount = filteredGroups.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedGroups = filteredGroups.slice(
+    (safeCurrentPage - 1) * PAGE_SIZE,
+    safeCurrentPage * PAGE_SIZE
+  );
+
+  // Reset to page 1 whenever the filters narrow/widen the result set.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, groupTypeFilter]);
+
   // Active filter count
   const activeFilterCount = [
     searchTerm,
@@ -236,9 +230,9 @@ const GroupConfigurationContent = () => {
       fetchGroups();
       setDeleteDialogOpen(false);
       setGroupToDelete(null);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting group:', error);
-      toast.error(error?.message || 'Failed to delete group');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete group');
     } finally {
       setIsDeleting(false);
     }
@@ -271,9 +265,9 @@ const GroupConfigurationContent = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-72">
-          <Input
+          <DebouncedSearchInput
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={setSearchTerm}
             placeholder="Search groups..."
             className="w-full"
           />
@@ -341,12 +335,12 @@ const GroupConfigurationContent = () => {
           <TableBody>
             {filteredGroups.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                   No groups found
                 </TableCell>
               </TableRow>
             ) : (
-              filteredGroups.map((group) => (
+              paginatedGroups.map((group) => (
                 <TableRow key={group.id}>
                   <TableCell>
                     <div
@@ -458,6 +452,14 @@ const GroupConfigurationContent = () => {
             )}
           </TableBody>
         </Table>
+        <TablePaginationBar
+          currentPage={safeCurrentPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          pageSize={PAGE_SIZE}
+          itemLabel="groups"
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Add/Edit Dialog */}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,6 @@ import { ArrowLeft, Save, AlertCircle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
-import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import Loader from '@/components/common/Loader';
 import { DemoActionButton } from '@/components/incidents/DemoActionButton';
@@ -25,6 +24,7 @@ import {
   getNextAssessmentScenario,
   resolveScenarioForAssessment,
 } from '@/demo_client/assessment/assessmentDemo';
+import { ASSESSMENT_TITLE } from '@/components/constants';
 
 interface EmployeeDepartment {
   id: string;
@@ -38,7 +38,16 @@ interface Employee {
   email: string | null;
   department: string | null;
   employee_departments?: EmployeeDepartment | null;
+  aadhar_verified_name: string | null;
 }
+
+const getEmployeeDisplayName = (employee: {
+  first_name: string | null;
+  last_name: string | null;
+  aadhar_verified_name?: string | null;
+}) =>
+  employee.aadhar_verified_name ||
+  `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim();
 
 interface CreateAssessmentFormProps {
   onCancel?: () => void;
@@ -56,7 +65,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
   // Employee management state
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [formDataLoading, setFormDataLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
@@ -71,110 +80,60 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [existingAssessments, setExistingAssessments] = useState<string[]>([]);
-  const [assessmentsLoading, setAssessmentsLoading] = useState(true);
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  // Fetch employees filtered by client_id
-  const fetchEmployees = useCallback(async () => {
+  // Single dedup ref covering both employees + names (now one combined call)
+  const lastFormDataFetchRef = useRef<{ clientId: string; time: number }>({ clientId: '', time: 0 });
+
+  // Fetch employees + existing assessment names in a single edge function call
+  const fetchFormData = useCallback(async () => {
     if (!clientId) {
-      console.log('No client ID available for fetching employees');
-      setEmployeesLoading(false);
+      setFormDataLoading(false);
       return;
     }
 
-    try {
-      setEmployeesLoading(true);
-      console.log('Fetching employees for client:', clientId);
+    const now = Date.now();
+    if (lastFormDataFetchRef.current.clientId === clientId && now - lastFormDataFetchRef.current.time < 5_000) {
+      return;
+    }
+    lastFormDataFetchRef.current = { clientId, time: now };
 
-      const { data: employeesData, error } = await supabase
-        .from('employees')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          email,
-          department,
-          employee_departments:department (
-            id,
-            department_name
-          )
-        `)
-        .eq('client_id', clientId)
-        .eq('status', true)
-        .not('email', 'is', null) 
-        .order('first_name');
+    try {
+      setFormDataLoading(true);
+      const { data, error } = await supabase.functions.invoke('list-assessments', {
+        body: { client_id: clientId },
+        headers: { path: 'create-form' },
+      });
 
       if (error) {
-        console.error('Error fetching employees:', error);
+        console.error('Error fetching form data:', error);
         toast.error('Failed to load employees');
         return;
       }
 
-      console.log('Fetched employees:', employeesData);
-      setEmployees((employeesData || []) as unknown as Employee[]);
+      setEmployees((data?.employees || []) as unknown as Employee[]);
+      setExistingAssessments(data?.names || []);
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      console.error('Error fetching form data:', error);
       toast.error('Failed to load employees');
     } finally {
-      setEmployeesLoading(false);
+      setFormDataLoading(false);
     }
   }, [clientId]);
 
   useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
+    fetchFormData();
+  }, [fetchFormData]);
 
-  // Fetch existing assessment names for duplicate validation
-  const fetchExistingAssessments = useCallback(async () => {
-    if (!clientId) {
-      setAssessmentsLoading(false);
-      return;
-    }
-
-    try {
-      setAssessmentsLoading(true);
-      console.log('Fetching existing assessments for client:', clientId);
-
-      const { data: assessmentsData, error } = await supabase
-        .from('assessments')
-        .select('name')
-        .eq('client_id', clientId);
-
-      if (error) {
-        console.error('Error fetching existing assessments:', error);
-        return;
-      }
-
-      const assessmentNames =
-        assessmentsData?.map(assessment =>
-          assessment.name.toLowerCase()
-        ) || [];
-
-      console.log('Existing assessment names:', assessmentNames);
-      setExistingAssessments(assessmentNames);
-    } catch (error) {
-      console.error('Error fetching existing assessments:', error);
-    } finally {
-      setAssessmentsLoading(false);
-    }
-  }, [clientId]);
-
-  useEffect(() => {
-    fetchExistingAssessments();
-  }, [fetchExistingAssessments]);
-
-  // Find the selected employee. Fall back to employeeData when the
-  // pre-filled assignee isn't present in the (filtered) employees list,
-  // so the input still displays the logged-in user's name + email after
-  // the demo icon click sets assignedTo to employeeData.id.
+  // Find the selected employee
   const selectedEmployee = employees.find(
     emp => emp.id === formData.assignedTo
   );
 
   const selectedEmployeeDisplay = selectedEmployee
-    ? `${selectedEmployee.first_name ?? ''} ${selectedEmployee.last_name ?? ''} (${selectedEmployee.email ?? ''})`.trim()
+    ? `${getEmployeeDisplayName(selectedEmployee)} (${selectedEmployee.email ?? ''})`.trim()
     : employeeData && formData.assignedTo === employeeData.id
       ? `${employeeData.firstName ?? ''} ${employeeData.lastName ?? ''} (${employeeData.email ?? ''})`.trim()
       : '';
@@ -211,7 +170,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
   // Validation function
   const isValidAssessmentName = (value: string) => {
-    return /^[a-zA-Z0-9\s]{1,25}$/.test(value);
+    return new RegExp(`^[a-zA-Z0-9\\s]{1,${ASSESSMENT_TITLE}}$`).test(value);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -223,9 +182,13 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     if (field === 'name') {
       if (value === '') {
         setNameError(null);
+      } else if (value.length > ASSESSMENT_TITLE) {
+        setNameError(
+          `Assessment name cannot exceed ${ASSESSMENT_TITLE} characters`
+        );
       } else if (!isValidAssessmentName(value)) {
         setNameError(
-          'Assessment name can only contain letters, numbers, and spaces (max 25 characters)'
+          'Assessment name can only contain letters, numbers, and spaces'
         );
       } else if (
         existingAssessments.includes(
@@ -254,7 +217,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
   const filteredEmployees = searchQuery
     ? employees.filter(employee => {
-        const fullName = `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim();
+        const fullName = getEmployeeDisplayName(employee);
         const email = employee.email ?? '';
         const searchTerm = searchQuery.toLowerCase();
         const departmentName =
@@ -314,60 +277,28 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase
-        .from('assessments')
-        .insert({
+      const assignee = employees.find(emp => emp.id === formData.assignedTo);
+      const createdBy = employeeData?.id || user?.id;
+
+      const { data, error } = await supabase.functions.invoke('create-assessment', {
+        body: {
+          client_id: clientId,
           name: formData.name,
           description: formData.description || null,
           template_id: formData.templateId,
           assigned_to: formData.assignedTo,
-          target_completion_date:
-            formData.targetCompletionDate,
-          status: 'New',
-          client_id: clientId,
-          created_by: employeeData?.id || user?.id,
-        })
-        .select()
-        .single();
+          target_completion_date: formData.targetCompletionDate || null,
+          created_by: createdBy,
+          assignee: assignee && formData.assignedTo !== createdBy ? {
+            id: assignee.id,
+            first_name: assignee.first_name || '',
+            last_name: assignee.last_name || '',
+            email: assignee.email || '',
+          } : null,
+        },
+      });
 
       if (error) throw error;
-
-      if (
-        formData.assignedTo &&
-        formData.assignedTo !== employeeData?.id
-      ) {
-        try {
-          const { data: assignee, error: assigneeError } =
-            await supabase
-              .from('employees')
-              .select(
-                'id, email, first_name, last_name'
-              )
-              .eq('id', formData.assignedTo)
-              .single();
-
-          if (!assigneeError && assignee) {
-            await assessmentNotificationService.queueAssessmentAssignedNotification(
-              {
-                id: data.id,
-                title: data.name,
-                target_completion_date:
-                  data.target_completion_date,
-                assigned_to: data.assigned_to,
-                created_by: data.created_by,
-                client_id: data.client_id,
-              },
-              assignee,
-              employeeData
-            );
-          }
-        } catch (notificationError) {
-          console.error(
-            'Error queueing assessment assignment notification:',
-            notificationError
-          );
-        }
-      }
 
       toast.success('Assessment created successfully');
 
@@ -397,15 +328,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     events: '*',
     table: 'employees',
     enabled: !!clientId,
-    onPayload: fetchEmployees,
-  });
-
-  useRealTimeSubHook({
-    channelName: `assessment-${clientId}`,
-    events: '*',
-    table: 'assessments',
-    enabled: !!clientId,
-    onPayload: fetchExistingAssessments,
+    onPayload: fetchFormData,
   });
 
   if (!clientId) {
@@ -444,7 +367,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     );
   }
 
-  if (employeesLoading) {
+  if (formDataLoading) {
     return (
       <div className="space-y-6">        
         <Loader text="Loading..." />
@@ -455,19 +378,17 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancel}
-              className="mr-2"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            Create Assessment
-          </div>
+        <CardTitle className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCancel}
+            className="mr-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          Create Assessment
           {/* Demo Setup icon — renders only when VITE_IS_DEMO_SETUP=true.
               Cycles through src/demo_client/assessment/scenarios.json
               and fills name / description / templateId. assignedTo and
@@ -505,7 +426,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                 }
                 placeholder="Enter assessment name"
                 required
-                maxLength={25}
+                maxLength={ASSESSMENT_TITLE}
                 className={
                   nameError ? 'border-red-500' : ''
                 }
@@ -518,7 +439,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
               )}
 
               <p className="text-xs text-gray-500 text-right">
-                {formData.name.length}/25 characters
+                {formData.name.length}/{ASSESSMENT_TITLE} characters
               </p>
             </div>
 
@@ -645,8 +566,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                             >
                               <div>
                                 <span className="font-medium">
-                                  {employee.first_name ?? ''}{' '}
-                                  {employee.last_name ?? ''}
+                                  {getEmployeeDisplayName(employee)}
                                 </span>
                                 <span className="text-gray-500 ml-1">
                                   ({employee.email ?? ''})

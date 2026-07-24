@@ -41,41 +41,35 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   const [showReopenDialog, setShowReopenDialog] = useState(false);
   const [reopenReason, setReopenReason] = useState('');
   const [aiOpen, setAiOpen] = useState(false);
-  const [aiPayload, setAiPayload] = useState<any | null>(null);
-  const [policyTitles, setPolicyTitles] = useState<string[]>([]);
+  const [aiPayload, setAiPayload] = useState<Record<string, unknown> | null>(null);
 
-  React.useEffect(() => {
-    const loadPolicyDocs = async () => {
-      try {
-        const clientId = (user as any)?.clientId || (user as any)?.client?.id;
-        if (!clientId) return;
+  const handleAiClick = async () => {
+    let policyTitles: string[] = [];
+    try {
+      const clientId = user?.clientId || user?.client?.id;
+      if (clientId) {
         const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
           body: { action: 'fetch_resources', data: { client_id: clientId } }
         });
-        if (error) return;
-        const titles = (data?.resources || []).map((r: any) => r?.title).filter(Boolean);
-        setPolicyTitles(titles);
-      } catch (_) {
-        // ignore
+        if (!error) {
+          policyTitles = (data?.resources || []).map((r: { title?: string }) => r?.title).filter(Boolean);
+        }
       }
-    };
-    loadPolicyDocs();
-  }, [user]);
-
-  const handleAiClick = () => {
-    const payload: any = {
-      id: (incident as any).id,
-      category: (incident as any).category,
-      sub_category: (incident as any).subcategory,
-      facility: (incident as any).facility,
-      location: (incident as any).location,
-      description: (incident as any).description,
-      root_cause: (incident as any).root_cause ?? (incident as any).root_cause_analysis ?? null,
-      learning_points: (incident as any).learning_points ?? null,
-      action_taken: (incident as any).action_taken ?? null,
+    } catch (_) {
+      // no-op; proceed without policy docs
+    }
+    const payload: Record<string, unknown> = {
+      id: incident.id,
+      category: incident.category,
+      sub_category: incident.subcategory,
+      facility: incident.facility,
+      location: incident.location,
+      description: incident.description,
+      root_cause: incident.rootCause ?? incident.rootCauseAnalysis ?? null,
+      learning_points: incident.learningPoints ?? null,
+      action_taken: incident.actionTaken ?? null,
       policy_docs: policyTitles,
-      // Include recommended_action from incident
-      recommended_action: (incident as any).recommended_action ?? (incident as any).recommendedAction ?? null,
+      recommended_action: incident.recommended_action ?? incident.recommendedAction ?? null,
     };
     setAiPayload(payload);
     setAiOpen(true);
@@ -295,7 +289,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
 
         </div>
       </CardContent>
-      <AIRecommendationDialog open={aiOpen} onOpenChange={setAiOpen} incidentJson={aiPayload} incidentId={(incident as any).id} incident={incident} />
+      <AIRecommendationDialog open={aiOpen} onOpenChange={setAiOpen} incidentJson={aiPayload} incidentId={incident.id} incident={incident} />
       
       <ReopenIncidentDialog
         open={showReopenDialog}

@@ -10,11 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import useClientManagement from '@/hooks/useClientManagement';
+import useClientManagement, { CLIENT_PAGE_SIZE_OPTIONS, ClientPageSize } from '@/hooks/useClientManagement';
 import ClientHeader from '@/components/clients/ClientHeader';
 import ClientList from '@/components/clients/ClientList';
 import ClientDialog from '@/components/backoffice/ClientDialog';
 import ClientStatusFilter from '@/components/clients/ClientStatusFilter';
+import ClientSearchBar from '@/components/clients/ClientSearchBar';
+import ClientPagination from '@/components/clients/ClientPagination';
 import { Loader2 } from 'lucide-react';
 import Loader from '@/components/common/Loader';
 
@@ -42,6 +44,14 @@ const ClientManagement = () => {
     setStatusFilter,
     clientManagementReadOnly,
     canManageClientsInCurrentContext,
+    searchTerm,
+    setSearchTerm,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    totalClients,
+    listLoading,
   } = useClientManagement();
 
   if (!isAdmin) {
@@ -76,17 +86,20 @@ const ClientManagement = () => {
                 Switched client context is read-only for Client Management. Switch back to your Head Office client to add or edit clients.
               </div>
             )}
-            <ClientStatusFilter 
-              currentFilter={statusFilter}
-              onFilterChange={setStatusFilter}
-            />
-            
-            {loading ? (
+            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <ClientSearchBar value={searchTerm} onChange={setSearchTerm} />
+              <ClientStatusFilter
+                currentFilter={statusFilter}
+                onFilterChange={setStatusFilter}
+              />
+            </div>
+
+            {listLoading ? (
               <div className="flex justify-center items-center py-12">
                 <Loader text="Loading clients..." />
               </div>
             ) : (
-              <ClientList 
+              <ClientList
                 clients={clients}
                 onViewApiCalls={(client) =>
                   navigate(`/backoffice/clients/${client.id}/api-calls`, {
@@ -98,6 +111,16 @@ const ClientManagement = () => {
               />
             )}
           </CardContent>
+          {!listLoading && (
+            <ClientPagination
+              page={page}
+              pageSize={pageSize}
+              pageSizeOptions={CLIENT_PAGE_SIZE_OPTIONS}
+              totalItems={totalClients}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => setPageSize(size as ClientPageSize)}
+            />
+          )}
         </Card>
       </div>
 

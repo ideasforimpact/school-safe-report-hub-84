@@ -44,7 +44,7 @@ const employeeSchema = z.object({
   lastName: z.string().min(1, { message: "Last name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
   employeeType: z.enum(["permanent", "contract", "part_time", "consultant", "intern"]),
-  department: z.enum(["admin", "teaching", "security", "maintenance", "transport", "management", "it", "hr", "finance"]),
+  department: z.enum(["admin", "teaching", "security", "maintenance", "driver", "management", "it", "hr", "finance"]),
   joiningDate: z.string().min(1, { message: "Joining date is required" }),
   clientId: z.string().optional(), // Add optional clientId
 });
@@ -135,7 +135,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
       await onAddEmployee(employeeData);
       // Success message is now handled in the service or context
       handleCloseDialog(); // Close and reset form on success
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding employee:', error);
       
       // Don't show a generic error message if we already showed a specific one
@@ -252,7 +252,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
                         <SelectItem value="teaching">Teaching</SelectItem>
                         <SelectItem value="security">Security</SelectItem>
                         <SelectItem value="maintenance">Maintenance</SelectItem>
-                        <SelectItem value="transport">Transport</SelectItem>
+                        <SelectItem value="driver">Driver</SelectItem>
                         <SelectItem value="management">Management</SelectItem>
                         <SelectItem value="it">IT</SelectItem>
                         <SelectItem value="hr">HR</SelectItem>

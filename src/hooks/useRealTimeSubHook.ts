@@ -17,7 +17,7 @@ export interface UseRealTimeSubHookOptions {
   /** Schema name (defaults to 'public') */
   schema?: string;
   /** Callback function that receives the payload when changes occur */
-  onPayload?: (payload: RealtimePostgresChangesPayload<any>) => void;
+  onPayload?: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void;
   /** Optional callback for subscription status changes */
   onStatusChange?: (status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => void;
   /** Enable/disable the subscription (defaults to true) */
@@ -139,7 +139,7 @@ export const useRealTimeSubHook = (options: UseRealTimeSubHookOptions) => {
       // This allows components to react to subscription status changes
       // (e.g., show loading state, handle errors, etc.)
       if (onStatusChange) {
-        onStatusChange(status as any);
+        onStatusChange(status as 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR');
       }
     });
 

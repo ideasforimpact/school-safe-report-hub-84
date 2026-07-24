@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.22.0";
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
@@ -43,9 +42,16 @@ async function safeVehicleApiCallLog(
 const supabaseUrl = getSupabaseUrl();
 const supabaseServiceKey = getSupabaseServiceRoleKey();
 
-// Integration selector - Hardcoded to use SurePass as primary
-const integrationName = 'surepass'; // Hardcoded to SurePass
-const isQuickEKYC = false; // SurePass is primary, QuickEKYC is fallback
+// ============================================================================
+// Provider order (dynamic) — resolved from the PRIMARY_RC env var in
+// _shared/vehicleVerificationApiCalls.ts, so swapping the primary/fallback
+// provider needs NO code change. Set PRIMARY_RC=surepass (default) for SurePass
+// primary + QuickEKYC fallback, or PRIMARY_RC=quickekyc for the reverse.
+// ============================================================================
+type ProviderName = 'surepass' | 'quickeyc';
+
+const PRIMARY_PROVIDER: ProviderName = VEHICLE_VERIFY_PRIMARY_PROVIDER;
+const FALLBACK_PROVIDER: ProviderName = VEHICLE_VERIFY_FALLBACK_PROVIDER;
 
 // ============================================================================
 // QuickEKYC Functions
@@ -58,7 +64,7 @@ function getQuickEKYCConfig() {
   return {
     apiKey: Deno.env.get('QUICKEKYC_API_KEY_PROD') || '',
     baseUrl: Deno.env.get('QUICKEKYC_BASE_ENDPOINT') || '',
-    rcEndpoint: "/api/v1/rc/rc-full",
+    rcEndpoint: "/api/v1/rc/rc_sp_v1",
     challanEndpoint: "/api/v1/challan/challan"
   };
 }
@@ -148,34 +154,6 @@ function validateQuickEKYCChallanResponse(challanData: any): boolean {
   return challanData?.status_code === 200;
 }
 
-/**
- * Process QuickEKYC Challan data
- */
-function processQuickEKYCChallanData(challanData: any) {
-  // Handle both possible response structures:
-  // 1. challanData.data.challan_data (old format)
-  // 2. challanData.data.challan_details.challans (new format from API)
-  const challansArray = 
-    Array.isArray(challanData.data?.challan_details?.challans)
-      ? challanData.data.challan_details.challans
-      : Array.isArray(challanData.data?.challan_data)
-        ? challanData.data.challan_data
-        : [];
-  
-  return {
-    challan_details: {
-      challans: challansArray.map((challan: any) => ({
-        ...challan,
-        // Ensure challan_number is present (might be challan_no in some responses)
-        challan_number: challan.challan_number || challan.challan_no || challan.number,
-        // Add Info key from challan_info if it exists
-        Info: challan.challan_info || challan.Info || challan.offense_details || null
-      })),
-      successful_backends: challanData.data?.challan_details?.successful_backends || []
-    }
-  };
-}
-
 // ============================================================================
 // SurePare Functions
 // ============================================================================
@@ -187,7 +165,9 @@ function getSurePareConfig() {
   return {
     apiKey: Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '',
     baseUrl: 'https://kyc-api.surepass.io',
-    rcEndpoint: "/api/v1/rc/rc-full",
+    // Env-configurable so the primary RC endpoint can be swapped to a masked one per
+    // environment without a code change. Defaults to the existing rc-v2 endpoint.
+    rcEndpoint: Deno.env.get('SUREPASS_RC_ENDPOINT') || "/api/v1/rc/rc-v2",
     challanEndpoint: "/api/v1/rc/rc-related/challan-details"
   };
 }
@@ -278,25 +258,6 @@ async function callSurePareChallanAPI(rcNumber: string, chassisNumber: string, e
  */
 function validateSurePareChallanResponse(challanData: any): boolean {
   return challanData?.success !== false;
-}
-
-/**
- * Process SurePare Challan data
- */
-function processSurePareChallanData(challanData: any) {
-  return {
-    challan_details: {
-      challans: challanData.data?.challan_details?.challans?.map((challan: any) => ({
-        challan_number: challan.challan_number,
-        challan_status: challan.challan_status,
-        amount: challan.amount,
-        challan_date: challan.challan_date,
-        // Add Info key from challan_info if it exists
-        Info: challan.challan_info || challan.Info || null
-      })) || [],
-      successful_backends: challanData.data?.challan_details?.successful_backends || []
-    }
-  };
 }
 
 // ============================================================================
@@ -407,60 +368,153 @@ async function saveErrorLog(
     console.log('Error log saved successfully');
   }
 }
-function mapRcDataForCurrentRc(data: any) {
-  if (!data || typeof data !== 'object') return null;
-
-  const registrationYear =
-    data.registration_date
-      ? new Date(data.registration_date).getFullYear()
-      : null;
-     let originaldata:any={};
-     originaldata['data']={
-    display_type: data.maker_model || null,              
-    display_year: registrationYear || null,      
-    rc_number: data.rc_number || data.registration_number || null,
-    fit_up_to: data.fit_up_to || null,
-    registration_date: data.registration_date || null,
-    owner_name: data.owner_name || null,
-    father_name: data.father_name || null,
-    present_address: data.present_address || null,
-    permanent_address: data.permanent_address || null,
-    vehicle_category: data.vehicle_category || null,
-    vehicle_chasi_number: data.vehicle_chasi_number || null,
-    vehicle_engine_number: data.vehicle_engine_number || null,
-    maker_description: data.maker_description || null,
-    maker_model: data.maker_model || null,
-    body_type: data.body_type || null,
-    fuel_type: data.fuel_type || null,
-    color: data.color || null,
-    norms_type: data.norms_type || null,
-    financer: data.financer || null,
-    insurance_company: data.insurance_company || null,
-    insurance_policy_number: data.insurance_policy_number || null,
-    insurance_upto: data.insurance_upto || null,
-    manufacturing_date: data.manufacturing_date || null,
-    manufacturing_date_formatted: data.manufacturing_date_formatted || null,
-    registered_at: data.registered_at || null,
-    latest_by: data.latest_by || null,
-    less_info: data.less_info || null,
-    tax_upto: data.tax_upto || null,
-    tax_paid_upto: data.tax_paid_upto || null,
-    cubic_capacity: data.cubic_capacity || null,
-    vehicle_gross_weight: data.vehicle_gross_weight || null,
-    no_cylinders: data.no_cylinders || null,
-    seat_capacity: data.seat_capacity || null,
-    sleeper_capacity: data.sleeper_capacity || null,
-    standing_capacity: data.standing_capacity || null,
-    wheelbase: data.wheelbase || null,
-    unladen_weight: data.unladen_weight || null,
-    vehicle_category_description: data.vehicle_category_description || null,
-    pucc_number: data.pucc_number || null,
-    pucc_upto: data.pucc_upto || null,
-    owner_number: data.owner_number || null,
-    rc_status: data.rc_status || null,
-  };
-  return originaldata;
+/**
+ * Normalize a raw provider RC response into the single canonical shape the app
+ * reads (must stay in sync with VERIFICATION_FIELD_ORDER in
+ * src/utils/transport-safety/documentStatusUtils.ts). Returns ONLY the inner
+ * `data` object; callers wrap it as `{ ...raw, data: normalizeRcData(raw, provider) }`.
+ *
+ * Both SurePass (`rc-full`) and QuickEKYC (`rc_sp_v1`) mirror the VAHAN field
+ * names, so the base mapping is identity. If a QuickEKYC sample ever shows a
+ * differing key, add it as `?? src.<alias>` on the affected field only.
+ */
+/**
+ * QuickEKYC returns RC dates as DD-MM-YYYY (e.g. "29-06-2027"); SurePass returns
+ * ISO YYYY-MM-DD. The app parses via `new Date(value)`, which rejects DD-MM-YYYY
+ * (Invalid Date → "Not Available"). Convert DD-MM-YYYY to ISO; leave every other
+ * shape (ISO, "6/2022", "2022-06", non-strings, null) untouched.
+ */
+function toIsoDate(value: any): any {
+  if (typeof value !== 'string') return value;
+  const m = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : value;
 }
+
+function normalizeRcData(raw: any, _provider: 'surepass' | 'quickeyc'): any {
+  // Providers nest the RC fields under `.data`; guard single vs. double nesting.
+  const src = (raw && typeof raw === 'object'
+    ? (raw.data?.data ?? raw.data ?? raw)
+    : {}) as Record<string, any>;
+
+  const registrationDate = toIsoDate(src.registration_date ?? null);
+  const registrationYear = registrationDate
+    ? new Date(registrationDate).getFullYear()
+    : null;
+
+  return {
+    display_type: src.maker_model ?? null,
+    display_year: registrationYear && !Number.isNaN(registrationYear) ? registrationYear : null,
+    rc_number: src.rc_number ?? src.registration_number ?? null,
+    fit_up_to: toIsoDate(src.fit_up_to ?? null),
+    registration_date: registrationDate,
+    owner_name: src.owner_name ?? null,
+    father_name: src.father_name ?? null,
+    present_address: src.present_address ?? null,
+    permanent_address: src.permanent_address ?? null,
+    vehicle_category: src.vehicle_category ?? null,
+    vehicle_chasi_number: src.vehicle_chasi_number ?? null,
+    vehicle_engine_number: src.vehicle_engine_number ?? null,
+    maker_description: src.maker_description ?? null,
+    maker_model: src.maker_model ?? null,
+    body_type: src.body_type ?? null,
+    fuel_type: src.fuel_type ?? null,
+    color: src.color ?? null,
+    norms_type: src.norms_type ?? null,
+    financer: src.financer ?? null,
+    insurance_company: src.insurance_company ?? null,
+    insurance_policy_number: src.insurance_policy_number ?? null,
+    insurance_upto: toIsoDate(src.insurance_upto ?? null),
+    manufacturing_date: src.manufacturing_date ?? null,
+    manufacturing_date_formatted: src.manufacturing_date_formatted ?? null,
+    registered_at: src.registered_at ?? null,
+    latest_by: toIsoDate(src.latest_by ?? null),
+    less_info: src.less_info ?? null,
+    tax_upto: toIsoDate(src.tax_upto ?? null),
+    tax_paid_upto: toIsoDate(src.tax_paid_upto ?? null),
+    cubic_capacity: src.cubic_capacity ?? null,
+    vehicle_gross_weight: src.vehicle_gross_weight ?? null,
+    no_cylinders: src.no_cylinders ?? null,
+    seat_capacity: src.seat_capacity ?? null,
+    sleeper_capacity: src.sleeper_capacity ?? null,
+    standing_capacity: src.standing_capacity ?? null,
+    wheelbase: src.wheelbase ?? null,
+    unladen_weight: src.unladen_weight ?? null,
+    vehicle_category_description: src.vehicle_category_description ?? null,
+    pucc_number: src.pucc_number ?? null,
+    pucc_upto: toIsoDate(src.pucc_upto ?? null),
+    owner_number: src.owner_number ?? null,
+    rc_status: src.rc_status ?? null,
+    // Preserve masking flags (masked_chassis / masked_engine / masked_owner_name) so the
+    // UI can decide whether to show an UNMASK control. Display transforms exclude this key.
+    response_metadata: src.response_metadata ?? null,
+  };
+}
+
+/**
+ * Normalize a single challan item into the canonical shape every consumer reads.
+ * Consumers access these keys with provider-specific fallbacks (challan_number ||
+ * challan_no || number, amount || challan_amount, challan_date_time || challan_date,
+ * Info || challan_info || offense_details, plus accused_name / owner_name /
+ * challan_place), so we populate ALL of them from whichever alias a provider
+ * supplied. Original fields are spread first so nothing provider-specific is lost.
+ * `ownerName` is the vehicle owner name from the response's top level (e.g.
+ * QuickEKYC's `data.owner_name`) — providers don't put it on each challan item,
+ * so it's passed in as a fallback for challans that have no per-item accused_name.
+ */
+function normalizeChallanItem(c: any, ownerName: string | null = null): any {
+  const challanNumber = c?.challan_number ?? c?.challan_no ?? c?.number ?? null;
+  const amount = c?.amount ?? c?.challan_amount ?? null;
+  const challanDate = c?.challan_date ?? c?.challan_date_time ?? c?.challan_time ?? null;
+  const challanDateTime = c?.challan_date_time ?? c?.challan_date ?? c?.challan_time ?? null;
+  const info = c?.challan_info ?? c?.Info ?? c?.offense_details ?? null;
+  return {
+    ...c,
+    challan_number: challanNumber,
+    challan_no: challanNumber,
+    number: challanNumber,
+    challan_status: c?.challan_status ?? null,
+    amount,
+    challan_amount: amount,
+    challan_date: challanDate,
+    challan_date_time: challanDateTime,
+    Info: info,
+    challan_info: info,
+    offense_details: info,
+    accused_name: c?.accused_name ?? c?.owner_name ?? ownerName ?? null,
+    challan_place: c?.challan_place ?? null,
+  };
+}
+
+/**
+ * Normalize a raw provider challan response into ONE canonical shape regardless of
+ * provider (QuickEKYC vs SurePass), so `vehicle_challans.latest_challan_data` and the
+ * returned challan payload are consistent. Preserves the provider wrapper (status_code
+ * / success / data) and only rewrites the challan items under `data.challan_details.
+ * challans`. Error / validation payloads (no challans array) pass through untouched.
+ */
+function normalizeChallanData(raw: any, _provider: 'surepass' | 'quickeyc'): any {
+  if (!raw || typeof raw !== 'object') return raw;
+
+  const details = raw?.data?.challan_details ?? raw?.challan_details ?? null;
+  const challans = Array.isArray(details?.challans) ? details.challans : null;
+  const legacy = Array.isArray(raw?.data?.challan_data) ? raw.data.challan_data : null;
+  const items = challans ?? legacy;
+
+  if (!items) return raw; // error/validation payloads have no challans — leave as-is
+
+  const ownerName = raw?.data?.owner_name ?? raw?.owner_name ?? null;
+
+  const normalizedDetails = {
+    ...(details ?? {}),
+    challans: items.map((c: any) => normalizeChallanItem(c, ownerName)),
+  };
+
+  if (raw?.data?.challan_details || raw?.data?.challan_data) {
+    return { ...raw, data: { ...raw.data, challan_details: normalizedDetails } };
+  }
+  return { ...raw, challan_details: normalizedDetails };
+}
+
 /**
  * Update vehicles table with RC API response data
  */
@@ -668,261 +722,118 @@ async function updateVehicleChallans(
 }
 
 /**
- * Call RC API with fallback: Try SurePass first, fallback to QuickEKYC if error
- * Returns both the response and parsed data, provider info, and error log entry if any
+ * Build a provider-agnostic RC strategy. Both providers expose the same shape
+ * (call / isSuccess / errorMessage), so the generic runner below is identical
+ * regardless of which one is primary vs. fallback.
+ */
+function makeRcProvider(name: ProviderName, registrationNumber: string) {
+  if (name === 'quickeyc') {
+    const config = getQuickEKYCConfig();
+    return {
+      name,
+      apiUrl: `${config.baseUrl}${config.rcEndpoint}`,
+      payload: prepareQuickEKYCRCPayload(registrationNumber, config.apiKey),
+      call: () => callQuickEKYCRCAPI(registrationNumber),
+      isSuccess: (response: Response, data: any) => data?.status_code === 200 && response.ok,
+      errorMessage: (data: any) => data?.message || 'QuickEKYC API error',
+    };
+  }
+  const config = getSurePareConfig();
+  return {
+    name,
+    apiUrl: `${config.baseUrl}${config.rcEndpoint}`,
+    payload: prepareSurePareRCPayload(registrationNumber),
+    call: () => callSurePareRCAPI(registrationNumber),
+    isSuccess: (response: Response, data: any) => response.ok && data?.success !== false,
+    errorMessage: (data: any) => data?.message || data?.error || 'SurePass API error',
+  };
+}
+
+/**
+ * Run one RC provider attempt end-to-end: fetch, normalize, and persist the error
+ * log + vehicles RC fields + api-call metrics. On a network exception it records the
+ * failure and returns { threw: true } so the caller can decide whether to fall back
+ * or surface the error.
+ */
+async function attemptRc(
+  prov: ReturnType<typeof makeRcProvider>,
+  supabase: any,
+  vehicleId: string | undefined,
+  registrationNumber: string,
+  isMultiple: boolean,
+): Promise<{ ok: boolean; threw: boolean; error?: any; statusCode: number; result?: any; response?: Response }> {
+  let response: Response;
+  let data: any;
+  try {
+    response = await prov.call();
+    data = await response.json();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[RC API] ${prov.name} exception:`, message);
+    const errorEntry = createErrorLogEntry(prov.name, 0, message, prov.apiUrl, prov.payload);
+    await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+    await updateVehiclesRCFields(supabase, vehicleId, registrationNumber, prov.name, 0, { error: message }, false);
+    await safeVehicleApiCallLog(supabase, vehicleId, { operation: 'rc', provider: prov.name, isSuccess: false, isMultiple });
+    return { ok: false, threw: true, error, statusCode: 0 };
+  }
+
+  const success = prov.isSuccess(response, data);
+  const statusCode = response.status || data?.status_code || 500;
+  // Normalize to the canonical RC shape (keeps wrapper fields like status_code / success).
+  const result = { ...data, data: normalizeRcData(data, prov.name) };
+
+  if (!success) {
+    const errorEntry = createErrorLogEntry(prov.name, statusCode, prov.errorMessage(data), prov.apiUrl, prov.payload);
+    await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+  }
+
+  await updateVehiclesRCFields(supabase, vehicleId, registrationNumber, prov.name, statusCode, result, success);
+  await safeVehicleApiCallLog(supabase, vehicleId, { operation: 'rc', provider: prov.name, isSuccess: success, isMultiple });
+
+  return { ok: success, threw: false, statusCode, result, response };
+}
+
+/**
+ * Call RC API with fallback: try the primary provider first, fall back to the
+ * secondary on failure. Order is env-driven (PRIMARY_PROVIDER / FALLBACK_PROVIDER).
+ * Caller reads only `.data`.
  */
 async function callRCAPI(
   registrationNumber: string,
   supabase: any,
-  vehicleId: string | undefined
-): Promise<{ response: Response; data: any; provider?: 'surepass' | 'quickeyc'; statusCode?: number; errorLog?: any }> {
-  // Primary: Always try SurePass first
-  console.log('[RC API] Attempting primary: SurePass');
-  const surePassPayload = prepareSurePareRCPayload(registrationNumber);
-  
-  let surePassResponse: Response;
-  let surePassData: any;
-  let surePassError: any = null;
+  vehicleId: string | undefined,
+): Promise<{ response?: Response; data: any; provider?: ProviderName; statusCode?: number }> {
+  const primary = makeRcProvider(PRIMARY_PROVIDER, registrationNumber);
+  const secondary = makeRcProvider(FALLBACK_PROVIDER, registrationNumber);
 
-  try {
-    const surePassConfig = getSurePareConfig();
-    const surePassApiUrl = `${surePassConfig.baseUrl}${surePassConfig.rcEndpoint}`;
-    
-    surePassResponse = await callSurePareRCAPI(registrationNumber);
-    surePassData = await surePassResponse.json();
-    
-    // Check if SurePass failed (not ok or success = false)
-    if (!surePassResponse.ok || surePassData?.success === false) {
-      surePassError = {
-        statusCode: surePassResponse.status,
-        message: surePassData?.message || surePassData?.error || 'SurePass API error',
-        data: surePassData
-      };
-      
-      // Log SurePass error
-      const errorEntry = createErrorLogEntry(
-        'surepass',
-        surePassResponse.status,
-        surePassError.message,
-        surePassApiUrl,
-        surePassPayload
-      );
-      
-      await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
-      
-      // Update vehicles table with error
-      await updateVehiclesRCFields(
-        supabase,
-        vehicleId,
-        registrationNumber,
-        'surepass',
-        surePassResponse.status,
-        surePassData,
-        false
-      );
+  console.log(`[RC API] Attempting primary: ${primary.name}`);
+  const primaryAttempt = await attemptRc(primary, supabase, vehicleId, registrationNumber, false);
 
-      await safeVehicleApiCallLog(supabase, vehicleId, {
-        operation: 'rc',
-        provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
-        isSuccess: false,
-      });
-      
-      console.log('[RC API] SurePass failed, falling back to QuickEKYC');
-      
-      // Secondary: Fallback to QuickEKYC
-      const quickEKYConfig = getQuickEKYCConfig();
-      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.rcEndpoint}`;
-      const quickEKYPayload = prepareQuickEKYCRCPayload(registrationNumber, quickEKYConfig.apiKey);
-      const quickEKYResponse = await callQuickEKYCRCAPI(registrationNumber);
-      const quickEKYData = await quickEKYResponse.json();
-      
-      // Determine if QuickEKYC succeeded or failed
-      const quickEKYSuccess = quickEKYData?.status_code === 200 && quickEKYResponse.ok;
-      const quickEKYStatusCode = quickEKYResponse.status || (quickEKYData?.status_code || 500);
-      
-      if (!quickEKYSuccess) {
-        const quickEKYErrorEntry = createErrorLogEntry(
-          'quickeyc',
-          quickEKYStatusCode,
-          quickEKYData?.message || 'QuickEKYC API error',
-          quickEKYApiUrl,
-          quickEKYPayload
-        );
-        await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
-      }
-      
-      // Update vehicles table with QuickEKYC result
-      await updateVehiclesRCFields(
-        supabase,
-        vehicleId,
-        registrationNumber,
-        'quickeyc',
-        quickEKYStatusCode,
-        quickEKYData,
-        quickEKYSuccess
-      );
-
-      await safeVehicleApiCallLog(supabase, vehicleId, {
-        operation: 'rc',
-        provider: VEHICLE_VERIFY_FALLBACK_PROVIDER,
-        isSuccess: quickEKYSuccess,
-        isMultiple: true,
-      });
-      
-      return { 
-        response: quickEKYResponse, 
-        data: quickEKYData, 
-        provider: 'quickeyc',
-        statusCode: quickEKYStatusCode,
-        errorLog: errorEntry 
-      };
-    }
-    
-    // SurePass succeeded, update vehicles table and return its response
-    console.log('[RC API] SurePass succeeded, using SurePass response');
-    
-    // Update vehicles table with success
-    await updateVehiclesRCFields(
-      supabase,
-      vehicleId,
-      registrationNumber,
-      'surepass',
-      surePassResponse.status,
-      surePassData,
-      true
-    );
-
-    await safeVehicleApiCallLog(supabase, vehicleId, {
-      operation: 'rc',
-      provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
-      isSuccess: true,
-    });
-    
-    return { 
-      response: surePassResponse, 
-      data: surePassData,
-      provider: 'surepass',
-      statusCode: surePassResponse.status
+  if (primaryAttempt.ok) {
+    console.log(`[RC API] ${primary.name} succeeded, using ${primary.name} response`);
+    return {
+      response: primaryAttempt.response,
+      data: primaryAttempt.result,
+      provider: primary.name,
+      statusCode: primaryAttempt.statusCode,
     };
-    
-  } catch (error) {
-    // Network or other error with SurePass
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[RC API] SurePass exception:', errorMessage);
-    
-    const surePassConfig = getSurePareConfig();
-    const surePassApiUrl = `${surePassConfig.baseUrl}${surePassConfig.rcEndpoint}`;
-    
-    const errorEntry = createErrorLogEntry(
-      'surepass',
-      0, // 0 indicates network/exception error
-      errorMessage,
-      surePassApiUrl,
-      surePassPayload
-    );
-    
-    await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
-    
-    // Update vehicles table with SurePass error
-    await updateVehiclesRCFields(
-      supabase,
-      vehicleId,
-      registrationNumber,
-      'surepass',
-      0,
-      { error: errorMessage },
-      false
-    );
-
-    await safeVehicleApiCallLog(supabase, vehicleId, {
-      operation: 'rc',
-      provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
-      isSuccess: false,
-    });
-    
-    // Fallback to QuickEKYC
-    console.log('[RC API] SurePass exception, falling back to QuickEKYC');
-    try {
-      const quickEKYConfig = getQuickEKYCConfig();
-      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.rcEndpoint}`;
-      const quickEKYPayload = prepareQuickEKYCRCPayload(registrationNumber, quickEKYConfig.apiKey);
-      const quickEKYResponse = await callQuickEKYCRCAPI(registrationNumber);
-      const quickEKYData = await quickEKYResponse.json();
-      
-      // Determine if QuickEKYC succeeded or failed
-      const quickEKYSuccess = quickEKYData?.status_code === 200 && quickEKYResponse.ok;
-      const quickEKYStatusCode = quickEKYResponse.status || (quickEKYData?.status_code || 500);
-      
-      if (!quickEKYSuccess) {
-        const quickEKYErrorEntry = createErrorLogEntry(
-          'quickeyc',
-          quickEKYStatusCode,
-          quickEKYData?.message || 'QuickEKYC API error',
-          quickEKYApiUrl,
-          quickEKYPayload
-        );
-        await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
-      }
-      
-      // Update vehicles table with QuickEKYC result
-      await updateVehiclesRCFields(
-        supabase,
-        vehicleId,
-        registrationNumber,
-        'quickeyc',
-        quickEKYStatusCode,
-        quickEKYData,
-        quickEKYSuccess
-      );
-
-      await safeVehicleApiCallLog(supabase, vehicleId, {
-        operation: 'rc',
-        provider: VEHICLE_VERIFY_FALLBACK_PROVIDER,
-        isSuccess: quickEKYSuccess,
-        isMultiple: true,
-      });
-      
-      return { 
-        response: quickEKYResponse, 
-        data: quickEKYData,
-        provider: 'quickeyc',
-        statusCode: quickEKYStatusCode,
-        errorLog: errorEntry 
-      };
-    } catch (quickEKYError) {
-      const quickEKYConfig = getQuickEKYCConfig();
-      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.rcEndpoint}`;
-      const quickEKYErrorMessage = quickEKYError instanceof Error ? quickEKYError.message : 'Unknown error';
-      const quickEKYErrorEntry = createErrorLogEntry(
-        'quickeyc',
-        0,
-        quickEKYErrorMessage,
-        quickEKYApiUrl,
-        prepareQuickEKYCRCPayload(registrationNumber, quickEKYConfig.apiKey)
-      );
-      await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
-      
-      // Update vehicles table with QuickEKYC error
-      await updateVehiclesRCFields(
-        supabase,
-        vehicleId,
-        registrationNumber,
-        'quickeyc',
-        0,
-        { error: quickEKYErrorMessage },
-        false
-      );
-
-      await safeVehicleApiCallLog(supabase, vehicleId, {
-        operation: 'rc',
-        provider: VEHICLE_VERIFY_FALLBACK_PROVIDER,
-        isSuccess: false,
-        isMultiple: true,
-      });
-      
-      throw error; // Re-throw the original SurePass error
-    }
   }
+
+  console.log(`[RC API] ${primary.name} failed, falling back to ${secondary.name}`);
+  const secondaryAttempt = await attemptRc(secondary, supabase, vehicleId, registrationNumber, true);
+
+  if (secondaryAttempt.threw) {
+    // Neither provider returned a usable payload — surface the failure so the
+    // handler responds 500 (matches the original re-throw behavior).
+    throw primaryAttempt.threw ? primaryAttempt.error : secondaryAttempt.error;
+  }
+
+  return {
+    response: secondaryAttempt.response,
+    data: secondaryAttempt.result,
+    provider: secondary.name,
+    statusCode: secondaryAttempt.statusCode,
+  };
 }
 function createValidationError(message: string) {
   return {
@@ -933,8 +844,47 @@ function createValidationError(message: string) {
 }
 
 /**
- * Call Challan API with fallback: Try SurePass first, fallback to QuickEKYC if error
- * Returns both the response and parsed data, provider info, and error log entry if any
+ * Build a provider-agnostic challan strategy. SurePass additionally requires the
+ * chassis + engine numbers, so it exposes `canRun()`; QuickEKYC needs only the RC
+ * number. This lets the generic runner below work no matter which is primary.
+ */
+function makeChallanProvider(
+  name: ProviderName,
+  rcNumber: string,
+  chassisNumber: string | undefined,
+  engineNumber: string | undefined,
+) {
+  if (name === 'quickeyc') {
+    const config = getQuickEKYCConfig();
+    return {
+      name,
+      label: 'QuickEKYC',
+      apiUrl: `${config.baseUrl}${config.challanEndpoint}`,
+      payload: prepareQuickEKYCChallanPayload(rcNumber, config.apiKey),
+      canRun: () => true,
+      call: () => callQuickEKYCChallanAPI(rcNumber),
+      isSuccess: (response: Response, data: any) => validateQuickEKYCChallanResponse(data) && response.ok,
+      errorMessage: (data: any) => data?.message || 'QuickEKYC API error',
+    };
+  }
+  const config = getSurePareConfig();
+  return {
+    name,
+    label: 'SurePass',
+    apiUrl: `${config.baseUrl}${config.challanEndpoint}`,
+    payload: prepareSurePareChallanPayload(rcNumber, chassisNumber ?? '', engineNumber ?? ''),
+    canRun: () => Boolean(chassisNumber && engineNumber),
+    call: () => callSurePareChallanAPI(rcNumber, chassisNumber as string, engineNumber as string),
+    isSuccess: (response: Response, data: any) => response.ok && data?.success !== false,
+    errorMessage: (data: any) => data?.message || data?.error || 'SurePass API error',
+  };
+}
+
+/**
+ * Call Challan API with fallback: try the primary provider first, fall back to the
+ * secondary on failure. Order is env-driven (PRIMARY_PROVIDER / FALLBACK_PROVIDER).
+ * The primary + fallback attempts share one process_id so history can link/hide the
+ * duplicate when both fail (bothFallback + parent_process_id).
  */
 async function callChallanAPI(
   rcNumber: string,
@@ -942,199 +892,102 @@ async function callChallanAPI(
   engineNumber: string | undefined,
   supabase: any,
   vehicleId: string | undefined,
-  registrationNumber: string
-): Promise<{ response: Response; data: any; provider?: 'surepass' | 'quickeyc'; statusCode?: number; errorLog?: any }> {
-  // Primary: Always try SurePass first
-  console.log('[Challan API] Attempting primary: SurePass');
-  // Generate a short process id to link this SurePass + QuickEKYC
-  // challan attempt together in history when both fail.
+  registrationNumber: string,
+): Promise<{ response?: Response; data: any; provider?: ProviderName; statusCode?: number }> {
+  // Short process id linking the primary + fallback attempts in history.
   const challanProcessId = generateProcessId();
-  
-  // SurePass requires chassis and engine numbers
-  if (!chassisNumber || !engineNumber) {
-    console.warn('[Challan API] missing chassis or engine number — aborting challan lookup');
+  const primary = makeChallanProvider(PRIMARY_PROVIDER, rcNumber, chassisNumber, engineNumber);
+  const secondary = makeChallanProvider(FALLBACK_PROVIDER, rcNumber, chassisNumber, engineNumber);
 
-    return {
-      data: createValidationError(
-        'Chassis number and engine number are required to fetch challan details.'
-      ),
-      statusCode: 400
-    };
-  }
+  console.log(`[Challan API] Attempting primary: ${primary.name}`);
+  let primaryFailed = false;
 
-  const surePassConfig = getSurePareConfig();
-  const surePassApiUrl = `${surePassConfig.baseUrl}${surePassConfig.challanEndpoint}`;
-  const surePassPayload = prepareSurePareChallanPayload(
-    rcNumber,
-    chassisNumber,
-    engineNumber
-  );
+  // Primary can be skipped only when it needs chassis/engine it doesn't have
+  // (SurePass as primary). QuickEKYC always canRun.
+  if (primary.canRun()) {
+    try {
+      const response = await primary.call();
+      const data = await response.json();
+      const success = primary.isSuccess(response, data);
+      const statusCode = response.status || data?.status_code || 500;
 
-  try {
-    console.log('[Challan API] Calling SurePass');
-
-    const surePassResponse = await callSurePareChallanAPI(
-      rcNumber,
-      chassisNumber,
-      engineNumber
-    );
-    const surePassData = await surePassResponse.json();
-
-    if (surePassResponse.ok && surePassData?.success !== false) {
-      console.log('[Challan API] SurePass succeeded');
-      await updateVehicleChallans(
-        supabase,
-        vehicleId,
-        registrationNumber,
-        'surepass',
-        surePassResponse.status,
-        surePassData,
-        true,
-        challanProcessId
-      );
-
-      await safeVehicleApiCallLog(supabase, vehicleId, {
-        operation: 'challan',
-        provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
-        isSuccess: true,
-      });
-
-      return {
-        response: surePassResponse,
-        data: surePassData,
-        provider: 'surepass',
-        statusCode: surePassResponse.status
-      };
-    }
-
-    // ❌ SurePass FAILED → log and fallback
-    const errorMessage =
-      surePassData?.message ||
-      surePassData?.error ||
-      'SurePass API error';
-
-    const errorEntry = createErrorLogEntry(
-      'surepass',
-      surePassResponse.status,
-      errorMessage,
-      surePassApiUrl,
-      surePassPayload
-    );
-
-    await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
-
-    await updateVehicleChallans(
-      supabase,
-      vehicleId,
-      registrationNumber,
-      'surepass',
-      surePassResponse.status,
-      surePassData,
-      false,
-      challanProcessId
-    );
-
-    await safeVehicleApiCallLog(supabase, vehicleId, {
-      operation: 'challan',
-      provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
-      isSuccess: false,
-    });
-
-    console.log('[Challan API] SurePass failed — falling back to QuickEKYC');
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'SurePass exception';
-    const errorEntry = createErrorLogEntry(
-      'surepass',
-      0, // 0 indicates network/exception error
-      errorMessage,
-      surePassApiUrl,
-      surePassPayload
-    );
-    
-    await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
-    
-    // Update vehicle_challans table with SurePass error
-    await updateVehicleChallans(
-      supabase,
-      vehicleId,
-      registrationNumber,
-      'surepass',
-      0,
-      { error: errorMessage },
-      false,
-      challanProcessId
-    );
-
-    await safeVehicleApiCallLog(supabase, vehicleId, {
-      operation: 'challan',
-      provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
-      isSuccess: false,
-    });
-
-    console.log('[Challan API] SurePass exception — falling back to QuickEKYC');
-  }
-
-      // FALLBACK — QUICKEKYC (ONLY AFTER SUREPASS FAILS)
-      const quickEKYConfig = getQuickEKYCConfig();
-      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.challanEndpoint}`;
-      const quickEKYPayload = prepareQuickEKYCChallanPayload(
-        rcNumber,
-        quickEKYConfig.apiKey
-      );
-
-      const quickEKYResponse = await callQuickEKYCChallanAPI(rcNumber);
-      const quickEKYData = await quickEKYResponse.json();
-
-      const quickEKYSuccess =
-        validateQuickEKYCChallanResponse(quickEKYData) &&
-        quickEKYResponse.ok;
-
-      const quickEKYStatusCode =
-        quickEKYResponse.status ||
-        quickEKYData?.status_code ||
-        500;
-
-      if (!quickEKYSuccess) {
-        const quickEKYErrorEntry = createErrorLogEntry(
-          'quickeyc',
-          quickEKYStatusCode,
-          quickEKYData?.message || 'QuickEKYC API error',
-          quickEKYApiUrl,
-          quickEKYPayload
+      if (success) {
+        console.log(`[Challan API] ${primary.name} succeeded`);
+        const normalized = normalizeChallanData(data, primary.name);
+        await updateVehicleChallans(
+          supabase, vehicleId, registrationNumber, primary.name, statusCode, normalized, true, challanProcessId,
         );
-
-        await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
+        await safeVehicleApiCallLog(supabase, vehicleId, { operation: 'challan', provider: primary.name, isSuccess: true });
+        return { response, data: normalized, provider: primary.name, statusCode };
       }
 
-      const isBothFallbackFailure = !quickEKYSuccess;
+      // Primary HTTP failure -> log and fall through to the secondary.
+      primaryFailed = true;
+      const errorEntry = createErrorLogEntry(primary.name, statusCode, primary.errorMessage(data), primary.apiUrl, primary.payload);
+      await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
       await updateVehicleChallans(
-        supabase,
-        vehicleId,
-        registrationNumber,
-        'quickeyc',
-        quickEKYStatusCode,
-        quickEKYData,
-        quickEKYSuccess,
-        challanProcessId,
-        isBothFallbackFailure ? challanProcessId : null,
-        isBothFallbackFailure
+        supabase, vehicleId, registrationNumber, primary.name, statusCode, data, false, challanProcessId,
       );
-
-      await safeVehicleApiCallLog(supabase, vehicleId, {
-        operation: 'challan',
-        provider: VEHICLE_VERIFY_FALLBACK_PROVIDER,
-        isSuccess: quickEKYSuccess,
-        isMultiple: true,
-      });
-
-      return {
-        response: quickEKYResponse,
-        data: quickEKYData,
-        provider: 'quickeyc',
-        statusCode: quickEKYStatusCode
-      };
+      await safeVehicleApiCallLog(supabase, vehicleId, { operation: 'challan', provider: primary.name, isSuccess: false });
+      console.log(`[Challan API] ${primary.name} failed — falling back to ${secondary.name}`);
+    } catch (error) {
+      primaryFailed = true;
+      const errorMessage = error instanceof Error ? error.message : `${primary.name} exception`;
+      const errorEntry = createErrorLogEntry(primary.name, 0, errorMessage, primary.apiUrl, primary.payload);
+      await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+      await updateVehicleChallans(
+        supabase, vehicleId, registrationNumber, primary.name, 0, { error: errorMessage }, false, challanProcessId,
+      );
+      await safeVehicleApiCallLog(supabase, vehicleId, { operation: 'challan', provider: primary.name, isSuccess: false });
+      console.log(`[Challan API] ${primary.name} exception — falling back to ${secondary.name}`);
     }
+  } else {
+    console.warn(`[Challan API] primary ${primary.name} cannot run (missing chassis/engine) — falling back to ${secondary.name}`);
+  }
+
+  // FALLBACK — secondary provider (only after the primary failed or was skipped).
+  if (!secondary.canRun()) {
+    console.warn(`[Challan API] missing chassis or engine number — cannot fall back to ${secondary.name}`);
+    const validationError = createValidationError(
+      `Chassis number and engine number are required to fetch challan details from ${secondary.label}.`,
+    );
+    await updateVehicleChallans(
+      supabase, vehicleId, registrationNumber, secondary.name, 400, validationError, false,
+      challanProcessId, challanProcessId, true,
+    );
+    await safeVehicleApiCallLog(supabase, vehicleId, {
+      operation: 'challan', provider: secondary.name, isSuccess: false, isMultiple: true,
+    });
+    return { data: validationError, statusCode: 400 };
+  }
+
+  const response = await secondary.call();
+  const data = await response.json();
+  const success = secondary.isSuccess(response, data);
+  const statusCode = response.status || data?.status_code || 500;
+
+  if (!success) {
+    const errorEntry = createErrorLogEntry(secondary.name, statusCode, secondary.errorMessage(data), secondary.apiUrl, secondary.payload);
+    await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+  }
+
+  // Normalize to the single canonical challan shape (error payloads pass through).
+  const normalized = normalizeChallanData(data, secondary.name);
+  // Both providers failed in this flow -> link the fallback entry to the primary so
+  // the UI can hide the duplicate.
+  const isBothFallbackFailure = primaryFailed && !success;
+  await updateVehicleChallans(
+    supabase, vehicleId, registrationNumber, secondary.name, statusCode, normalized, success,
+    challanProcessId,
+    isBothFallbackFailure ? challanProcessId : null,
+    isBothFallbackFailure,
+  );
+  await safeVehicleApiCallLog(supabase, vehicleId, {
+    operation: 'challan', provider: secondary.name, isSuccess: success, isMultiple: true,
+  });
+
+  return { response, data: normalized, provider: secondary.name, statusCode };
+}
 
 
 /**
@@ -1149,20 +1002,31 @@ function validateChallanResponse(challanData: any): boolean {
   return validateSurePareChallanResponse(challanData);
 }
 
-/**
- * Process Challan data - detects which integration was used based on response structure
- */
-function processChallanData(challanData: any) {
-  // Check if it's a QuickEKYC response (has status_code)
-  if (challanData?.status_code !== undefined) {
-    return processQuickEKYCChallanData(challanData);
-  }
-  // Otherwise, it's a SurePare response
-  return processSurePareChallanData(challanData);
-}
+console.log(`[vehicle-verify] Provider order — primary: ${PRIMARY_PROVIDER}, fallback: ${FALLBACK_PROVIDER} (PRIMARY_RC='${Deno.env.get('PRIMARY_RC') || ''}')`);
 
-console.log(`Integration selected: ${integrationName || 'default'}`);
-console.log(`Using integration: SurePass (primary), QuickEKYC (fallback)`);
+/**
+ * Server-side mirror of the UI Document Status check (getDocumentStatus in
+ * src/utils/transport-safety/documentStatusUtils.ts). Returns true only when the
+ * cached RC data has Insurance / Fitness / PUC dates that are all present, parseable
+ * and NOT past-expiry (>= today). Any missing/unparseable/expired field, or missing
+ * RC data, returns false so the caller refreshes RC from the providers.
+ * "Expiring soon" still counts as up to date (past-expiry only, per requirement).
+ */
+function computeDocumentStatusUpToDate(currentRcData: any): boolean {
+  const data = currentRcData?.data;
+  if (!data || typeof data !== 'object') return false;
+
+  const now = new Date();
+  const fields = [data.insurance_upto, data.fit_up_to, data.pucc_upto];
+
+  for (const value of fields) {
+    if (!value) return false;
+    const expiry = new Date(value);
+    if (Number.isNaN(expiry.getTime())) return false;
+    if (expiry < now) return false;
+  }
+  return true;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -1188,30 +1052,95 @@ serve(async (req) => {
     // Current date and time for verification_date and last_response
     const verificationDate = new Date().toISOString();
 
-    // Call RC API with fallback: SurePass primary, QuickEKYC secondary if error
-    const { response: rcResponse, data: providerData, provider: rcProvider, statusCode: rcStatusCode } = await callRCAPI(registrationNumber, supabase, vehicleId);
-    
+    // Load the cached RC row (if we have a vehicleId) so we can decide whether the
+    // documents are already up to date and skip the paid RC lookup.
+    let cachedRcData: any = null;
+    let cachedVerificationData: any = null;
+    if (vehicleId) {
+      const { data: cachedRow, error: cachedRowError } = await supabase
+        .from('vehicles')
+        .select('current_rc_data, verification_data')
+        .eq('id', vehicleId)
+        .maybeSingle();
+      if (cachedRowError) {
+        console.error('Failed to read cached RC data:', cachedRowError);
+      } else {
+        cachedRcData = cachedRow?.current_rc_data ?? null;
+        cachedVerificationData = cachedRow?.verification_data ?? null;
+      }
+    }
+
+    // Documents are "up to date" only when the cached RC Insurance/Fitness/PUC dates
+    // are all present and not past-expiry. When true we reuse the cached RC and skip
+    // the RC API (both providers); challan is always refreshed below.
+    const documentStatusUpToDate = computeDocumentStatusUpToDate(cachedRcData);
+
+    let providerData: any;
+    if (documentStatusUpToDate) {
+      console.log('[RC API] Documents up to date — skipping RC API, reusing cached current_rc_data');
+      providerData = cachedRcData;
+    } else {
+      // Call RC API with fallback: QuickEKYC primary, SurePass secondary if error
+      const rcResult = await callRCAPI(registrationNumber, supabase, vehicleId);
+      providerData = rcResult.data;
+    }
+
     // Note: Even if RC API fails, we continue to store the error in history
     // The vehicles table RC fields are already updated in callRCAPI function
-    
+
     // Extract required data for challan API call
     let challanData: any = null;
     if (providerData.data) {
       const data = providerData.data;
       const rcNumber = registrationNumber;
-      const chassisNumber = data.vehicle_chasi_number;
-      const engineNumber = data.vehicle_engine_number;
-      
-      console.log(`Got vehicle data - RC: ${rcNumber}, Chassis: ${chassisNumber}, Engine: ${engineNumber}`);
+
+      // SurePass challan requires REAL (unmasked) chassis + engine numbers. A masked value
+      // is still a non-empty string, so we must not pass it through — resolve the real
+      // values with priority:
+      //   1) the dedicated vehicles columns (previously unmasked & stored), looked up by
+      //      registration number;
+      //   2) the current RC response, but only when it is NOT masked. `masked_* === true`
+      //      means masked (skip); `false` or absent (legacy/non-masked providers like
+      //      QuickEKYC) means the value is real and usable.
+      // When neither source yields a real value, chassis/engine stay undefined so the
+      // SurePass challan provider's canRun() returns false and we fall back to QuickEKYC.
+      const rcMetadata = data.response_metadata;
+      let chassisNumber: string | undefined;
+      let engineNumber: string | undefined;
+
+      const { data: storedVehicleNumbers, error: storedNumbersError } = await supabase
+        .from('vehicles')
+        .select('vehicle_chasi_number, vehicle_engine_number')
+        .eq('registration_number', rcNumber)
+        .maybeSingle();
+      if (storedNumbersError) {
+        console.warn('Could not read stored chassis/engine columns:', storedNumbersError);
+      }
+      if (storedVehicleNumbers?.vehicle_chasi_number) {
+        chassisNumber = storedVehicleNumbers.vehicle_chasi_number;
+      }
+      if (storedVehicleNumbers?.vehicle_engine_number) {
+        engineNumber = storedVehicleNumbers.vehicle_engine_number;
+      }
+
+      if (!chassisNumber && data.vehicle_chasi_number && rcMetadata?.masked_chassis !== true) {
+        chassisNumber = data.vehicle_chasi_number;
+      }
+      if (!engineNumber && data.vehicle_engine_number && rcMetadata?.masked_engine !== true) {
+        engineNumber = data.vehicle_engine_number;
+      }
+
+      console.log(`Got vehicle data - RC: ${rcNumber}, Chassis: ${chassisNumber}, Engine: ${engineNumber} (challan uses unmasked values only; SurePass falls back to QuickEKYC when absent)`);
       
       // Check if we have all required parameters for challan call
       // For QuickEKYC, only rcNumber is needed; for SurePass, all three are required
-      // Since SurePass is primary, we prefer having all three, but can fallback to QuickEKYC with just rcNumber
-      const canCallChallan = rcNumber && (chassisNumber && engineNumber || true); // Can always try (SurePass needs all, QuickEKYC needs only rcNumber)
+      // Since QuickEKYC is primary, we can always attempt it with just rcNumber;
+      // the SurePass fallback will validate chassis/engine itself if needed
+      const canCallChallan = rcNumber && (chassisNumber && engineNumber || true); // Can always try (QuickEKYC needs only rcNumber, SurePass fallback needs all)
       
       if (canCallChallan) {
         try {
-          // Call Challan API with fallback: SurePass primary, QuickEKYC secondary if error
+          // Call Challan API with fallback: QuickEKYC primary, SurePass secondary if error
           const { response: challanResponse, data: challanResponseData, provider: challanProvider, statusCode: challanStatusCode } = await callChallanAPI(
             rcNumber, 
             chassisNumber, 
@@ -1257,6 +1186,12 @@ serve(async (req) => {
       verificationStatus = providerData.data.rc_status.toLowerCase();
     }
 
+    // On the skip path (documents up to date) we reuse the cached verification_data
+    // and perform NO RC-derived writes — only the challan refresh above ran.
+    // Default to [] (never null) so downstream consumers always get an array.
+    let completeTransformedData: any = cachedVerificationData ?? [];
+
+    if (!documentStatusUpToDate) {
     // Get existing vehicle data first if we have a vehicleId
     let existingVerificationLog = {};
     let savedVehicleTypeId: string | null = null;
@@ -1357,6 +1292,21 @@ serve(async (req) => {
             updates.year = registrationYear;
           }
 
+          // Auto-fill the dedicated chassis/engine columns only when the provider confirms
+          // the value is NOT masked. Never overwrite a good value with a masked one.
+          const responseMetadata = data.response_metadata;
+          if (responseMetadata && typeof responseMetadata === 'object') {
+            if (responseMetadata.masked_chassis === false && data.vehicle_chasi_number) {
+              updates.vehicle_chasi_number = data.vehicle_chasi_number;
+            }
+            if (responseMetadata.masked_engine === false && data.vehicle_engine_number) {
+              updates.vehicle_engine_number = data.vehicle_engine_number;
+            }
+            if (responseMetadata.masked_owner_name === false && data.owner_name) {
+              updates.vehicle_owner_name = data.owner_name;
+            }
+          }
+
           const { error: vehicleUpdateError } = await supabase
             .from('vehicles')
             .update(updates)
@@ -1416,7 +1366,7 @@ serve(async (req) => {
     
     // The complete transformed data array should have only the verification log
     // rc_history_log is removed as it's redundant (same data is in verification_log)
-    const completeTransformedData = [verificationLogEntry];
+    completeTransformedData = [verificationLogEntry];
     
     // If we have a vehicleId, update the vehicle record with verification data
     if (vehicleId) {
@@ -1437,6 +1387,25 @@ serve(async (req) => {
         console.log("Vehicle verification data updated successfully");
       }
     }
+    } else if (vehicleId) {
+      // Skip path: documents are up to date, so we did NOT call the RC API and must
+      // not touch current_rc_data / verification_data. But a safety check DID run
+      // (challan was refreshed), so advance the timestamp/status only — otherwise the
+      // "last checked" date would revert to its previous value on the next page load.
+      const { error: skipUpdateError } = await supabase
+        .from('vehicles')
+        .update({
+          verification_status: verificationStatus,
+          verification_date: verificationDate
+        })
+        .eq('id', vehicleId);
+
+      if (skipUpdateError) {
+        console.error('Error updating verification timestamp on skip:', skipUpdateError);
+      } else {
+        console.log('Verification timestamp advanced on skip (RC data untouched)');
+      }
+    } // end if (!documentStatusUpToDate) — RC data writes skipped when documents are up to date
 
     return new Response(
       JSON.stringify({
@@ -1446,7 +1415,8 @@ serve(async (req) => {
           challan: challanData,
           transformed: completeTransformedData,
           status: verificationStatus,
-          verificationDate: verificationDate
+          verificationDate: verificationDate,
+          document_status_up_to_date: documentStatusUpToDate
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

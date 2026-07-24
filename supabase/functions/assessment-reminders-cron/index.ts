@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey, getFrontendUrl } from '../_shared/env.ts';
 
 const corsHeaders = {
@@ -7,6 +7,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+interface ReminderResult {
+  dueReminders: number;
+  overdueReminders: number;
+  errors: number;
+}
+
+interface EmailQueueRow {
+  id: string;
+  client_id?: string;
+  module_name?: string;
+  recipient_email: string;
+  recipient_name?: string;
+  subject?: string;
+  priority?: number;
+  retry_count?: number;
+  max_retries?: number;
+  params?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface AssessmentReminderVariables {
+  User_Name?: string;
+  Assessment_ID?: unknown;
+  Assessment_Title?: string;
+  Due_Date?: string;
+  Overdue_Days?: string;
+  Assessment_URL?: string;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -36,14 +65,15 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in assessment reminders cron:', error);
-    
+
+    const message = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({
         success: false,
         message: 'Failed to process assessment reminders',
-        error: String(error?.message || error)
+        error: message
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
@@ -53,8 +83,8 @@ serve(async (req) => {
 /**
  * Process assessment reminders
  */
-async function processAssessmentReminders(supabase: any) {
-  const result = {
+async function processAssessmentReminders(supabase: SupabaseClient) {
+  const result: ReminderResult = {
     dueReminders: 0,
     overdueReminders: 0,
     errors: 0
@@ -71,7 +101,7 @@ async function processAssessmentReminders(supabase: any) {
     await processOverdueReminders(supabase, today, result);
 
     return result;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in processAssessmentReminders:', error);
     throw error;
   }
@@ -80,7 +110,7 @@ async function processAssessmentReminders(supabase: any) {
 /**
  * Process assessments due in 5 days
  */
-async function processDueIn5DaysReminders(supabase: any, today: Date, result: any) {
+async function processDueIn5DaysReminders(supabase: SupabaseClient, today: Date, result: ReminderResult) {
   try {
     console.log('Scanning active assessment queue for 5-day reminders...');
     const { data: queue, error } = await supabase
@@ -194,7 +224,7 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
         result.errors++;
       }
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in processDueIn5DaysReminders:', error);
     result.errors++;
   }
@@ -203,7 +233,7 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
 /**
  * Process overdue assessments
  */
-async function processOverdueReminders(supabase: any, today: Date, result: any) {
+async function processOverdueReminders(supabase: SupabaseClient, today: Date, result: ReminderResult) {
   try {
     console.log('Scanning active assessment queue for overdue reminders...');
     const { data: queue, error } = await supabase
@@ -320,7 +350,7 @@ async function processOverdueReminders(supabase: any, today: Date, result: any) 
         result.errors++;
       }
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in processOverdueReminders:', error);
     result.errors++;
   }
@@ -329,7 +359,7 @@ async function processOverdueReminders(supabase: any, today: Date, result: any) 
 /**
  * Check if reminder was already sent today
  */
-async function checkIfReminderSentToday(supabase: any, assessmentId: string, notificationType: string): Promise<boolean> {
+async function checkIfReminderSentToday(supabase: SupabaseClient, assessmentId: string, notificationType: string): Promise<boolean> {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -361,7 +391,7 @@ async function checkIfReminderSentToday(supabase: any, assessmentId: string, not
 /**
  * Validate assessment notification helper (shared with processor)
  */
-async function validateAssessmentNotification(supabase: any, email: any): Promise<{ isValid: boolean; reason?: string }> {
+async function validateAssessmentNotification(supabase: SupabaseClient, email: EmailQueueRow): Promise<{ isValid: boolean; reason?: string }> {
   try {
     const params = email.params || {};
     const assessmentId = params.Assessment_ID || params.assessmentId || params.assessment_id;
@@ -391,8 +421,8 @@ async function validateAssessmentNotification(supabase: any, email: any): Promis
     }
 
     return { isValid: true };
-  } catch (e: any) {
-    return { isValid: false, reason: `Validation error: ${e.message}` };
+  } catch (e) {
+    return { isValid: false, reason: `Validation error: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
 
@@ -403,7 +433,7 @@ function getBaseUrl(): string {
   return getFrontendUrl();
 } 
 
-async function claimEmailForProcessing(supabase: any, emailId: string, processorName: string): Promise<boolean> {
+async function claimEmailForProcessing(supabase: SupabaseClient, emailId: string, processorName: string): Promise<boolean> {
   try {
     const nowIso = new Date().toISOString();
     const { data, error } = await supabase
@@ -432,7 +462,7 @@ async function claimEmailForProcessing(supabase: any, emailId: string, processor
   }
 }
 
-async function releaseEmailClaim(supabase: any, emailId: string): Promise<void> {
+async function releaseEmailClaim(supabase: SupabaseClient, emailId: string): Promise<void> {
   try {
     await supabase
       .from('email_queue')
@@ -448,8 +478,8 @@ async function releaseEmailClaim(supabase: any, emailId: string): Promise<void> 
 }
 
 async function createCentralizedReminderNotification(
-  supabase: any,
-  email: any,
+  supabase: SupabaseClient,
+  email: EmailQueueRow,
   subject: string,
   body: string,
   type: string
@@ -484,9 +514,9 @@ async function createCentralizedReminderNotification(
   }
 }
 
-function extractSendErrorMessage(error?: any, data?: any): string {
+function extractSendErrorMessage(error?: Record<string, unknown>, data?: Record<string, unknown>): string {
   const parts: string[] = [];
-  if (error?.message) parts.push(error.message);
+  if (error?.message) parts.push(String(error.message));
   if (data?.error) parts.push(String(data.error));
   if (data?.message) parts.push(String(data.message));
   if (data?.errorType) parts.push(`type=${data.errorType}`);
@@ -495,7 +525,7 @@ function extractSendErrorMessage(error?: any, data?: any): string {
   return composed || 'Email send failed';
 }
 
-function generateAssessmentDueReminderEmailBody(variables: any): string {
+function generateAssessmentDueReminderEmailBody(variables: AssessmentReminderVariables): string {
   return `
 <div style="max-width:640px;margin:0 auto;padding:24px;font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#1f2937;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;">
 <div style="text-align:center;background-color:#f9fafb;padding:20px;margin:-24px -24px 24px -24px;border-bottom:1px solid #e5e7eb;border-radius:8px 8px 0 0;">
@@ -517,7 +547,7 @@ function generateAssessmentDueReminderEmailBody(variables: any): string {
 </div>`;
 }
 
-function generateAssessmentOverdueEmailBody(variables: any): string {
+function generateAssessmentOverdueEmailBody(variables: AssessmentReminderVariables): string {
   return `
 <div style="max-width:640px;margin:0 auto;padding:24px;font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#1f2937;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;">
 <div style="text-align:center;background-color:#f9fafb;padding:20px;margin:-24px -24px 24px -24px;border-bottom:1px solid #e5e7eb;border-radius:8px 8px 0 0;">

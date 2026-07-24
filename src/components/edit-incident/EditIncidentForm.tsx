@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Person } from '@/types/incident';
 import { useIncidentFormData } from '@/hooks/useIncidentFormData';
@@ -18,26 +19,16 @@ import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentForm
 import AssignmentSection from './AssignmentSection';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
-import { Student } from '@/types/student';
+import { useStudents } from '@/contexts/StudentContext';
 import { formatFileSize } from '@/utils/fileUtils';
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 import { DESCRIPTION_MAX_LENGTH } from '../constants';
 import Loader from '../common/Loader';
 import { Sparkles, X, Loader2, ChevronRight } from 'lucide-react';
 import { useIncidentCategorySuggestion } from '@/hooks/useIncidentCategorySuggestion';
-import {
-  resolveScenarioForReport,
-  type NextScenarioResult,
-} from '@/demo_client/incident/demoScenarios';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
-  /** Demo Setup pipe: the page header (src/pages/EditIncidentPage.tsx)
-   *  hosts the demo icon; when clicked it stashes the chosen scenario
-   *  here and the form picks it up via a useEffect. When
-   *  VITE_IS_DEMO_SETUP is off the page won't pass anything. */
-  pendingDemo?: NextScenarioResult | null;
-  onDemoConsumed?: () => void;
 }
 
 interface UserBasicInfo {
@@ -47,28 +38,43 @@ interface UserBasicInfo {
   name: string;
 }
 
-const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
-  incidentData,
-  pendingDemo,
-  onDemoConsumed,
-}) => {
+interface ConfigEmployee {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+}
+
+interface ExternalPerson extends Person {
+  is_external?: boolean;
+  external_student_id?: string;
+  external_client_id?: string;
+}
+
+const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, employeeData } = useAuth();
+  const { students } = useStudents();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get form configuration data from the new hook
-  const { formData: configData, loading: configLoading } = useIncidentFormData();
+  const { formData: configData, employees: configEmployees, loading: configLoading } = useIncidentFormData();
+  const mappedEmployees = (configEmployees as ConfigEmployee[] || []).map((emp) => ({
+    id: emp.id,
+    firstName: emp.first_name,
+    lastName: emp.last_name,
+    email: emp.email || '',
+  }));
 
-  // Use the document management hook
+  // Use the document management hook — seed with already-loaded documents (no extra DB call)
   const {
     supportingFiles,
     documents,
     isUploading,
     handleFilesChange,
     uploadAndSaveDocuments,
-    loadDocuments,
-  } = useIncidentDocuments(id);
+  } = useIncidentDocuments(id, incidentData.documents);
 
   // Add validation hook
   const { validateForm } = useIncidentFormValidation();
@@ -86,12 +92,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
     console.log('Priorities:', configData.priorities);
   }, [incidentData, configData]);
 
-  // Load existing documents when component mounts
-  useEffect(() => {
-    if (id) {
-      loadDocuments(id);
-    }
-  }, [id, loadDocuments]);
 
   // Form state - initialize with incident data
   const [formData, setFormData] = useState(() => ({
@@ -111,29 +111,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   }));
 
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>(incidentData.peopleInvolved || []);
-
-  // Demo Setup: when the page header dispatches a scenario, apply it
-  // here via setFormData. The edit form uses the same *Id-based shape
-  // as Report Incident so we reuse the report resolver. Location,
-  // Facility, and Owner are intentionally not touched (per spec).
-  useEffect(() => {
-    if (!pendingDemo) return;
-    const reportTypes = configData?.reportTypes || [];
-    const categories = configData?.categories || [];
-    const subcategories = configData?.subcategories || [];
-    const priorities = configData?.priorities || [];
-    const partial = resolveScenarioForReport(
-      pendingDemo.scenario,
-      { reportTypes, categories, subcategories, priorities },
-      employeeData?.id || '',
-      pendingDemo.index,
-    );
-    setFormData(prev => ({ ...prev, ...partial }));
-    onDemoConsumed?.();
-    // Fire once per click; configData / setFormData are stable from the
-    // hooks for the lifetime of this component.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingDemo]);
 
   // Log form data changes
   useEffect(() => {
@@ -253,31 +230,31 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
       
       // ========== VALIDATE EXTERNAL STUDENTS BEFORE INCIDENT UPDATE ==========
       // Filter external students from filteredPeople
-      const externalStudents = filteredPeople.filter((person: any) => 
+      const externalStudents = (filteredPeople as ExternalPerson[]).filter((person) =>
         person.role === 'Student' && (person.is_external === true)
       );
 
       // Validate external students before updating incident
       if (externalStudents.length > 0) {
         console.log(`Validating ${externalStudents.length} external student(s) before incident update...`);
-        
+
         for (const externalStudent of externalStudents) {
-          const externalStudentId = (externalStudent as any).external_student_id || (externalStudent as any).id;
-          const externalClientId = (externalStudent as any).external_client_id;
-          
+          const externalStudentId = externalStudent.external_student_id || externalStudent.id;
+          const externalClientId = externalStudent.external_client_id;
+
           if (!externalStudentId) {
             console.error('Validation failed: external_student_id is missing for external student:', externalStudent);
-            toast.error(`External student "${(externalStudent as any).name}" is missing required information (external_student_id). Please reselect the student.`);
-            throw new Error(`External student "${(externalStudent as any).name}" is missing external_student_id`);
+            toast.error(`External student "${externalStudent.name}" is missing required information (external_student_id). Please reselect the student.`);
+            throw new Error(`External student "${externalStudent.name}" is missing external_student_id`);
           }
-          
+
           if (!externalClientId) {
             console.error('Validation failed: external_client_id is missing for external student:', externalStudent);
-            toast.error(`External student "${(externalStudent as any).name}" is missing required information (external_client_id). Please reselect the student.`);
-            throw new Error(`External student "${(externalStudent as any).name}" is missing external_client_id`);
+            toast.error(`External student "${externalStudent.name}" is missing required information (external_client_id). Please reselect the student.`);
+            throw new Error(`External student "${externalStudent.name}" is missing external_client_id`);
           }
         }
-        
+
         console.log('All external students validated successfully');
       }
       
@@ -291,16 +268,38 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
         facility_id: formData.facilityId,
         priority_id: formData.priorityId,
         assigned_to: formData.owner || null,
-        people_involved: filteredPeople as any, // Cast to any to satisfy Json type
-        updated_at: new Date().toISOString()
+        people_involved: filteredPeople as unknown as Json,
       };
+
+      // People involved always includes an externalStudents field (even when
+      // empty) so the edge function reconciles stale incident_external_students
+      // links whenever people involved could have changed.
+      const externalStudentsPayload = externalStudents.map((student) => ({
+        external_student_id: student.external_student_id || student.id,
+        external_client_id: student.external_client_id ?? null,
+        name: student.name,
+        student_id: (student as Record<string, unknown>).student_id ?? null,
+        gender: (student as Record<string, unknown>).gender ?? null,
+        email: (student as Record<string, unknown>).email ?? null,
+        status: (student as Record<string, unknown>).status ?? null,
+        grade_id: (student as Record<string, unknown>).grade_id ?? null,
+        section_id: (student as Record<string, unknown>).section_id ?? null,
+        grades: (student as Record<string, unknown>).grades ?? null,
+        sections: (student as Record<string, unknown>).sections ?? null,
+        client_id: (student as Record<string, unknown>).client_id ?? null,
+      }));
 
       console.log('Updating incident:', { incidentId: id, updates });
 
-      const { error } = await supabase
-        .from('incidents')
-        .update(updates)
-        .eq('id', id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('You must be logged in to edit incidents');
+      }
+
+      const { data: updateResult, error } = await supabase.functions.invoke('update-incident', {
+        body: { incidentId: id, updates, externalStudents: externalStudentsPayload },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
 
       if (error) {
         console.error('Error updating incident:', error);
@@ -309,274 +308,11 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
       console.log('Incident updated successfully');
 
-      // ========== HANDLE EXTERNAL STUDENTS (UPDATE) ==========
-      // Function to create or update external student in external_students table
-      const createOrUpdateExternalStudent = async (externalStudentData: any): Promise<string | null> => {
-        try {
-          // Get external_student_id - prefer external_student_id field, fallback to id
-          const externalStudentId = externalStudentData.external_student_id || externalStudentData.id;
-          
-          if (!externalStudentId) {
-            console.error('Error: external_student_id is missing in externalStudentData:', externalStudentData);
-            return null;
-          }
-
-          // Check if external student already exists for this client
-          const { data: existingExternalStudent, error: checkError } = await supabase
-            .from('external_students' as any)
-            .select('id')
-            .eq('external_student_id', externalStudentId)
-            .eq('client_id', clientId)
-            .maybeSingle();
-
-          if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
-            console.error('Error checking existing external student:', checkError);
-            return null;
-          }
-
-          // Prepare student_info JSONB with all student information
-          const studentInfo = {
-            gender: externalStudentData.gender || null,
-            email: externalStudentData.email || null,
-            status: externalStudentData.status || null,
-            grade_id: externalStudentData.grade_id || null,
-            section_id: externalStudentData.section_id || null,
-            grades: externalStudentData.grades || null,
-            sections: externalStudentData.sections || null,
-            client_id: externalStudentData.client_id || null
-          };
-
-          // Prepare data for insert/update
-          const externalStudentRecord = {
-            client_id: clientId, // This is the current client's ID (application client)
-            external_client_id: externalStudentData.external_client_id,
-            external_student_id: externalStudentId,
-            student_id: externalStudentData.student_id,
-            name: externalStudentData.name,
-            is_external: true,
-            is_active: true,
-            student_info: studentInfo,
-            updated_at: new Date().toISOString()
-          };
-
-          let externalStudentTableId: string;
-
-          if (existingExternalStudent) {
-            // Update existing record
-            const { data: updatedExternalStudent, error: updateError } = await supabase
-              .from('external_students' as any)
-              .update(externalStudentRecord)
-              .eq('id', (existingExternalStudent as any).id)
-              .select('id')
-              .single();
-
-            if (updateError || !updatedExternalStudent) {
-              console.error('Error updating external student:', updateError);
-              return null;
-            }
-
-            externalStudentTableId = (updatedExternalStudent as any).id;
-            console.log('Updated external student:', externalStudentTableId);
-          } else {
-            // Insert new record
-            const { data: newExternalStudent, error: insertError } = await supabase
-              .from('external_students' as any)
-              .insert({
-                ...externalStudentRecord,
-                created_at: new Date().toISOString()
-              })
-              .select('id')
-              .single();
-
-            if (insertError || !newExternalStudent) {
-              console.error('Error inserting external student:', insertError);
-              return null;
-            }
-
-            externalStudentTableId = (newExternalStudent as any).id;
-            console.log('Created external student:', externalStudentTableId);
-          }
-
-          return externalStudentTableId;
-        } catch (error) {
-          console.error('Error in createOrUpdateExternalStudent:', error);
-          return null;
-        }
-      };
-
-      // Function to create or update incident_external_students link
-      const createOrUpdateIncidentExternalStudent = async (
-        incidentId: string,
-        externalStudentTableId: string,
-        externalClientId: string | null,
-        applicationClientId: string
-      ): Promise<boolean> => {
-        try {
-          // Check if link already exists
-          const { data: existingLink, error: checkError } = await supabase
-            .from('incident_external_students' as any)
-            .select('id')
-            .eq('incident_id', incidentId)
-            .eq('external_student_id', externalStudentTableId)
-            .maybeSingle();
-
-          if (checkError && checkError.code !== 'PGRST116') {
-            console.error('Error checking existing incident-external student link:', checkError);
-            return false;
-          }
-
-          if (existingLink) {
-            // Link already exists, update timestamp, external_client_id, and client_id
-            const { error: updateError } = await supabase
-              .from('incident_external_students' as any)
-              .update({ 
-                updated_at: new Date().toISOString(),
-                external_client_id: externalClientId,
-                client_id: applicationClientId
-              })
-              .eq('id', (existingLink as any).id);
-
-            if (updateError) {
-              console.error('Error updating incident-external student link:', updateError);
-              return false;
-            }
-
-            console.log('Updated incident-external student link');
-          } else {
-            // Create new link
-            const { error: insertError } = await supabase
-              .from('incident_external_students' as any)
-              .insert({
-                incident_id: incidentId,
-                external_student_id: externalStudentTableId,
-                external_client_id: externalClientId,
-                client_id: applicationClientId,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              });
-
-            if (insertError) {
-              console.error('Error inserting incident-external student link:', insertError);
-              return false;
-            }
-
-            console.log('Created incident-external student link');
-          }
-
-          return true;
-        } catch (error) {
-          console.error('Error in createOrUpdateIncidentExternalStudent:', error);
-          return false;
-        }
-      };
-
-      // ========== REMOVE UNLINKED EXTERNAL STUDENTS ==========
-      // Function to remove external student links that are no longer in peopleInvolved
-      const removeUnlinkedExternalStudents = async (
-        incidentId: string,
-        currentExternalStudentIds: string[],
-        applicationClientId: string
-      ): Promise<void> => {
-        try {
-          // Get all current links for this incident and client_id
-          const { data: currentLinks, error: fetchError } = await supabase
-            .from('incident_external_students' as any)
-            .select('id, external_student_id')
-            .eq('incident_id', incidentId)
-            .eq('client_id', applicationClientId);
-
-          if (fetchError) {
-            console.error('Error fetching current external student links:', fetchError);
-            return;
-          }
-
-          if (!currentLinks || currentLinks.length === 0) {
-            return;
-          }
-
-          // For each link, get the external_students record to find external_student_id
-          const linksToRemove: any[] = [];
-
-          for (const link of currentLinks) {
-            const { data: externalStudent, error: studentError } = await supabase
-              .from('external_students' as any)
-              .select('external_student_id')
-              .eq('id', (link as any).external_student_id)
-              .maybeSingle();
-
-            if (studentError || !externalStudent) {
-              console.warn('Could not fetch external student for link:', (link as any).id);
-              continue;
-            }
-
-            const externalStudentId = (externalStudent as any).external_student_id;
-            
-            // If this external_student_id is not in the current list, mark for removal
-            if (externalStudentId && !currentExternalStudentIds.includes(externalStudentId)) {
-              linksToRemove.push(link);
-            }
-          }
-
-          // Remove links that are no longer needed
-          for (const link of linksToRemove) {
-            const { error: deleteError } = await supabase
-              .from('incident_external_students' as any)
-              .delete()
-              .eq('id', (link as any).id)
-              .eq('incident_id', incidentId)
-              .eq('client_id', applicationClientId);
-
-            if (deleteError) {
-              console.error('Error removing external student link:', deleteError);
-            } else {
-              console.log('Removed external student link:', (link as any).id);
-            }
-          }
-        } catch (error) {
-          console.error('Error in removeUnlinkedExternalStudents:', error);
-        }
-      };
-
-      // Process external students from peopleInvolved (already validated above)
-      // Get current external student IDs from peopleInvolved
-      const currentExternalStudentIds = externalStudents
-        .map((student: any) => (student as any).external_student_id || student.id)
-        .filter((id: any) => id);
-
-      // Remove links for external students that are no longer in peopleInvolved
-      if (id) {
-        await removeUnlinkedExternalStudents(id, currentExternalStudentIds, clientId);
+      const externalStudentFailures: string[] = updateResult?.externalStudentFailures || [];
+      for (const failedName of externalStudentFailures) {
+        toast.warning(`Failed to save external student "${failedName}"`);
       }
 
-      if (externalStudents.length > 0) {
-        // All validations passed, proceed with processing
-        console.log(`Processing ${externalStudents.length} external student(s)...`);
-
-        for (const externalStudent of externalStudents) {
-          try {
-            // Create or update external student
-            const externalStudentTableId = await createOrUpdateExternalStudent(externalStudent);
-
-            if (externalStudentTableId && id) {
-              // Get external_client_id from the external student data (already validated above)
-              const externalClientId = (externalStudent as any).external_client_id;
-              
-              // Link incident with external student (pass application client_id)
-              await createOrUpdateIncidentExternalStudent(id, externalStudentTableId, externalClientId, clientId);
-            } else {
-              console.warn('Failed to create/update external student, skipping link creation');
-              toast.warning(`Failed to save external student "${(externalStudent as any).name}"`);
-            }
-          } catch (error) {
-            console.error('Error processing external student:', error);
-            toast.error(`Error processing external student "${(externalStudent as any).name}": ${error instanceof Error ? error.message : 'Unknown error'}`);
-            // Continue processing other external students even if one fails
-          }
-        }
-
-        console.log('External students processing completed');
-      }
-      
       // Handle notifications for updates and reassignments
       try {
         console.log('=== STARTING NOTIFICATION LOGIC ===');
@@ -584,16 +320,11 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
         console.log('Form data owner (assigned_to):', formData.owner);
         console.log('Original owner (ownerId):', incidentData.ownerId);
         
-        // Get updater details
-        console.log('Fetching updater details for user ID:', user.id);
-        const { data: updater } = await supabase
-          .from('employees')
-          .select('id, email, first_name, last_name')
-          .eq('id', incidentData.created_by)
-          .limit(1)
-          .maybeSingle();
-        
-        console.log('Updater data:', updater);
+        // Get updater from already-loaded config employees (no extra DB call)
+        const updaterRaw = configEmployees.find((e: ConfigEmployee) => e.id === incidentData.created_by);
+        const updater = updaterRaw
+          ? { id: updaterRaw.id, email: updaterRaw.email, first_name: updaterRaw.first_name, last_name: updaterRaw.last_name }
+          : null;
 
         if (updater) {
           const incidentForNotification = {
@@ -615,14 +346,12 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
           });
           
           if (wasReassigned) {
-            // Send assignment notification to new assignee
+            // Get new assignee from already-loaded config employees (no extra DB call)
             console.log('=== INCIDENT WAS REASSIGNED ===');
-            console.log('Sending assignment notification to new assignee:', formData.owner);
-            const { data: newAssignee } = await supabase
-              .from('employees')
-              .select('id, email, first_name, last_name')
-              .eq('id', formData.owner)
-              .single();
+            const newAssigneeRaw = configEmployees.find((e: ConfigEmployee) => e.id === formData.owner);
+            const newAssignee = newAssigneeRaw
+              ? { id: newAssigneeRaw.id, email: newAssigneeRaw.email, first_name: newAssigneeRaw.first_name, last_name: newAssigneeRaw.last_name }
+              : null;
 
             if (newAssignee) {
               await incidentNotificationService.queueIncidentAssignedNotification(
@@ -636,17 +365,14 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
           // Send update notification to current assignee (if different from updater)
 
-          let ownerOfIncident = incidentData.created_by == employeeData.id
+          const ownerOfIncident = incidentData.created_by == employeeData.id
         
           if (ownerOfIncident && formData.owner && formData.owner !== updater.id && !wasReassigned) {
             console.log('=== SENDING UPDATE NOTIFICATION ===');
-            const { data: assignee } = await supabase
-              .from('employees')
-              .select('id, email, first_name, last_name')
-              .eq('id', formData.owner)
-              .single();
-
-            console.log('Assignee data for update notification:', assignee);
+            const assigneeRaw = configEmployees.find((e: ConfigEmployee) => e.id === formData.owner);
+            const assignee = assigneeRaw
+              ? { id: assigneeRaw.id, email: assigneeRaw.email, first_name: assigneeRaw.first_name, last_name: assigneeRaw.last_name }
+              : null;
 
             if (assignee) {
               console.log('Calling queueIncidentUpdatedNotification...');
@@ -654,7 +380,8 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                 incidentForNotification,
                 updater,
                 'Incident details have been updated',
-                employeeData
+                employeeData,
+                assignee
               );
               console.log('Update notification result:', result);
             } else {
@@ -673,9 +400,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
       
       // Navigate to incidents list instead of incident detail
       navigate('/incidents');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating incident:', error);
-      toast.error(error.message || "An error occurred while updating the incident");
+      toast.error(error instanceof Error ? error.message : "An error occurred while updating the incident");
     } finally {
       setIsSubmitting(false);
     }
@@ -692,10 +419,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
       </div>
     );
   }
-
-  // Create empty arrays for students and employees - they will be fetched inside the component
-  const students: Student[] = [];
-  const employees: UserBasicInfo[] = [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -936,6 +659,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
             <AssignmentSection
               owner={formData.owner}
               onSelectChange={handleSelectChange}
+              employees={mappedEmployees}
             />
 
             {/* Supporting Files Section */}
@@ -994,7 +718,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
               onAddPerson={handleAddPerson}
               onRemovePerson={handleRemovePerson}
               students={students}
-              employees={employees}
+              employees={mappedEmployees}
             />
           </CardContent>
 

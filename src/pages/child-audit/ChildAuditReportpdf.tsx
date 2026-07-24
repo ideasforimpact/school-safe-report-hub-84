@@ -2,8 +2,51 @@ import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { styles } from "./pdfstyles";
 import { formatDate } from "@/lib/Dateformat";
 
+interface TableRowProps {
+  row: (string | number | null | undefined)[];
+  widths: string[];
+  index: number;
+  small?: boolean;
+  isLast?: boolean;
+}
+
+interface HeaderRowProps {
+  headers: string[];
+  widths: string[];
+  small?: boolean;
+}
+
+interface LabelCount {
+  label: string;
+  count: number;
+}
+
+interface ReportSection {
+  title: string;
+  total: number;
+  chips: [string, number][];
+}
+
+interface MonthReport {
+  checks?: number;
+  injuryDays?: number;
+  meltdowns?: number;
+  sections: ReportSection[];
+  sleep?: { total: number; common?: LabelCount[] };
+  meltdown?: { total: number; durationBreakdown?: LabelCount[] };
+  injury?: { total: number; types?: LabelCount[] };
+  behaviour?: { total: number; common?: LabelCount[] };
+  health?: { total: number; issues?: LabelCount[] };
+  logs?: { date: string; time: string; type: string; injury: string; meltdown: string; observation: string; notes: string }[];
+}
+
+interface Student {
+  name: string;
+  grade: string;
+}
+
 /* TABLE ROW */
-const TableRow = ({ row, widths, index, small = false, isLast = false }: any) => (
+const TableRow = ({ row, widths, index, small = false, isLast = false }: TableRowProps) => (
   <View
     style={[
       styles.row,
@@ -11,7 +54,7 @@ const TableRow = ({ row, widths, index, small = false, isLast = false }: any) =>
     ]}
     wrap={false}
   >
-    {row.map((item: any, i: number) => (
+    {row.map((item, i: number) => (
       <Text
         key={i}
         style={[
@@ -29,7 +72,7 @@ const TableRow = ({ row, widths, index, small = false, isLast = false }: any) =>
 );
 
 /* HEADER ROW */
-const HeaderRow = ({ headers, widths, small = false }: any) => (
+const HeaderRow = ({ headers, widths, small = false }: HeaderRowProps) => (
   <View style={styles.row}>
     {headers.map((h: string, i: number) => (
       <Text
@@ -46,7 +89,7 @@ const HeaderRow = ({ headers, widths, small = false }: any) => (
   </View>
 );
 
-const generateDiagnostics = (report: any) => {
+const generateDiagnostics = (report: MonthReport) => {
   const insights: string[] = [];
 
   /* SLEEP  */
@@ -64,7 +107,7 @@ const generateDiagnostics = (report: any) => {
     const breakdown = report.meltdown.durationBreakdown || [];
 
     const durationText = breakdown
-      .map((d: any) => `${d.label} (${d.count}x)`)
+      .map((d: LabelCount) => `${d.label} (${d.count}x)`)
       .join(", ");
 
     insights.push(
@@ -75,7 +118,7 @@ const generateDiagnostics = (report: any) => {
   /*  INJURY  */
   if (report.injury?.total > 0) {
     const types = report.injury.types
-      ?.map((t: any) => `${t.label}`)
+      ?.map((t: LabelCount) => `${t.label}`)
       .join(", ");
 
     insights.push(
@@ -86,7 +129,7 @@ const generateDiagnostics = (report: any) => {
   /*  BEHAVIOUR  */
   if (report.behaviour?.total > 0) {
     const common = report.behaviour.common
-      ?.map((b: any) => b.label)
+      ?.map((b: LabelCount) => b.label)
       .join(", ");
 
     insights.push(
@@ -97,7 +140,7 @@ const generateDiagnostics = (report: any) => {
   /*  HEALTH  */
   if (report.health?.total > 0) {
     const issues = report.health.issues
-      ?.map((h: any) => h.label)
+      ?.map((h: LabelCount) => h.label)
       .join(", ");
 
     insights.push(
@@ -108,7 +151,7 @@ const generateDiagnostics = (report: any) => {
   return insights;
 };
 
-const ChildAuditReportPDF = ({ student, monthReport }: any) => {
+const ChildAuditReportPDF = ({ student, monthReport }: { student: Student; monthReport: MonthReport }) => {
   const insights = generateDiagnostics(monthReport);
   const generatedAt = formatDate(new Date());;
   return (
@@ -151,7 +194,7 @@ const ChildAuditReportPDF = ({ student, monthReport }: any) => {
               Factor Distribution & Analysis
             </Text>
 
-            {monthReport?.sections.map((section: any) => (
+            {monthReport?.sections.map((section: ReportSection) => (
               <View key={section.title}>
 
                 <Text style={styles.subHeading}>
@@ -168,7 +211,7 @@ const ChildAuditReportPDF = ({ student, monthReport }: any) => {
                         small
                       />
 
-                      {section.chips.map(([label, count]: any, i: number) => (
+                      {section.chips.map(([label, count]: [string, number], i: number) => (
                         <TableRow
                           key={label}
                           row={[label, count]}
@@ -241,7 +284,7 @@ const ChildAuditReportPDF = ({ student, monthReport }: any) => {
                 widths={["12%", "12%", "14%", "16%", "10%", "18%", "18%"]}
               />
 
-              {monthReport.logs?.map((log: any, i: number) => (
+              {monthReport.logs?.map((log, i: number) => (
                 <TableRow
                   key={i}
                   row={[

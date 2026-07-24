@@ -121,7 +121,7 @@ export const employeeReducer = (
         isLoggingOut: false
       };
       
-    case EmployeeActionTypes.SET_EMPLOYEE_DATA:
+    case EmployeeActionTypes.SET_EMPLOYEE_DATA: {
       const nextHomeClientId =
         action.payload?.homeClientId ??
         action.payload?.clientId ??
@@ -140,6 +140,7 @@ export const employeeReducer = (
           ? state.activeClientId
           : (action.payload?.clientId || state.activeClientId || state.clientId)
       };
+    }
       
     case EmployeeActionTypes.SET_CONFIGURED_MODULES:
       return {
@@ -190,7 +191,7 @@ export const employeeReducer = (
           : state.employeeData
       };
 
-    case EmployeeActionTypes.RESET_SWITCH_CONTEXT:
+    case EmployeeActionTypes.RESET_SWITCH_CONTEXT: {
       const resetHomeClientId = state.employeeData ? state.employeeData.homeClientId || null : null;
       return {
         ...state,
@@ -207,6 +208,7 @@ export const employeeReducer = (
             }
           : state.employeeData
       };
+    }
       
     case EmployeeActionTypes.SET_LOGOUT_STATE:
       return {

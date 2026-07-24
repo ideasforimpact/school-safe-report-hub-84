@@ -7,6 +7,7 @@
     "questions": [
       {
         "text": "Are all emergency exits clearly marked, unobstructed, and inspected regularly?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -14,6 +15,7 @@
       },
       {
         "text": "Is a CCTV surveillance system installed across key campus areas and monitored actively?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -21,6 +23,7 @@
       },
       {
         "text": "Are fire extinguishers placed at designated points and serviced within the last 12 months?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -28,6 +31,7 @@
       },
       {
         "text": "Is there a functional anti-ragging committee with clear escalation procedures?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -35,13 +39,15 @@
       },
       {
         "text": "Are laboratory safety protocols (PPE availability, chemical storage, emergency shower) in place?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,
         "allowAttachments": true
       },
       {
-        "text": "Is access control implemented at campus entry/exit points with visitor management?",
+        "text": "Have any campus safety incidents or near-misses been left without corrective action in the last 12 months?",
+        "correctAnswer": "no",
         "files": [],
         "required": true,
         "allowComments": true,
@@ -49,6 +55,7 @@
       },
       {
         "text": "Has an emergency response plan been tested through a drill in the last 12 months?",
+        "correctAnswer": "yes",
         "files": [],
         "required": true,
         "allowComments": true,

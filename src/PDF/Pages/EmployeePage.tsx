@@ -1,13 +1,18 @@
 import { Page, View, Text } from "@react-pdf/renderer";
 import { styles } from "../PdfCss";
 import { ReportFooter } from "./ReportFooter";
-import { getPendingEmployeesGrouped } from "../utils";
+import { getPendingEmployeesGrouped, EmployeeReportRow, EmployeeDocumentReportRow } from "../utils";
+
+interface DocumentTypeRow {
+  id?: string;
+  description?: string;
+}
 
 interface Props {
   month: string;
-  employees: any[];
-  employeeDocuments: any[];
-  documentTypes: any[];
+  employees: EmployeeReportRow[];
+  employeeDocuments: EmployeeDocumentReportRow[];
+  documentTypes: DocumentTypeRow[];
 }
 
 export const EmployeePage = ({
@@ -20,11 +25,11 @@ export const EmployeePage = ({
   const totalEmployees = employees.length;
 
   const verifiedEmployees = employeeDocuments.filter(
-    (d: any) => d.verification_status === "verified"
+    (d) => d.verification_status === "verified"
   ).length;
 
   const pendingEmployees = employeeDocuments.filter(
-    (d: any) => d.verification_status !== "verified"
+    (d) => d.verification_status !== "verified"
   ).length;
 
   const verificationRate =
@@ -34,12 +39,12 @@ export const EmployeePage = ({
 
   // Employees who submitted at least one document
   const submittedEmployeeIds = new Set(
-    employeeDocuments.map((d: any) => d.employee_id)
+    employeeDocuments.map((d) => d.employee_id)
   );
 
   // Employees with no documents
   const noDocumentEmployees = employees.filter(
-    (emp: any) => !submittedEmployeeIds.has(emp.id)
+    (emp) => !submittedEmployeeIds.has(emp.id)
   );
 
   // Pending grouped list
@@ -101,15 +106,15 @@ export const EmployeePage = ({
           <Text style={styles.employeeColPending}>PENDING</Text>
         </View>
 
-        {documentTypes.map((type: any, i: number) => {
+        {documentTypes.map((type, i: number) => {
           const compliant = employeeDocuments.filter(
-            (d: any) =>
+            (d) =>
               d.document_type_id === type.id &&
               d.verification_status === "verified"
           ).length;
 
           const pending = employeeDocuments.filter(
-            (d: any) =>
+            (d) =>
               d.document_type_id === type.id &&
               d.verification_status !== "verified"
           ).length;
@@ -153,7 +158,7 @@ export const EmployeePage = ({
             </Text>
           </View>
 
-          {pendingList.slice(0, 8).map((emp: any, i: number) => (
+          {pendingList.slice(0, 8).map((emp, i: number) => (
             <View key={i} style={styles.tableRow}>
               <Text style={{ width: "30%", fontSize: 8 }}>
                 {emp.name}
@@ -208,7 +213,7 @@ export const EmployeePage = ({
             </Text>
           </View>
 
-          {noDocumentEmployees.slice(0, 8).map((emp: any, i: number) => (
+          {noDocumentEmployees.slice(0, 8).map((emp, i: number) => (
             <View key={i} style={styles.tableRow}>
               <Text style={{ width: "35%", fontSize: 8 }}>
                 {emp.first_name} {emp.last_name}

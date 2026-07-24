@@ -7,6 +7,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Ensures a promise takes at least `minMs` to resolve, so a loading spinner
+// tied to it stays on screen long enough to be perceived — otherwise a fast
+// or cached response can resolve within a single frame and the spinner never
+// visibly appears before the content swaps in.
+export async function ensureMinDuration<T>(promise: Promise<T>, minMs = 400): Promise<T> {
+  const start = Date.now();
+  const result = await promise;
+  const elapsed = Date.now() - start;
+  if (elapsed < minMs) {
+    await new Promise(resolve => setTimeout(resolve, minMs - elapsed));
+  }
+  return result;
+}
+
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   
@@ -29,7 +43,7 @@ export function buildPublicStorageUrl(filePath: string, bucket: string = 'employ
     return filePath;
   }
 
-  const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+  const base = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
   if (!base) {
     throw new Error('VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL is not set');
   }
@@ -71,7 +85,7 @@ export function buildClientLogoUrl(logoPath: string | null | undefined): string 
   }
   
   // Build URL from file path
-  const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+  const base = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
   if (!base) {
     console.warn('VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL is not set, cannot build logo URL');
     return undefined;

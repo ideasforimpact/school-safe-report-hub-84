@@ -1,8 +1,8 @@
 
-import { QuestionResponse } from '@/types/assessment';
+import { AssessmentQuestion, QuestionResponse } from '@/types/assessment';
 
 export const useProgressCalculation = (
-  questions: any[] = [], 
+  questions: AssessmentQuestion[] = [],
   responses: QuestionResponse[] = []
 ) => {
   // Calculate progress

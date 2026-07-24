@@ -28,7 +28,27 @@ export class NotificationService {
   /**
    * Queue notification for later processing by cron job
    */
-  async queueNotification(notificationData: NotificationData, currentEmployeeData?: any): Promise<boolean> {
+  async queueNotification(notificationData: NotificationData, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
+    const result = await this.queueNotificationInternal(notificationData, currentEmployeeData);
+    return result.success;
+  }
+
+  /**
+   * Same as queueNotification, but also returns the email_queue row's id so
+   * the caller can trigger immediate processing of that specific row
+   * (see assessmentNotificationService.triggerImmediateEmailProcessing).
+   */
+  async queueNotificationWithId(
+    notificationData: NotificationData,
+    currentEmployeeData?: Record<string, unknown>
+  ): Promise<{ success: boolean; emailQueueId?: string }> {
+    return this.queueNotificationInternal(notificationData, currentEmployeeData);
+  }
+
+  private async queueNotificationInternal(
+    notificationData: NotificationData,
+    currentEmployeeData?: Record<string, unknown>
+  ): Promise<{ success: boolean; emailQueueId?: string }> {
     try {
       console.log('Queueing notification:', {
         module: notificationData.module,
@@ -46,7 +66,7 @@ export class NotificationService {
           // Instead, stamp the source record so a UI can show "notification suppressed"
           // and an admin can audit which event was skipped and why.
           await this.recordSkipOnSource(notificationData, shouldSkip);
-          return false;
+          return { success: false };
         }
       } else {
         console.log('Grievance notification - bypassing skip condition checks');
@@ -56,14 +76,14 @@ export class NotificationService {
       const template = getFrontendTemplate(notificationData.module, notificationData.type);
       if (!template) {
         console.error('No template found for notification:', notificationData.type);
-        return false;
+        return { success: false };
       }
 
       // Process template variables
       const processedTemplate = this.processTemplate(template, notificationData.variables);
       console.log(processedTemplate,"processedTemplate");
-      
-      
+
+
       // Queue email in database
       const emailResult = await this.queueEmail({
         module_name: notificationData.module,
@@ -94,10 +114,10 @@ export class NotificationService {
         emailQueueId: emailResult.emailQueueId
       });
 
-      return emailResult.success;
+      return { success: emailResult.success, emailQueueId: emailResult.emailQueueId };
     } catch (error) {
       console.error('Error queueing notification:', error);
-      
+
       // Log failed notification
       await this.logNotification({
         ...notificationData,
@@ -106,15 +126,15 @@ export class NotificationService {
         status: 'failed',
         errorMessage: error instanceof Error ? error.message : 'Unknown error'
       });
-      
-      return false;
+
+      return { success: false };
     }
   }
 
   /**
    * Legacy method - now queues instead of sending immediately
    */
-  async sendNotification(notificationData: NotificationData, currentEmployeeData?: any): Promise<boolean> {
+  async sendNotification(notificationData: NotificationData, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
     return this.queueNotification(notificationData, currentEmployeeData);
   }
 
@@ -129,7 +149,7 @@ export class NotificationService {
     recipient_name?: string;
     subject: string;
     body: string;
-    params: Record<string, any>;
+    params: Record<string, unknown>;
     priority?: number;
   }): Promise<{ success: boolean; emailQueueId?: string }> {
     try {
@@ -208,7 +228,7 @@ export class NotificationService {
   /**
    * Check if notification should be skipped based on rules
    */
-  private async shouldSkipNotification(notificationData: NotificationData, currentEmployeeData?: any): Promise<string | null> {
+  private async shouldSkipNotification(notificationData: NotificationData, currentEmployeeData?: Record<string, unknown>): Promise<string | null> {
     try {
       // Get notification rules for this module and type
       const { data: rules, error } = await supabase
@@ -242,7 +262,7 @@ export class NotificationService {
   /**
    * Evaluate a specific skip condition
    */
-  private async evaluateSkipCondition(condition: string, notificationData: NotificationData, currentEmployeeData?: any): Promise<boolean> {
+  private async evaluateSkipCondition(condition: string, notificationData: NotificationData, currentEmployeeData?: Record<string, unknown>): Promise<boolean> {
     switch (condition) {
       case INCIDENT_SKIP_CONDITIONS.SELF_ACTION:
         return this.checkSelfAction(notificationData, currentEmployeeData);
@@ -273,7 +293,7 @@ export class NotificationService {
    * Returns false if we don't know who the current actor is — better to send a
    * potentially-redundant email than to silently drop a legitimate one.
    */
-  private checkSelfAction(notificationData: NotificationData, currentEmployeeData?: any): boolean {
+  private checkSelfAction(notificationData: NotificationData, currentEmployeeData?: Record<string, unknown>): boolean {
     if (!currentEmployeeData?.id) return false;
     return currentEmployeeData.id === notificationData.recipientId;
   }
@@ -311,7 +331,7 @@ export class NotificationService {
         return;
       }
 
-      const sourceId = (notificationData.metadata as Record<string, any> | undefined)?.[config.idKey];
+      const sourceId = (notificationData.metadata as Record<string, unknown> | undefined)?.[config.idKey];
       if (!sourceId) {
         console.warn(
           `recordSkipOnSource: missing ${config.idKey} in metadata for module=${notificationData.module}, skipping write`
@@ -348,8 +368,8 @@ export class NotificationService {
         return;
       }
 
-      const existing = Array.isArray((current as any).skipped_notifications)
-        ? (current as any).skipped_notifications
+      const existing = Array.isArray((current as Record<string, unknown>).skipped_notifications)
+        ? (current as Record<string, unknown>).skipped_notifications as unknown[]
         : [];
 
       const { error: updateErr } = await supabase

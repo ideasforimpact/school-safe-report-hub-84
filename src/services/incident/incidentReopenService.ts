@@ -10,7 +10,7 @@ export interface ReopenIncidentRequest {
 export interface ReopenIncidentResponse {
   success: boolean;
   message: string;
-  incident?: any;
+  incident?: Record<string, unknown>;
 }
 
 export const reopenIncident = async (

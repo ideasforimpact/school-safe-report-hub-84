@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   Table,
   TableBody,
@@ -9,126 +9,53 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle, Users, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import {CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
+import Loader from '@/components/common/Loader';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
 import { Employee } from '@/types/employeeVerification';
-import { usePagination } from '@/hooks/usePagination';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { formatDepartment } from '@/lib/formatUtils';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
+import { formatDepartment, capitalizeWords } from '@/lib/formatUtils';
 import { aggregatePersonalInfo } from './utils/personalInfoUtils';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface EmployeesListProps {
   employees: Employee[];
 }
 
-const EmployeesList: React.FC<EmployeesListProps> = ({
-  employees
-}) => {
-  const { isLoading, fetchEmployees } = useEmployeeVerification();
+const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
+  const { isLoading, fetchEmployees, currentPage, totalPages, totalCount, pageSize } = useEmployeeVerification();
   const navigate = useNavigate();
+  const realtimeDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastListRefetchRef = useRef<number>(0);
+  const LIST_REFETCH_COOLDOWN_MS = 3000;
 
-  // Debug: Log employee data with SOP statistics
-  useEffect(() => {
-    if (employees.length > 0) {
-      console.log('[EmployeesList] Received', employees.length, 'employees');
-      employees.forEach((emp, index) => {
-        const sopStats = emp.sopStatistics;
-        console.log(`[EmployeesList] Employee ${index + 1}: ${emp.name} (${emp.id})`, {
-          hasSopStatistics: !!sopStats,
-          sopStatistics: sopStats || 'MISSING',
-          totalSOPs: sopStats?.totalSOPs ?? 'N/A',
-          totalSOPsSignedOff: sopStats?.totalSOPsSignedOff ?? 'N/A',
-          totalSOPsToBeDone: sopStats?.totalSOPsToBeDone ?? 'N/A'
-        });
-      });
-    }
-  }, [employees]);
-
-  // Ensure employees are fetched when component mounts if not already loaded
-  useEffect(() => {
-    if (employees.length === 0 && !isLoading) {
-      fetchEmployees();
-    }
-  }, [employees.length, isLoading, fetchEmployees]);
-
-  const handleEmployeesRealtime = useCallback(
-    async () => {
-      await fetchEmployees();
-    },
-    [fetchEmployees]
-  );
-  useRealTimeSubHook({
-    channelName: "employees-realtime",
-    events: "*",
-    table: "employee_documents",
-    enabled: true,
-    onPayload: handleEmployeesRealtime,
-  });
-
-  // Real-time updates for SOP statistics - refresh employees to get updated stats
-  useRealTimeSubHook({
-    channelName: "employee-sop-stats-assigned",
-    events: ['INSERT', 'UPDATE', 'DELETE'],
-    table: 'sop_assigned',
-    enabled: true,
-    onPayload: () => {
-      // Refresh employees to get updated SOP stats
-      fetchEmployees();
-    },
-  });
-
-  useRealTimeSubHook({
-    channelName: "employee-sop-stats-signoff",
-    events: ['INSERT', 'UPDATE', 'DELETE'],
-    table: 'sop_signoff_request',
-    enabled: true,
-    onPayload: () => {
-      // Refresh employees to get updated SOP stats
-      fetchEmployees();
-    },
-  });
-
-  useRealTimeSubHook({
-    channelName: "employee-sop-stats-group-employees",
-    events: ['INSERT', 'UPDATE', 'DELETE'],
-    table: 'group_employees',
-    enabled: true,
-    onPayload: () => {
-      // Refresh employees to get updated SOP stats
-      fetchEmployees();
-    },
-  });
-  // Get document status for an employee
-  const getDocumentStatus = (employee: Employee) => {
-    const documents = employee.documents || [];
-    if (documents.length === 0) return 'no-documents';
-    
-    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
-    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
-    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress');
-    
-    // Priority: failed > pending > verified
-    if (failed.length > 0) return 'failed';
-    if (pending.length > 0) return 'pending';
-    if (verified.length > 0) return 'verified';
-    return 'mixed';
+  const handlePageChange = (page: number) => {
+    if (page !== currentPage) fetchEmployees(undefined, page);
   };
 
-  // Employees are already filtered by parent component
+  // Debounced realtime handler with 3s cooldown — prevents rapid successive list refetches
+  // when a verification edge function makes multiple sequential document updates
+  const handleDocumentsRealtime = useCallback(() => {
+    if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+    realtimeDebounceRef.current = setTimeout(() => {
+      const now = Date.now();
+      if (now - lastListRefetchRef.current < LIST_REFETCH_COOLDOWN_MS) return;
+      lastListRefetchRef.current = now;
+      fetchEmployees();
+    }, 800);
+  }, [fetchEmployees]);
 
-  // Set up pagination
-  const {
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    paginatedItems: paginatedEmployees,
-    goToNextPage,
-    goToPreviousPage
-  } = usePagination(employees, 10);
+  useRealTimeSubHook({
+    channelName: 'employee-list-documents-realtime',
+    table: 'employee_documents',
+    events: '*',
+    enabled: true,
+    onPayload: handleDocumentsRealtime,
+  });
 
   // Render documents information for each employee using priority-based status
   const renderDocumentsInfo = (employee: Employee) => {
@@ -151,10 +78,19 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
       );
     }
 
+    // Drivers must have a verified Driving License before the overall status
+    // can show "Verified" — having some other document (e.g. Aadhar) verified
+    // isn't enough on its own for this department.
+    const isDriver = (employee.department || '').toLowerCase() === 'driver';
+    const hasVerifiedLicense = documents.some(
+      doc => doc.documentTypeName === 'driving_license' &&
+        (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed')
+    );
+
     // Priority-based status logic (same as VerificationStatusSummary)
     // Priority: Failed > Pending > Verified
     // If ANY document failed → Show "Failed"
-    // If no failures but ANY pending → Show "Pending"  
+    // If no failures but ANY pending → Show "Pending"
     // If ALL documents verified → Show "Verified"
     const getOverallStatus = () => {
       if (failed.length > 0) {
@@ -164,7 +100,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
           iconColor: 'text-red-600',
           badgeClass: 'bg-red-100 text-red-800 border-red-200'
         };
-      } else if (pending.length > 0) {
+      } else if (pending.length > 0 || (isDriver && !hasVerifiedLicense)) {
         return {
           status: 'Pending',
           icon: Clock,
@@ -208,18 +144,15 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
 
   const formatDocumentName = (name?: string) => {
     if (!name) return 'Document';
-    return name
-      .split('_')
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
+    return name.split('_').filter(Boolean).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
   };
 
+  // Show a centered loading spinner for any fetch in progress — initial load
+  // or a pagination page change alike — before the new page's data arrives.
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
-        <p className="text-gray-600">Loading employees...</p>
+      <div className="flex items-center justify-center py-20">
+        <Loader text="Loading employees..." />
       </div>
     );
   }
@@ -247,12 +180,11 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedEmployees.map((employee) => {
-                // Determine if employee is inactive (for verification system)
+              employees.map((employee) => {
                 const isInactive = employee.status === false;
                 
                 // Prepare truncated name for display with full value on hover
-                const fullName = employee.name || '';
+                const fullName = capitalizeWords(employee.name);
                 const displayName =
                   fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
 
@@ -261,9 +193,32 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                 const aggregatedPersonalInfo = aggregatePersonalInfo(documents);
                 const hasDifferentDobs = aggregatedPersonalInfo.dob.differentValues.length > 0;
 
+                const isDriverEmployee = (employee.department || '').toLowerCase() === 'driver';
+
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
-                    <TableCell>{employee.employeeId}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{employee.employeeId}</span>
+                        {isDriverEmployee && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-blue-300 bg-blue-50 text-xs font-semibold text-blue-700 cursor-default">
+                                  D
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                className="relative bg-slate-800 text-white border-slate-800 px-3 py-1.5 text-sm after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-2 after:w-2 after:rotate-45 after:bg-slate-800"
+                              >
+                                Driver
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell
                       title={fullName}
                       className="max-w-xs truncate"
@@ -341,13 +296,13 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => navigate(`/employee-verification/${employee.id}`)}
                           disabled={isInactive}
                         >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <Settings className="h-4 w-4" />
+                          <Settings className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -358,40 +313,15 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
           </TableBody>
         </Table>
       </div>
-      
-    {totalPages > 1 && (
-        <div className="flex justify-center mt-4">
-          <Pagination>
-            <PaginationContent className="flex items-center gap-3">
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={goToPreviousPage}
-                  className={
-                    currentPage === 1
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                  {currentPage} of {totalPages}
-                </span>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  onClick={goToNextPage}
-                  className={
-                    currentPage === totalPages
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
+
+      <TablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        itemLabel="employees"
+        onPageChange={handlePageChange}
+      />
     </div>
   );
 };

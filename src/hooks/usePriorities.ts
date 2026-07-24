@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { priorityService, PriorityItem } from '@/services/incident/priorityService';
 import { useAuth } from '@/contexts/auth/useAuth';
 
@@ -8,7 +8,7 @@ export function usePriorities(clientTypeId?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPriorities = async () => {
+  const fetchPriorities = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -21,20 +21,20 @@ export function usePriorities(clientTypeId?: string) {
         // Then sort by weight (higher weight first)
         return (b.weight || 0) - (a.weight || 0);
       });
-      
+
       setPriorities(sortedPriorities);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching priorities:", err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
       setPriorities([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientTypeId]);
 
   useEffect(() => {
     fetchPriorities();
-  }, [clientTypeId]);
+  }, [fetchPriorities]);
 
   return { priorities, loading, error, refetch: fetchPriorities };
 }
@@ -46,27 +46,27 @@ export function useActivePriorities() {
   const [error, setError] = useState<string | null>(null);
 
   const { employeeData, user } = useAuth();
-  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id ?? undefined;
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? undefined;
 
-  const fetchPriorities = async () => {
+  const fetchPriorities = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await priorityService.getPriorities(true, clientTypeId);
       const sortedPriorities = (data || []).sort((a, b) => (b.weight || 0) - (a.weight || 0));
       setPriorities(sortedPriorities);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching active priorities:", err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
       setPriorities([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientTypeId]);
 
   useEffect(() => {
     fetchPriorities();
-  }, [clientTypeId]);
+  }, [fetchPriorities]);
 
   return { priorities, loading, error, refetch: fetchPriorities };
 }

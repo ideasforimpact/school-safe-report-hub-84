@@ -20,7 +20,14 @@ const PeopleInvolved: React.FC<PeopleInvolvedProps> = ({ people }) => {
           {people.map((person, index) => (
             <div key={index} className="flex flex-col space-y-1 border-b pb-2 last:border-b-0">
               <div className="flex items-center">
-                <span className="font-medium">{person.name || 'Unnamed'}</span>
+                <span className="font-medium">
+                  {person.aadhar_verified_name || person.name || 'Unnamed'}
+                </span>
+                {person.role === 'Staff' && person.aadhar_verified_name && (
+                  <span className="text-xs ms-2 px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded">
+                    Aadhar Verified
+                  </span>
+                )}
                 <span className="text-xs ms-3 px-2 py-1 bg-gray-100 rounded-full text-gray-700">
                   {person.role}
                 </span>

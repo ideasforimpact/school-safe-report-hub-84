@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ interface AddGroupDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  editingGroup: any | null;
+  editingGroup: Record<string, unknown> | null;
   clientId: string;
   employeeId: string;
 }
@@ -48,36 +48,6 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const { employeeDepartments, loading: departmentsLoading } = useEmployeeDepartments();
 
-  useEffect(() => {
-    if (isOpen) {
-      if (editingGroup) {
-        console.log('[AddGroupDialog] Edit popup opened – editingGroup:', {
-          id: editingGroup.id,
-          name: editingGroup.name,
-          description: editingGroup.description,
-          group_type: editingGroup.group_type,
-          raw: editingGroup,
-        });
-        setName(editingGroup.name || '');
-        setDescription(editingGroup.description || '');
-        setGroupType(editingGroup.group_type || 'Department');
-        // Use department_id from group when available (so edit shows selected department)
-        const deptId = (editingGroup as { department_id?: string | null }).department_id;
-        setSelectedDepartment(deptId ?? '');
-        // Load existing group employees for editing (fallback for department from role_id if no department_id on group yet)
-        loadGroupEmployees(editingGroup.id);
-      } else {
-        resetForm();
-      }
-    }
-  }, [isOpen, editingGroup]);
-
-  useEffect(() => {
-    if (groupType === 'Employee' && clientId && isOpen) {
-      fetchEmployees();
-    }
-  }, [groupType, clientId, isOpen]);
-
   const resetForm = () => {
     setName('');
     setDescription('');
@@ -86,7 +56,7 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
     setSelectedEmployees([]);
   };
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     if (!clientId) return;
 
     try {
@@ -96,24 +66,25 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
         .select('id, first_name, last_name, email')
         .eq('client_id', clientId)
         .eq('status', true)
-        .not('email', 'is', null) 
+        .eq('is_secondary_super_admin', false)
+        .not('email', 'is', null)
         .order('first_name');
 
       if (error) throw error;
 
       setEmployees(data || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to load employees');
     } finally {
       setLoadingEmployees(false);
     }
-  };
+  }, [clientId]);
 
-  const loadGroupEmployees = async (groupId: string) => {
+  const loadGroupEmployees = useCallback(async (groupId: string) => {
     try {
       const { data, error } = await supabase
-          .from('group_employees' as any)
+          .from('group_employees' as Parameters<typeof supabase.from>[0])
           .select(`
             employee_id,
             role_id,
@@ -137,16 +108,18 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
       if (data && data.length > 0) {
         if (editingGroup?.group_type === 'Department') {
           // Fallback: set department from role_id when group has no department_id yet (e.g. before migration)
-          const rowWithDept = (data as any[]).find((r) => r.role_id);
-          const roleId = rowWithDept?.role_id ?? (data[0] as any)?.role_id;
+          type GroupEmployeeRow = { employee_id: string | null; role_id: string | null };
+          const rows = (data as GroupEmployeeRow[]);
+          const rowWithDept = rows.find((r) => r.role_id);
+          const roleId = rowWithDept?.role_id ?? rows[0]?.role_id;
           const hasDeptOnGroup = !!(editingGroup as { department_id?: string | null }).department_id;
           if (roleId && !hasDeptOnGroup) {
             setSelectedDepartment(roleId);
           }
         } else {
           // For employee groups, set selected employees
-          const empIds = data
-            .map((item: any) => item.employee_id)
+          const empIds = (data as Array<{ employee_id: string | null }>)
+            .map((item) => item.employee_id)
             .filter(Boolean);
           console.log('[AddGroupDialog] Group employees (employee group):', {
             group_id: editingGroup?.id,
@@ -156,10 +129,40 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
           setSelectedEmployees(empIds);
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading group employees:', error);
     }
-  };
+  }, [editingGroup]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editingGroup) {
+        console.log('[AddGroupDialog] Edit popup opened – editingGroup:', {
+          id: editingGroup.id,
+          name: editingGroup.name,
+          description: editingGroup.description,
+          group_type: editingGroup.group_type,
+          raw: editingGroup,
+        });
+        setName(editingGroup.name || '');
+        setDescription(editingGroup.description || '');
+        setGroupType(editingGroup.group_type || 'Department');
+        // Use department_id from group when available (so edit shows selected department)
+        const deptId = (editingGroup as { department_id?: string | null }).department_id;
+        setSelectedDepartment(deptId ?? '');
+        // Load existing group employees for editing (fallback for department from role_id if no department_id on group yet)
+        loadGroupEmployees(editingGroup.id);
+      } else {
+        resetForm();
+      }
+    }
+  }, [isOpen, editingGroup, loadGroupEmployees]);
+
+  useEffect(() => {
+    if (groupType === 'Employee' && clientId && isOpen) {
+      fetchEmployees();
+    }
+  }, [groupType, clientId, isOpen, fetchEmployees]);
 
   const handleEmployeeToggle = (employeeId: string) => {
     setSelectedEmployees((prev) =>
@@ -230,30 +233,8 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
 
     try {
       setSubmitting(true);
-
-      // Check for duplicate group name (case-insensitive, within same client)
       const trimmedName = name.trim();
-      const { data: existingGroups, error: checkError } = await supabase
-        .from('groups' as any)
-        .select('id, name')
-        .eq('client_id', clientId)
-        .ilike('name', trimmedName);
-
-      if (checkError) {
-        console.error('Error checking for duplicate group:', checkError);
-      } else if (existingGroups && existingGroups.length > 0) {
-        // If editing, allow if it's the same group
-        if (editingGroup && existingGroups && existingGroups.some((g: any) => g.id === editingGroup.id)) {
-          // Same group, allow update
-        } else {
-          // Duplicate found
-          toast.error(`A group with the name "${trimmedName}" already exists`);
-          setSubmitting(false);
-          return;
-        }
-      }
-
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         action: editingGroup ? 'update' : 'create',
         client_id: clientId,
         employee_id: employeeId,
@@ -284,9 +265,9 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
 
       toast.success(editingGroup ? 'Group updated successfully' : 'Group created successfully');
       onSuccess();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving group:', error);
-      toast.error(error?.message || 'Failed to save group');
+      toast.error(error instanceof Error ? error.message : 'Failed to save group');
     } finally {
       setSubmitting(false);
     }

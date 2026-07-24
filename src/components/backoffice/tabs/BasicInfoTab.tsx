@@ -5,12 +5,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ImageIcon, Asterisk, Check, ChevronDown } from 'lucide-react';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -18,65 +18,59 @@ import { InstitutionType } from '@/contexts/ClientContext';
 import { supabase } from '@/integrations/supabase/client';
 import { buildClientLogoUrl } from '@/lib/utils';
 import { checkSuperAdminEmailExists } from '@/services/employee/employeeValidationService';
+import {
+  isValidClientName,
+  isValidContactPerson,
+  isValidClientFormEmail as isValidEmail,
+  isValidClientFormPhone as isValidPhone,
+} from '@/services/employee/utils/employeeValidationUtils';
 import { toast } from 'sonner';
 import SecondarySuperAdminEmailList, { MAX_SECONDARY_SUPER_ADMINS } from './SecondarySuperAdminEmailList';
 import { Plus } from 'lucide-react';
-
+ 
 interface ClientType {
   id: string;
   key: string;
   name: string;
 }
+interface BasicInfoFormData {
+  id?: string;
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  active: boolean;
+  logo: string;
+  institutionType: InstitutionType;
+  superAdminEmail?: string;
+  // Feature 2: optional because the add-view path doesn't ever populate it.
+  secondarySuperAdminEmails?: string[];
+  // Feature 2 bug 1 follow-up: surfaced here so adding a secondary super
+  // admin can auto-keep this list in sync (the user shouldn't have to
+  // remember to update both lists).
+  website?: string;
+  clientTypeId?: string;
+  aiIncidentRecommendedActionsEnabled?: boolean;
+  isHeadOffice?: boolean;
+  mappedClientIds?: string[];
+  mappedClientAccessLevels?: Record<string, 'read_only' | 'read_write_delete'>;
+  parentHeadOfficeId?: string;
+  parentHeadOfficeName?: string;
+  moduleInfoArray?: { name: string; module_id: string; is_admin: boolean }[];
+  allowedDomains?: string[];
+  superAdminAllowedDomains?: string[];
+  authProviders?: Record<string, unknown>;
+  whitelistedIPs?: string[];
+  superAdminEmailExists?: boolean;
+}
 
 interface BasicInfoTabProps {
-  formData: {
-    id?: string;
-    name: string;
-    contactPerson: string;
-    email: string;
-    phone: string;
-    active: boolean;
-    logo: string;
-    institutionType: InstitutionType;
-    superAdminEmail?: string;
-    // Feature 2: optional because the add-view path doesn't ever populate it.
-    secondarySuperAdminEmails?: string[];
-    // Feature 2 bug 1 follow-up: surfaced here so adding a secondary super
-    // admin can auto-keep this list in sync (the user shouldn't have to
-    // remember to update both lists).
-    superAdminAllowedDomains?: string[];
-    website?: string;
-    clientTypeId?: string;
-    aiIncidentRecommendedActionsEnabled?: boolean;
-    isHeadOffice?: boolean;
-    mappedClientIds?: string[];
-    mappedClientAccessLevels?: Record<string, 'read_only' | 'read_write_delete'>;
-    parentHeadOfficeId?: string;
-    parentHeadOfficeName?: string;
-  };
-  setFormData: (formData: any) => void;
+  formData: BasicInfoFormData;
+  setFormData: React.Dispatch<React.SetStateAction<BasicInfoFormData>>;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   showErrors?: boolean;
   isEdit?: boolean;
 }
-
-export const isValidClientName = (name: string) => {
-  const trimmed = name.trim();
-  if (!trimmed) return false;
-  return /^[A-Za-z]+(?:\s[A-Za-z]+)*$/.test(trimmed);
-};
-export const isValidContactPerson = (name: string) => {
-   const trimmed = name.trim();
-   if (!trimmed) return false;
-   return /^[A-Za-z\s]{1,20}$/.test(trimmed);
- };
-
-export const isValidEmail = (email: string) => {
-  const trimmed = email.trim();
-  if (!trimmed) return false;
-  return /^(?!.*\.\.)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/.test(trimmed);
-};
-export const isValidPhone = (phone?: string) => !!phone && /^[6-9]\d{9}$/.test(phone);
 
 const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false, isEdit = false }: BasicInfoTabProps) => {
   const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
@@ -120,7 +114,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
   if (!formData.superAdminEmail) {
     setEmailExists(false);
     setCheckingEmail(false);
-    setFormData((prev: any) => ({
+    setFormData((prev) => ({
       ...prev,
       superAdminEmailExists: false
     }));
@@ -132,7 +126,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
   if (!isValidEmail(formData.superAdminEmail)) {
     setEmailExists(false);
     setCheckingEmail(false);
-    setFormData((prev: any) => ({
+    setFormData((prev) => ({
       ...prev,
       superAdminEmailExists: false
     }));
@@ -149,14 +143,14 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
     setEmailExists(exists);
     setCheckingEmail(false);
 
-    setFormData((prev: any) => ({
+    setFormData((prev) => ({
       ...prev,
       superAdminEmailExists: exists
     }));
   }, 600);
 
   return () => clearTimeout(timeout);
-}, [formData.superAdminEmail, emailTouched]);
+}, [formData.superAdminEmail, emailTouched, setFormData]);
 
 
   const fetchClientTypes = async () => {
@@ -192,10 +186,10 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         return;
       }
 
-      const rows = Array.isArray(data?.data) ? data.data : [];
+      const rows: unknown[] = Array.isArray(data?.data) ? data.data : [];
       const mappedRows = rows
-        .filter((row: any) => row?.id && row?.name)
-        .map((row: any) => ({
+        .filter((row): row is Record<string, unknown> => row !== null && typeof row === 'object' && 'id' in (row as object) && 'name' in (row as object))
+        .map((row) => ({
           id: row.id as string,
           name: row.name as string,
           active: row.active !== false,
@@ -337,13 +331,12 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
     setSavingHeadOfficeMapping(true);
     try {
-      const anyFormData = formData as any;
       const payload = {
         operation: 'update',
         client: {
           id: formData.id,
-          modules: anyFormData.moduleInfoArray || [],
-          superAdminEmail: anyFormData.superAdminEmail || '',
+          modules: formData.moduleInfoArray || [],
+          superAdminEmail: formData.superAdminEmail || '',
           clientTypeId: formData.clientTypeId,
           logo: formData.logo || '',
           name: formData.name,
@@ -352,11 +345,11 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           phone: formData.phone,
           active: formData.active,
           institutionType: formData.institutionType,
-          allowedDomains: anyFormData.allowedDomains || [],
-          superAdminAllowedDomains: anyFormData.superAdminAllowedDomains || [],
-          authProviders: anyFormData.authProviders || {},
-          website: anyFormData.website,
-          whitelistedIPs: anyFormData.whitelistedIPs || [],
+          allowedDomains: formData.allowedDomains || [],
+          superAdminAllowedDomains: formData.superAdminAllowedDomains || [],
+          authProviders: formData.authProviders || {},
+          website: formData.website,
+          whitelistedIPs: formData.whitelistedIPs || [],
           aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled !== false,
           is_head_office: true,
           mapped_client_ids: draftMappedClientIds,
@@ -376,8 +369,8 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
       await fetchClientsForMapping();
       toast.success('Head office and sub-client mapping saved');
       setHeadOfficeMappingDialogOpen(false);
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to save head office mapping');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save head office mapping');
     } finally {
       setSavingHeadOfficeMapping(false);
     }
@@ -501,11 +494,11 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
       <RequiredFieldLabel>
         <label htmlFor="superAdminEmail">Super Admin Email</label>
       </RequiredFieldLabel>
-
+ 
       {/* Primary super admin email + inline "+" button to add a secondary
           right next to it. The + button is gated by isEdit and the env
           flag, and disappears once the cap (2 secondaries) is reached.
-
+ 
           Autofill defense: Chrome IGNORES autoComplete="off" on
           type="email" fields and silently cross-fills every matching
           email input in the same form when the user picks an autofill
@@ -568,7 +561,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           );
         })()}
       </div>
-
+ 
       {/* Inline status messages */}
       {checkingEmail && (
         <p className="text-xs text-gray-500">Checking email...</p>
@@ -603,11 +596,11 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
             Super admin email is required
           </p>
         )}
-
+ 
         {/* Feature 2: secondary super admins (edit view only). The header
             and "+" button now live above (inline with the primary input).
             This component renders only the input rows.
-
+ 
             onChange wrapper auto-adds each secondary email's domain to the
             superAdminAllowedDomains list (capped at 3) so the two lists
             stay in sync without the user having to manage them separately.
@@ -645,7 +638,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           isEdit={isEdit}
         />
     </div>
-
+      
       <div className="space-y-2">
         <RequiredFieldLabel>
           <label htmlFor="contactPerson">Contact Person</label>

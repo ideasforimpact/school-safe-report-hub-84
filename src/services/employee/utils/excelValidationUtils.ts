@@ -1,15 +1,20 @@
 
 import { RawEmployeeData } from '../types/importTypes';
-import { checkBulkEmployeeIdDuplicates,checkBulkEmployeeEmailDuplicates } from '../employeeValidationService';
+import { checkBulkDuplicates } from '../employeeValidationService';
 import {
   EMPLOYEE_DESIGNATION_CONSTANTS,
   EMPLOYEE_ID_CONSTANTS,
   EMPLOYEE_LAST_NAME_CONSTANTS,
   EMPLOYEE_NAME_CONSTANTS,
   EMPLOYEE_PERSONAL_INFO_CONSTANTS,
-  STAFF_ID_CONSTANTS,
   BIOMETRIC_USER_ID_CONSTANTS,
   EXPERIENCE_CONSTANTS,
+  isValidReligion,
+  getReligionErrorMessage,
+  isValidNationality,
+  getNationalityErrorMessage,
+  ALLOWED_EMPLOYEE_TYPES,
+  isValidEmployeeTypeValue,
 } from '@/constant/employeeConstant';
 
 /**
@@ -79,7 +84,7 @@ export const isValidPhone = (phone: string): boolean => {
 };
 
 // Joining date must be a valid date
-export const isValidDate = (value: any): boolean => {
+export const isValidDate = (value: unknown): boolean => {
   if (!value) return false;
 
   if (value instanceof Date) {
@@ -127,16 +132,12 @@ export const isValidEmployeeId = (employeeId: string): boolean => {
   const trimmed = employeeId.trim();
   if (!trimmed) return false;
 
-  const min = EMPLOYEE_ID_CONSTANTS.MIN_LENGTH;
-  const max = EMPLOYEE_ID_CONSTANTS.MAX_LENGTH;
-  const employeeIdRegex = new RegExp(`^[A-Za-z0-9]{${min},${max}}$`);
-
-  return employeeIdRegex.test(trimmed);
+  return EMPLOYEE_ID_CONSTANTS.PATTERN.test(trimmed);
 };
 
 export const EMPLOYEE_EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export const EMPLOYEE_PHONE_REGEX = /^[6-9]\d{9}$/;
-export const RESIDENCE_ADDRESS_MAX_LENGTH = 500;
+export const RESIDENCE_ADDRESS_MAX_LENGTH = 250;
 export const ALLOWED_GENDER = ['male', 'female', 'other'] as const;
 
 export type PersonalDetailsFields = {
@@ -186,14 +187,62 @@ const isParseableDate = (value: string): boolean => {
 
 const isDateNotInFuture = (value: string): boolean => {
   if (!isParseableDate(value)) return false;
+
   const date = new Date(value);
   const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  return date <= today;
+
+  // Compare only the date part
+  date.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return date.getTime() <= today.getTime();
 };
 
-export const isValidEmployeeEmail = (email: string): boolean =>
-  EMPLOYEE_EMAIL_REGEX.test(email.trim());
+// Stricter than isDateNotInFuture: rejects today too, only a date
+// strictly before today counts as "past". Used for resigning/termination
+// date, which must already have happened.
+const isStrictlyPastDate = (value: string): boolean => {
+  if (!isParseableDate(value)) return false;
+
+  const date = new Date(value);
+  const today = new Date();
+
+  date.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return date.getTime() < today.getTime();
+};
+
+const isAtLeast18YearsOld = (value: string): boolean => {
+  if (!isParseableDate(value)) return false;
+
+  const dob = new Date(value);
+  const today = new Date();
+
+  let age = today.getFullYear() - dob.getFullYear();
+
+  const monthDiff = today.getMonth() - dob.getMonth();
+
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < dob.getDate())
+  ) {
+    age--;
+  }
+
+  return age >= 18;
+};
+
+export const EMPLOYEE_EMAIL_MAX_LENGTH = 50;
+
+export const isValidEmployeeEmail = (email: string): boolean => {
+  const trimmed = email.trim();
+
+  return (
+    trimmed.length <= EMPLOYEE_EMAIL_MAX_LENGTH &&
+    EMPLOYEE_EMAIL_REGEX.test(trimmed)
+  );
+};
 
 export const isValidEmployeePhone = (phone: string): boolean =>
   EMPLOYEE_PHONE_REGEX.test(phone.trim());
@@ -241,11 +290,12 @@ export const getPersonalDetailsFieldErrors = (
   }
 
   let dobError = '';
+
   if (dob) {
     if (!isParseableDate(dob)) {
       dobError = 'Please enter a valid date of birth';
-    } else if (!isDateNotInFuture(dob)) {
-      dobError = 'Date of birth cannot be in the future';
+    } else if (!isAtLeast18YearsOld(dob)) {
+      dobError = 'Employee must be at least 18 years old';
     }
   }
 
@@ -259,11 +309,17 @@ export const getPersonalDetailsFieldErrors = (
     fatherName: validateOptionalNameLikeField(personalDetails.fatherName || '', "Father's name"),
     experience: experienceError,
     qualification: qualificationError,
-    religion: validateOptionalNameLikeField(personalDetails.religion || '', 'Religion'),
-    nationality: validateOptionalNameLikeField(personalDetails.nationality || '', 'Nationality'),
+    religion:
+      personalDetails.religion && !isValidReligion(personalDetails.religion)
+        ? getReligionErrorMessage()
+        : '',
+    nationality:
+      personalDetails.nationality && !isValidNationality(personalDetails.nationality)
+        ? getNationalityErrorMessage()
+        : '',
     bloodGroup:
-      bloodGroup && !/^(A|A1|A2|B|AB|A1B|A2B|O)(\+|-|POSITIVE|NEGATIVE)$/i.test(bloodGroup)
-        ? 'Blood group must be in format A+, O-, AB+, B-'
+      bloodGroup && !/^(A|A1|A2|B|AB|A1B|A2B|O|OH)(\+|-|POSITIVE|NEGATIVE)$/i.test(bloodGroup)
+        ? 'Blood group must be in format A+,A-,B+,B-,AB+,AB-,O+,O-,OH+,OH-,A1B,A2B'
         : '',
     dob: dobError,
     gender: genderError,
@@ -285,8 +341,8 @@ export const getProfessionalOtherDetailsFieldErrors = (
   if (exitDate) {
     if (!isParseableDate(exitDate)) {
       exitDateError = 'Please enter a valid resigning/termination date';
-    } else if (!isDateNotInFuture(exitDate)) {
-      exitDateError = 'Resigning date cannot be in the future';
+    } else if (!isStrictlyPastDate(exitDate)) {
+      exitDateError = 'Resigning date must be a past date';
     }
   }
 
@@ -365,7 +421,7 @@ export const getEmployeeIdFieldErrors = (employeeId?: string): string[] => {
   return messages;
 };
 
-export const validateExcelData = async (data: any[], clientId?: string): Promise<{ errors: string[]; warnings: string[] }> => {
+export const validateExcelData = async (data: Record<string, unknown>[], clientId?: string): Promise<{ errors: string[]; warnings: string[] }> => {
   const errors: string[] = [];
   const warnings: string[] = [];
   if (!Array.isArray(data) || data.length === 0) {
@@ -379,7 +435,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     'firstName',
     'lastName',
     // email, employeeType, department are optional
-    'joiningDate',
+    // 'joiningDate',
     'status'
   ];
   const allowedModuleNames = [
@@ -392,20 +448,18 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     'Grievances',
     'Users',
     'Settings',
+    'Committee',
+    'Sop',
+    'Student well being',
+    'Child Audit',
     'Compliance Documents'
-  ];
-  const ALLOWED_EMPLOYEE_TYPES = [
-    'permanent',
-    'contract',
-    'consultant',
-    'part time',
   ];
   const ALLOWED_DEPARTMENT = [
     'admin',
     'teaching',
     'security',
     'maintenance',
-    'transport',
+    'driver',
     'management',
   ];
   const ALLOWED_STATUS = ['active'];
@@ -426,10 +480,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
       errors.push(`Missing required column: ${column}`);
     });
   }
-  const isValidEmployeeType = (employeeType: string): boolean => {
-    if (!employeeType) return false;
-    return ALLOWED_EMPLOYEE_TYPES.includes(employeeType.trim().toLowerCase());
-  };
+  const isValidEmployeeType = isValidEmployeeTypeValue;
   const isValidDepartment = (department: string): boolean => {
     if (!department) return false;
     return ALLOWED_DEPARTMENT.includes(department.trim().toLowerCase());
@@ -464,45 +515,25 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     });
   }
 
-  // Check for existing employee IDs in the database if clientId is provided
-  if (clientId && employeeIds.length > 0) {
+  // Check for existing employee IDs / emails in the database if clientId is provided
+  if (clientId && (employeeIds.length > 0 || emailsRaw.length > 0)) {
     try {
-      const { duplicates, errors: dbErrors } = await checkBulkEmployeeIdDuplicates(employeeIds, clientId);
+      const { duplicateEmployeeIds, duplicateEmails, errors: dbErrors } = await checkBulkDuplicates(employeeIds, emailsRaw, clientId);
 
-      // Add database errors
       if (dbErrors.length > 0) {
         errors.push(...dbErrors);
       }
 
-      // Add duplicate employee ID errors
-      if (duplicates.length > 0) {
-        duplicates.forEach(id => {
-          warnings.push(`Employee ID '${id}' already exists and will be skipped`);
-        });
-      }
-    } catch (error) {
-      console.error('Error checking bulk employee ID duplicates:', error);
-      errors.push('Error validating employee IDs against existing records');
-    }
-  }
+      duplicateEmployeeIds.forEach(id => {
+        warnings.push(`Employee ID '${id}' already exists and will be skipped`);
+      });
 
-  if (clientId && emailsRaw.length > 0) {
-    try {
-      // remove empties and dedupe before calling DB
-      const uniqueEmails = [...new Set(emailsRaw.filter(e => e && e.trim()))];
-      if (uniqueEmails.length > 0) {
-        const { duplicates: emailDuplicates, errors: emailDbErrors } = await checkBulkEmployeeEmailDuplicates(uniqueEmails, clientId);
-        if (emailDbErrors && emailDbErrors.length > 0) {
-          errors.push(...emailDbErrors);
-        }
-        if (emailDuplicates && emailDuplicates.length > 0) {
-          emailDuplicates.forEach(email => {
-            warnings.push(`Email '${email}' already exists and will be skipped`);
-          });
-        }
-      }
-    } catch (err) {
-      errors.push('Error validating emails against existing records');
+      duplicateEmails.forEach(email => {
+        warnings.push(`Email '${email}' already exists and will be skipped`);
+      });
+    } catch (error) {
+      console.error('Error checking bulk duplicates:', error);
+      errors.push('Error validating employee IDs and emails against existing records');
     }
   }
   // Validate each row
@@ -520,10 +551,16 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     });
 
     // Validate email format if present
+    // Validate email format and length if present
     if (row.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(String(row.email))) {
-        errors.push(`Row ${rowNum}: Invalid email format - ${row.email}`);
+      const email = String(row.email).trim();
+
+      if (email.length > EMPLOYEE_EMAIL_MAX_LENGTH) {
+        errors.push(
+          `Row ${rowNum}: Email cannot exceed ${EMPLOYEE_EMAIL_MAX_LENGTH} characters`
+        );
+      } else if (!isValidEmployeeEmail(email)) {
+        errors.push(`Row ${rowNum}: Invalid email format - ${email}`);
       }
     }
     if (row.firstName && !nameNotContainingNumbers(row.firstName)) {
@@ -617,6 +654,14 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
         errors.push(
           `Row ${rowNum}: Joining Date must be a valid date (e.g., YYYY-MM-DD)`
         );
+      } else if (new Date(row.joiningDate).getFullYear() < 1940) {
+        errors.push(
+          `Row ${rowNum}: Joining Date year must be 1940 or later`
+        );
+      } else if (!isDateNotInFuture(row.joiningDate)) {
+        errors.push(
+          `Row ${rowNum}: Joining Date cannot be in the future`
+        );
       }
     }
     if (row.employeeId) {
@@ -632,7 +677,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
         );
       } else if (!isValidEmployeeId(id)) {
         errors.push(
-          `Row ${rowNum}: Employee ID can contain only letters and numbers`
+          `Row ${rowNum}: Employee ID format is invalid`
         );
       }
     }
@@ -646,7 +691,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
         row.moduleAccessPayload.forEach((m: string) => moduleCandidates.push(String(m)));
       } else {
         // array-of-objects: prefer .name or .module_id or .key
-        row.moduleAccessPayload.forEach((m: any) => {
+        row.moduleAccessPayload.forEach((m: { name?: string; module_id?: string; key?: string }) => {
           if (m?.name) moduleCandidates.push(String(m.name));
           else if (m?.module_id) moduleCandidates.push(String(m.module_id));
           else if (m?.key) moduleCandidates.push(String(m.key));
@@ -658,7 +703,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     const moduleCell =
       row.Module ?? row.module ?? row['Module(s)'] ?? row['Assigned Module'] ?? row['assigned_module'] ?? '';
     if (moduleCell && typeof moduleCell === 'string' && moduleCell.trim()) {
-      const parts = moduleCell.split(/[,;|\/]/).map((p: string) => p.trim()).filter(Boolean);
+      const parts = moduleCell.split(/[,;|/]/).map((p: string) => p.trim()).filter(Boolean);
       moduleCandidates.push(...parts);
     }
 
@@ -724,10 +769,3 @@ const formatFieldName = (field: string): string => {
   return formatted.trim();
 };
 
-/**
- * Validate email format
- */
-const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};

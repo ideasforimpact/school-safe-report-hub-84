@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import OAuthProviderForm from './OAuthProviderForm';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { providerConfigs, OAuthProviderName, updateProviderConfig } from '@/utils/authProviders';
 
 // Types

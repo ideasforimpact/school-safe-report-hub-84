@@ -19,7 +19,7 @@ export class SimpleEmailLogger {
     recipient_name?: string;
     subject: string;
     body: string;
-    params: Record<string, any>;
+    params: Record<string, unknown>;
     priority?: number;
   }): Promise<boolean> {
     try {

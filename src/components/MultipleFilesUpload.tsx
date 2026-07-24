@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { FilePlus, AlertCircle, X } from 'lucide-react';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { FileItem } from '@/types/fileTypes';
 import { formatFileSize } from '@/utils/fileUtils';
 import FileList from './file/FileList';
@@ -84,7 +84,19 @@ const MultipleFilesUpload = ({
 
     // Process selected file (single file approach)
     const file = selectedFiles[0];
-    
+
+    // Reject duplicates — same name and size already present in the list
+    const isDuplicate = files.some(
+      existing => existing.name === file.name && existing.size === file.size
+    );
+    if (isDuplicate) {
+      const errorMsg = `File "${file.name}" has already been added.`;
+      setErrorMessage(errorMsg);
+      toast.error(errorMsg);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     // Validate file type
     if (!isValidFileType(file)) {
       const errorMsg = getFileTypeError(file.name);
@@ -192,7 +204,7 @@ const MultipleFilesUpload = ({
             type="button" 
             variant="outline" 
             onClick={triggerFileInput} 
-            className="w-full py-6 border-dashed flex items-center justify-center bg-gray-50 hover:bg-gray-100"
+            className="w-full py-6 border-dashed flex items-center justify-center bg-gray-50 hover:bg-gray-100 print:hidden"
             disabled={isUploading}
           >
             <FilePlus className="h-5 w-5 mr-2" />
@@ -204,19 +216,19 @@ const MultipleFilesUpload = ({
         
         {/* Description text below the button */}
         {files.length < maxFiles && (
-          <p className="text-xs text-gray-500 mt-2 text-center">
+          <p className="text-xs text-gray-500 mt-2 text-center print:hidden">
             PDF, DOC, DOCX, PNG, JPEG, JPG up to 10MB per file
           </p>
         )}
         
         {/* Counter showing files added */}
-        <div className="mt-2 text-xs text-right text-gray-500">
+        <div className="mt-2 text-xs text-right text-gray-500 print:hidden">
           {files.length} of {maxFiles} files added
         </div>
 
         {/* Required indicator if prop is true */}
         {required && files.length === 0 && (
-          <p className="text-xs text-red-500 mt-1">
+          <p className="text-xs text-red-500 mt-1 print:hidden">
             At least one file is required
           </p>
         )}
@@ -233,9 +245,9 @@ const MultipleFilesUpload = ({
           </DialogHeader>
           <div className="flex justify-center items-center py-4">
             {previewFile && (previewFile.type || '').startsWith('image/') && (
-              <img 
-                src={previewFile.base64} 
-                alt={previewFile.name} 
+              <img
+                src={previewFile.base64 || previewFile.url}
+                alt={previewFile.name}
                 className="max-h-[70vh] max-w-full object-contain rounded-md"
               />
             )}

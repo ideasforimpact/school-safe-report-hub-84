@@ -3,14 +3,51 @@ import { Mic, MicOff } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
+interface SpeechRecognitionWindow extends Window {
+  SpeechRecognition?: new () => SpeechRecognitionInstance;
+  webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+interface SpeechRecognitionResultEvent {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: { transcript: string };
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+}
+
 const SpeechRecognition =
   typeof window !== "undefined"
-    ? (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition
+    ? (window as SpeechRecognitionWindow).SpeechRecognition ||
+      (window as SpeechRecognitionWindow).webkitSpeechRecognition
     : null;
 
-export interface TextareaWithVoiceProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+export type TextareaWithVoiceProps =
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 const TextareaWithVoice = React.forwardRef<
   HTMLTextAreaElement,
@@ -50,7 +87,7 @@ const TextareaWithVoice = React.forwardRef<
       recognition.lang = "en-IN";
       recognition.maxAlternatives = 1;
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event: SpeechRecognitionResultEvent) => {
         let newFinal = "";
         let interim = "";
 
@@ -91,7 +128,7 @@ const TextareaWithVoice = React.forwardRef<
         recognitionRef.current = null;
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         if (event.error !== "aborted") {
           console.warn("Speech recognition error:", event.error);
         }
@@ -165,7 +202,7 @@ const TextareaWithVoice = React.forwardRef<
           disabled={props.disabled}
           aria-label={listening ? "Stop listening" : "Start voice input"}
           className={cn(
-            "absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition",
+            "print:hidden absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition",
             listening
               ? "text-red-600 border-red-200 bg-red-50"
               : "text-gray-600 hover:text-blue-600",

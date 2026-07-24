@@ -8,11 +8,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useActiveReportTypes } from '@/hooks/useReportTypes';
+import { ConfigItem } from '@/contexts/types';
 
 interface TypeSectionProps {
   type: string;
   onSelectChange: (name: string, value: string) => void;
-  getCategoriesForType?: (type: string) => any[];
+  getCategoriesForType?: (type: string) => ConfigItem[];
 }
 
 const TypeSection: React.FC<TypeSectionProps> = ({

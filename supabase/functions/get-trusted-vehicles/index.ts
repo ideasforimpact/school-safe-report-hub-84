@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 import { verifyAccessToken } from '../_shared/safe-school/jwt.ts';
 import { corsHeaders } from '../_shared/cors.ts';
@@ -25,10 +25,27 @@ function calculateValidity(validityFrom: string | Date | null, validityTo: strin
   return toDate >= today;
 }
 
+interface TrustedVehicleRow {
+  id: string;
+  vehicle_name?: string | null;
+  name?: string | null;
+  type?: string | null;
+  vehicle_no?: string | null;
+  client_id?: string | null;
+  employee_id?: string | null;
+  entry_status?: string | null;
+  in_time?: string | null;
+  exit_time?: string | null;
+  validity_from?: string | Date | null;
+  validity_to?: string | Date | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 // Transform trusted vehicle row to match required structure
-function transformTrustedVehicleRow(row: any): any {
+function transformTrustedVehicleRow(row: TrustedVehicleRow | null) {
   if (!row) return null;
-  
+
   return {
     id: row.id,
     name: row.vehicle_name || row.name || '', // Use vehicle_name as name
@@ -47,7 +64,7 @@ function transformTrustedVehicleRow(row: any): any {
 }
 
 // Reuse the same auth helper pattern as visitor-management
-async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
+async function getAuthenticatedUserInfo(req: Request, supabase: SupabaseClient): Promise<{
   employeeId: string;
   clientId: string;
   error?: Response;
@@ -198,7 +215,7 @@ serve(async (req) => {
 
     // Transform trusted vehicles to match required structure
     const transformedData = Array.isArray(data)
-      ? data.map((tv: any) => transformTrustedVehicleRow(tv)).filter((tv: any) => tv !== null)
+      ? data.map((tv: TrustedVehicleRow) => transformTrustedVehicleRow(tv)).filter((tv) => tv !== null)
       : [];
 
     return new Response(

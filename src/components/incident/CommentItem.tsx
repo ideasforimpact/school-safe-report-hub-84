@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Comment as IncidentComment } from '@/types/incident';
+import { Comment as IncidentComment, FileItem } from '@/types/incident';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -48,7 +48,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
   const hasAttachments = (comment.files && comment.files.length > 0) || comment.image;
 
   // Handle document download with loading state
-  const handleDownload = async (file: any) => {
+  const handleDownload = async (file: FileItem) => {
     setDownloadingFiles(prev => new Set(prev).add(file.id));
     
     try {
@@ -91,7 +91,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
   };
 
   // Handle file preview
-  const handlePreview = (file: any) => {
+  const handlePreview = (file: FileItem) => {
     // For storage URLs, open in new tab
     if (file.url) {
       window.open(file.url, '_blank');

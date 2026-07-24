@@ -86,10 +86,10 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
         description: data?.message || "The document has been manually verified successfully."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in manual verification:", err);
       toast.error("Verification Error", {
-        description: err.message || "Failed to manually verify document"
+        description: err instanceof Error ? err.message : "Failed to manually verify document"
       });
     } finally {
       setIsManualVerifying(false);
@@ -146,10 +146,10 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
         description: data?.message || "The document has been marked as failed verification."
       });
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Exception in rejection:", err);
       toast.error("Rejection Error", {
-        description: err.message || "Failed to reject document"
+        description: err instanceof Error ? err.message : "Failed to reject document"
       });
     } finally {
       setIsRejecting(false);

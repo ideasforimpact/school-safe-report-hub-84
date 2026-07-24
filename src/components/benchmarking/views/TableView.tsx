@@ -8,9 +8,10 @@ import {
   TableHead,
   TableCell
 } from '@/components/ui/table';
+import { BenchmarkingChartData } from '@/hooks/benchmarking/types';
 
 interface TableViewProps {
-  chartData: any[];
+  chartData: BenchmarkingChartData[];
   showSubcategories: boolean;
   selectedCities: string[];
 }
@@ -42,12 +43,12 @@ const TableView = ({ chartData, showSubcategories, selectedCities }: TableViewPr
         <TableBody className="divide-y divide-gray-200">
           {chartData.length > 0 ? (
             chartData.map((item, index) => {
-              const yourSchool = item['Your School'] || 0;
-              const comparison = showSubcategories 
-                ? selectedCities.length > 0 
-                  ? selectedCities.reduce((sum: number, city: string) => sum + (item[city] || 0), 0) / selectedCities.length 
+              const yourSchool = Number(item['Your School']) || 0;
+              const comparison = showSubcategories
+                ? selectedCities.length > 0
+                  ? selectedCities.reduce((sum: number, city: string) => sum + (Number(item[city]) || 0), 0) / selectedCities.length
                   : 0
-                : item['City Average'] || 0;
+                : Number(item['City Average']) || 0;
                 
               const difference = yourSchool - comparison;
               const isHigher = difference > 0;

@@ -3,12 +3,13 @@ import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit } from 'lucide-react';
+import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
 import VehicleTypeIcon from './VehicleTypeIcon';
-import { usePagination } from '@/hooks/usePagination';
+import { VehiclePagination } from './filters/useVehicleFilters';
 import { cn } from '@/lib/utils';
 import { 
   getDocumentStatus, 
@@ -22,6 +23,7 @@ import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedConte
 
 interface VehiclesListViewProps {
   vehicles: Vehicle[];
+  pagination: VehiclePagination;
   onRefresh?: () => void;
   onEditVehicle?: (vehicle: Vehicle) => void;
   isReadOnly?: boolean;
@@ -29,6 +31,7 @@ interface VehiclesListViewProps {
 
 const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   vehicles,
+  pagination,
   onRefresh,
   onEditVehicle,
   isReadOnly = false
@@ -36,20 +39,12 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
     const shouldHideWriteActions = isReadOnly || isReadOnlySwitchedContext;
 
-    const sortedVehicles = React.useMemo(() => {
-      return [...vehicles].sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0).getTime();
-        const dateB = new Date(b.createdAt || 0).getTime();
-        return dateB - dateA;
-      });
-    }, [vehicles]);
+    const { currentPage, totalPages, totalCount, pageSize, onPageChange } = pagination;
 
-    const {
-      paginatedItems,
-      currentPage,
-      setCurrentPage,
-      totalPages
-    } = usePagination(sortedVehicles, 10);
+    // `vehicles` is already the correctly paginated slice for the active
+    // filter mode (server-paginated, or client-paginated over the full
+    // filtered set — see useVehicleFilters)
+    const paginatedItems = vehicles;
 
   const getDocumentIcon = (status: string) => {
     switch (status) {
@@ -136,7 +131,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               <TableHead className="w-[150px] text-left">Internal Vehicle Name</TableHead>
               <TableHead className="w-[150px] text-left">Vehicle Name</TableHead>
               <TableHead className="w-[150px] text-left">Registration</TableHead>
-              <TableHead className="w-[120px] text-left">Status</TableHead>
+              {/* <TableHead className="w-[120px] text-left">Status</TableHead> */}
               <TableHead className="w-[180px] text-left">Vehicle Status</TableHead>
               <TableHead className="w-[100px] text-left">Challan</TableHead>
               <TableHead className="w-[100px] text-left">Actions</TableHead>
@@ -174,14 +169,14 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                   <TableCell className="text-left">
                     <div className="text-sm font-medium text-gray-700 text-left">{vehicle.registrationNumber}</div>
                   </TableCell>
-                  <TableCell className="text-left">
+                  {/* <TableCell className="text-left">
                     <Badge 
                       variant="outline" 
                       className={cn(getStatusBadgeVariant(vehicle.status))}
                     >
                       {getStatusLabel(vehicle.status)}
                     </Badge>
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell className="text-left">
                     <div className="flex gap-1">
                       <Badge 
@@ -245,7 +240,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     <div className="flex justify-start gap-1 items-center">
                       <Button asChild variant="ghost" size="icon">
                         <Link to={`/transport-safety/${vehicle.id}`}>
-                            <Settings className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
                       {!shouldHideWriteActions && onEditVehicle && (
@@ -266,20 +261,14 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
         </Table>
       </div>
       
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
-            Previous
-          </Button>
-          <div className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>
-            Next
-          </Button>
-        </div>
-      )}
+      <TablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        itemLabel="vehicles"
+        onPageChange={onPageChange}
+      />
 
     </div>
   );

@@ -10,8 +10,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface JWTPayload {
+  sub?: string;
+  role?: string;
+  [key: string]: unknown;
+}
+
 // Helper function to decode JWT payload
-function decodeJWTPayload(jwt: string): any | null {
+function decodeJWTPayload(jwt: string): JWTPayload | null {
   try {
     const parts = jwt.split('.');
     if (parts.length !== 3) return null;

@@ -14,6 +14,7 @@ import { templateService } from '@/services/assessment/templateService';
 import { FileItem } from '@/types/fileTypes';
 import { supabase } from '@/integrations/supabase/client';
 import Loader from "@/components/common/Loader";
+import { ASSESSMENT_TITLE } from '@/components/constants';
 
 interface CreateTemplateFormProps {
   templateId?: string;
@@ -29,7 +30,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   const navigate = useNavigate();
   const { createTemplate, updateTemplate, getTemplateById, refreshTemplates } = useAssessment();
   const { user, employeeData } = useAuth();
-  const clientTypeId = employeeData?.clientType?.id ?? (user as any)?.clientType?.id;
+  const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id;
   
   // Form state
   const [title, setTitle] = useState('');
@@ -86,6 +87,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
 
       const questionsWithIds = template.questions.map((q, index) => ({
         ...q,
+        correctAnswer: q.correctAnswer ?? 'yes',
         id:
           q.id ||
           `temp_${Date.now()}_${index}_${Math.random()
@@ -137,6 +139,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     const newQuestion: AssessmentQuestion = {
       id: uniqueId,
       text: '',
+      correctAnswer: 'yes',
       allowComments: false,
       allowAttachments: false,
       required: true
@@ -162,7 +165,12 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     }
     
     // Validate template title format (no special characters allowed)
-    const isValidTemplateTitle = /^[a-zA-Z0-9\s]{1,25}$/.test(title.trim());
+    const trimmedTitle = title.trim();
+    if (trimmedTitle.length > ASSESSMENT_TITLE) {
+      setFormError(`Template title cannot exceed ${ASSESSMENT_TITLE} characters`);
+      return false;
+    }
+    const isValidTemplateTitle = new RegExp(`^[a-zA-Z0-9\\s]{1,${ASSESSMENT_TITLE}}$`).test(trimmedTitle);
     if (!isValidTemplateTitle) {
       setFormError('Template title can only contain letters, numbers, and spaces');
       return false;
@@ -182,6 +190,10 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     for (let i = 0; i < questions.length; i++) {
       if (!questions[i].text.trim()) {
         setFormError(`Question ${i + 1} text is required`);
+        return false;
+      }
+      if (questions[i].correctAnswer === undefined) {
+        setFormError(`Please select the correct answer for question ${i + 1}`);
         return false;
       }
     }
@@ -210,7 +222,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       if (pendingFilesForQuestion.length > 0) {
         // If there are pending files, completely replace existing files with pending files
         // Convert pending files to QuestionFile format
-        const questionFiles: any[] = pendingFilesForQuestion.map(file => ({
+        const questionFiles: (QuestionFile & { file?: File })[] = pendingFilesForQuestion.map(file => ({
           id: file.id,
           name: file.name,
           size: file.size,
@@ -343,9 +355,9 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       } else {
         navigate('/assessments/templates');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving template:', error);
-      const errorMessage = error.message || (isEditMode ? 'Failed to update template. Please try again.' : 'Failed to create template. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : (isEditMode ? 'Failed to update template. Please try again.' : 'Failed to create template. Please try again.');
       setFormError(errorMessage);
       // Don't show toast error - let the form error handle it
     } finally {

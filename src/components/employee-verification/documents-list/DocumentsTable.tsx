@@ -62,7 +62,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const { documentStatuses, deleteDocument, employees, fetchEmployeeDocuments } = useEmployeeVerification();
   const { toast } = useToast();
   const { user } = useAuth();
-  const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
+  const clientId = user?.clientId || '';
   
   // State for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -73,18 +73,18 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<{ fileName: string; size: number; url?: string; path?: string }[]>([]);
   const [selectedVerificationType, setSelectedVerificationType] = useState<string>('police');
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = React.useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = React.useState(false);
-  const [selectedBankStatementDetails, setSelectedBankStatementDetails] = React.useState<any>(null);
-  const [selectedVerificationHistory, setSelectedVerificationHistory] = React.useState<any[]>([]);
+  const [selectedBankStatementDetails, setSelectedBankStatementDetails] = React.useState<Record<string, unknown> | null>(null);
+  const [selectedVerificationHistory, setSelectedVerificationHistory] = React.useState<NonNullable<NonNullable<VerificationDocument['params']>['verification_history']>>([]);
   const [filesCountOverrides, setFilesCountOverrides] = useState<Record<string, number>>({});
 
   const [govPopupOpen, setGovPopupOpen] = useState(false);
   const [selectedGovType, setSelectedGovType] =
     useState<GovernmentDocumentType>("driving_license");
-  const [selectedGovData, setSelectedGovData] = useState<any>(null);
+  const [selectedGovData, setSelectedGovData] = useState<Record<string, unknown> | null>(null);
 
   const parseDoe = (dateStr: string | undefined) => {
     if (!dateStr) return null;
@@ -138,9 +138,9 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     });
   };
 
-  const handleFilesClick = (documentId: string, employeeId: string, files: any[]) => {
+  const handleFilesClick = (documentId: string, employeeId: string, files: { fileName: string; size: number; url?: string; path?: string }[]) => {
     const doc = documents.find(d => d.id === documentId);
-    const verificationType = (doc?.params as any)?.selected || 'manual';
+    const verificationType = (doc?.params?.selected as string | undefined) || 'manual';
     setSelectedDocumentId(documentId);
     setSelectedEmployeeId(employeeId);
     setSelectedFiles(files);
@@ -276,7 +276,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     console.log('DocumentsTable - Comments button clicked for document:', doc);
     
     // Get verification history from params
-    const verificationHistory = (doc.params as any)?.verification_history || [];
+    const verificationHistory = doc.params?.verification_history || [];
     setSelectedVerificationHistory(verificationHistory);
     setSelectedDocumentId(doc.id);
     setCommentsDialogOpen(true);
@@ -325,7 +325,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
 
   // Helper function to check if document has comments
   const hasVerificationHistory = (doc: VerificationDocument): boolean => {
-    const verificationHistory = (doc.params as any)?.verification_history;
+    const verificationHistory = doc.params?.verification_history;
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
 
@@ -335,17 +335,17 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     if (doc.verifiedByEmployeeId && employees.length > 0) {
       const employee = employees.find(emp => emp.id === doc.verifiedByEmployeeId);
       if (employee) {
-        const fullName = `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.name || employee.email;
+        const fullName = employee.aadharVerifiedName || employee.name || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email;
         return fullName.charAt(0).toUpperCase() + fullName.slice(1);
       }
     }
     
     // Fallback to verification history (old system)
-    const history = (doc.params as any)?.verification_history;
+    const history = doc.params?.verification_history;
     if (!Array.isArray(history) || history.length === 0) return undefined;
-    const withUser = history.filter((e: any) => e && e.verified_by);
+    const withUser = history.filter((e) => e && e.verified_by);
     if (withUser.length === 0) return undefined;
-    withUser.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    withUser.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const verifiedBy = withUser[0].verified_by as string;
     return verifiedBy.charAt(0).toUpperCase() + verifiedBy.slice(1);
   };
@@ -356,11 +356,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     
     if (docType === 'manual') {
       // For manual documents, show the proper verification name
-      const selected = (doc.params as any)?.selected;
+      const selected = doc.params?.selected as string | undefined;
       return getManualVerificationDisplayName(selected) || 'Manual Verification';
     } else if (docType === 'other_documents' || docType === 'other') {
       // For other documents, show the document name provided during upload
-      const documentName = (doc.params as any)?.document_name;
+      const documentName = doc.params?.document_name as string | undefined;
       return documentName || 'Other Document';
     } else {
       // For standard documents (Aadhar, PAN, etc.), show the document number
@@ -649,9 +649,9 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     {(() => {
                       // For manual documents, show "SafeSchool - date time" using latest verification history
                       if (docType === 'manual') {
-                        const history = (doc.params as any)?.verification_history;
+                        const history = doc.params?.verification_history;
                         if (Array.isArray(history) && history.length > 0) {
-                          const latest = [...history].sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+                          const latest = [...history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
                           const ts = latest?.timestamp || doc.updatedAt;
                           return (
                             <span className="text-sm text-gray-900">
@@ -721,7 +721,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                             handleFilesClick(
                               doc.id,
                               doc.employeeId,
-                              (doc as any).documents_files || []
+                              doc.documents_files || []
                             )
                           }
                           className="h-8"
@@ -732,7 +732,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       )}
 
                       {/* Actions menu */}
-                      {(!isReadOnly || doc.documentImage || (doc.params as any)?.document_url) && (
+                      {(!isReadOnly || doc.documentImage || (doc.params?.document_url as string | undefined)) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -745,12 +745,12 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         </DropdownMenuTrigger>
 
                         <DropdownMenuContent align="end" className="w-40">
-                          {(doc.documentImage || (doc.params as any)?.document_url) && (
+                          {(doc.documentImage || (doc.params?.document_url as string | undefined)) && (
                             <>
                               <DropdownMenuItem
                                 onClick={() =>
                                   handleViewDocument(
-                                    (doc.params as any)?.document_url ||
+                                    (doc.params?.document_url as string | undefined) ||
                                       doc.documentImage
                                   )
                                 }
@@ -762,7 +762,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                               <DropdownMenuItem
                                 onClick={() =>
                                   handleDownloadDocument(
-                                    (doc.params as any)?.document_url ||
+                                    (doc.params?.document_url as string | undefined) ||
                                       doc.documentImage
                                   )
                                 }

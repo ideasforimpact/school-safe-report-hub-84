@@ -66,7 +66,7 @@ export const useRefreshBackofficeModules = () => {
       }
       if (!modulesData) return;
 
-      const backofficeModules = modulesData.map((module: any) => ({
+      const backofficeModules = modulesData.map((module: Record<string, unknown>) => ({
         id: module.id,
         name: module.name,
         key: module.name.toLowerCase().replace(/\s+/g, '_'),
@@ -147,8 +147,8 @@ export const useRefreshBackofficeModules = () => {
           table: 'modules',
         },
         (payload) => {
-          const newRow = (payload.new as any) || {};
-          const oldRow = (payload.old as any) || {};
+          const newRow = (payload.new as Record<string, unknown>) || {};
+          const oldRow = (payload.old as Record<string, unknown>) || {};
           const involvesBackoffice =
             newRow.level === 'backoffice' || oldRow.level === 'backoffice';
           if (!involvesBackoffice) return;

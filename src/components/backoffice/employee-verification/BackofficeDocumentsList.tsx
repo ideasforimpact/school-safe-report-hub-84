@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Calendar, Search, X } from 'lucide-react';
-import { Employee } from '@/types/employeeVerification';
+import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import BackofficeDocumentCard from './BackofficeDocumentCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,8 +21,8 @@ interface BackofficeDocumentsListProps {
   isReadOnly?: boolean;
 }
 
-const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({ 
-  employee, 
+const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
+  employee,
   onRefresh,
   isReadOnly = false
 }) => {
@@ -30,7 +30,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   const { documentTypes, fetchDocumentTypes } = useEmployeeVerification();
   const { toast } = useToast();
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
+  const [selectedDoc, setSelectedDoc] = useState<VerificationDocument | null>(null);
 
   // Get the "Manual" document type ID
   const manualDocumentType = documentTypes.find(type => type.name.toLowerCase() === 'manual');
@@ -46,7 +46,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   });
   const [verificationFilter, setVerificationFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined); 
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const hasActiveFilters =
     verificationFilter !== "all" ||
     searchTerm.trim().length > 0 ||
@@ -58,8 +58,8 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
   useEffect(() => {
     filterDocuments();
-  }, [employee.documents, manualDocumentTypeId, verificationFilter, searchTerm, dateRange]);
-  
+  }, [filterDocuments]);
+
   useEffect(() => {
     if (!employee?.id) return;
 
@@ -96,29 +96,46 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
       .join(' ');
   };
 
-  const isManualOrFailedDocument = (doc: Employee['documents'][number]) => {
+  const getDocumentTypeName = useCallback((documentTypeId: string) => {
+    const docType = documentTypes.find(type => type.id === documentTypeId);
+    return docType?.name || 'Unknown Document Type';
+  }, [documentTypes]);
+
+  const getDisplayDocumentTypeName = useCallback((doc: Employee['documents'][number]) => {
+    const baseName = getDocumentTypeName(doc.documentTypeId);
+    if (baseName.toLowerCase() === 'manual') {
+      const params: NonNullable<VerificationDocument['params']> = doc.params || {};
+      const custom = params.document_name || params.otherType || params.selected;
+      if (typeof custom === 'string' && custom.trim().length > 0) {
+        return toTitleCase(custom.trim());
+      }
+    }
+    return baseName;
+  }, [getDocumentTypeName]);
+
+  const isManualOrFailedDocument = useCallback((doc: Employee['documents'][number]) => {
     const docType = documentTypes.find(type => type.id === doc.documentTypeId);
     const resolvedDocTypeName = (docType?.name || doc.documentTypeName || '').toLowerCase();
 
     const isManual =
       (manualDocumentTypeId ? doc.documentTypeId === manualDocumentTypeId : resolvedDocTypeName === 'manual');
-    const isFinalized = (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed') ;
+    const isFinalized = (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
     const isManualsubmitDoc = doc.documentStatusName == 'manual';
     if (!isManual && isFinalized && !isManualsubmitDoc) return false;
-    if (doc?.verificationStatus == "in-progress" || doc?.verificationStatus == "completed" ) {
+    if (doc?.verificationStatus == "in-progress" || doc?.verificationStatus == "completed") {
       const StatusTypes = new Set(['pan', 'passport', 'aadhar', 'driving_license', 'voter_id']);
       const isStatusEligible = StatusTypes.has(resolvedDocTypeName);
-      return  isStatusEligible || isManual;
+      return isStatusEligible || isManual;
     }
     return false;
-  };
+  }, [documentTypes, manualDocumentTypeId]);
 
-  const filterDocuments = () => {
+  const filterDocuments = useCallback(() => {
     const documents = employee.documents || [];
     let filtered = documents.filter(isManualOrFailedDocument);
     if (verificationFilter !== 'all') {
       filtered = filtered.filter(doc => {
-        const params: any = doc.params || {};
+        const params: NonNullable<VerificationDocument['params']> = doc.params || {};
         const manualType =
           params.otherType ||
           params.document_name ||
@@ -164,7 +181,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
         const docType = documentTypes.find(t => t.id === doc.documentTypeId);
         const mappedType = (docType?.name || '').toLowerCase();
         const id = String(doc.id ?? '').toLowerCase();
-        const params: any = doc.params || {};
+        const params: NonNullable<VerificationDocument['params']> = doc.params || {};
         const custom = (
           params.document_name ||
           params.otherType ||
@@ -174,40 +191,22 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
           .toString()
           .toLowerCase();
         return (
-            displayName.includes(term) ||
-            id.includes(term) ||
-            custom.includes(term) ||
-            standardType.includes(term) ||
-            mappedType.includes(term)
+          displayName.includes(term) ||
+          id.includes(term) ||
+          custom.includes(term) ||
+          standardType.includes(term) ||
+          mappedType.includes(term)
         );
       });
     }
-    
+
     setFilteredDocuments(filtered);
-  };
-
-  const getDocumentTypeName = (documentTypeId: string) => {
-    const docType = documentTypes.find(type => type.id === documentTypeId);
-    return docType?.name || 'Unknown Document Type';
-  };
-
-  // Compute a display-friendly document type name for manual docs
-  const getDisplayDocumentTypeName = (doc: Employee['documents'][number]) => {
-    const baseName = getDocumentTypeName(doc.documentTypeId);
-    if (baseName.toLowerCase() === 'manual') {
-      const params: any = doc.params || {};
-      const custom = params.document_name || params.otherType || params.selected;
-      if (typeof custom === 'string' && custom.trim().length > 0) {
-        return toTitleCase(custom.trim());
-      }
-    }
-    return baseName;
-  };
+  }, [employee.documents, documentTypes, verificationFilter, searchTerm, dateRange, isManualOrFailedDocument, getDisplayDocumentTypeName]);
 
   const getDocumentCounts = () => {
     // Count manual documents and failed passports
     const manualAndFailedDocuments = (employee.documents || []).filter(isManualOrFailedDocument);
-    
+
     const verified = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'verified').length;
     const completed = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'completed').length;
     const pending = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'pending').length;
@@ -215,13 +214,13 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     const failed = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'failed').length;
     const rejected = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'rejected').length;
     const total = manualAndFailedDocuments.length;
-    
+
     return { verified, completed, pending, inProgress, failed, rejected, total };
   };
 
   const counts = getDocumentCounts();
 
-  const handleOpenFiles = (document: any) => {
+  const handleOpenFiles = (document: VerificationDocument) => {
     setSelectedDoc(document);
     setFilesDialogOpen(true);
   };
@@ -240,8 +239,8 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
         .createSignedUrl(file.objectPath, 300, { download: file.fileName });
       if (signed.error || !signed.data?.signedUrl) throw new Error('Failed to generate download URL');
       window.open(signed.data.signedUrl, '_blank');
-    } catch (err: any) {
-      toast({ title: 'Error', description: err?.message || 'Failed to download file', variant: 'destructive' });
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to download file', variant: 'destructive' });
     }
   };
   const VERIFICATION_TYPES = [
@@ -258,12 +257,12 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     { value: "passport", label: "Passport" },
   ];
 
-  
- 
+
+
   return (
     <Card>
-     <CardHeader>
-        <div className="flex flex-col gap-4">  
+      <CardHeader>
+        <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             <CardTitle>Document Verification</CardTitle>
@@ -314,8 +313,8 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
             {/* Clear Button */}
             {hasActiveFilters && (
               <Button
-                variant="outline" 
-                size="sm" 
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   setVerificationFilter("all");
                   setSearchTerm("");
@@ -361,7 +360,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
           </DialogHeader>
           {Array.isArray(selectedDoc?.documents_files) && selectedDoc.documents_files.length > 0 ? (
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {selectedDoc.documents_files.map((f: any, idx: number) => (
+              {selectedDoc.documents_files.map((f, idx: number) => (
                 <div key={idx} className="flex items-center justify-between p-3 border rounded">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <File className="h-4 w-4 text-gray-500 flex-shrink-0" />

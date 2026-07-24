@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchIncidentAuditLog, formatAuditLogEntries, FormattedAuditEntry, logAuditEntry } from '@/services/incident/auditLogService';
 import { toast } from 'sonner';
 
@@ -7,6 +7,12 @@ export const useIncidentAuditTrail = (incidentId?: string) => {
   const [auditEntries, setAuditEntries] = useState<FormattedAuditEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  // fetchIncidentAuditLog already dedupes its own network call, but
+  // formatAuditLogEntries (the per-entry employee/field name resolution below
+  // it) doesn't — under React.StrictMode's dev double-invoke, two overlapping
+  // calls to this function would each independently re-run that resolution on
+  // the same data. Guard the whole fetch+format sequence instead.
+  const inflightRef = useRef<Promise<void> | null>(null);
 
   // Fetch audit trail for the incident
   const fetchAuditTrail = useCallback(async () => {
@@ -14,35 +20,43 @@ export const useIncidentAuditTrail = (incidentId?: string) => {
     console.log('incidentId received in hook:', incidentId);
     console.log('incidentId type:', typeof incidentId);
     console.log('incidentId truthy:', !!incidentId);
-    
+
     if (!incidentId) {
       console.log('No incident ID provided to hook - setting empty entries');
       setAuditEntries([]);
       return;
     }
 
+    if (inflightRef.current) return inflightRef.current;
+
     setIsLoading(true);
     setError(null);
 
-    try {
-      console.log('Starting to fetch audit trail for incident:', incidentId);
-      const rawEntries = await fetchIncidentAuditLog(incidentId);
-      console.log('Raw audit entries received in hook:', rawEntries);
-      
-      const formattedEntries = await formatAuditLogEntries(rawEntries);
-      console.log('Formatted audit entries received in hook:', formattedEntries);
-      
-      console.log('Setting audit entries state with:', formattedEntries.length, 'entries');
-      setAuditEntries(formattedEntries);
-    } catch (err) {
-      console.error('Error fetching audit trail in hook:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch audit trail';
-      setError(errorMessage);
-      toast.error('Failed to load audit trail');
-    } finally {
-      setIsLoading(false);
-      console.log('=== END FETCH AUDIT TRAIL HOOK DEBUG ===');
-    }
+    const request = (async () => {
+      try {
+        console.log('Starting to fetch audit trail for incident:', incidentId);
+        const { entries: rawEntries, userNames, fieldValues } = await fetchIncidentAuditLog(incidentId);
+        console.log('Raw audit entries received in hook:', rawEntries);
+
+        const formattedEntries = await formatAuditLogEntries(rawEntries, userNames, fieldValues);
+        console.log('Formatted audit entries received in hook:', formattedEntries);
+
+        console.log('Setting audit entries state with:', formattedEntries.length, 'entries');
+        setAuditEntries(formattedEntries);
+      } catch (err) {
+        console.error('Error fetching audit trail in hook:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch audit trail';
+        setError(errorMessage);
+        toast.error('Failed to load audit trail');
+      } finally {
+        setIsLoading(false);
+        inflightRef.current = null;
+        console.log('=== END FETCH AUDIT TRAIL HOOK DEBUG ===');
+      }
+    })();
+
+    inflightRef.current = request;
+    return request;
   }, [incidentId]);
 
   // Add a manual audit entry
@@ -90,7 +104,7 @@ export const useIncidentAuditTrail = (incidentId?: string) => {
     fetchAuditTrail();
     
     console.log('=== END AUDIT TRAIL HOOK EFFECT ===');
-  }, [fetchAuditTrail]);
+  }, [fetchAuditTrail, incidentId]);
 
   return {
     auditEntries,

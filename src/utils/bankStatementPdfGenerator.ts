@@ -20,7 +20,7 @@ interface BankStatementData {
     from?: string;
     to?: string;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export const generateBankStatementPDF = (statementData: BankStatementData, documentNumber?: string) => {

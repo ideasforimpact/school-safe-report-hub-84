@@ -13,7 +13,7 @@ const FormPreviewPage = () => {
   const { formId } = useParams<{ formId: string }>();
   const { forms, loading } = useCustomForms();
   const { employeeData, user } = useAuth();
-  const clientTypeKey = employeeData?.clientType?.key ?? (user as any)?.clientType?.key ?? null;
+  const clientTypeKey = employeeData?.clientType?.key ?? user?.clientType?.key ?? null;
   
   const form = forms.find(f => f.id === formId);
 

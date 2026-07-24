@@ -20,14 +20,17 @@ import {
   Plug,
   Download,
   ClipboardList,
+  type LucideIcon,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
+import type { User, EmployeeData } from '@/contexts/auth/types';
 
 // Define module type to match modules table schema
 export interface Module {
   id: string;
   name: string;
-  icon: string; 
+  icon: string;
   level: string;
   order?: number; // Added order field
   created_at?: string;
@@ -35,11 +38,11 @@ export interface Module {
   key?: string; // Module key for permission mapping
   active?: boolean;
   description?: string;
-  access_level?: any; // Added to support access levels from client_modules
+  access_level?: Json; // Added to support access levels from client_modules
 }
 
 // Map string icon names to Lucide components
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
   AlertTriangle,
   Users,
@@ -112,7 +115,7 @@ export const clearModuleCache = () => {
   cachedClientModules = null;
 };
 
-export const fetchModules = async (isBackoffice: boolean, user?: any, employeeData?: any): Promise<Module[]> => {
+export const fetchModules = async (isBackoffice: boolean, user?: User | null, employeeData?: EmployeeData | null): Promise<Module[]> => {
   try {
     // For backoffice, clear cache to ensure fresh data
     if (isBackoffice) {
@@ -228,7 +231,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
 };
 
 // Convert database modules to sidebar items
-export const convertModulesToSidebarItems = (modules: Module[], permissions: any, basePath: string = '') => {
+export const convertModulesToSidebarItems = (modules: Module[], permissions: Record<string, unknown>, basePath: string = '') => {
   const items = [];
   
   // Sort modules by order field (nulls last)
@@ -246,7 +249,7 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: any
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
     // All modules are allowed now - we filter at the database/API level
-    let allowed = true;
+    const allowed = true;
     
     items.push({
       icon: IconComponent,
@@ -308,7 +311,7 @@ export const getSaasOwnerItems = () => [
 ];
 
 // Client Admin and User Menu Items
-export const getClientItems = (permissions: any) => [
+export const getClientItems = (permissions: Record<string, unknown>) => [
   {
     icon: LayoutDashboard,
     label: 'Dashboard',

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { recordEmployeeVerificationApiCall } from "./employeeVerificationApiCalls.ts";
 
@@ -16,14 +15,21 @@ type RecordAadhaarApiCallEventInput = {
   operation: AadhaarOperation;
   isSuccess: boolean;
   requestGroupId?: string;
-  apiResponse?: any;
+  apiResponse?: unknown;
 };
 
-function toAuditArray(audit: unknown): any[] {
+interface AadhaarAuditEvent {
+  ts?: string;
+  provider?: string;
+  role?: string;
+  result?: string;
+}
+
+function toAuditArray(audit: unknown): AadhaarAuditEvent[] {
   if (Array.isArray(audit)) return audit;
   if (audit && typeof audit === "object") {
     // Legacy format (timestamp keyed object) -> convert best-effort
-    return Object.entries(audit as Record<string, any>).map(([ts, e]) => ({
+    return Object.entries(audit as Record<string, { provider?: string; success?: number }>).map(([ts, e]) => ({
       ts,
       provider: e?.provider ?? "unknown",
       role: "primary",
@@ -33,7 +39,7 @@ function toAuditArray(audit: unknown): any[] {
   return [];
 }
 
-function providerCountsFromAudit(auditEvents: any[], provider: string) {
+function providerCountsFromAudit(auditEvents: AadhaarAuditEvent[], provider: string) {
   let success = 0;
   let failed = 0;
   for (const event of auditEvents) {

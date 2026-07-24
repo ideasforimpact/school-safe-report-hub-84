@@ -40,7 +40,7 @@ export const useIncidentReopen = () => {
             
               const queryTime = Date.now() - queryStart;
               console.log('Reopener data:', reopener,queryTime);
-           let ownerIncident = result.incident.created_by ==  employeeData.id
+           const ownerIncident = result.incident.created_by ==  employeeData.id
           if (ownerIncident && reopener && result.incident) {
             const incidentForNotification = {
               id: incidentId,
