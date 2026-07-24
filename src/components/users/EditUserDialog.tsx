@@ -12,7 +12,6 @@ import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, 
         EMPLOYEE_PERSONAL_INFO_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS, 
         isValidReligion, getReligionErrorMessage, isValidNationality, getNationalityErrorMessage } from '@/constant/employeeConstant';
@@ -137,7 +136,8 @@ const EditUserDialog = ({
   const [removedProfilePaths, setRemovedProfilePaths] = useState<string[]>([]);
   const documentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [isUpdating, setIsUpdating] = useState(false);
-  const { clientId } = useEmployeeData();
+  const { state: employeeStoreState } = useEmployeeStore();
+  const clientId = employeeStoreState.employeeData?.clientId || employeeStoreState.clientId || null;
   const { employeeTypes, loading: employeeTypesLoading } = useEmployeeTypes();
   const { employeeDepartments, loading: employeeDepartmentsLoading } = useEmployeeDepartments();
   const [employeeIdValidation, setEmployeeIdValidation] = useState<EmployeeIdValidationStatus>('idle');
