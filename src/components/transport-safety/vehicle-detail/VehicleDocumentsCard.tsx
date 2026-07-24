@@ -41,8 +41,9 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
 
   // Overall status across the three core documents: worst case wins.
   const coreStatuses = [insuranceStatus.status, fcStatus.status, pollutionStatus.status];
-  const overallStatus = !hasVerificationData
-    ? { label: 'Not Verified', className: 'bg-gray-100 border-gray-200 text-gray-800' }
+  const allMissing = coreStatuses.every(status => status === 'missing');
+  const overallStatus = !hasVerificationData || allMissing
+    ? { label: 'Not Available', className: 'bg-gray-100 border-gray-200 text-gray-800' }
     : coreStatuses.some(status => status === 'expired' || status === 'missing')
     ? { label: 'Expired', className: 'bg-red-100 border-red-200 text-red-800' }
     : coreStatuses.some(status => status === 'expiring_soon')
