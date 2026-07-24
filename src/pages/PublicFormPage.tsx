@@ -58,11 +58,6 @@ const PublicFormPage = () => {
     return emailRegex.test(email);
   };
   
-  const getClientTypeKeyFromRelation = (relation: any): string | null => {
-    if (Array.isArray(relation)) return relation[0]?.key ?? null;
-    return relation?.key ?? null;
-  };
-
   const fetchForm = useCallback(async (token: string) => {
     try {
       setLoading(true);
