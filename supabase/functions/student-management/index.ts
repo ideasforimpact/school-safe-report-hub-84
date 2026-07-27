@@ -111,6 +111,8 @@ serve(async (req) => {
         return await handleValidateId(body, corsHeaders);
       case "bulk-check-ids":
         return await handleBulkCheckIds(body, corsHeaders);
+      case "bulk-get-existing":
+        return await handleBulkGetExisting(body, corsHeaders);
       case "get-form-data":
         return await handleGetFormData(body, corsHeaders);
 
@@ -1350,7 +1352,7 @@ async function handleGetFormData(body: any, corsHeaders: Record<string, string>)
 
 async function handleBulkCheckIds(body: any, corsHeaders: Record<string, string>) {
   const { studentIds, client_id } = body;
-  
+
   if (!studentIds || !Array.isArray(studentIds) || !client_id) {
     return new Response(
       JSON.stringify({ error: "Student IDs (array) and Client ID are required" }),
@@ -1375,6 +1377,38 @@ async function handleBulkCheckIds(body: any, corsHeaders: Record<string, string>
     );
   } catch (error) {
     console.error("Error in handleBulkCheckIds:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+async function handleBulkGetExisting(body: any, corsHeaders: Record<string, string>) {
+  const { studentIds, client_id } = body;
+
+  if (!studentIds || !Array.isArray(studentIds) || !client_id) {
+    return new Response(
+      JSON.stringify({ error: "Student IDs (array) and Client ID are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('students')
+      .select('id, student_id')
+      .eq('client_id', client_id)
+      .in('student_id', studentIds);
+
+    if (error) throw error;
+
+    return new Response(
+      JSON.stringify({ students: data || [] }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in handleBulkGetExisting:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
