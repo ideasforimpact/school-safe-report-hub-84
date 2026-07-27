@@ -84,6 +84,7 @@ interface AssessmentData {
   submit_attachment?: AnswerAttachment[] | null;
   created_by?: string;
   assigned_to?: string;
+  assignees?: { employee_id: string; name: string; status: string; answers: Answer[] }[];
   template?: {
     title: string;
     description: string;
@@ -201,18 +202,38 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
         ? data.closure_attachment
         : [];
 
+      // Each assignee's answers come back the same shape as the parent's
+      // (array, or occasionally an object keyed by index) — normalize each
+      // one the same way so per-assignee Q&A can be matched question-by-question.
+      const normalizeAnswers = (raw: unknown): Answer[] => {
+        if (Array.isArray(raw)) return raw as Answer[];
+        if (raw && typeof raw === 'object') return Object.values(raw) as Answer[];
+        return [];
+      };
+      const processedAssignees = (data.assignees || []).map(
+        (a: { employee_id: string; name: string; status: string; answers: unknown }) => ({
+          ...a,
+          answers: normalizeAnswers(a.answers),
+        })
+      );
+
       const formattedAssessment: AssessmentData = {
         ...data,
         answers: processedAnswers,
         rework_attachments: processedReworkAttachments,
         submit_attachment: processedSubmittedAttachment,
         closure_attachment: processedClosureAttachment,
-        creator_name: data.creator 
+        creator_name: data.creator
           ? `${data.creator.first_name} ${data.creator.last_name}`
           : 'Unknown',
-        assignee_name: data.assignee 
-          ? `${data.assignee.first_name} ${data.assignee.last_name}`
-          : 'Unassigned',
+        // Each assignee completes independently, so show name + THEIR OWN
+        // status per assignee rather than one shared status for everyone.
+        assignee_name: processedAssignees.length > 0
+          ? processedAssignees.map((a: { name: string; status: string }) => `${a.name} (${a.status})`).join(', ')
+          : data.assignee
+            ? `${data.assignee.first_name} ${data.assignee.last_name}`
+            : 'Unassigned',
+        assignees: processedAssignees,
         completed_by_name: data.completed_by_employee 
           ? `${data.completed_by_employee.first_name} ${data.completed_by_employee.last_name}`
           : null,
@@ -402,44 +423,39 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
   };
 
 
-  const getAnswerForQuestion = (questionId: string | undefined, questionIndex?: number) => {
-    if (!assessment?.answers) return undefined;
-    
-    // If questionId exists, try to match by ID first
+  // Matches a question to its answer within a given answers array — shared
+  // by the legacy single "assessment.answers" lookup and the per-assignee
+  // lookup below, since both use the same questionId-or-index matching.
+  const getAnswerFromList = (
+    answersList: Answer[] | undefined,
+    questionId: string | undefined,
+    questionIndex?: number
+  ): Answer | undefined => {
+    if (!answersList) return undefined;
+
     if (questionId) {
       const normalizedQuestionId = String(questionId);
-      
-      const foundAnswer = assessment.answers.find(answer => {
+      const foundAnswer = answersList.find(answer => {
         if (!answer || !answer.questionId) return false;
         return String(answer.questionId) === normalizedQuestionId;
       });
-      
       if (foundAnswer) return foundAnswer;
     }
-    
-    // If no match by ID and we have an index, try to match by index
-    // Answer IDs follow pattern: "question_0_...", "question_1_...", etc.
+
     if (questionIndex !== undefined && questionIndex >= 0) {
-      const foundAnswer = assessment.answers.find(answer => {
+      const foundAnswer = answersList.find(answer => {
         if (!answer || !answer.questionId) return false;
-        const answerIdStr = String(answer.questionId);
-        // Extract index from pattern like "question_0_..." or "question_1_..."
-        const match = answerIdStr.match(/^question_(\d+)_/);
-        if (match) {
-          const answerIndex = parseInt(match[1], 10);
-          return answerIndex === questionIndex;
-        }
-        return false;
+        const match = String(answer.questionId).match(/^question_(\d+)_/);
+        return match ? parseInt(match[1], 10) === questionIndex : false;
       });
-      
-      if (foundAnswer) {
-        console.log(`[AssessmentViewDialog] Matched answer by index ${questionIndex} for question without ID`);
-        return foundAnswer;
-      }
+      if (foundAnswer) return foundAnswer;
     }
-    
+
     return undefined;
   };
+
+  const getAnswerForQuestion = (questionId: string | undefined, questionIndex?: number) =>
+    getAnswerFromList(assessment?.answers, questionId, questionIndex);
 
   const calculateProgress = () => {
     if (!assessment?.template?.questions || !assessment.answers) return 0;
@@ -1005,21 +1021,32 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                         return null;
                       }
                       
-                      // Try to get answer by question ID first, then by index as fallback
-                      const answer = getAnswerForQuestion(question.id, index);
-                      const isAnswered = answer?.answer !== undefined;
+                      // Each assignee answers independently — build one
+                      // row per assignee for this question. Falls back to
+                      // the single shared answers array for pre-multi-
+                      // assignee assessments that have no assignee rows.
+                      const hasAssignees = assessment.assignees && assessment.assignees.length > 0;
+                      const perAssigneeAnswers = hasAssignees
+                        ? assessment.assignees!.map(a => ({
+                            assignee: a,
+                            answer: getAnswerFromList(a.answers, question.id, index),
+                          }))
+                        : [{ assignee: null, answer: getAnswerForQuestion(question.id, index) }];
+                      const answeredCount = perAssigneeAnswers.filter(x => x.answer?.answer !== undefined).length;
+                      const totalResponders = perAssigneeAnswers.length;
+                      const isFullyAnswered = totalResponders > 0 && answeredCount === totalResponders;
                       const questionKey = question.id || `question_${index}`;
-                      
+
                       return (
                         <Card key={questionKey} className="border-l-4 border-l-blue-500 shadow-sm">
                           <CardHeader className="pb-2 px-4 pt-3">
                             <div className="flex items-start gap-2">
                               <span className={`flex justify-center items-center w-7 h-7 rounded-full text-xs font-semibold flex-shrink-0 ${
-                                isAnswered 
-                                  ? "bg-green-100 text-green-700" 
+                                isFullyAnswered
+                                  ? "bg-green-100 text-green-700"
                                   : "bg-gray-100 text-gray-600"
                               }`}>
-                                {isAnswered ? <Check className="h-3 w-3" /> : index + 1}
+                                {isFullyAnswered ? <Check className="h-3 w-3" /> : index + 1}
                               </span>
                               <div className="flex-1 min-w-0">
                                 <CardTitle className="text-sm break-words whitespace-normal leading-relaxed">
@@ -1027,27 +1054,101 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                                   {question.required && <span className="text-red-500 ml-1">*</span>}
                                 </CardTitle>
                               </div>
+                              {totalResponders > 1 && (
+                                <Badge variant="outline" className="flex-shrink-0 text-[10px] font-normal text-gray-500">
+                                  {answeredCount}/{totalResponders} answered
+                                </Badge>
+                              )}
                             </div>
                           </CardHeader>
                           <CardContent className="space-y-3 pt-0 px-4 pb-3">
-                            {/* Answer */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-medium text-gray-500">Answer:</span>
-                              {isAnswered ? (
-                                answer.answer === 'yes' ? (
-                                  <Badge className="bg-green-100 text-green-800 text-xs py-0.5">
-                                    <Check className="h-3 w-3 mr-1" />
-                                    Yes
-                                  </Badge>
-                                ) : (
-                                  <Badge className="bg-red-100 text-red-800 text-xs py-0.5">
-                                    <X className="h-3 w-3 mr-1" />
-                                    No
-                                  </Badge>
-                                )
-                              ) : (
-                                <span className="text-xs text-gray-400 italic">Not answered</span>
+                            {/* Responses — one per assignee, each with their own answer/comment/attachments */}
+                            <div className="space-y-1.5">
+                              {totalResponders > 1 && (
+                                <span className="text-xs font-medium text-gray-500">Responses:</span>
                               )}
+                              {perAssigneeAnswers.map(({ assignee, answer }, responderIdx) => {
+                                const answered = answer?.answer !== undefined;
+                                const initials = assignee?.name
+                                  ? assignee.name.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+                                  : '';
+                                return (
+                                  <div
+                                    key={assignee?.employee_id ?? responderIdx}
+                                    className={`rounded-md border p-2 ${answered ? 'border-gray-200 bg-gray-50/70' : 'border-dashed border-gray-200'}`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      {assignee ? (
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-700">
+                                            {initials}
+                                          </span>
+                                          <span className="text-xs font-medium text-gray-700 truncate">{assignee.name}</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-xs font-medium text-gray-500">Answer:</span>
+                                      )}
+                                      {answered ? (
+                                        answer!.answer === 'yes' ? (
+                                          <Badge className="bg-green-100 text-green-800 text-xs py-0.5 flex-shrink-0">
+                                            <Check className="h-3 w-3 mr-1" />
+                                            Yes
+                                          </Badge>
+                                        ) : (
+                                          <Badge className="bg-red-100 text-red-800 text-xs py-0.5 flex-shrink-0">
+                                            <X className="h-3 w-3 mr-1" />
+                                            No
+                                          </Badge>
+                                        )
+                                      ) : (
+                                        <span className="text-xs text-gray-400 italic flex-shrink-0">Not answered</span>
+                                      )}
+                                    </div>
+
+                                    {answer?.comment && (
+                                      <div className="mt-1.5 pl-6 flex items-start gap-1.5">
+                                        <MessageCircle className="h-3 w-3 mt-0.5 text-blue-600 flex-shrink-0" />
+                                        <p className="text-xs text-gray-700 whitespace-pre-wrap break-words">{answer.comment}</p>
+                                      </div>
+                                    )}
+
+                                    {answer?.attachments && answer.attachments.length > 0 && (
+                                      <div className="mt-1.5 pl-6 space-y-1">
+                                        {answer.attachments.map((attachment, idx) => (
+                                          <div key={idx} className="flex items-center gap-1.5 text-xs">
+                                            <Paperclip className="h-3 w-3 text-purple-600 flex-shrink-0" />
+                                            <span className="truncate text-gray-700" title={attachment.name}>
+                                              {attachment.name || `Attachment ${idx + 1}`}
+                                            </span>
+                                            {(attachment.url || attachment.path || attachment.base64) && (
+                                              <div className="ml-auto flex items-center gap-0.5 flex-shrink-0">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-5 w-5 p-0 text-blue-600 hover:bg-blue-50"
+                                                  onClick={() => openDocumentViewer(attachment)}
+                                                  title="View document"
+                                                >
+                                                  <Eye className="h-3 w-3" />
+                                                </Button>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-5 w-5 p-0 text-green-600 hover:bg-green-50"
+                                                  onClick={() => downloadAttachment(attachment)}
+                                                  title="Download document"
+                                                >
+                                                  <Download className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
 
                             {/* Reference Question Files (Template Files) */}
@@ -1105,78 +1206,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                               </div>
                             )}
 
-                            {/* Comment */}
-                            {answer?.comment && (
-                              <div>
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                  <MessageCircle className="h-3.5 w-3.5 text-blue-600" />
-                                  <span className="text-xs font-medium text-gray-700">Comment</span>
-                                </div>
-                                <div className="p-2 bg-blue-50 rounded border border-blue-200">
-                                  <p className="text-xs text-gray-700 whitespace-pre-wrap break-words">{answer.comment}</p>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* User Attachments */}
-                            {answer?.attachments && answer.attachments.length > 0 && (
-                              <div>
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                  <Paperclip className="h-3.5 w-3.5 text-purple-600" />
-                                  <span className="text-xs font-medium text-gray-700">
-                                    User Attachments ({answer.attachments.length})
-                                  </span>
-                                </div>
-                                <div className="space-y-1.5">
-                                  {answer.attachments.map((attachment, idx) => {
-                                    return (
-                                      <div key={idx} className="flex items-center gap-2 p-2 bg-purple-50 rounded border border-purple-200">
-                                        <FileText className="h-4 w-4 text-purple-600 flex-shrink-0" />
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-xs font-medium truncate" title={attachment.name}>
-                                            {attachment.name || `Attachment ${idx + 1}`}
-                                          </p>
-                                          {attachment.type && (
-                                            <p className="text-xs text-gray-500 truncate">
-                                              {attachment.type}
-                                            </p>
-                                          )}
-                                        </div>
-                                        {(attachment.url || attachment.path || attachment.base64) && (
-                                          <div className="flex items-center gap-1 flex-shrink-0">
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() => openDocumentViewer(attachment)}
-                                              className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                              title="View document"
-                                            >
-                                              <Eye className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() => downloadAttachment(attachment)}
-                                              className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                              title="Download document"
-                                            >
-                                              <Download className="h-3.5 w-3.5" />
-                                            </Button>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Show message if no comment or attachments */}
-                            {!answer?.comment && (!answer?.attachments || answer.attachments.length === 0) && (
-                              <div className="text-xs text-gray-400 italic">
-                                No comments or attachments provided
-                              </div>
-                            )}
                           </CardContent>
                         </Card>
                       );
