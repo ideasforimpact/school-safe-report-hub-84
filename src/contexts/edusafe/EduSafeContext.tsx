@@ -33,8 +33,14 @@ const extractFileNameFromUrl = (url: string | undefined | null, fallbackTitle: s
   return fallbackTitle;
 };
 
+interface EduSafeResourceFetchFilters {
+  category?: ResourceCategory | 'all';
+  ownerType?: 'all' | 'saas' | 'organisational';
+}
+
 interface EduSafeContextType {
   resources: EduSafeResource[];
+  totalCount: number;
   addResource: (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType' | 'resourceType'>) => Promise<void>;
   updateResource: (id: string, updatedResource: Partial<Omit<EduSafeResource, 'file'>> & { file?: File }) => Promise<void>;
   deleteResource: (id: string) => Promise<void>;
@@ -43,7 +49,7 @@ interface EduSafeContextType {
   getMyResources: () => EduSafeResource[];
   getSaasResources: () => EduSafeResource[];
   loading: boolean;
-  refreshResources: () => Promise<void>;
+  refreshResources: (searchQuery?: string, page?: number, limit?: number, filters?: EduSafeResourceFetchFilters) => Promise<void>;
 }
 
 const EduSafeContext = createContext<EduSafeContextType | undefined>(undefined);
@@ -58,18 +64,34 @@ export const useEduSafe = () => {
 
 export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialFetch?: boolean }> = ({ children, skipInitialFetch = false }) => {
   const [resources, setResources] = useState<EduSafeResource[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState(!skipInitialFetch);
   const { user } = useAuth();
   const location = useLocation();
   const fetchedForClientRef = useRef<string | null>(null);
+  const lastFetchParamsRef = useRef<{
+    searchQuery?: string;
+    page?: number;
+    limit?: number;
+    filters?: EduSafeResourceFetchFilters;
+  }>({});
 
-  const fetchResources = useCallback(async () => {
+  const fetchResources = useCallback(async (
+    searchQuery?: string,
+    page?: number,
+    limit?: number,
+    filters?: EduSafeResourceFetchFilters
+  ) => {
+    // Remember params so mutations (add/delete) can refetch with the same filters
+    lastFetchParamsRef.current = { searchQuery, page, limit, filters };
+
     try {
       setLoading(true);
       
       if (!user?.clientId) {
         console.log('No client ID available, skipping fetch');
         setResources([]);
+        setTotalCount(0);
         return;
       }
 
@@ -82,7 +104,14 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
           .invoke('edusafe-resource-client', {
             body: { 
               action: 'fetch_resources',
-              data: { client_id: user.clientId }
+              data: { 
+                client_id: user.clientId,
+                search: searchQuery || undefined,
+                page,
+                limit,
+                category: filters?.category && filters.category !== 'all' ? filters.category : undefined,
+                owner_type: filters?.ownerType && filters.ownerType !== 'all' ? filters.ownerType : 'all',
+              }
             }
           });
 
@@ -90,6 +119,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
           console.error('Error fetching resources via edge function:', error);
           toast.error('Failed to load resources');
           setResources([]);
+          setTotalCount(0);
           return;
         }
 
@@ -118,14 +148,22 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
         }));
 
         setResources(transformedResources);
+        setTotalCount(resourcesData?.totalCount ?? transformedResources.length);
       } else {
         // Backoffice context - use existing logic
         // Fetch regular edusafe_resources filtered by client_id
-        const { data: regularResources, error: regularError } = await supabase
+        let regularQuery = supabase
           .from('edusafe_resources')
           .select('*')
           .eq('client_id', user.clientId)
           .order('created_at', { ascending: false });
+
+        if (searchQuery && searchQuery.trim() !== '') {
+          const s = `%${searchQuery.trim()}%`;
+          regularQuery = regularQuery.or(`title.ilike.${s},description.ilike.${s},category.ilike.${s}`);
+        }
+
+        const { data: regularResources, error: regularError } = await regularQuery;
 
         if (regularError) throw regularError;
 
@@ -138,7 +176,10 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
           const { data: backofficeData, error: backofficeError } = await supabase.functions.invoke('backoffice-edusafe-resource', {
             body: { 
               action: 'list',
-              client_type_id: clientTypeId
+              client_type_id: clientTypeId,
+              search: searchQuery || undefined,
+              page,
+              limit
             }
           });
 
@@ -215,6 +256,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
         console.log(transformedResources,"transformedResources");
         
         setResources(transformedResources);
+        setTotalCount(transformedResources.length);
       }
     } catch (error) {
       console.error('Error fetching resources:', error);
@@ -264,7 +306,8 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
       if (error) throw error;
 
       toast.success('Resource added successfully');
-      await fetchResources();
+      const { searchQuery, page, limit, filters } = lastFetchParamsRef.current;
+      await fetchResources(searchQuery, page, limit, filters);
     } catch (error) {
       console.error('Error adding resource:', error);
       toast.error('Failed to add resource');
@@ -343,7 +386,8 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
       if (!data?.success) throw new Error('Failed to delete resource');
 
       toast.success('Resource deleted successfully');
-      await fetchResources();
+      const { searchQuery, page, limit, filters } = lastFetchParamsRef.current;
+      await fetchResources(searchQuery, page, limit, filters);
     } catch (error) {
       console.error('Error deleting resource:', error);
       toast.error('Failed to delete resource');
@@ -439,12 +483,29 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
     return resources.filter(r => r.ownerType === 'saas');
   };
 
-  const refreshResources = async () => {
-    await fetchResources();
-  };
+  const refreshResources = useCallback(async (
+    searchQuery?: string,
+    page?: number,
+    limit?: number,
+    filters?: EduSafeResourceFetchFilters
+  ) => {
+    // No-arg calls (after upload/edit/delete helpers) keep the current list filters
+    if (
+      searchQuery === undefined &&
+      page === undefined &&
+      limit === undefined &&
+      filters === undefined
+    ) {
+      const last = lastFetchParamsRef.current;
+      await fetchResources(last.searchQuery, last.page, last.limit, last.filters);
+      return;
+    }
+    await fetchResources(searchQuery, page, limit, filters);
+  }, [fetchResources]);
 
   const value = {
     resources,
+    totalCount,
     addResource,
     updateResource,
     deleteResource,

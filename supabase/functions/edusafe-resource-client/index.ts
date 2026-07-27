@@ -61,9 +61,28 @@ Deno.serve(async (req) => {
   }
 })
 
-async function fetchResources(supabase: any, { client_id }: { client_id: string }) {
+async function fetchResources(supabase: any, {
+  client_id,
+  search,
+  page,
+  limit,
+  category,
+  owner_type,
+}: {
+  client_id: string
+  search?: string
+  page?: number
+  limit?: number
+  category?: string
+  owner_type?: 'all' | 'saas' | 'organisational'
+}) {
   try {
-    console.log(`Fetching EduSafe resources for client: ${client_id}`)
+    const resolvedOwnerType = owner_type || 'all'
+    const resolvedCategory = category && category !== 'all' ? category : null
+
+    console.log(
+      `Fetching EduSafe resources for client: ${client_id}, search: ${search || 'none'}, category: ${resolvedCategory || 'all'}, owner_type: ${resolvedOwnerType}, page: ${page || 1}, limit: ${limit || 10}`
+    )
     
     // Fetch client info to get client_type_id
     const { data: clientData, error: clientError } = await supabase
@@ -83,28 +102,64 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
       )
     }
 
-    // Fetch organizational resources for this client
-    const { data: orgResources, error: orgError } = await supabase
-      .from('edusafe_resources')
-      .select('*, clients(name)')
-      .eq('client_id', client_id)
+    const includeOrg = resolvedOwnerType === 'all' || resolvedOwnerType === 'organisational'
+    const includeGlobal = resolvedOwnerType === 'all' || resolvedOwnerType === 'saas'
 
-    if (orgError) {
-      console.error('Error fetching organizational resources:', orgError)
+    let orgResources: any[] = []
+    let globalResources: any[] = []
+
+    // Fetch organizational resources for this client
+    if (includeOrg) {
+      let orgQuery = supabase
+        .from('edusafe_resources')
+        .select('*, clients(name)')
+        .eq('client_id', client_id)
+
+      if (resolvedCategory) {
+        orgQuery = orgQuery.eq('category', resolvedCategory)
+      }
+
+      if (search && search.trim() !== '') {
+        const s = `%${search.trim()}%`
+        orgQuery = orgQuery.or(`title.ilike.${s},description.ilike.${s},category.ilike.${s}`)
+      }
+
+      const { data, error: orgError } = await orgQuery
+
+      if (orgError) {
+        console.error('Error fetching organizational resources:', orgError)
+      } else {
+        orgResources = data || []
+      }
     }
 
     // Fetch global resources for this client type
-    const { data: globalResources, error: globalError } = await supabase
-      .from('backoffice_edusafe_resource')
-      .select('*')
-      .eq('client_type_id', clientData.client_type_id)
+    if (includeGlobal) {
+      let globalQuery = supabase
+        .from('backoffice_edusafe_resource')
+        .select('*')
+        .eq('client_type_id', clientData.client_type_id)
 
-    if (globalError) {
-      console.error('Error fetching global resources:', globalError)
+      if (resolvedCategory) {
+        globalQuery = globalQuery.eq('category', resolvedCategory)
+      }
+
+      if (search && search.trim() !== '') {
+        const s = `%${search.trim()}%`
+        globalQuery = globalQuery.or(`title.ilike.${s},description.ilike.${s},category.ilike.${s}`)
+      }
+
+      const { data, error: globalError } = await globalQuery
+
+      if (globalError) {
+        console.error('Error fetching global resources:', globalError)
+      } else {
+        globalResources = data || []
+      }
     }
 
-    const allResources = [
-      ...(orgResources || []).map((resource: any) => ({
+    let allResources = [
+      ...orgResources.map((resource: any) => ({
         id: resource.id,
         title: resource.title,
         description: resource.description,
@@ -126,7 +181,7 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
           size: resource.file_size || 0
         }
       })),
-      ...(globalResources || []).map((resource: any) => ({
+      ...globalResources.map((resource: any) => ({
         id: resource.id,
         title: resource.title,
         description: resource.description,
@@ -138,7 +193,7 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
         ownerType: 'saas' as const,
         clientId: null,
         resourceType: 'Global Resource' as const,
-        document_url: resource.document_url, // Add the document_url field
+        document_url: resource.document_url,
         youtube_link: resource.youtube_link,
         file_size: resource.file_size || null,
         file: {
@@ -150,10 +205,38 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
       }))
     ]
 
-    console.log(`Found ${allResources.length} total resources (${orgResources?.length || 0} organizational, ${globalResources?.length || 0} global)`)
+    // Sort newest first so pagination is stable
+    allResources.sort((a: any, b: any) =>
+      new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
+    )
+
+    if (search && search.trim() !== '') {
+      const searchLower = search.trim().toLowerCase()
+      allResources = allResources.filter((resource: any) =>
+        resource.title?.toLowerCase().includes(searchLower) ||
+        resource.description?.toLowerCase().includes(searchLower) ||
+        (Array.isArray(resource.tags) && resource.tags.some((t: string) => t.toLowerCase().includes(searchLower))) ||
+        resource.category?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    const totalCount = allResources.length
+    let paginatedResources = allResources
+    if (page && limit) {
+      const startIndex = (page - 1) * limit
+      const endIndex = startIndex + limit
+      paginatedResources = allResources.slice(startIndex, endIndex)
+    }
+
+    console.log(`Found ${totalCount} total resources (${orgResources.length} organizational, ${globalResources.length} global), returning ${paginatedResources.length} for page ${page || 1}`)
 
     return new Response(
-      JSON.stringify({ resources: allResources }),
+      JSON.stringify({ 
+        resources: paginatedResources,
+        // Keep full filtered list for callers that read allResources (e.g. tooling / older clients)
+        allResources: allResources,
+        totalCount: totalCount
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
