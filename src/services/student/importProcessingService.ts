@@ -66,21 +66,28 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
     console.log(`Processing ${validData.length} valid students after duplicate filtering`);
 
     // Fetch existing students for update detection (should be none after duplicate check, but keeping for safety)
-    const { data: existingStudents, error: fetchError } = await supabase
-      .from('students')
-      .select('id, student_id')
-      .eq('client_id', clientId)
-      .in('student_id', validData.map(row => String(row.studentId).trim()));
-      
+    const { data: existingStudentsData, error: fetchError } = await supabase.functions.invoke(
+      'student-management',
+      {
+        method: 'POST',
+        headers: { path: 'bulk-get-existing', 'client-id': clientId },
+        body: {
+          studentIds: validData.map(row => String(row.studentId).trim()),
+          client_id: clientId
+        }
+      }
+    );
+
     if (fetchError) {
       console.error('Error fetching existing students:', fetchError);
       throw new Error(`Database error: ${fetchError.message}`);
     }
-    
+
     // Create maps for fast lookups
     const existingStudentsMap = new Map();
+    const existingStudents = existingStudentsData?.students;
     if (existingStudents) {
-      existingStudents.forEach(student => {
+      existingStudents.forEach((student: { id: string; student_id: string }) => {
         existingStudentsMap.set(student.student_id.toLowerCase(), student.id);
       });
     }
@@ -153,6 +160,17 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
           }
         }
       );
+
+      if (error) {
+        console.error('Error creating students in bulk:', error);
+        throw new Error(`Failed to create students: ${error.message}`);
+      }
+
+      result.successCount = data?.count || studentsToCreate.length;
+
+      if (data?.students) {
+        result.addedStudents = result.addedStudents.concat(data.students);
+      }
     }
     
     // Execute bulk update operation if needed
