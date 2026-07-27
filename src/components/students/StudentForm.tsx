@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,6 +28,7 @@ import { checkStudentIdExists } from '@/services/student/studentValidationServic
 import { useAuth } from '@/contexts/auth';
 import { Person } from '@/types/incident';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { useLang } from '@/hooks/useLang';
 import Loader from '../common/Loader';
 
 interface Campus {
@@ -47,7 +48,7 @@ interface Section {
   classId: string;
 }
 
-const formSchema = z.object({
+const buildFormSchema = (gradeLabel: string, sectionLabel: string) => z.object({
   studentId: z.string()
     .min(1, { message: 'Student ID is required' })
     .max(15, { message: 'Student ID cannot exceed 15 characters' })
@@ -58,16 +59,16 @@ const formSchema = z.object({
     .regex(/^[a-zA-Z\s]+$/, { message: 'Name can only contain letters and spaces' }),
   campus: z.string().min(1, { message: 'Campus is required' }),
   campusId: z.string().optional(),
-  grade: z.string().min(1, { message: 'Grade is required' }),
+  grade: z.string().min(1, { message: `${gradeLabel} is required` }),
   gradeId: z.string().optional(),
-  section: z.string().min(1, { message: 'Section is required' }),
+  section: z.string().min(1, { message: `${sectionLabel} is required` }),
   sectionId: z.string().optional()
 }).refine((data) => data.campusId && data.gradeId && data.sectionId, {
   message: "All IDs must be selected",
   path: ["sectionId"] // Show error on section field
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<ReturnType<typeof buildFormSchema>>;
 
 interface StudentFormProps {
   defaultValues?: Partial<FormValues>;
@@ -105,7 +106,10 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   const lastValidatedId = useRef<string | null>(null);
   const fetchStructureInProgress = useRef(false);
   const { employeeData } = useAuth();
-  
+  const lang = useLang();
+  const gradeLabel = lang.structure.grade;
+  const sectionLabel = lang.structure.section;
+
   // Prepare default values with peopleInvolved data if available
   const getDefaultValues = () => {
     if (peopleInvolved?.name) {
@@ -131,6 +135,8 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
       sectionId: ''
     };
   };
+
+  const formSchema = useMemo(() => buildFormSchema(gradeLabel, sectionLabel), [gradeLabel, sectionLabel]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -533,7 +539,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
           name="grade"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Grade <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>{gradeLabel} <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Select
                   value={selectedGradeId}
@@ -567,7 +573,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
           name="section"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Section <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>{sectionLabel} <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Select
                   value={selectedSectionId}

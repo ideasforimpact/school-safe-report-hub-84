@@ -10,7 +10,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useAuth } from '@/contexts/auth';
 import { Progress } from '@/components/ui/progress';
 import { validateExcelData } from '@/services/student/utils/excelValidationUtils';
-import { processStudentData } from '@/services/student/importProcessingService';
+import { processStudentData, showImportResultNotifications } from '@/services/student/importProcessingService';
 import { RawStudentData } from '@/services/student/types/importTypes';
 import { parseStudentFile } from '@/services/student/utils/excelProcessingUtils';
 import {
@@ -30,7 +30,7 @@ interface ImportStudentDialogProps {
 }
 
 const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStudentDialogProps) => {
-  const { students } = useStudents();
+  const { students, refreshStudents } = useStudents();
   const { employeeData } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -195,12 +195,17 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
 
     try {
       const importData = structuredClone(parsedData);
-      
-      await processStudentData(
+      const result = await processStudentData(
         importData.filter((_, i) => !errorRowNumbers.has(i + 2)),
         employeeData.clientId,
         employeeData.clientType?.id
       );
+
+      showImportResultNotifications(result);
+
+      if (result.successCount > 0 || result.updatedCount > 0) {
+        await refreshStudents();
+      }
 
       handleDialogClose();
     } catch (e) {
