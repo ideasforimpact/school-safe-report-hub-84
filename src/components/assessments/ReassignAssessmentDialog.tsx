@@ -3,31 +3,18 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { useAuth } from '@/contexts/auth';
-import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
-
-interface Employee {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  aadhar_verified_name: string | null;
-}
-
-const getEmployeeDisplayName = (employee: Pick<Employee, 'first_name' | 'last_name' | 'aadhar_verified_name'>) =>
-  employee.aadhar_verified_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
+import AssigneeMultiSelect from './create/AssigneeMultiSelect';
+import { AssigneeEmployee } from '@/types/assessment';
 
 interface ReassignAssessmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assessmentId: number;
-  currentAssigneeId: string | null;
-  currentAssigneeName: string;
+  currentAssigneeIds: string[];
   assessment: {
     id: string;
     name: string;
@@ -42,19 +29,23 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
   open,
   onOpenChange,
   assessmentId,
-  currentAssigneeId,
-  currentAssigneeName,
+  currentAssigneeIds,
   assessment,
   onReassignSuccess
 }) => {
   const { clientId } = useAssessmentAccess();
-  const { employeeData } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
-  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
+  const [employees, setEmployees] = useState<AssigneeEmployee[]>([]);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>(currentAssigneeIds);
   const [loading, setLoading] = useState(false);
   const [fetchingEmployees, setFetchingEmployees] = useState(false);
   const lastFetchRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
+
+  useEffect(() => {
+    if (open) {
+      setSelectedEmployeeIds(currentAssigneeIds);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, assessmentId]);
 
   const fetchEmployees = useCallback(async () => {
     if (!clientId) return;
@@ -76,7 +67,7 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
         return;
       }
 
-      setEmployees((data?.employees || []) as Employee[]);
+      setEmployees((data?.employees || []) as AssigneeEmployee[]);
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to fetch employees');
@@ -85,81 +76,53 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
     }
   }, [clientId, open]);
 
-  // Fetch employees when dialog opens
   useEffect(() => {
     if (open && clientId) {
       fetchEmployees();
     }
   }, [open, clientId, fetchEmployees]);
 
-  const handleReassign = async () => {
-    if (!selectedEmployeeId) {
-      toast.error('Please select an employee to reassign to');
-      return;
-    }
-
-    if (selectedEmployeeId === currentAssigneeId) {
-      toast.error('Assessment is already assigned to this employee');
+  const handleSave = async () => {
+    if (selectedEmployeeIds.length === 0) {
+      toast.error('Please assign at least one employee');
       return;
     }
 
     try {
       setLoading(true);
 
-      const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
+      const assignees = selectedEmployeeIds
+        .map(id => employees.find(emp => emp.id === id))
+        .filter((emp): emp is AssigneeEmployee => !!emp)
+        .map(emp => ({
+          id: emp.id,
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+          email: emp.email,
+        }));
 
       const { error } = await supabase.functions.invoke('reassign-assessment', {
         body: {
           assessment_id: assessmentId,
           client_id: clientId,
-          assigned_to: selectedEmployeeId,
-          assignee: selectedEmployee ? {
-            id: selectedEmployee.id,
-            first_name: selectedEmployee.first_name,
-            last_name: selectedEmployee.last_name,
-            email: selectedEmployee.email,
-          } : undefined,
+          assigned_to: selectedEmployeeIds,
+          assignees,
         },
       });
 
       if (error) {
-        console.error('Error reassigning assessment:', error);
-        toast.error('Failed to reassign assessment');
+        console.error('Error updating assignees:', error);
+        toast.error('Failed to update assignees');
         return;
       }
 
-      toast.success(`Assessment reassigned to ${selectedEmployee ? getEmployeeDisplayName(selectedEmployee) : ''}`);
-
-      // Notify the newly-assigned employee (not if reassigning to yourself).
-      // Immediate email processing is triggered internally by
-      // queueAssessmentReassignedNotification — no manual invoke needed here.
-      if (selectedEmployee && selectedEmployeeId !== employeeData?.id) {
-        try {
-          await assessmentNotificationService.queueAssessmentReassignedNotification(
-            {
-              id: assessment.id,
-              title: assessment.name,
-              target_completion_date: assessment.target_completion_date,
-              assigned_to: selectedEmployeeId,
-              created_by: assessment.created_by,
-              client_id: assessment.client_id
-            },
-            selectedEmployee,
-            employeeData
-          );
-        } catch (notificationError) {
-          console.error('Error queueing assessment reassignment notification:', notificationError);
-          // Don't fail the reassignment if notification fails
-        }
-      }
+      toast.success('Assignees updated successfully');
 
       onReassignSuccess();
       onOpenChange(false);
-      setSelectedEmployeeId('');
-      setEmployeeSearchTerm('');
     } catch (error) {
-      console.error('Error reassigning assessment:', error);
-      toast.error('Failed to reassign assessment');
+      console.error('Error updating assignees:', error);
+      toast.error('Failed to update assignees');
     } finally {
       setLoading(false);
     }
@@ -167,21 +130,8 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
 
   const handleCancel = () => {
     onOpenChange(false);
-    setSelectedEmployeeId('');
-    setEmployeeSearchTerm('');
+    setSelectedEmployeeIds(currentAssigneeIds);
   };
-
-  const filteredEmployees = employees.filter((employee) => {
-    const fullName = getEmployeeDisplayName(employee).toLowerCase();
-    const email = (employee.email || '').toLowerCase();
-    const normalizedSearch = employeeSearchTerm.trim().toLowerCase();
-
-    if (!normalizedSearch) return true;
-
-    return fullName.includes(normalizedSearch) || email.includes(normalizedSearch);
-  });
-  const shouldShowEmployeeDropdown = employeeSearchTerm.trim().length > 0;
-  const selectedEmployee = employees.find((employee) => employee.id === selectedEmployeeId);
 
   const handleEmployeeUpdate = useCallback(async () => {
     await fetchEmployees();
@@ -199,63 +149,22 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Reassign Assessment</DialogTitle>
+          <DialogTitle>Manage Assignees</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div>
-            <Label className="text-sm font-medium text-gray-700">
-              Current Assignee
+            <Label className="text-sm font-medium text-gray-700 mb-1 block">
+              Assign To
             </Label>
-            <div className="mt-1 p-2 bg-gray-50 rounded-md text-sm">
-              {currentAssigneeName || 'Unassigned'}
-            </div>
-          </div>
-
-          <div className="relative">
-            <Label htmlFor="employee-search" className="text-sm font-medium text-gray-700">
-              Reassign To
-            </Label>
-            <Input
-              id="employee-search"
-              value={employeeSearchTerm}
-              onChange={(event) => setEmployeeSearchTerm(event.target.value)}
-              placeholder="Search employee by name or email"
-              className="mt-1"
-            />
-            {selectedEmployee && (
-              <div className="mt-2 rounded-md bg-purple-50 px-3 py-2 text-sm text-purple-700">
-                Selected: {getEmployeeDisplayName(selectedEmployee)} ({selectedEmployee.email})
-              </div>
-            )}
-            {shouldShowEmployeeDropdown && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-md border bg-white shadow-md">
-                {fetchingEmployees ? (
-                  <div className="px-3 py-2 text-sm text-gray-500">Loading employees...</div>
-                ) : filteredEmployees.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-gray-500">No employee found</div>
-                ) : (
-                  filteredEmployees.map((employee) => {
-                    const isSelected = selectedEmployeeId === employee.id;
-                    return (
-                      <button
-                        key={employee.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedEmployeeId(employee.id);
-                          setEmployeeSearchTerm('');
-                        }}
-                        className={`w-full border-b px-3 py-2 text-left text-sm last:border-b-0 ${
-                          isSelected ? 'bg-purple-50 text-purple-700' : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="font-medium">{getEmployeeDisplayName(employee)}</div>
-                        <div className="text-xs text-gray-500">{employee.email}</div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
+            {fetchingEmployees ? (
+              <p className="text-sm text-gray-500">Loading employees...</p>
+            ) : (
+              <AssigneeMultiSelect
+                employees={employees}
+                selectedIds={selectedEmployeeIds}
+                onChange={setSelectedEmployeeIds}
+              />
             )}
           </div>
         </div>
@@ -269,10 +178,10 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
             Cancel
           </Button>
           <Button
-            onClick={handleReassign}
-            disabled={loading || !selectedEmployeeId || fetchingEmployees}
+            onClick={handleSave}
+            disabled={loading || fetchingEmployees || selectedEmployeeIds.length === 0}
           >
-            {loading ? 'Reassigning...' : 'Reassign'}
+            {loading ? 'Saving...' : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>
