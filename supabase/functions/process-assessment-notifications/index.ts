@@ -172,7 +172,7 @@ async function validateAssessmentNotification(supabase: any, email: any): Promis
     // Fetch current assessment state
     const { data: assessment, error } = await supabase
       .from('assessments')
-      .select('created_by, assigned_to')
+      .select('created_by')
       .eq('id', assessmentId)
       .single();
 
@@ -184,8 +184,22 @@ async function validateAssessmentNotification(supabase: any, email: any): Promis
       return { isValid: false, reason: 'Creator changed since email was queued' };
     }
 
-    if (assessment.assigned_to !== paramAssignedTo) {
-      return { isValid: false, reason: 'Assignee changed since email was queued' };
+    // An assessment can now have multiple assignees, so "did the assignment
+    // change since queueing" is a membership check against assessment_assignees
+    // rather than an equality check against the (now possibly-null) legacy
+    // assessments.assigned_to column.
+    if (paramAssignedTo) {
+      const { data: assigneeRow } = await supabase
+        .from('assessment_assignees')
+        .select('employee_id')
+        .eq('assessment_id', assessmentId)
+        .eq('employee_id', paramAssignedTo)
+        .is('unassigned_at', null)
+        .maybeSingle();
+
+      if (!assigneeRow) {
+        return { isValid: false, reason: 'Assignee no longer assigned to this assessment' };
+      }
     }
 
     return { isValid: true };
