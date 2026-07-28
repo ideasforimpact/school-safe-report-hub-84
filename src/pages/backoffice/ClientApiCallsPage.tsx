@@ -216,7 +216,6 @@ const ClientApiCallsPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold">API Usage - {clientName}</h1>
-            <p className="text-sm text-muted-foreground">Client ID: {clientId}</p>
           </div>
           <Button variant="outline" onClick={() => navigate('/backoffice/clients')}>
             Back to Clients
