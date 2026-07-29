@@ -166,10 +166,18 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
         throw new Error(`Failed to create students: ${error.message}`);
       }
 
-      result.successCount = data?.count || studentsToCreate.length;
+      // data.count reflects how many rows actually got inserted - some rows can be
+      // skipped (invalid campus/grade/section) without failing the whole batch, so
+      // never assume studentsToCreate.length actually made it into the database.
+      result.successCount += data?.count ?? 0;
 
       if (data?.students) {
         result.addedStudents = result.addedStudents.concat(data.students);
+      }
+
+      if (data?.errors?.length) {
+        result.errors.push(...data.errors);
+        result.errorCount += data.errors.length;
       }
     }
     
@@ -180,7 +188,8 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
         headers: { path: 'bulk-update', 'client-id': clientId },
         body: {
           students: studentsToUpdate,
-          client_id: clientId
+          client_id: clientId,
+          client_type_id: clientTypeId || null
         }
       });
         

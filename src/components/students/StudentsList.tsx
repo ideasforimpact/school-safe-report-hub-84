@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash2, School, IdCard, User } from 'lucide-react';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { formatDate } from '@/lib/Dateformat';
+import { useLang } from '@/hooks/useLang';
 
 interface StudentsListProps {
   students: Student[];
@@ -40,6 +41,7 @@ const StudentsList = ({
   onItemsPerPageChange
 }: StudentsListProps) => {
   const totalItems = totalStudents;
+  const lang = useLang();
 
   const handlePageChange = (page: number) => {
     if (onPageChange) {
@@ -55,10 +57,10 @@ const StudentsList = ({
         <TableHead>
           <div className="flex items-center">
             <IdCard className="h-4 w-4 mr-2" />
-            <span> Student ID</span>
+            <span> {lang.labels.memberId}</span>
           </div>
-        </TableHead>          
-        <TableHead> 
+        </TableHead>
+        <TableHead>
           <div className="flex items-center">
             <User className="h-4 w-4 mr-2" />
             <span> Name</span>
@@ -67,11 +69,11 @@ const StudentsList = ({
         <TableHead>
           <div className="flex items-center">
             <School className="h-4 w-4 mr-2" />
-            <span> Grade</span>
+            <span> {lang.structure.grade}</span>
           </div>
         </TableHead>
-          <TableHead>Section</TableHead>
-          <TableHead>Campus</TableHead>
+          <TableHead>{lang.structure.section}</TableHead>
+          <TableHead>{lang.structure.campus}</TableHead>
           <TableHead>Added</TableHead>
           {canManageStudents && <TableHead className="w-[100px]">Actions</TableHead>}
         </TableRow>
@@ -114,7 +116,7 @@ const StudentsList = ({
         {students.length === 0 && (
           <TableRow>
             <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-              No students found. Add your first student to get started.
+              No {lang.people.members.toLowerCase()} found. Add your first {lang.people.member.toLowerCase()} to get started.
             </TableCell>
           </TableRow>
         )}
@@ -128,7 +130,7 @@ const StudentsList = ({
         totalPages={totalPages}
         totalCount={totalItems}
         pageSize={itemsPerPage}
-        itemLabel="students"
+        itemLabel={lang.people.members.toLowerCase()}
         onPageChange={handlePageChange}
       />
     )}

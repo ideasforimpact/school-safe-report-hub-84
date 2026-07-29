@@ -10,6 +10,7 @@ import StudentForm from './StudentForm';
 import { useStudents } from '@/contexts/StudentContext';
 import { Student } from '@/types/student';
 import { toast } from 'sonner';
+import { useLang } from '@/hooks/useLang';
 
 interface EditStudentDialogProps {
   open: boolean;
@@ -20,6 +21,7 @@ interface EditStudentDialogProps {
 const EditStudentDialog = ({ open, onOpenChange, student }: EditStudentDialogProps) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { updateStudent } = useStudents();
+  const lang = useLang();
 
   const handleSubmit = async (data: Partial<Student>) => {
     if (!student) return;
@@ -27,7 +29,7 @@ const EditStudentDialog = ({ open, onOpenChange, student }: EditStudentDialogPro
     setIsSubmitting(true);
     try {
       await updateStudent(student.id, data);
-      toast.success('Student updated successfully');
+      toast.success(`${lang.people.member} updated successfully`);
       onOpenChange(false);
     } catch (error) {
       console.error(error);
@@ -42,7 +44,7 @@ const EditStudentDialog = ({ open, onOpenChange, student }: EditStudentDialogPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Student</DialogTitle>
+          <DialogTitle>{lang.actions.editMember}</DialogTitle>
         </DialogHeader>
         <StudentForm
           defaultValues={{

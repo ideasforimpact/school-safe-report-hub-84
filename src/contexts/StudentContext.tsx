@@ -80,13 +80,14 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       console.log(`Fetching students for client ${employeeData.clientId}, page ${page}, filters:`, { search, grade, section, campus });
       const { students: studentData, totalCount } = await fetchStudentsByClientId(
-        employeeData.clientId, 
-        page, 
-        pageSize, 
+        employeeData.clientId,
+        page,
+        pageSize,
         search,
         grade,
         section,
-        campus
+        campus,
+        employeeData.clientType?.id
       );
       setStudents(studentData);
       setTotalStudents(totalCount);
@@ -100,7 +101,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
       fetchInProgress.current = false;
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, employeeData?.clientType?.id]);
 
   // Public refresh method
   const refreshStudents = useCallback(async (
@@ -128,10 +129,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      // Add client_id to the student data
+      // Add client_id and client_type_id to the student data
       const studentWithClientId = {
         ...student,
-        client_id: employeeData?.clientId
+        client_id: employeeData?.clientId,
+        client_type_id: employeeData?.clientType?.id
       };
 
       const { data, error } = await supabase.functions.invoke('student-management', {
@@ -158,10 +160,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
     try {
-      // Add client_id to the updates if it's not present
+      // Add client_id and client_type_id to the updates if not present
       const updatesWithClientId = {
         ...updates,
-        client_id: employeeData?.clientId
+        client_id: employeeData?.clientId,
+        client_type_id: employeeData?.clientType?.id
       };
 
       const { data, error } = await supabase.functions.invoke('student-management', {
