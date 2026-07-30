@@ -1485,19 +1485,29 @@ async function handleUpdateClient(clientData: any) {
     // if (clientInfo.website !== undefined) updateData.website = clientInfo.website;
     
     if (clientTypeId) {
-      // Block type change if client already has incidents
-      const { count: incidentCount, error: incidentCheckError } = await supabase
-        .from('incidents')
-        .select('id', { count: 'exact', head: true })
-        .eq('client_id', clientId);
+      const { data: existingClient, error: existingClientError } = await supabase
+        .from('clients')
+        .select('client_type_id')
+        .eq('id', clientId)
+        .single();
 
-      if (incidentCheckError) throw new Error(`Failed to check incidents: ${incidentCheckError.message}`);
+      if (existingClientError) throw new Error(`Failed to fetch existing client: ${existingClientError.message}`);
 
-      if (incidentCount && incidentCount > 0) {
-        return new Response(
-          JSON.stringify({ error: 'CLIENT_TYPE_LOCKED', message: 'Client type cannot be changed because incidents have already been created for this client.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (existingClient?.client_type_id !== clientTypeId) {
+        // Block type change if client already has incidents
+        const { count: incidentCount, error: incidentCheckError } = await supabase
+          .from('incidents')
+          .select('id', { count: 'exact', head: true })
+          .eq('client_id', clientId);
+
+        if (incidentCheckError) throw new Error(`Failed to check incidents: ${incidentCheckError.message}`);
+
+        if (incidentCount && incidentCount > 0) {
+          return new Response(
+            JSON.stringify({ error: 'CLIENT_TYPE_LOCKED', message: 'Client type cannot be changed because incidents have already been created for this client.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       updateData.client_type_id = clientTypeId;

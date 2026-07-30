@@ -2,10 +2,23 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { IPAddress } from '@/components/backoffice/tabs/IPList';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { fetchClientsPage } from '@/services/client/clientService';
+
+async function extractEdgeFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      if (body?.message) return body.message;
+    } catch {
+      // response body wasn't JSON — fall through to the generic message
+    }
+  }
+  return fallback;
+}
 
 export type StatusFilter = 'active' | 'inactive' | 'all';
 
@@ -318,7 +331,7 @@ export const useClientManagement = () => {
       
       if (error) {
         console.error('Error creating client:', error);
-        toast.error('Failed to create client');
+        toast.error(await extractEdgeFunctionErrorMessage(error, 'Failed to create client'));
         return;
       }
       
@@ -719,7 +732,7 @@ export const useClientManagement = () => {
       
       if (error) {
         console.error('Error updating client:', error);
-        toast.error('Failed to update client via edge function');
+        toast.error(await extractEdgeFunctionErrorMessage(error, 'Failed to update client via edge function'));
         return;
       }
       
