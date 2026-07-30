@@ -14,6 +14,73 @@ const supabaseServiceKey = getSupabaseServiceRoleKey();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// ─── Pending-challan detection (mirrors src/services/transport-safety/vehicleService.ts
+// getPendingChallansFromVehicleChallans — kept in sync so the badge/count/filter logic
+// agrees between the edge function and the client) ──────────────────────────────
+const normalizeChallanStatus = (status?: string): string =>
+  String(status || '').trim().toUpperCase();
+
+const isDisposedChallanStatus = (status?: string): boolean =>
+  ['DISPOSED', 'PAID', 'CASH'].includes(normalizeChallanStatus(status));
+
+function dedupeChallans(challans: any[]): any[] {
+  if (!Array.isArray(challans)) return [];
+
+  const hasValue = (value: unknown) => {
+    if (value === null || value === undefined) return false;
+    if (Array.isArray(value)) return value.length > 0;
+    return String(value).trim() !== '';
+  };
+
+  const mergeChallan = (base: any, incoming: any) => {
+    const merged = { ...base };
+    Object.entries(incoming || {}).forEach(([key, value]) => {
+      if (!hasValue(merged[key]) && hasValue(value)) merged[key] = value;
+    });
+    return merged;
+  };
+
+  const getDedupKey = (challan: any) => {
+    const challanNumber = String(challan?.challan_number || challan?.challan_no || '').trim().toUpperCase();
+    if (challanNumber) return `number:${challanNumber}`;
+    const challanDate = String(challan?.challan_date_time || challan?.challan_date || '').trim();
+    const amount = String(challan?.amount ?? challan?.challan_amount ?? '').trim();
+    const status = normalizeChallanStatus(challan?.challan_status);
+    return `fallback:${challanDate}|${amount}|${status}`;
+  };
+
+  const deduped = new Map<string, any>();
+  challans.forEach((challan) => {
+    const key = getDedupKey(challan);
+    const existing = deduped.get(key);
+    deduped.set(key, existing ? mergeChallan(existing, challan) : challan);
+  });
+
+  return Array.from(deduped.values());
+}
+
+function getPendingChallansFromVehicleChallans(vehicleChallans: any): any[] {
+  const logs = vehicleChallans?.challan_history_log;
+  if (!logs || typeof logs !== 'object') return [];
+
+  const successLogs = Object.entries(logs).filter(
+    ([, entry]: [string, any]) => entry?.data?.status_code === 200,
+  );
+  if (successLogs.length === 0) return [];
+
+  successLogs.sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime());
+
+  const [, latestLog] = successLogs[0] as [string, any];
+  const challanData = latestLog?.data?.data;
+  if (!challanData) return [];
+
+  const rawChallans = challanData?.challan_details?.challans || challanData?.challan_data || [];
+  if (!Array.isArray(rawChallans)) return [];
+  const challans = dedupeChallans(rawChallans);
+
+  return challans.filter((c) => c?.challan_status && !isDisposedChallanStatus(c.challan_status));
+}
+
 // Fetch ALL vehicle types once and return both the map and the full list
 async function fetchAllVehicleTypes(supabase: any): Promise<{ map: Map<string, any>; list: any[] }> {
   const { data } = await supabase
@@ -214,6 +281,44 @@ serve(async (req) => {
 
         const enriched = await enrichWithVehicleTypes(supabase, data || []);
         return new Response(JSON.stringify({ vehicles: enriched }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // ── list_with_challans (no pagination — only vehicles with an actual
+      // PENDING (non-disposed) challan, for the Transport Challans page).
+      // The inner join drops vehicles with no challan record at all; the
+      // getPendingChallansFromVehicleChallans filter below then drops any
+      // vehicle whose latest challans are all disposed/paid, so the response
+      // already matches what the page displays — no fetch-all-then-filter. ──
+      if (operation === 'list_with_challans') {
+        const { clientId } = body;
+
+        if (clientId) {
+          const ipValidation = await validateIPWhitelist(supabase, req, clientId, url.pathname);
+          if (!ipValidation.allowed) {
+            return new Response(
+              JSON.stringify({ error: 'IP_NOT_WHITELISTED', message: 'Access denied. Your IP address is not whitelisted for this client.' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            );
+          }
+        }
+
+        let query = supabase
+          .from('vehicles')
+          .select('*, vehicle_challans!inner(*)');
+        if (clientId) query = query.eq('client_id', clientId);
+        query = query.order('created_at', { ascending: false });
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const enriched = await enrichWithVehicleTypes(supabase, data || []);
+        const withPending = enriched.filter(
+          (v: any) => getPendingChallansFromVehicleChallans(v.vehicle_challans).length > 0,
+        );
+
+        return new Response(JSON.stringify({ vehicles: withPending }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }

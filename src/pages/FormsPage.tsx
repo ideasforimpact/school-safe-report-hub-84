@@ -181,12 +181,17 @@ const FormsPage = () => {
     }
   }, [isBackoffice, clients, selectedClientId]);
 
+  // The `forms` list is only ever rendered in the backoffice Form Management
+  // table (and, previously, a Grievance List form-type filter that's commented
+  // out) — the plain /grievances "Grievance List" view never reads it, so
+  // there's no reason to fetch it there.
   const lastFetchedClientId = useRef<string | null>(null);
   useEffect(() => {
+    if (!isBackoffice) return;
     if (!effectiveClientId || effectiveClientId === lastFetchedClientId.current) return;
     lastFetchedClientId.current = effectiveClientId;
     fetchForms(effectiveClientId);
-  }, [effectiveClientId]);
+  }, [isBackoffice, effectiveClientId]);
 
   // Do not auto-select a form. Default view shows all forms for the client.
   // User may explicitly choose a specific form elsewhere to scope the results.

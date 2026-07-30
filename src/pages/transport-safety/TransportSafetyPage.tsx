@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import {
-  getAllVehiclesWithChallans,
+  getVehiclesWithPendingChallans,
   getPendingChallansFromVehicleChallans,
 } from '@/services/transport-safety/vehicleService';
 import Loader from '@/components/common/Loader';
@@ -55,7 +55,7 @@ const TransportSafetyPage = () => {
 
     const loadPendingChallans = async () => {
       try {
-        const vehicles = await getAllVehiclesWithChallans(employeeData.clientId);
+        const vehicles = await getVehiclesWithPendingChallans(employeeData.clientId);
         if (cancelled) return;
 
         let totalPendingAmount = 0;

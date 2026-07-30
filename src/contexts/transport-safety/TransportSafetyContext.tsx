@@ -9,7 +9,6 @@ import {
   addVehicle as addVehicleService,
   updateVehicle as updateVehicleService,
   deleteVehicle as deleteVehicleService,
-  getAllVehiclesWithChallans,
 } from '@/services/transport-safety/vehicleService';
 import { VehicleTypeOption } from '@/types/transportSafety';
 import { useAuth } from '@/contexts/auth';
