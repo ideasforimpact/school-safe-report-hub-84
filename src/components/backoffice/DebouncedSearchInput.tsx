@@ -62,7 +62,7 @@ const DebouncedSearchInput: React.FC<DebouncedSearchInputProps> = ({
       <Input
         type="search"
         aria-label={ariaLabel || placeholder}
-        placeholder={triggerOnEnter ? `${placeholder} (press Enter)` : placeholder}
+        placeholder={placeholder}
         value={localValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
