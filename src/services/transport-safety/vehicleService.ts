@@ -76,6 +76,10 @@ const vehicleByIdInflight = new Map<string, Promise<Vehicle | null>>();
 const vehicleByIdRecent = new Map<string, RecentValue<Vehicle | null>>();
 const vehicleDocumentsInflight = new Map<string, Promise<UploadedDocument[]>>();
 const vehicleDocumentsRecent = new Map<string, RecentValue<UploadedDocument[]>>();
+const allVehiclesInflight = new Map<string, Promise<Vehicle[]>>();
+const allVehiclesRecent = new Map<string, RecentValue<Vehicle[]>>();
+const vehiclesWithChallansInflight = new Map<string, Promise<Vehicle[]>>();
+const vehiclesWithChallansRecent = new Map<string, RecentValue<Vehicle[]>>();
 
 // ─── Transform helpers ────────────────────────────────────────────────────────
 
@@ -194,16 +198,30 @@ export const getAllVehicles = async (
   clientId?: string,
   filters?: FetchAllVehiclesFilters,
 ): Promise<Vehicle[]> => {
-  const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_all', {
-    clientId,
-    search: filters?.search ?? '',
-    status: filters?.status ?? '',
-    typeId: filters?.typeId ?? '',
-  });
-  return (data.vehicles || []).map(mapVehicle);
-};
+  const cacheKey = `${clientId || ''}:${filters?.search ?? ''}:${filters?.status ?? ''}:${filters?.typeId ?? ''}`;
+  const recent = allVehiclesRecent.get(cacheKey);
+  if (recent && Date.now() - recent.at < DETAIL_READ_DEDUPE_MS) return recent.value;
 
-export const getAllVehiclesWithChallans = getAllVehicles;
+  const inflight = allVehiclesInflight.get(cacheKey);
+  if (inflight) return inflight;
+
+  const request = (async () => {
+    const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_all', {
+      clientId,
+      search: filters?.search ?? '',
+      status: filters?.status ?? '',
+      typeId: filters?.typeId ?? '',
+    });
+    const vehicles = (data.vehicles || []).map(mapVehicle);
+    allVehiclesRecent.set(cacheKey, { at: Date.now(), value: vehicles });
+    return vehicles;
+  })().finally(() => {
+    allVehiclesInflight.delete(cacheKey);
+  });
+
+  allVehiclesInflight.set(cacheKey, request);
+  return request;
+};
 
 // ─── Get vehicle by ID ────────────────────────────────────────────────────────
 
@@ -556,9 +574,24 @@ export const getPendingChallans = (verificationData: VehicleVerificationData[] |
 };
 
 export const getVehiclesWithPendingChallans = async (clientId: string): Promise<Vehicle[]> => {
-  const vehicles = await getAllVehicles(clientId);
-  return vehicles.filter(vehicle => {
-    const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
-    return pending.length > 0;
+  const recent = vehiclesWithChallansRecent.get(clientId);
+  if (recent && Date.now() - recent.at < DETAIL_READ_DEDUPE_MS) return recent.value;
+
+  const inflight = vehiclesWithChallansInflight.get(clientId);
+  if (inflight) return inflight;
+
+  const request = (async () => {
+    const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_with_challans', { clientId });
+    const vehicles = (data.vehicles || []).map(mapVehicle).filter(vehicle => {
+      const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+      return pending.length > 0;
+    });
+    vehiclesWithChallansRecent.set(clientId, { at: Date.now(), value: vehicles });
+    return vehicles;
+  })().finally(() => {
+    vehiclesWithChallansInflight.delete(clientId);
   });
+
+  vehiclesWithChallansInflight.set(clientId, request);
+  return request;
 };

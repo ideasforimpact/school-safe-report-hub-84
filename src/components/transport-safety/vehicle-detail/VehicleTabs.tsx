@@ -351,86 +351,46 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
       
       // If there are no more files, remove the entire document
       if (updatedDocumentFiles.length === 0) {
-        const { data: currentData, error: fetchError } = await supabase
+        const updatedDocuments = uploadedDocuments.filter(
+          (doc) => doc.uploadedAt !== document.uploadedAt
+        );
+
+        const { error: updateError } = await supabase
           .from('vehicle_documents')
-          .select('documents')
-          .eq('vehicle_id', vehicleId)
-          .single();
-          
-        if (fetchError) {
-          console.error('Error fetching documents:', fetchError);
+          .update({ documents: updatedDocuments as unknown as Json })
+          .eq('vehicle_id', vehicleId);
+
+        if (updateError) {
+          console.error('Error updating documents:', updateError);
           return;
         }
-        
-        if (currentData && Array.isArray(currentData.documents)) {
-          const documents = currentData.documents as unknown as UploadedDocument[];
-          const updatedDocuments = documents.filter(
-            (doc) => doc.uploadedAt !== document.uploadedAt
-          );
-          
-          const { error: updateError } = await supabase
-            .from('vehicle_documents')
-            .update({ documents: updatedDocuments as unknown as Json })
-            .eq('vehicle_id', vehicleId);
 
-          if (updateError) {
-            console.error('Error updating documents:', updateError);
-            return;
-          }
-
-          // Update local state to reflect deletion
-          setUploadedDocuments(prev =>
-            prev.filter(doc => doc.uploadedAt !== document.uploadedAt)
-          );
-        }
+        // Update local state to reflect deletion
+        setUploadedDocuments(updatedDocuments);
       } else {
         // Just update the files array of the document
-        const { data: currentData, error: fetchError } = await supabase
+        const updatedDocuments = uploadedDocuments.map((doc) => {
+          if (doc.uploadedAt === document.uploadedAt) {
+            return {
+              ...doc,
+              files: doc.files.filter((_, idx) => idx !== fileIndex)
+            };
+          }
+          return doc;
+        });
+
+        const { error: updateError } = await supabase
           .from('vehicle_documents')
-          .select('documents')
-          .eq('vehicle_id', vehicleId)
-          .single();
-          
-        if (fetchError) {
-          console.error('Error fetching documents:', fetchError);
+          .update({ documents: updatedDocuments as unknown as Json })
+          .eq('vehicle_id', vehicleId);
+
+        if (updateError) {
+          console.error('Error updating documents:', updateError);
           return;
         }
-        
-        if (currentData && Array.isArray(currentData.documents)) {
-          const documents = currentData.documents as unknown as UploadedDocument[];
-          const updatedDocuments = documents.map((doc) => {
-            if (doc.uploadedAt === document.uploadedAt) {
-              return {
-                ...doc,
-                files: doc.files.filter((_, idx) => idx !== fileIndex)
-              };
-            }
-            return doc;
-          });
-          
-          const { error: updateError } = await supabase
-            .from('vehicle_documents')
-            .update({ documents: updatedDocuments as unknown as Json })
-            .eq('vehicle_id', vehicleId);
 
-          if (updateError) {
-            console.error('Error updating documents:', updateError);
-            return;
-          }
-          
-          // Update local state to reflect file deletion
-          setUploadedDocuments(prev => 
-            prev.map(doc => {
-              if (doc.uploadedAt === document.uploadedAt) {
-                return {
-                  ...doc,
-                  files: doc.files.filter((_, idx) => idx !== fileIndex)
-                };
-              }
-              return doc;
-            })
-          );
-        }
+        // Update local state to reflect file deletion
+        setUploadedDocuments(updatedDocuments);
       }
       
       toast({
@@ -479,48 +439,52 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
   // Function to download a file
   const handleDownloadFile = async (fileUrl: string, fileName: string, filePath?: string) => {
     try {
-      let downloadUrl: string;
-      
-      // If we have a file path, use Supabase storage API to create a signed URL
+      // If we have a file path, use Supabase storage API to create a signed URL.
+      // The `download` option makes Storage respond with a Content-Disposition:
+      // attachment header, so the browser force-downloads it on direct navigation —
+      // no need to fetch the bytes into JS and rebuild them as a blob.
       if (filePath) {
         const { data, error } = await supabase.storage
           .from('vehicle-documents')
           .createSignedUrl(filePath, 300, { download: fileName });
-        
-        if (error || !data?.signedUrl) {
-          // Fallback to direct URL if signed URL fails
-          downloadUrl = formatSupabaseUrl(fileUrl);
-        } else {
-          downloadUrl = data.signedUrl;
+
+        if (!error && data?.signedUrl) {
+          const link = document.createElement('a');
+          link.href = data.signedUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          toast({
+            title: 'Download started',
+            description: `Downloading ${fileName}`,
+          });
+          return;
         }
-      } else {
-        // Use the formatted URL directly
-        downloadUrl = formatSupabaseUrl(fileUrl);
       }
-      
-      // Fetch the file
+
+      // Fallback: no path, or signing failed. This URL has no guaranteed
+      // Content-Disposition and may be cross-origin, where the anchor `download`
+      // attribute is ignored — so fetch the bytes and force it via a blob URL,
+      // which always downloads regardless of the response headers.
+      const downloadUrl = formatSupabaseUrl(fileUrl);
       const response = await fetch(downloadUrl);
       if (!response.ok) {
         throw new Error('Failed to download file');
       }
-      
-      // Get the blob
+
       const blob = await response.blob();
-      
-      // Create a temporary URL for the blob
       const blobUrl = window.URL.createObjectURL(blob);
-      
-      // Create a temporary anchor element and trigger download
+
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
-      
-      // Clean up
+
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
-      
+
       toast({
         title: 'Download started',
         description: `Downloading ${fileName}`,
