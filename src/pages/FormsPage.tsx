@@ -165,12 +165,13 @@ const FormsPage = () => {
   const setStatusFilterWithReset = (v: string) => { setStatusFilter(v); setCurrentPage(1); };
   const setDateFromWithReset = (d: Date | undefined) => { setDateFrom(d); setCurrentPage(1); };
   const setDateToWithReset = (d: Date | undefined) => { setDateTo(d); setCurrentPage(1); };
+  const setSearchTermWithReset = (v: string) => { setSearchTerm(v); setCurrentPage(1); };
 
   // Submissions hook (normal view) — server-side pagination + filters
   const { submissions, loading: submissionsLoading, refetch: refetchSubmissions, total: submissionsTotal, totalPages, stats: submissionsStats } = useFormSubmissions(
     selectedForm?.id || null,
     effectiveClientId || null,
-    { page: currentPage, pageSize: PAGE_SIZE, status: statusFilter, dateFrom, dateTo }
+    { page: currentPage, pageSize: PAGE_SIZE, status: statusFilter, dateFrom, dateTo, search: searchTerm }
   );
 
   // For backoffice, preselect first active client when list loads
@@ -678,7 +679,7 @@ const Content = (
             {/* 1. Search Box */}
             <DebouncedSearchInput
               value={searchTerm}
-              onChange={setSearchTerm}
+              onChange={setSearchTermWithReset}
               placeholder="Search name and title..."
               className="w-64"
               triggerOnEnter

@@ -22,6 +22,7 @@ interface UseFormSubmissionsOptions {
   status?: string;
   dateFrom?: Date;
   dateTo?: Date;
+  search?: string;
 }
 
 export const useFormSubmissions = (
@@ -36,7 +37,7 @@ export const useFormSubmissions = (
   const [totalPages, setTotalPages] = useState(0);
   const [stats, setStats] = useState<{ pending: number; acknowledged: number; total: number }>({ pending: 0, acknowledged: 0, total: 0 });
 
-  const { page = 1, pageSize = 10, status, dateFrom, dateTo } = options || {};
+  const { page = 1, pageSize = 10, status, dateFrom, dateTo, search } = options || {};
   const fetchKey = useRef<string>('');
 
   const fetchSubmissions = useCallback(async () => {
@@ -60,6 +61,7 @@ export const useFormSubmissions = (
         end.setHours(23, 59, 59, 999);
         body.date_to = end.toISOString();
       }
+      if (search && search.trim()) body.search = search.trim();
 
       const { data, error } = await supabase.functions.invoke('fetch-form-submissions', { body });
 
@@ -76,17 +78,17 @@ export const useFormSubmissions = (
     } finally {
       setLoading(false);
     }
-  }, [formId, clientId, page, pageSize, status, dateFrom, dateTo]);
+  }, [formId, clientId, page, pageSize, status, dateFrom, dateTo, search]);
 
   const dateFromISO = dateFrom?.toISOString();
   const dateToISO = dateTo?.toISOString();
 
   useEffect(() => {
-    const key = [formId, clientId, page, pageSize, status, dateFromISO, dateToISO].join('|');
+    const key = [formId, clientId, page, pageSize, status, dateFromISO, dateToISO, search].join('|');
     if (key === fetchKey.current) return;
     fetchKey.current = key;
     fetchSubmissions();
-  }, [formId, clientId, page, pageSize, status, dateFromISO, dateToISO, fetchSubmissions]);
+  }, [formId, clientId, page, pageSize, status, dateFromISO, dateToISO, search, fetchSubmissions]);
 
   return {
     submissions,

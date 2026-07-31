@@ -39,6 +39,35 @@ export async function listComplianceObjects(clientId: string, path = '') {
 	return data; // returns array with file/folder info
 }
 
+export type ComplianceSearchFolderResult = {
+	id: string;
+	name: string;
+	folderId: string | null;
+	fullPath: string;
+};
+
+export type ComplianceSearchFileResult = {
+	rowId: string;
+	path: string;
+	fileName: string;
+	fullPath: string;
+	parentFolderId: string | null;
+	parentFolderName: string | null;
+	is_valid?: boolean;
+	valid_date?: string | null;
+};
+
+export async function searchComplianceDocuments(clientId: string, search: string) {
+	const { data, error } = await supabase.functions.invoke('compliance-docs', {
+		body: { action: 'search', clientId, search }
+	});
+	if (error) throw error;
+	return (data?.data ?? { folders: [], files: [] }) as {
+		folders: ComplianceSearchFolderResult[];
+		files: ComplianceSearchFileResult[];
+	};
+}
+
 export async function deleteFolder(clientId: string, folderId: string, employeeId?: string | null, docId?: string | null) {
 	const { data, error } = await supabase.functions.invoke('compliance-docs', {
 		body: { action: 'delete_folder', clientId, folderId, employeeId, docId }

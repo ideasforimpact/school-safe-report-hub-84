@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter, ShieldCheck, X } from 'lucide-react';
+import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Filter, ShieldCheck, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -11,6 +11,9 @@ import {
   enqueueUploadMetadata,
   type ComplianceUploadFile,
   updateComplianceValidity,
+  searchComplianceDocuments,
+  type ComplianceSearchFolderResult,
+  type ComplianceSearchFileResult,
 } from '@/services/compliance/complianceService';
 import { Calendar } from "@/components/ui/calendar";
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -27,6 +30,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
 import Loader from '@/components/common/Loader';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData } from '@/store/employeeSelectors';
@@ -213,6 +217,40 @@ const ComplianceDocumentsPage: React.FC = () => {
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
+  // Server-side search (compliance-docs "search" action) — fetched only when
+  // normalizedSearch changes, i.e. when the user commits the search (Enter),
+  // since the search input uses triggerOnEnter.
+  const [remoteSearch, setRemoteSearch] = useState<{
+    term: string;
+    loading: boolean;
+    folders: ComplianceSearchFolderResult[];
+    files: ComplianceSearchFileResult[];
+  }>({ term: '', loading: false, folders: [], files: [] });
+
+  useEffect(() => {
+    if (!normalizedSearch || !clientId) {
+      setRemoteSearch({ term: normalizedSearch, loading: false, folders: [], files: [] });
+      return;
+    }
+
+    let cancelled = false;
+    setRemoteSearch((prev) => ({ ...prev, loading: true }));
+
+    searchComplianceDocuments(clientId, normalizedSearch)
+      .then((result) => {
+        if (cancelled) return;
+        setRemoteSearch({ term: normalizedSearch, loading: false, folders: result.folders, files: result.files });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRemoteSearch({ term: normalizedSearch, loading: false, folders: [], files: [] });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [normalizedSearch, clientId]);
+
   const matchesStatusFilter = useCallback((isValid?: boolean, validDate?: Date | null) => {
     const status = getValidityStatus(isValid, validDate);
 
@@ -294,42 +332,27 @@ const ComplianceDocumentsPage: React.FC = () => {
 
     const searchResults = React.useMemo(() => {
       if (!normalizedSearch) return [];
+      // Stale/in-flight — hold off rendering until the server results match the committed term.
+      if (remoteSearch.term !== normalizedSearch || remoteSearch.loading) return [];
 
-      const term = normalizedSearch;
+      const folderResults = remoteSearch.folders.map((f) => ({
+        type: 'folder' as const,
+        id: f.id,
+        name: f.name,
+        folderId: f.folderId,
+        folderName: f.name,
+        fullPath: f.fullPath || f.name,
+      }));
 
-      const folderResults = allFolders
-        .filter((f) => {
-          const name = (f.name || '').toLowerCase();
-          return name.includes(term);
-        })
-        .slice(0, 5)
-        .map((f) => ({
-          type: 'folder' as const,
-          id: f.id,
-          name: f.name,
-          folderId: f.folder_id,
-          folderName: f.name,
-          fullPath: f.fullPath || f.name,
-        }));
-
-      const fileResults = allFiles
-        .filter((f) => {
-          const name = (f.fileName || getFileNameFromPath(f.path)).toLowerCase();
-          const matchesText = name.includes(term); 
-          const matchesStatus = matchesStatusFilter(
-            f.is_valid,
-            f.valid_date as Date | null
-          );
-          return matchesText && matchesStatus;
-        })
-        .slice(0, Math.max(10 - folderResults.length, 0))
+      const fileResults = remoteSearch.files
+        .filter((f) => matchesStatusFilter(f.is_valid, (f.valid_date as unknown) as Date | null))
         .map((f, idx: number) => ({
           type: 'file' as const,
           id: `${f.rowId}-${idx}`,
           name: f.fileName || getFileNameFromPath(f.path),
           path: f.path,
           fullPath: f.fullPath || f.path,
-          folderId: f.parentFolderFolderId || null,
+          folderId: f.parentFolderId || null,
           folderName: f.parentFolderName || null,
         }));
 
@@ -346,7 +369,7 @@ const ComplianceDocumentsPage: React.FC = () => {
     }
 
     return results;
-  }, [normalizedSearch, allFolders, allFiles, matchesStatusFilter]);
+  }, [normalizedSearch, remoteSearch, matchesStatusFilter]);
 
     const showSearchDropdown = !!normalizedSearch && searchResults.length > 0;
 
@@ -1218,12 +1241,11 @@ const ComplianceDocumentsPage: React.FC = () => {
           </div>
           <div className="flex gap-4 mt-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search documents and folders…"
+                <DebouncedSearchInput
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  onChange={setSearchTerm}
+                  placeholder="Search documents and folders…"
+                  triggerOnEnter
                 />
               {showSearchDropdown && (
                 <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow-lg max-h-64 overflow-auto">

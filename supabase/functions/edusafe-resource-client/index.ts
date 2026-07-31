@@ -119,11 +119,9 @@ async function fetchResources(supabase: any, {
         orgQuery = orgQuery.eq('category', resolvedCategory)
       }
 
-      if (search && search.trim() !== '') {
-        const s = `%${search.trim()}%`
-        orgQuery = orgQuery.or(`title.ilike.${s},description.ilike.${s},category.ilike.${s}`)
-      }
-
+      // Search (title/description/category/tags) is applied once, below, after
+      // merging with global resources — tags live only in the JS-side filter,
+      // so narrowing here too would incorrectly exclude tag-only matches.
       const { data, error: orgError } = await orgQuery
 
       if (orgError) {
@@ -144,11 +142,7 @@ async function fetchResources(supabase: any, {
         globalQuery = globalQuery.eq('category', resolvedCategory)
       }
 
-      if (search && search.trim() !== '') {
-        const s = `%${search.trim()}%`
-        globalQuery = globalQuery.or(`title.ilike.${s},description.ilike.${s},category.ilike.${s}`)
-      }
-
+      // Search is applied once, below, after merging with org resources.
       const { data, error: globalError } = await globalQuery
 
       if (globalError) {
@@ -231,10 +225,8 @@ async function fetchResources(supabase: any, {
     console.log(`Found ${totalCount} total resources (${orgResources.length} organizational, ${globalResources.length} global), returning ${paginatedResources.length} for page ${page || 1}`)
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         resources: paginatedResources,
-        // Keep full filtered list for callers that read allResources (e.g. tooling / older clients)
-        allResources: allResources,
         totalCount: totalCount
       }),
       { 
