@@ -1,8 +1,7 @@
 
-import React, { useState } from 'react';
-import { Download, FileText, ExternalLink, Trash, Search } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Download, FileText, ExternalLink, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -24,11 +23,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { EduSafeProvider, useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 import { EduSafeResource } from '@/types/eduSafeTypes';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 
 const ResourcesLibraryInner: React.FC = () => {
-  const { resources, downloadResource, deleteResource } = useEduSafe();
+  const { resources, downloadResource, deleteResource, refreshResources, totalCount } = useEduSafe();
   const [searchQuery, setSearchQuery] = useState('');
   const [resourceToDelete, setResourceToDelete] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const isFirstRender = useRef(true);
+  const PAGE_SIZE = 10;
 
   const filteredResources = resources.filter(resource => 
     resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -36,6 +40,37 @@ const ResourcesLibraryInner: React.FC = () => {
     resource.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     resource.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    refreshResources(searchQuery, page, PAGE_SIZE);
+  };
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setCurrentPage(1);
+    refreshResources(searchQuery, 1, PAGE_SIZE);
+  }, [searchQuery, refreshResources]);
+
+  const displayTotalCount = totalCount || filteredResources.length;
+  const totalPages = Math.ceil(displayTotalCount / PAGE_SIZE);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [displayTotalCount, totalPages, currentPage]);
+
+  const paginatedResources = useMemo(() => {
+    if (resources.length <= PAGE_SIZE) {
+      return filteredResources;
+    }
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return filteredResources.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [resources, filteredResources, currentPage, PAGE_SIZE]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -55,18 +90,16 @@ const ResourcesLibraryInner: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            placeholder="Search resources..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <DebouncedSearchInput
+          placeholder="Search resources..."
+          value={searchQuery}
+          onChange={setSearchQuery}
+          className="flex-1"
+          triggerOnEnter
+        />
         <div className="flex items-center">
           <span className="text-sm text-gray-500 mr-2">
-            {filteredResources.length} resource{filteredResources.length !== 1 ? 's' : ''}
+            {displayTotalCount} resource{displayTotalCount !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
@@ -84,8 +117,8 @@ const ResourcesLibraryInner: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredResources.length > 0 ? (
-              filteredResources.map((resource) => (
+            {paginatedResources.length > 0 ? (
+              paginatedResources.map((resource) => (
                 <TableRow key={resource.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center">
@@ -147,6 +180,15 @@ const ResourcesLibraryInner: React.FC = () => {
             )}
           </TableBody>
         </Table>
+
+        <TablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={displayTotalCount}
+          pageSize={PAGE_SIZE}
+          itemLabel="resources"
+          onPageChange={handlePageChange}
+        />
       </div>
 
       <AlertDialog open={!!resourceToDelete} onOpenChange={() => setResourceToDelete(null)}>

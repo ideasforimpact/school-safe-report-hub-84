@@ -1,40 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { EduSafeResource, ResourceCategory } from '@/types/eduSafeTypes';
+import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-
-// Helper function to extract filename from document_url
-const extractFileNameFromUrl = (url: string | undefined | null, fallbackTitle: string): string => {
-  if (!url) return fallbackTitle;
-  
-  try {
-    // Extract filename from URL
-    const urlParts = url.split('/');
-    const fileNameWithParams = urlParts[urlParts.length - 1];
-    // Remove query parameters if any
-    let fileName = fileNameWithParams.split('?')[0];
-    
-    // If we got a meaningful filename (has an extension), use it
-    if (fileName && fileName.includes('.')) {
-      // Decode URL encoding
-      fileName = decodeURIComponent(fileName);
-      // Convert underscores back to spaces for better readability (since we sanitize spaces to underscores)
-      // But only if it looks like it was sanitized (has underscores and no original spaces)
-      // We'll keep underscores as-is to preserve original filenames that had underscores
-      return fileName;
-    }
-  } catch (error) {
-    console.error('Error extracting filename from URL:', error);
-  }
-  
-  // Fallback to title if we can't extract a good filename
-  return fallbackTitle;
-};
+import {
+  useEduSafeResourcesList,
+  useAddEduSafeResource,
+  useUpdateEduSafeResource,
+  useDeleteEduSafeResource,
+  EduSafeResourceFetchFilters,
+} from '@/hooks/edusafe/useEduSafeResourceQueries';
 
 interface EduSafeContextType {
   resources: EduSafeResource[];
+  totalCount: number;
   addResource: (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType' | 'resourceType'>) => Promise<void>;
   updateResource: (id: string, updatedResource: Partial<Omit<EduSafeResource, 'file'>> & { file?: File }) => Promise<void>;
   deleteResource: (id: string) => Promise<void>;
@@ -43,7 +23,7 @@ interface EduSafeContextType {
   getMyResources: () => EduSafeResource[];
   getSaasResources: () => EduSafeResource[];
   loading: boolean;
-  refreshResources: () => Promise<void>;
+  refreshResources: (searchQuery?: string, page?: number, limit?: number, filters?: EduSafeResourceFetchFilters) => Promise<void>;
 }
 
 const EduSafeContext = createContext<EduSafeContextType | undefined>(undefined);
@@ -56,215 +36,89 @@ export const useEduSafe = () => {
   return context;
 };
 
+interface EduSafeListParams {
+  searchQuery?: string;
+  page?: number;
+  limit?: number;
+  filters?: EduSafeResourceFetchFilters;
+}
+
 export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialFetch?: boolean }> = ({ children, skipInitialFetch = false }) => {
-  const [resources, setResources] = useState<EduSafeResource[]>([]);
-  const [loading, setLoading] = useState(!skipInitialFetch);
   const { user } = useAuth();
   const location = useLocation();
-  const fetchedForClientRef = useRef<string | null>(null);
+  const [listParams, setListParams] = useState<EduSafeListParams>({});
+  const [initiated, setInitiated] = useState(!skipInitialFetch);
+  const noClientIdToastShownRef = useRef(false);
+  const lastQueryErrorRef = useRef<unknown>(null);
 
-  const fetchResources = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      if (!user?.clientId) {
-        console.log('No client ID available, skipping fetch');
-        setResources([]);
-        return;
+  // Check if we're in a client context (non-backoffice)
+  const isClientContext = !location.pathname.startsWith('/backoffice');
+  const clientTypeId = user?.client?.client_type?.id || user?.clientType?.id;
+
+  const query = useEduSafeResourcesList({
+    clientId: user?.clientId ?? null,
+    isClientContext,
+    clientTypeId,
+    clientName: user?.client?.name,
+    searchQuery: listParams.searchQuery,
+    page: listParams.page,
+    limit: listParams.limit,
+    category: listParams.filters?.category,
+    ownerType: listParams.filters?.ownerType,
+    enabled: initiated,
+  });
+
+  const refetchRef = useRef(query.refetch);
+  refetchRef.current = query.refetch;
+
+  const resources = query.data?.resources ?? [];
+  const totalCount = query.data?.totalCount ?? 0;
+  const loading = query.isFetching;
+
+  // Wrong concept previously: a missing client context silently returned an empty
+  // list with only a console.log. Surface it to the user instead — and never call
+  // Supabase for it (the query above stays disabled while there is no client id).
+  useEffect(() => {
+    if (initiated && !user?.clientId) {
+      if (!noClientIdToastShownRef.current) {
+        noClientIdToastShownRef.current = true;
+        console.warn('No client ID available, skipping resource fetch');
+        toast.error('Unable to load resources: no client context found');
       }
-
-      // Check if we're in a client context (non-backoffice)
-      const isClientContext = !location.pathname.startsWith('/backoffice');
-      
-      if (isClientContext) {
-        // Use the new edge function for client resource fetching
-        const { data: resourcesData, error } = await supabase.functions
-          .invoke('edusafe-resource-client', {
-            body: { 
-              action: 'fetch_resources',
-              data: { client_id: user.clientId }
-            }
-          });
-
-        if (error) {
-          console.error('Error fetching resources via edge function:', error);
-          toast.error('Failed to load resources');
-          setResources([]);
-          return;
-        }
-
-        // Transform the data to match EduSafeResource structure
-        const transformedResources: EduSafeResource[] = (resourcesData?.resources || []).map((resource: Record<string, unknown>) => ({
-          id: resource.id,
-          title: resource.title,
-          description: (resource.description as string) || '',
-          category: resource.category,
-          tags: Array.isArray(resource.tags) ? resource.tags : [],
-          uploadDate: resource.uploadDate,
-          uploaderId: resource.uploaderId,
-          uploaderName: (resource.uploaderName as string) || user?.client?.name || 'Unknown',
-          ownerType: resource.ownerType,
-          clientId: resource.clientId,
-          resourceType: resource.resourceType,
-          document_url: resource.document_url,
-          youtube_link: resource.youtube_link as string | undefined,
-          file: {
-            id: `file-${resource.id as string}`,
-            name: extractFileNameFromUrl(resource.document_url as string | undefined, resource.title as string),
-            type: 'application/pdf',
-            size: (resource.file as Record<string, unknown>)?.size as number || (resource.file_size as number) || 0,
-            base64: resource.document_url as string
-          }
-        }));
-
-        setResources(transformedResources);
-      } else {
-        // Backoffice context - use existing logic
-        // Fetch regular edusafe_resources filtered by client_id
-        const { data: regularResources, error: regularError } = await supabase
-          .from('edusafe_resources')
-          .select('*')
-          .eq('client_id', user.clientId)
-          .order('created_at', { ascending: false });
-
-        if (regularError) throw regularError;
-
-        // Get client type ID from user data
-        const clientTypeId = user?.client?.client_type?.id || user?.clientType?.id;
-
-        // Fetch backoffice resources using the edge function with client_type_id
-        let backofficeResources: Array<{ id: string; title: string; description?: string; category: string; tags?: unknown; created_at: string; uploaded_by?: string; document_url: string; youtube_link?: string }> = [];
-        if (clientTypeId) {
-          const { data: backofficeData, error: backofficeError } = await supabase.functions.invoke('backoffice-edusafe-resource', {
-            body: { 
-              action: 'list',
-              client_type_id: clientTypeId
-            }
-          });
-
-          if (backofficeError) {
-            console.error('Error fetching backoffice resources:', backofficeError);
-          } else {
-            backofficeResources = backofficeData.resources || [];
-          }
-        }
-
-        // Transform database records to EduSafeResource format
-        const transformedResources: EduSafeResource[] = [];
-
-        // Process regular edusafe_resources
-        (regularResources || []).forEach(record => {
-          const extRecord = record as typeof record & { youtube_link?: string; file_size?: number };
-          const youtubeLink = extRecord.youtube_link;
-          transformedResources.push({
-            id: record.id,
-            title: record.title,
-            description: record.description || '',
-            category: record.category as ResourceCategory,
-            tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
-            uploadDate: record.created_at,
-            uploaderId: record.uploaded_by || 'unknown',
-            uploaderName: user?.client?.name || 'Unknown',
-            ownerType: 'school',
-            clientId: record.client_id,
-            resourceType: 'Organisational Resource',
-            document_url: record.document_url,
-            youtube_link: youtubeLink,
-            file: {
-              id: `file-${record.id}`,
-              name: extractFileNameFromUrl(record.document_url, record.title),
-              type: 'application/pdf',
-              size: extRecord.file_size || 0,
-              base64: record.document_url
-            }
-          });
-        });
-
-        // Process backoffice resources (Global Resources)
-        backofficeResources.forEach(record => {
-          const youtubeLink = record.youtube_link;
-          transformedResources.push({
-            id: `backoffice-${record.id}`,
-            title: record.title,
-            description: record.description || '',
-            category: record.category as ResourceCategory,
-            tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
-            uploadDate: record.created_at,
-            uploaderId: record.uploaded_by || 'unknown',
-            uploaderName: 'EduSafe Team',
-            ownerType: 'saas',
-            clientId: user.clientId, // Use user's client ID for compatibility
-            resourceType: 'Global Resource',
-            document_url: record.document_url,
-            youtube_link: youtubeLink,
-            file: {
-              id: `file-backoffice-${record.id}`,
-              name: extractFileNameFromUrl(record.document_url, record.title),
-              type: 'application/pdf',
-              size: 0,
-              base64: record.document_url
-            }
-          });
-        });
-
-        // Sort all resources by created date
-        transformedResources.sort((a, b) => 
-          new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
-        );
-
-        console.log(transformedResources,"transformedResources");
-        
-        setResources(transformedResources);
-      }
-    } catch (error) {
-      console.error('Error fetching resources:', error);
-      toast.error('Failed to load resources');
-    } finally {
-      setLoading(false);
+    } else {
+      noClientIdToastShownRef.current = false;
     }
-  }, [user, location.pathname]);
+  }, [initiated, user?.clientId]);
 
   useEffect(() => {
-    if (skipInitialFetch) {
-      setLoading(false);
-      return;
+    if (query.isError && query.error !== lastQueryErrorRef.current) {
+      lastQueryErrorRef.current = query.error;
+      console.error('Error fetching resources:', query.error);
+      toast.error('Failed to load resources');
     }
-    if (user?.clientId) {
-      if (fetchedForClientRef.current === user.clientId) return;
-      fetchedForClientRef.current = user.clientId;
-      fetchResources();
-    } else {
-      fetchedForClientRef.current = null;
-      setLoading(false);
-      setResources([]);
-    }
-  }, [user?.clientId, skipInitialFetch, fetchResources]);
+  }, [query.isError, query.error]);
+
+  const addResourceMutation = useAddEduSafeResource();
+  const updateResourceMutation = useUpdateEduSafeResource();
+  const deleteResourceMutation = useDeleteEduSafeResource();
 
   const addResource = async (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType' | 'resourceType'>) => {
     try {
-      const clientId = user?.role === 'saas_owner' ? null : user?.clientId;
+      const clientId = user?.role === 'saas_owner' ? null : user?.clientId ?? null;
 
-      const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
-        body: {
-          action: 'add_resource',
-          data: {
-            client_id: clientId,
-            resource: {
-              title: resource.title,
-              description: resource.description,
-              category: resource.category,
-              tags: resource.tags,
-              uploaderId: user?.id,
-              file: { url: resource.document_url || resource.file?.base64 }
-            }
-          }
-        }
+      await addResourceMutation.mutateAsync({
+        client_id: clientId,
+        resource: {
+          title: resource.title,
+          description: resource.description,
+          category: resource.category,
+          tags: resource.tags,
+          uploaderId: user?.id,
+          file: { url: resource.document_url || resource.file?.base64 },
+        },
       });
 
-      if (error) throw error;
-
       toast.success('Resource added successfully');
-      await fetchResources();
     } catch (error) {
       console.error('Error adding resource:', error);
       toast.error('Failed to add resource');
@@ -292,37 +146,22 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
           formData.append('youtube_link', updatedResource.youtube_link || '');
         }
 
-        const { data, error } = await supabase.functions.invoke('edusafe-resource-upload', {
-          method: 'PUT',
-          body: formData
-        });
-
-        if (error) throw error;
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to update resource');
-        }
-
+        await updateResourceMutation.mutateAsync({ formData });
         return;
       }
 
       // If no file, update metadata only using the edge function with query params
-      const { data, error } = await supabase.functions.invoke('edusafe-resource-upload', {
-        method: 'PUT',
+      await updateResourceMutation.mutateAsync({
         body: {
-          id: id,
+          id,
           client_id: user.clientId,
           title: updatedResource.title,
           description: updatedResource.description,
           category: updatedResource.category,
           tags: updatedResource.tags,
-          youtube_link: updatedResource.youtube_link
-        }
+          youtube_link: updatedResource.youtube_link,
+        },
       });
-
-      if (error) throw error;
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to update resource');
-      }
     } catch (error) {
       console.error('Error updating resource:', error);
       toast.error('Failed to update resource');
@@ -332,18 +171,8 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
 
   const deleteResource = async (id: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
-        body: {
-          action: 'delete_resource',
-          data: { id, client_id: user?.clientId }
-        }
-      });
-
-      if (error) throw error;
-      if (!data?.success) throw new Error('Failed to delete resource');
-
+      await deleteResourceMutation.mutateAsync({ id, client_id: user?.clientId });
       toast.success('Resource deleted successfully');
-      await fetchResources();
     } catch (error) {
       console.error('Error deleting resource:', error);
       toast.error('Failed to delete resource');
@@ -354,7 +183,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
   const getResourceById = (id: string) => {
     return resources.find(resource => resource.id === id);
   };
-  
+
   const downloadResource = async (resource: EduSafeResource) => {
     try {
       const rawUrl = resource.document_url;
@@ -387,18 +216,18 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
               .download(filePath);
             if (!error && data) return data;
           }
+
+          // Relative path fallback: "edusafe-resources/client/file.pdf"
+          const relMatch = rawUrl.replace(/^\//, '').match(/^edusafe-resources\/(.+)/);
+          if (relMatch?.[1]) {
+            const filePath = decodeURIComponent(relMatch[1].split('?')[0]);
+            const { data, error } = await supabase.storage
+              .from('edusafe-resources')
+              .download(filePath);
+            if (!error && data) return data;
+          }
         } catch {
           // rawUrl is not an absolute URL — fall through
-        }
-
-        // Relative path fallback: "edusafe-resources/client/file.pdf"
-        const relMatch = rawUrl.replace(/^\//, '').match(/^edusafe-resources\/(.+)/);
-        if (relMatch?.[1]) {
-          const filePath = decodeURIComponent(relMatch[1].split('?')[0]);
-          const { data, error } = await supabase.storage
-            .from('edusafe-resources')
-            .download(filePath);
-          if (!error && data) return data;
         }
 
         // Last resort: plain fetch (works for public URLs)
@@ -422,29 +251,48 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
       console.error('Download error:', error);
     }
   };
-  
+
   const getMyResources = () => {
     if (!user) return [];
-    
+
     if (user.role === 'saas_owner') {
       return resources.filter(r => r.ownerType === 'saas');
     }
-    
-    return resources.filter(r => 
+
+    return resources.filter(r =>
       r.ownerType === 'school' && r.clientId === user.clientId
     );
   };
-  
+
   const getSaasResources = () => {
     return resources.filter(r => r.ownerType === 'saas');
   };
 
-  const refreshResources = async () => {
-    await fetchResources();
-  };
+  const refreshResources = useCallback(async (
+    searchQuery?: string,
+    page?: number,
+    limit?: number,
+    filters?: EduSafeResourceFetchFilters
+  ) => {
+    setInitiated(true);
+
+    // No-arg calls (after upload/edit/delete helpers) keep the current list filters
+    if (
+      searchQuery === undefined &&
+      page === undefined &&
+      limit === undefined &&
+      filters === undefined
+    ) {
+      await refetchRef.current();
+      return;
+    }
+
+    setListParams({ searchQuery, page, limit, filters });
+  }, []);
 
   const value = {
     resources,
+    totalCount,
     addResource,
     updateResource,
     deleteResource,
