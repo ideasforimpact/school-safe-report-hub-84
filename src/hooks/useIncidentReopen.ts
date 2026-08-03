@@ -4,7 +4,6 @@ import { reopenIncident } from '@/services/incident/incidentReopenService';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts';
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useIncidentReopen = () => {
   const [isReopening, setIsReopening] = useState(false);
@@ -27,20 +26,21 @@ export const useIncidentReopen = () => {
           console.log('Reopened by ID:', reopenedBy);
           console.log('Reopen reason:', reopenReason);
           console.log('Result incident:', result.incident);
-          
-          const queryStart = Date.now();
-          // Get reopener details
-          console.log('Fetching reopener details for employee ID:', reopenedBy);
-            const { data: reopener } = await supabase
-              .from('employees')
-              .select('id, email, first_name, last_name')
-              .eq('id', result.incident.created_by)
-              .limit(1)
-              .maybeSingle();
-            
-              const queryTime = Date.now() - queryStart;
-              console.log('Reopener data:', reopener,queryTime);
-           const ownerIncident = result.incident.created_by ==  employeeData.id
+
+          // The notification is only ever sent when the reopener is the
+          // incident's creator (see `ownerIncident` below), so the reopener
+          // is always the current user - use the already-loaded
+          // `employeeData` instead of re-fetching the same employee row.
+          const ownerIncident = result.incident.created_by == employeeData.id;
+          const reopener = ownerIncident && employeeData
+            ? {
+                id: employeeData.id,
+                email: employeeData.email,
+                first_name: employeeData.firstName,
+                last_name: employeeData.lastName,
+              }
+            : null;
+          console.log('Reopener data:', reopener);
           if (ownerIncident && reopener && result.incident) {
             const incidentForNotification = {
               id: incidentId,
@@ -61,7 +61,10 @@ export const useIncidentReopen = () => {
               incidentForNotification,
               reopener,
               reopenReason,
-              employeeData
+              employeeData,
+              // reopen-incident already returned this - skips a redundant
+              // employees lookup for the assignee.
+              result.assignedEmployee as Record<string, unknown> | null | undefined
             );
             console.log('Reopen notification result:', notificationResult);
           } else {

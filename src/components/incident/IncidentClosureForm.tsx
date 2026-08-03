@@ -19,6 +19,11 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import ReusableFileUploader from '../common/ReusableFileUploader';
+import { DemoActionButton } from '@/components/incidents/DemoActionButton';
+import {
+  getNextClosureScenario,
+  pickContributingFactors,
+} from '@/demo_client/incident/closureDemo';
 
 interface ContributingFactorOption {
   id: string;
@@ -153,6 +158,32 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     };
   });
 
+  // Demo Setup: fill the four required closure inputs from one of the
+  // pre-canned scenarios (cycles per click). Contributing factors are
+  // pulled from the client's actual contributing_factors table at
+  // runtime so the picked IDs are valid for save. Existing factors are
+  // preserved — the demo appends to whatever's already there.
+  const handleDemoClosureApply = async () => {
+    const { scenario, index } = getNextClosureScenario();
+    setRootCause(scenario.rootCause);
+    setLearningPoints(scenario.learningPoints);
+    setCurrentAction(prev => ({ ...prev, description: scenario.actionTaken }));
+
+    const clientId = state.employeeData?.clientId;
+    if (clientId) {
+      const existingIds = contributingFactors.map(cf => cf.id);
+      const picks = await pickContributingFactors(
+        clientId,
+        scenario,
+        index,
+        existingIds,
+      );
+      if (picks.length > 0) {
+        setContributingFactors(prev => [...prev, ...picks]);
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!rootCause.trim()) {
       toast.error('Root cause analysis is required');
@@ -273,15 +304,23 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Close Incident - Final Analysis</DialogTitle>
-          <DialogDescription>
-            Complete a thorough analysis before closing the incident. All fields are required.
-            {(incident.rootCauseAnalysis || incident.actionTaken || (incident.contributingFactor && incident.contributingFactor.length > 0)) && (
-              <span className="block mt-2 text-blue-600 font-medium">
-                Previous closure data has been pre-populated. You can review and modify as needed.
-              </span>
-            )}
-          </DialogDescription>
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1">
+              <DialogTitle>Close Incident - Final Analysis</DialogTitle>
+              <DialogDescription>
+                Complete a thorough analysis before closing the incident. All fields are required.
+                {(incident.rootCauseAnalysis || incident.actionTaken || (incident.contributingFactor && incident.contributingFactor.length > 0)) && (
+                  <span className="block mt-2 text-blue-600 font-medium">
+                    Previous closure data has been pre-populated. You can review and modify as needed.
+                  </span>
+                )}
+              </DialogDescription>
+            </div>
+            <DemoActionButton
+              onActivate={handleDemoClosureApply}
+              label="Fill demo closure data"
+            />
+          </div>
         </DialogHeader>
 
         <div className="space-y-3 my-4">

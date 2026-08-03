@@ -11,6 +11,7 @@ export interface ReopenIncidentResponse {
   success: boolean;
   message: string;
   incident?: Record<string, unknown>;
+  assignedEmployee?: Record<string, unknown> | null;
 }
 
 export const reopenIncident = async (
@@ -43,7 +44,8 @@ export const reopenIncident = async (
     return {
       success: data.success,
       message: data.message,
-      incident: data.incident
+      incident: data.incident,
+      assignedEmployee: data.assignedEmployee
     };
 
   } catch (error) {

@@ -257,10 +257,14 @@ export class IncidentNotificationService {
     incident: IncidentRow,
     reopenedBy: Employee,
     reopenReason?: string,
-    currentEmployeeData?: Record<string, unknown>
+    currentEmployeeData?: Record<string, unknown>,
+    // Callers that already have the assigned employee's details (e.g. the
+    // reopen-incident edge function now returns it inline) can pass it here
+    // to skip the DB lookup below.
+    assignedEmployeeOverride?: Employee | null
   ): Promise<boolean> {
     try {
-      const assignedEmployee = await this.getEmployeeById(incident.assigned_to);
+      const assignedEmployee = assignedEmployeeOverride ?? await this.getEmployeeById(incident.assigned_to);
       if (!assignedEmployee) {
         console.error('Assigned employee not found for incident:', incident.id);
         return false;
