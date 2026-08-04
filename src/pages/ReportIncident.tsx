@@ -22,6 +22,8 @@ import IncidentCreationOverlay from '@/components/incident/IncidentCreationOverl
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 import { ArrowLeft } from 'lucide-react';
 import Loader from '@/components/common/Loader';
+import { DemoIncidentButton } from '@/components/incidents/DemoIncidentButton';
+import { resolveScenarioForReport } from '@/demo_client/incident/demoScenarios';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -682,12 +684,32 @@ const ReportIncident = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Incident Details
             </Button>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Report New Incident
-            </h1>
-            <p className="text-gray-600 text-sm mt-1">
-              Document safety incidents, near misses, or unsafe conditions
-            </p>
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  Report New Incident
+                </h1>
+                <p className="text-gray-600 text-sm mt-1">
+                  Document safety incidents, near misses, or unsafe conditions
+                </p>
+              </div>
+              <DemoIncidentButton
+                onApply={({ scenario, index }) => {
+                  const partial = resolveScenarioForReport(
+                    scenario,
+                    {
+                      reportTypes: configData.reportTypes,
+                      categories: configData.categories,
+                      subcategories: configData.subcategories,
+                      priorities: configData.priorities,
+                    },
+                    employeeState.employeeData?.id || authEmployeeData?.id || '',
+                    index,
+                  );
+                  setFormData(partial);
+                }}
+              />
+            </div>
           </div>
         </div>
 

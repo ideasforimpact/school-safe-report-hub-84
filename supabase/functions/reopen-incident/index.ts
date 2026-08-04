@@ -268,11 +268,30 @@ Deno.serve(async (req) => {
 
     console.log('Incident reopened successfully:', updatedIncident)
 
+    // Fetch the assigned employee's details here (server-side, same request)
+    // so the client doesn't need a separate `employees` lookup afterwards
+    // just to build the reopen notification.
+    let assignedEmployee = null
+    if (updatedIncident.assigned_to) {
+      const { data: assignedEmployeeData, error: assignedEmployeeError } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, email, status')
+        .eq('id', updatedIncident.assigned_to)
+        .single()
+
+      if (assignedEmployeeError) {
+        console.error('Error fetching assigned employee:', assignedEmployeeError)
+      } else {
+        assignedEmployee = assignedEmployeeData
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         message: `Incident ${incident.ticket_id} has been reopened successfully`,
-        incident: updatedIncident
+        incident: updatedIncident,
+        assignedEmployee
       }),
       { 
         headers: { 

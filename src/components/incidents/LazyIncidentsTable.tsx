@@ -8,8 +8,6 @@ import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Sparkles }
 import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIncidentPermissions } from '@/utils/incidentPermissions';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
 import { formatDate } from "@/lib/Dateformat";
 import Loader from "@/components/common/Loader";
@@ -45,13 +43,27 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
 }) => {
   const navigate = useNavigate();
   const { checkPermissions } = useIncidentPermissions();
-  const { user } = useAuth();
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiPayload, setAiPayload] = React.useState<Record<string, unknown> | null>(null);
   const { state } = useEmployeeStore();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
     
   const currentUser = getCurrentUser(state);
+
+  // Keeps the open dialog's payload in sync with the latest fetched incident
+  // data. `aiPayload` is otherwise a one-time snapshot taken when the button
+  // was clicked, so once a recommendation is saved for this incident, this
+  // lets the dialog see it came from `incidents` rather than staying stuck
+  // with the pre-save snapshot - which would otherwise make the dialog think
+  // no recommendation exists yet and call the AI edge function again on any
+  // future re-open or remount.
+  React.useEffect(() => {
+    if (!aiOpen || !aiPayload?.id) return;
+    const fresh = incidents.find(inc => inc.id === aiPayload.id);
+    if (fresh?.recommended_action && fresh.recommended_action !== aiPayload.recommended_action) {
+      setAiPayload(prev => (prev ? { ...prev, ...fresh, recommended_action: fresh.recommended_action } : prev));
+    }
+  }, [incidents, aiOpen, aiPayload?.id, aiPayload?.recommended_action]);
 
   const handleRowClick = (incidentId: string) => {
     navigate(`/incident/${incidentId}`);
@@ -111,21 +123,8 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
     return text.length > 10 ? `${text.slice(0, 10)}...` : text;
   };
 
-  const logIncidentForAi = async (e: React.MouseEvent, incident: IncidentRecord) => {
+  const logIncidentForAi = (e: React.MouseEvent, incident: IncidentRecord) => {
     e.stopPropagation();
-    let policyDocs: string[] = [];
-    try {
-      if (user?.clientId) {
-        const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
-          body: { action: 'fetch_resources', data: { client_id: user.clientId } }
-        });
-        if (!error) {
-          policyDocs = (data?.resources || []).map((r: Record<string, unknown>) => r?.title).filter(Boolean);
-        }
-      }
-    } catch (_) {
-      // no-op; proceed without policy docs
-    }
     const payload: Record<string, unknown> = {
       id: incident.id,
       category: incident.category,
@@ -136,7 +135,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
       root_cause: incident.root_cause ?? null,
       learning_points: incident.learning_points ?? null,
       action_taken: incident.action_taken ?? null,
-      policy_docs: policyDocs,
+      policy_docs: [],
     };
     // Include the full incident object with recommended_action
     const fullIncident = incidents.find(inc => inc.id === incident.id);
@@ -149,40 +148,53 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   };
 
 
-  // Show a centered loading spinner for any fetch in progress — initial load
-  // or a pagination page change alike — before the new page's data arrives.
+  // Rendered as a stable sibling of `content` below (not nested inside any
+  // of its branches) so that a background refetch triggered while the
+  // dialog is open - e.g. saving an AI recommendation - doesn't unmount it
+  // and wipe its in-progress fetch/result state, which caused the popup to
+  // flicker and its network call to restart.
+  const aiRecommendationDialog = (
+    <AIRecommendationDialog
+      open={aiOpen}
+      onOpenChange={setAiOpen}
+      incidentJson={aiPayload}
+      incidentId={aiPayload?.id}
+      incident={aiPayload}
+      onRefresh={onRefreshIncidents}
+    />
+  );
+
+  // The loading/empty/table states below are rendered as *children* of one
+  // permanent wrapper div, rather than as separate top-level returns. Radix
+  // reconciles by element type+position, so returning a different root
+  // element (e.g. a Fragment for the loading state vs. a div for the table)
+  // makes it unmount and remount everything below it - including the AI
+  // dialog - purely because the wrapper type changed, even when the dialog
+  // JSX itself is identical across branches. Keeping a single stable root
+  // means the dialog never gets torn down by a loading/empty state flip.
+  let content: React.ReactNode;
+
   if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow overflow-hidden flex items-center justify-center py-20">
+    // Show a centered loading spinner for any fetch in progress — initial
+    // load or a pagination page change alike — before new data arrives.
+    content = (
+      <div className="flex items-center justify-center py-20">
         <Loader text="Loading incidents..." />
       </div>
     );
-  }
-
-  // Show no results message if no incidents and not loading
-  if (incidents.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-8 text-center">
-          <p className="text-gray-500">No incidents found matching your filters</p>
-        </div>
+  } else if (incidents.length === 0) {
+    // Show no results message if no incidents and not loading
+    content = (
+      <div className="p-8 text-center">
+        <p className="text-gray-500">No incidents found matching your filters</p>
       </div>
     );
-  }
+  } else {
+    console.log('LazyIncidentsTable - Pagination data:', pagination);
+    console.log('LazyIncidentsTable - Has pagination handlers:', { onPageChange: !!onPageChange, onPageSizeChange: !!onPageSizeChange });
 
-  console.log('LazyIncidentsTable - Pagination data:', pagination);
-  console.log('LazyIncidentsTable - Has pagination handlers:', { onPageChange: !!onPageChange, onPageSizeChange: !!onPageSizeChange });
-
-  return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <AIRecommendationDialog 
-        open={aiOpen} 
-        onOpenChange={setAiOpen} 
-        incidentJson={aiPayload} 
-        incidentId={aiPayload?.id} 
-        incident={aiPayload}
-        onRefresh={onRefreshIncidents}
-      />
+    content = (
+      <>
       {/* Page size selector */}
       {pagination && onPageSizeChange && (
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -340,6 +352,14 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
           onPageChange={onPageChange}
         />
       )}
+      </>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      {aiRecommendationDialog}
+      {content}
     </div>
   );
 };
