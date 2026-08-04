@@ -38,14 +38,15 @@ export const reportTypeService = {
     }
   },
 
-  // Get report types filtered by client type key. No clientId is passed here —
-  // same as before this used implicit RLS scoping by the logged-in user; the
-  // edge function resolves clientId from the caller's auth token the same way.
-  getReportTypes: async (activeOnly: boolean = false, clientTypeId?: string) => {
+  // Get report types filtered by client type key, scoped to clientId when provided
+  // (matches categoryService.getCategories) so the list reflects the client actually
+  // being viewed rather than falling back to the caller's own employee record.
+  getReportTypes: async (activeOnly: boolean = false, clientTypeId?: string, clientId?: string) => {
     try {
       return await invokeIncidentConfig<ReportTypeItem[]>({
         resource: 'reportTypes',
         operation: 'list',
+        clientId,
         clientTypeId,
         activeOnly,
       });

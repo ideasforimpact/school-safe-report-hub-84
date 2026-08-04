@@ -46,7 +46,7 @@ const IncidentConfiguration = () => {
   useEffect(() => {
     async function fetchReportTypes() {
       try {
-        const types = await reportTypeService.getReportTypes(true);
+        const types = await reportTypeService.getReportTypes(true, clientTypeId, employeeData?.clientId);
         setReportTypes(types);
       } catch (error) {
         console.error('Exception fetching report types:', error);
@@ -56,13 +56,13 @@ const IncidentConfiguration = () => {
     }
 
     fetchReportTypes();
-  }, []);
+  }, [clientTypeId, employeeData?.clientId]);
 
   // Fetch priorities using the new service
   useEffect(() => {
     async function fetchPriorities() {
       try {
-        const items = await priorityService.getPriorities();
+        const items = await priorityService.getPriorities(false, clientTypeId, employeeData?.clientId);
         setPriorities(items);
       } catch (error) {
         console.error('Exception fetching priorities:', error);
@@ -70,7 +70,7 @@ const IncidentConfiguration = () => {
     }
 
     fetchPriorities();
-  }, []);
+  }, [clientTypeId, employeeData?.clientId]);
 
   // Handle report types operations using the new service with RLS
   const handleAddReportType = async (name: string, description: string) => {
