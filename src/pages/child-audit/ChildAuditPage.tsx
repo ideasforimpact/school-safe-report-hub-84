@@ -8,13 +8,12 @@ import {
   ChevronRight,
   Download,
   Eye,
-  Search,
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts';
 import Loader from '@/components/common/Loader';
+import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -543,7 +542,7 @@ const ChildAuditPage = () => {
     }
     setLoading(true);
     try {
-      const rows = await fetchChildAuditStudents(clientId);
+      const rows = await fetchChildAuditStudents(clientId, { search: search.trim() || undefined });
       setStudents(rows);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load Child Audit');
@@ -551,7 +550,7 @@ const ChildAuditPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, search]);
 
   const loadStudentRecords = useCallback(async () => {
     if (!clientId || !selectedStudent) {
@@ -1085,15 +1084,13 @@ const diagnostics = {
               <p className="text-base text-muted-foreground">No client is associated with your account.</p>
             ) : (
               <>
-                <div className="relative w-full mb-5">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="search students..."
-                    className="pl-11 h-11 text-base"
+                <div className="w-full mb-5">
+                  <DebouncedSearchInput
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    aria-label="Search students"
+                    onChange={setSearch}
+                    placeholder="search students..."
+                    className="h-11 text-base"
+                    triggerOnEnter
                   />
                 </div>
                 {loading ? (

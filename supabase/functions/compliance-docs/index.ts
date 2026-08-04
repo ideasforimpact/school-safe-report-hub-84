@@ -12,6 +12,7 @@ type UploadFile = { fileName: string; contentType: string; base64Data: string };
 interface StoredFileEntry {
   path: string;
   parentFolderId?: string | null;
+  is_delete?: boolean | number;
 }
 
 interface ComplianceFilesEntry {
@@ -23,9 +24,11 @@ interface ComplianceFilesEntry {
 interface ComplianceRow {
   id: string;
   parent_folder_id?: string | null;
-  files?: ComplianceFilesEntry[];
+  files?: ComplianceFilesEntry[] | StoredFileEntry[];
   folder_id?: string | null;
   folder_exists?: boolean;
+  is_valid?: boolean;
+  valid_date?: string | null;
 }
 
 serve(async (req) => {
@@ -34,7 +37,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, clientId, folderName, parentFolderId, files, employeeId, folderId, docId, objectPath, rowId, isValid, validDate } = await req.json();
+    const { action, clientId, folderName, parentFolderId, files, employeeId, folderId, docId, objectPath, rowId, isValid, validDate, search } = await req.json();
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -149,6 +152,101 @@ serve(async (req) => {
         .eq("is_delete", 0);
       if (listError) throw listError;
       return new Response(JSON.stringify({ data: data ?? [] }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "search") {
+      if (!clientId) return new Response(JSON.stringify({ error: "clientId is required" }), { status: 400, headers: corsHeaders });
+
+      const term = String(search ?? "").trim().toLowerCase();
+      if (!term) {
+        return new Response(JSON.stringify({ data: { folders: [], files: [] } }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data, error: searchError } = await supabaseAdmin
+        .from("compliance_documents")
+        .select("id, folder_exists, folder_id, parent_folder_id, files, is_valid, valid_date")
+        .eq("client_id", clientId)
+        .eq("is_delete", 0);
+      if (searchError) throw searchError;
+
+      const rows: ComplianceRow[] = (data ?? []) as ComplianceRow[];
+      const folderRows = rows.filter((r) => r.folder_exists === true);
+      const folderRowById: Record<string, ComplianceRow> = {};
+      folderRows.forEach((r) => { folderRowById[r.id] = r; });
+
+      const folderDisplayName = (row: ComplianceRow): string => {
+        const firstEntry = (row.files as any)?.[0];
+        const structuredName: string | undefined = firstEntry?.folder_name;
+        if (structuredName) return structuredName;
+        const fp: string | undefined = firstEntry?.storage_folder;
+        const parts = (fp || "").split("/");
+        return parts.length >= 2 ? parts[1] : "Folder";
+      };
+
+      const buildFolderPath = (row: ComplianceRow): string => {
+        const segments: string[] = [];
+        let current: ComplianceRow | undefined = row;
+        const visited = new Set<string>();
+        while (current && !visited.has(current.id)) {
+          visited.add(current.id);
+          segments.unshift(folderDisplayName(current));
+          if (!current.parent_folder_id) break;
+          current = folderRowById[current.parent_folder_id];
+        }
+        return segments.join(" / ");
+      };
+
+      const folderResults = folderRows
+        .map((r) => {
+          const name = folderDisplayName(r);
+          const folderPath = buildFolderPath(r);
+          const fullPath = folderPath ? `Root / ${folderPath}` : "Home";
+          return { id: r.id, name, folderId: r.folder_id ?? null, fullPath };
+        })
+        .filter((f) => f.name.toLowerCase().includes(term))
+        .slice(0, 5);
+
+      const fileRows = rows.filter((r) => r.folder_exists === false);
+      const fileResults: Array<{
+        rowId: string;
+        path: string;
+        fileName: string;
+        fullPath: string;
+        parentFolderId: string | null;
+        parentFolderName: string | null;
+        is_valid?: boolean;
+        valid_date?: string | null;
+      }> = [];
+
+      outer: for (const r of fileRows) {
+        const parentFolder = r.parent_folder_id ? folderRowById[r.parent_folder_id] : null;
+        const folderPath = parentFolder ? buildFolderPath(parentFolder) : "";
+        const parentFolderName = parentFolder ? folderDisplayName(parentFolder) : null;
+
+        for (const f of ((r.files ?? []) as any[])) {
+          if (f.is_delete && f.is_delete !== 0) continue;
+          const fileName = (f.path || "").split("/").pop() || "file";
+          if (!fileName.toLowerCase().includes(term)) continue;
+
+          const fullPath = folderPath ? `Root / ${folderPath} / ${fileName}` : `Root / ${fileName}`;
+          fileResults.push({
+            rowId: r.id,
+            path: f.path,
+            fileName,
+            fullPath,
+            parentFolderId: parentFolder ? (parentFolder.folder_id ?? null) : null,
+            parentFolderName,
+            is_valid: r.is_valid as boolean | undefined,
+            valid_date: r.valid_date as string | null | undefined,
+          });
+          if (fileResults.length >= Math.max(10 - folderResults.length, 0)) break outer;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ data: { folders: folderResults, files: fileResults } }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (action === "create_folder") {

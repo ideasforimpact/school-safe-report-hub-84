@@ -81,12 +81,16 @@ const EduSafeResourcesContent = () => {
   const displayTotalCount = totalCount;
   const totalPages = Math.ceil(displayTotalCount / PAGE_SIZE) || 1;
 
-  // Ensure currentPage stays within valid range
+  // Ensure currentPage stays within valid range — e.g. the item count shrank
+  // (a resource was deleted) while the user was on what's now a page past the
+  // end. Refetch the corrected page too, not just relabel the pagination bar,
+  // otherwise the list keeps showing the stale/empty data from the old page.
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(totalPages);
+      refreshResources(searchTerm, totalPages, PAGE_SIZE, activeFilters);
     }
-  }, [displayTotalCount, totalPages, currentPage]);
+  }, [displayTotalCount, totalPages, currentPage, searchTerm, activeFilters, refreshResources]);
 
   return (
     <div className="w-full py-6">
