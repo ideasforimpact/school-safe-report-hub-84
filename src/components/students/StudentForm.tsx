@@ -48,7 +48,7 @@ interface Section {
   classId: string;
 }
 
-const buildFormSchema = (gradeLabel: string, sectionLabel: string) => z.object({
+const buildFormSchema = (gradeLabel: string, sectionLabel: string, campusLabel: string) => z.object({
   studentId: z.string()
     .min(1, { message: 'Student ID is required' })
     .max(15, { message: 'Student ID cannot exceed 15 characters' })
@@ -57,7 +57,7 @@ const buildFormSchema = (gradeLabel: string, sectionLabel: string) => z.object({
     .min(1, { message: 'Name is required' })
     .max(25, { message: 'Name cannot exceed 25 characters' })
     .regex(/^[a-zA-Z\s]+$/, { message: 'Name can only contain letters and spaces' }),
-  campus: z.string().min(1, { message: 'Campus is required' }),
+  campus: z.string().min(1, { message: `${campusLabel} is required` }),
   campusId: z.string().optional(),
   grade: z.string().min(1, { message: `${gradeLabel} is required` }),
   gradeId: z.string().optional(),
@@ -109,6 +109,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   const lang = useLang();
   const gradeLabel = lang.structure.grade;
   const sectionLabel = lang.structure.section;
+  const campusLabel = lang.structure.campus;
 
   // Prepare default values with peopleInvolved data if available
   const getDefaultValues = () => {
@@ -136,7 +137,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
     };
   };
 
-  const formSchema = useMemo(() => buildFormSchema(gradeLabel, sectionLabel), [gradeLabel, sectionLabel]);
+  const formSchema = useMemo(() => buildFormSchema(gradeLabel, sectionLabel, campusLabel), [gradeLabel, sectionLabel, campusLabel]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -170,7 +171,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         const exists = await checkStudentIdExists(debouncedStudentId, employeeData.clientId);
         setStudentIdExists(exists);
         setStudentIdValidationMessage(
-          exists ? 'Student ID already exists' : 'Student ID is available'
+          exists ? `${lang.labels.memberId} already exists` : `${lang.labels.memberId} is available`
         );
       } catch (error) {
         console.error('Error validating student ID:', error);
@@ -222,7 +223,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         
         // Use consolidated edge function instead of multiple direct queries
         const { data, error } = await supabase.functions.invoke('student-management', {
-          body: { client_id: employeeData.clientId },
+          body: { client_id: employeeData.clientId, client_type_id: employeeData.clientType?.id },
           headers: { path: 'get-form-data' }
         });
         
@@ -291,7 +292,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         setDataLoading(false);
         fetchStructureInProgress.current = false;
       }
-    }, [employeeData?.clientId, defaultValues, form]);
+    }, [employeeData?.clientId, employeeData?.clientType?.id, defaultValues, form]);
 
     useEffect(() => {
       fetchEducationalStructure();
@@ -352,7 +353,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   // Custom form submission handler
   const handleFormSubmit = (data: FormValues) => {
     if (studentIdExists) {
-      toast.error('Cannot save student with duplicate Student ID');
+      toast.error(`Cannot save ${lang.people.member.toLowerCase()} with duplicate ${lang.labels.memberId}`);
       return;
     }
     
@@ -437,11 +438,11 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
           name="studentId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Student ID <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>{lang.labels.memberId} <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <div className="relative">
-                  <Input 
-                    placeholder="Enter student ID" 
+                  <Input
+                    placeholder={`Enter ${lang.labels.memberId.toLowerCase()}`}
                     value={studentIdInput}
                     onChange={(e) => handleStudentIdChange(e.target.value)}
                     maxLength={15}
@@ -469,7 +470,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
                 </p>
               )}
               {studentIdInput && !isValidStudentId(studentIdInput) && (
-                <p className="text-xs text-red-500">Student ID must be alphanumeric and maximum 15 characters</p>
+                <p className="text-xs text-red-500">{lang.labels.memberId} must be alphanumeric and maximum 15 characters</p>
               )}
               <FormMessage />
             </FormItem>
@@ -481,10 +482,10 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>{lang.labels.memberName} <span className="text-red-500">*</span></FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="Enter student name" 
+                <Input
+                  placeholder={`Enter ${lang.people.member.toLowerCase()} name`}
                   maxLength={25}
                   className={field.value && !isValidName(field.value) ? 'border-red-500' : ''}
                   {...field} 
@@ -506,7 +507,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
           name="campus"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Campus <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>{campusLabel} <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Select
                   value={selectedCampusId}
@@ -520,7 +521,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select campus" />
+                    <SelectValue placeholder={`Select ${campusLabel.toLowerCase()}`} />
                   </SelectTrigger>
                   <SelectContent>
                     {campuses.map((campus) => (
@@ -554,7 +555,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
                   disabled={!selectedCampusId || filteredGrades.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={!selectedCampusId ? "Select campus first" : "Select grade"} />
+                    <SelectValue placeholder={!selectedCampusId ? `Select ${campusLabel.toLowerCase()} first` : `Select ${gradeLabel.toLowerCase()}`} />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredGrades.map((grade) => (
@@ -588,7 +589,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
                   disabled={!selectedGradeId || filteredSections.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={!selectedGradeId ? "Select grade first" : "Select section"} />
+                    <SelectValue placeholder={!selectedGradeId ? `Select ${gradeLabel.toLowerCase()} first` : `Select ${sectionLabel.toLowerCase()}`} />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredSections.map((section) => (

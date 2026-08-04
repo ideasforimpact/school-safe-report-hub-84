@@ -5,11 +5,11 @@ import { RawStudentData } from '../types/importTypes';
 
 // Define the expected columns in the Excel file and their mappings
 const columnMappings = {
-  'studentId': ['student id', 'studentid', 'student_id', 'id', 'enrollment id', 'roll number'],
-  'name': ['name', 'student name', 'full name'],
-  'grade': ['grade', 'class', 'std', 'standard', 'year'],
-  'section': ['section', 'division', 'batch', 'group'],
-  'campus': ['campus', 'school', 'branch', 'location']
+  'studentId': ['student id', 'studentid', 'student_id', 'id', 'enrollment id', 'roll number', 'employee id'],
+  'name': ['name', 'student name', 'full name', 'employee name'],
+  'grade': ['grade', 'class', 'std', 'standard', 'year', 'department', 'dept'],
+  'section': ['section', 'division', 'batch', 'group', 'team'],
+  'campus': ['campus', 'school', 'branch', 'location', 'site', 'office', 'site / office']
 };
 
 // Create a reverse mapping for lookup

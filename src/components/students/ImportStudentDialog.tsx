@@ -13,6 +13,7 @@ import { validateExcelData } from '@/services/student/utils/excelValidationUtils
 import { processStudentData, showImportResultNotifications } from '@/services/student/importProcessingService';
 import { RawStudentData } from '@/services/student/types/importTypes';
 import { parseStudentFile } from '@/services/student/utils/excelProcessingUtils';
+import { useLang } from '@/hooks/useLang';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -31,7 +32,16 @@ interface ImportStudentDialogProps {
 
 const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStudentDialogProps) => {
   const { students, refreshStudents } = useStudents();
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
+  const lang = useLang();
+  const clientTypeKey = employeeData?.clientType?.key ?? user?.clientType?.key;
+  const templateLabels = {
+    studentId: lang.labels.memberId,
+    name: lang.labels.memberName,
+    grade: lang.structure.grade,
+    section: lang.structure.section,
+    campus: lang.structure.campus
+  };
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -235,11 +245,11 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     <AlertDialog open={open} onOpenChange={handleDialogClose}>
       <AlertDialogContent className="sm:max-w-[500px] overflow-hidden">
         <AlertDialogHeader>
-          <AlertDialogTitle>Import Students</AlertDialogTitle>
+          <AlertDialogTitle>Import {lang.people.members}</AlertDialogTitle>
           <AlertDialogDescription>
-            Upload a CSV or Excel file containing student information. The file should have columns for Student ID, Name, Grade, Section, and Campus. 
+            Upload a CSV or Excel file containing {lang.people.member.toLowerCase()} information. The file should have columns for {lang.labels.memberId}, Name, {lang.structure.grade}, {lang.structure.section}, and {lang.structure.campus}.
             <br />
-            <strong>Note:</strong> Student IDs must be unique within your organization.
+            <strong>Note:</strong> {lang.labels.memberId}s must be unique within your organization.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -248,16 +258,20 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
           <div className="flex flex-col gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-blue-600" />
-              <Label className="text-sm font-medium text-blue-800">Sample Template Available</Label>
+              <Label className="text-sm font-medium text-blue-800">
+                {clientTypeKey === 'work' ? 'Template Available' : 'Sample Template Available'}
+              </Label>
             </div>
             <p className="text-xs text-blue-700">
-              Download a sample file with the correct format and column headers to get started
+              {clientTypeKey === 'work'
+                ? 'Download a template with the correct column headers to get started'
+                : 'Download a sample file with the correct format and column headers to get started'}
             </p>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={downloadStudentExcelTemplate}
+                onClick={() => downloadStudentExcelTemplate(templateLabels, clientTypeKey)}
                 className="text-blue-700 border-blue-300 hover:bg-blue-100"
               >
                 <Download className="h-3 w-3 mr-1" />
@@ -266,7 +280,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
               <Button
                 variant="outline"
                 size="sm"
-                onClick={downloadStudentCSVTemplate}
+                onClick={() => downloadStudentCSVTemplate(templateLabels, clientTypeKey)}
                 className="text-blue-700 border-blue-300 hover:bg-blue-100"
               >
                 <Download className="h-3 w-3 mr-1" />
@@ -319,8 +333,8 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
           <FileUploadValidator
             errors={validationErrors}
             warnings={validationWarnings}
-            warningTitle="Duplicate Students"
-            warningFooterText="These Students will be skipped during import."
+            warningTitle={`Duplicate ${lang.people.members}`}
+            warningFooterText={`These ${lang.people.members} will be skipped during import.`}
           />
           {isValidated && validationErrors.length === 0 && (
             <div className="border border-green-500/50 rounded-md p-3 bg-green-500/10">
@@ -384,7 +398,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
               {isUploading ? (
                 <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Importing...</>
               ) : (
-                <><FileUp className="h-4 w-4 mr-1" /> Import Students</>
+                <><FileUp className="h-4 w-4 mr-1" /> Import {lang.people.members}</>
               )}
             </Button>
           </AlertDialogFooter>

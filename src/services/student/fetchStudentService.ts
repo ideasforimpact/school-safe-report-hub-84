@@ -5,13 +5,14 @@ import { Student, StudentListResponse } from '@/types/student';
  * Fetch students for a specific client with pagination
  */
 export const fetchStudentsByClientId = async (
-  clientId: string, 
-  page: number = 1, 
+  clientId: string,
+  page: number = 1,
   pageSize: number = 10,
   search?: string,
   grade?: string,
   section?: string,
-  campus?: string
+  campus?: string,
+  clientTypeId?: string
 ): Promise<StudentListResponse> => {
   try {
     console.log(`Fetching students for client_id ${clientId}, page ${page}, size ${pageSize}, filters:`, { search, grade, section, campus });
@@ -23,8 +24,9 @@ export const fetchStudentsByClientId = async (
     if (search) queryParams.append('search', search);
 
     const { data, error } = await supabase.functions.invoke('student-management', {
-      body: { 
+      body: {
         client_id: clientId,
+        client_type_id: clientTypeId,
         page,
         pageSize,
         search,
