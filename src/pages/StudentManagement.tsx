@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Loader from '@/components/common/Loader';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { useLang } from '@/hooks/useLang';
 
 interface StudentManagementProps {
   embedded?: boolean;
@@ -39,6 +40,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const { students, totalStudents, deleteStudent, refreshStudents, isLoading } = useStudents();
   const { employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+  const lang = useLang();
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
@@ -87,7 +89,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
     try {
       const refInfo = await incidentReferenceService.checkStudentReferences(id, employeeData.clientId);
       if (refInfo.hasReferences) {
-        toast.error(refInfo.message || `This student is linked to ${refInfo.count} incident(s) and cannot be deleted.`);
+        toast.error(refInfo.message || `This ${lang.people.member.toLowerCase()} is linked to ${refInfo.count} incident(s) and cannot be deleted.`);
         return;
       }
     } catch (error) {
@@ -391,23 +393,23 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       {!embedded && (
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Student Management</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{lang.people.member} Management</h1>
             <p className="text-muted-foreground">
-              Manage students in your institution
+              Manage {lang.people.members.toLowerCase()} in your {lang.place.organization.toLowerCase()}
             </p>
           </div>
           {!isReadOnlySwitchedContext && (
             <div className="flex gap-2">
-              <Button 
+              <Button
                 onClick={() => setIsImportDialogOpen(true)}
                 className="flex items-center gap-2"
                 variant="secondary"
               >
                 <FileUp className="h-4 w-4" />
-                <span>Import Students</span>
+                <span>Import {lang.people.members}</span>
               </Button>
               <Button onClick={() => setIsAddDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+                <PlusCircle className="mr-2 h-4 w-4" /> {lang.actions.addMember}
               </Button>
             </div>
           )}
@@ -418,16 +420,16 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
         <div className="flex justify-end items-center">
           {!isReadOnlySwitchedContext && (
             <div className="flex gap-2">
-              <Button 
+              <Button
                 onClick={() => setIsImportDialogOpen(true)}
                 className="flex items-center gap-2"
                 variant="secondary"
               >
                 <FileUp className="h-4 w-4" />
-                <span>Import Students</span>
+                <span>Import {lang.people.members}</span>
               </Button>
               <Button onClick={() => setIsAddDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+                <PlusCircle className="mr-2 h-4 w-4" /> {lang.actions.addMember}
               </Button>
             </div>
           )}
@@ -437,7 +439,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       <Card className="mx-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Students</CardTitle>
+            <CardTitle>{lang.people.members}</CardTitle>
           </div>
           <Button
             variant="ghost"
@@ -457,7 +459,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
             <DebouncedSearchInput
               value={debouncedSearchQuery}
               onChange={setDebouncedSearchQuery}
-              placeholder="Search by name, student ID, grade, section, or campus..."
+              placeholder={`Search by name, ${lang.labels.memberId.toLowerCase()}, ${lang.structure.grade.toLowerCase()}, ${lang.structure.section.toLowerCase()}, or ${lang.structure.campus.toLowerCase()}...`}
               className="flex-1 max-w-md"
               triggerOnEnter
             />
@@ -466,11 +468,11 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
             <div className="flex flex-wrap gap-2">
               {/* Grade Filter */}
               <Select value={gradeFilter} onValueChange={setGradeFilter}>
-                <SelectTrigger className="w-[140px] h-10">
-                  <SelectValue placeholder="All Grades" />
+                <SelectTrigger className="w-fit min-w-[140px] h-10">
+                  <SelectValue placeholder={`All ${lang.structure.gradePlural}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
+                  <SelectItem value="all">All {lang.structure.gradePlural}</SelectItem>
                   {Array.from(new Set(students.map(s => s.grade))).sort().map(grade => (
                     <SelectItem key={grade} value={grade}>{grade}</SelectItem>
                   ))}
@@ -479,11 +481,11 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
 
               {/* Section Filter */}
               <Select value={sectionFilter} onValueChange={setSectionFilter}>
-                <SelectTrigger className="w-[140px] h-10">
-                  <SelectValue placeholder="All Sections" />
+                <SelectTrigger className="w-fit min-w-[140px] h-10">
+                  <SelectValue placeholder={`All ${lang.structure.sectionPlural}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Sections</SelectItem>
+                  <SelectItem value="all">All {lang.structure.sectionPlural}</SelectItem>
                   {Array.from(new Set(students.map(s => s.section))).sort().map(section => (
                     <SelectItem key={section} value={section}>{section}</SelectItem>
                   ))}
@@ -492,11 +494,11 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
 
               {/* Campus Filter */}
               <Select value={campusFilter} onValueChange={setCampusFilter}>
-                <SelectTrigger className="w-[140px] h-10">
-                  <SelectValue placeholder="All Campuses" />
+                <SelectTrigger className="w-fit min-w-[140px] h-10">
+                  <SelectValue placeholder={`All ${lang.structure.campusPlural}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Campuses</SelectItem>
+                  <SelectItem value="all">All {lang.structure.campusPlural}</SelectItem>
                   {Array.from(new Set(students.map(s => s.campus))).sort().map(campus => (
                     <SelectItem key={campus} value={campus}>{campus}</SelectItem>
                   ))}
@@ -521,7 +523,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
           
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <Loader text="Loading students..." />
+              <Loader text={`Loading ${lang.people.members.toLowerCase()}...`} />
             </div>
           ) : (
             <div>
@@ -540,7 +542,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                 />
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  {debouncedSearchQuery || gradeFilter !== 'all' || sectionFilter !== 'all' || campusFilter !== 'all' ? 'No students found matching your filters.' : 'No students found.'}
+                  {debouncedSearchQuery || gradeFilter !== 'all' || sectionFilter !== 'all' || campusFilter !== 'all' ? `No ${lang.people.members.toLowerCase()} found matching your filters.` : `No ${lang.people.members.toLowerCase()} found.`}
                 </div>
               )}
             </div>
@@ -576,7 +578,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the student record 
+              This action cannot be undone. This will permanently delete the {lang.people.member.toLowerCase()} record
               from the database.
             </AlertDialogDescription>
           </AlertDialogHeader>

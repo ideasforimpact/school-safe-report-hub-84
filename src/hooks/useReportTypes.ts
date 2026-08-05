@@ -8,11 +8,14 @@ export function useReportTypes(clientTypeId?: string) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { employeeData, user } = useAuth();
+  const clientId = employeeData?.clientId || user?.clientId;
+
   const fetchReportTypes = useCallback(async (activeOnly: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
-      const types = await reportTypeService.getReportTypes(activeOnly, clientTypeId);
+      const types = await reportTypeService.getReportTypes(activeOnly, clientTypeId, clientId);
       // Sort active report types to the top
       const sortedTypes = (types || []).sort((a, b) => {
         // Active items first
@@ -30,7 +33,7 @@ export function useReportTypes(clientTypeId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [clientTypeId]);
+  }, [clientTypeId, clientId]);
 
   useEffect(() => {
     fetchReportTypes();
@@ -52,12 +55,13 @@ export function useActiveReportTypes() {
 
   const { employeeData, user } = useAuth();
   const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? undefined;
+  const clientId = employeeData?.clientId || user?.clientId;
 
   const fetchReportTypes = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const types = await reportTypeService.getReportTypes(true, clientTypeId);
+      const types = await reportTypeService.getReportTypes(true, clientTypeId, clientId);
       const sortedTypes = (types || []).sort((a, b) => a.name.localeCompare(b.name));
       setReportTypes(sortedTypes);
     } catch (err) {
@@ -67,7 +71,7 @@ export function useActiveReportTypes() {
     } finally {
       setLoading(false);
     }
-  }, [clientTypeId]);
+  }, [clientTypeId, clientId]);
 
   useEffect(() => {
     fetchReportTypes();

@@ -13,6 +13,7 @@ import StudentForm from './StudentForm';
 import { useStudents } from '@/contexts/StudentContext';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
+import { useLang } from '@/hooks/useLang';
 
 interface AddStudentDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface AddStudentDialogProps {
 const AddStudentDialog = ({ open, onOpenChange, peopleInvolved, onStudentAdded }: AddStudentDialogProps) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { addStudent, students } = useStudents();
+  const lang = useLang();
 
   const handleSubmit = async (data: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     setIsSubmitting(true);
@@ -59,7 +61,7 @@ const AddStudentDialog = ({ open, onOpenChange, peopleInvolved, onStudentAdded }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Add New Student</DialogTitle>
+          <DialogTitle>{lang.actions.addMember}</DialogTitle>
         </DialogHeader>
         
         <StudentForm 

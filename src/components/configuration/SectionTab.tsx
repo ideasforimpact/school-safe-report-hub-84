@@ -50,8 +50,9 @@ export const SectionTab = ({
   loading = false,
   canCreate = true,
 }: SectionTabProps) => {
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
   const { structure: s } = useLang();
+  const isInstitute = (employeeData?.clientType?.key ?? user?.clientType?.key) === 'institute';
   const [newSection, setNewSection] = useState('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
@@ -98,10 +99,23 @@ export const SectionTab = ({
     };
   }, [sections, employeeData]);
 
-  // Validation: allow any characters, max 15 length
+  // Institutes track batches by year (e.g. 2001, 2002) - digits only, no letters.
+  // Other client types allow any characters, max 15 length.
   const isValidSectionName = (name: string) => {
-    const nameRegex = /^.{1,15}$/;
-    return nameRegex.test(name);
+    if (isInstitute) {
+      return /^\d{4}$/.test(name);
+    }
+    return /^.{1,15}$/.test(name);
+  };
+
+  const sectionNameMaxLength = isInstitute ? 4 : 15;
+  const sectionNameValidationMessage = isInstitute
+    ? `${s.section} must be a 4-digit year (e.g. 2001)`
+    : `${s.section} name can be up to 15 characters`;
+
+  const sanitizeSectionInput = (value: string) => {
+    const trimmed = isInstitute ? value.replace(/\D/g, '') : value;
+    return trimmed.slice(0, sectionNameMaxLength);
   };
 
   // Check for duplicate section names within the same class
@@ -137,7 +151,7 @@ export const SectionTab = ({
     }
     
     if (!isValidSectionName(sectionName)) {
-      toast.error(`${s.section} name can be up to 15 characters`);
+      toast.error(sectionNameValidationMessage);
       return;
     }
     
@@ -204,7 +218,7 @@ export const SectionTab = ({
     }
     
     if (!isValidSectionName(sectionName)) {
-      toast.error(`${s.section} name can be up to 15 characters`);
+      toast.error(sectionNameValidationMessage);
       return;
     }
     
@@ -379,14 +393,15 @@ export const SectionTab = ({
             <Label htmlFor="section-input" className="mb-2 block">{s.section} Name</Label>
             <Input
               id="section-input"
-              placeholder={`New ${s.section.toLowerCase()} name`}
+              placeholder={isInstitute ? 'e.g. 2001' : `New ${s.section.toLowerCase()} name`}
               value={newSection}
-              onChange={(e) => setNewSection(e.target.value)}
-              maxLength={15}
+              onChange={(e) => setNewSection(sanitizeSectionInput(e.target.value))}
+              inputMode={isInstitute ? 'numeric' : undefined}
+              maxLength={sectionNameMaxLength}
               className={newSection && !isValidSectionName(newSection) ? 'border-red-500' : ''}
             />
             {newSection && !isValidSectionName(newSection) && (
-              <p className="text-xs text-red-500 mt-1">{s.section} name can be up to 15 characters</p>
+              <p className="text-xs text-red-500 mt-1">{sectionNameValidationMessage}</p>
             )}
             {newSection && selectedClassId && isDuplicateSectionName(newSection, selectedClassId) && (
               <p className="text-xs text-red-500 mt-1">A {s.section.toLowerCase()} with this name already exists in the selected {s.grade.toLowerCase()}</p>
@@ -661,13 +676,13 @@ export const SectionTab = ({
             open={isEditDialogOpen && canCreate}
             onOpenChange={setIsEditDialogOpen}
             onChange={(value) => {
-              setEditingSection(prev => prev ? { ...prev, name: value } : null);
+              setEditingSection(prev => prev ? { ...prev, name: sanitizeSectionInput(value) } : null);
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
-            maxLength={15}
+            maxLength={sectionNameMaxLength}
             validationFunction={isValidSectionName}
-            validationMessage={`${s.section} name can be up to 15 characters`}
+            validationMessage={sectionNameValidationMessage}
             isRequired={true}
             extraFields={[
               {

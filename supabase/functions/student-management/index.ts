@@ -163,7 +163,8 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
   const to = from + pageSize - 1;
 
   const clientId = body.client_id;
-  
+  const clientTypeId = body.client_type_id;
+
   let query = supabaseClient.from("students").select(`
     *,
     grade_info:grades!students_grade_id_fkey(id, name),
@@ -175,7 +176,13 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
   if (clientId) {
     query = query.eq("client_id", clientId);
   }
-  
+  // Filter by client_type_id too, so students added under one client type
+  // (e.g. institute) don't show up in another client type's list (e.g. school)
+  // for the same client_id.
+  if (clientTypeId) {
+    query = query.eq("client_type_id", clientTypeId);
+  }
+
   // Apply grade filter
   if (gradeFilter !== "all") {
     // If it's a UUID, use grade_id, otherwise use the text field (backward compatibility)
@@ -221,6 +228,7 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
     // Try fallback without joins if explicit join fails
     const fallbackQuery = supabaseClient.from("students").select("*");
     if (clientId) fallbackQuery.eq("client_id", clientId);
+    if (clientTypeId) fallbackQuery.eq("client_type_id", clientTypeId);
     if (searchTerm) fallbackQuery.or(`name.ilike.%${searchTerm}%,student_id.ilike.%${searchTerm}%`);
     const fallbackResult = await fallbackQuery
       .order("created_at", { ascending: false })
@@ -426,7 +434,7 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
   } else {
     // Fallback: Validate campus, grade, and section using text values (backward compatibility)
   if (body.campus && body.grade && body.section) {
-    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
+    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id, body.client_type_id);
     if (!isValid.valid) {
       return new Response(
         JSON.stringify({ error: isValid.error }),
@@ -450,7 +458,8 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     grade: body.grade,
     section: body.section,
     campus: body.campus,
-    client_id: body.client_id
+    client_id: body.client_id,
+    client_type_id: body.client_type_id || null
   };
 
   // Add IDs if provided
@@ -493,7 +502,7 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
   );
 }
 
-async function validateEducationalStructure(campus: string, grade: string, section: string, clientId?: string) {
+async function validateEducationalStructure(campus: string, grade: string, section: string, clientId?: string, clientTypeId?: string) {
   if (!campus || !grade || !section) {
     return { valid: false, error: "Campus, grade and section are all required" };
   }
@@ -516,6 +525,9 @@ async function validateEducationalStructure(campus: string, grade: string, secti
 
   if (clientId) {
     campusQuery = campusQuery.eq("client_id", clientId);
+  }
+  if (clientTypeId) {
+    campusQuery = campusQuery.eq("client_type_id", clientTypeId);
   }
 
   const { data: allCampuses, error: campusError } = await campusQuery;
@@ -552,6 +564,9 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   if (clientId) {
     gradeQuery = gradeQuery.eq("client_id", clientId);
   }
+  if (clientTypeId) {
+    gradeQuery = gradeQuery.eq("client_type_id", clientTypeId);
+  }
 
   const { data: allGrades, error: gradeError } = await gradeQuery;
   
@@ -586,6 +601,9 @@ async function validateEducationalStructure(campus: string, grade: string, secti
 
   if (clientId) {
     sectionQuery = sectionQuery.eq("client_id", clientId);
+  }
+  if (clientTypeId) {
+    sectionQuery = sectionQuery.eq("client_type_id", clientTypeId);
   }
 
   const { data: allSections, error: sectionError } = await sectionQuery;
@@ -924,7 +942,7 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
     body.section = sectionData.name;
   } else if (body.campus && body.grade && body.section) {
     // Fallback: validate using text values only (backward compatible path)
-    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
+    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id, body.client_type_id);
     if (!isValid.valid) {
       return new Response(
         JSON.stringify({ error: isValid.error }),
@@ -947,6 +965,7 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
   if (body.section) updates.section = body.section;
   if (body.campus) updates.campus = body.campus;
   if (body.client_id) updates.client_id = body.client_id;
+  if (body.client_type_id) updates.client_type_id = body.client_type_id;
 
   // Persist ID columns when provided
   if (hasIds) {
@@ -1068,7 +1087,7 @@ async function handleDeleteStudent(id: string, corsHeaders: Record<string, strin
 async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) {
   const students = body.students || [];
   const clientId = body.client_id;
-  
+  const clientTypeId = body.client_type_id;
   if (!Array.isArray(students) || students.length === 0) {
     return new Response(
       JSON.stringify({ error: "No student data provided for update" }),
@@ -1081,16 +1100,23 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
   try {
     // Resolve campus/grade/section text back to ids (mirrors handleBulkCreate) so a
     // re-import that changes a student's grade/section text doesn't leave grade_id/
-    // section_id null or stale relative to the new text values.
-    const [campuses, grades, sections] = await Promise.all([
-      supabaseClient.from("campuses").select("id, name").eq("client_id", clientId),
-      supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId),
-      supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId)
-    ]);
+    // section_id null or stale relative to the new text values. Scoped by
+    // client_type_id too, so a name match can't resolve to another client type's row.
+    let bulkUpdateCampusQuery = supabaseClient.from("campuses").select("id, name").eq("client_id", clientId);
+    let bulkUpdateGradeQuery = supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId);
+    let bulkUpdateSectionQuery = supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId);
 
-    const campusMap = new Map((campuses.data || []).map(c => [c.name.toLowerCase(), c.id]));
-    const gradeMap = new Map((grades.data || []).map(g => [`${g.campus_id}:${g.name.toLowerCase()}`, g.id]));
-    const sectionMap = new Map((sections.data || []).map(s => [`${s.grade_id}:${s.name.toLowerCase()}`, s.id]));
+    if (clientTypeId) {
+      bulkUpdateCampusQuery = bulkUpdateCampusQuery.eq("client_type_id", clientTypeId);
+      bulkUpdateGradeQuery = bulkUpdateGradeQuery.eq("client_type_id", clientTypeId);
+      bulkUpdateSectionQuery = bulkUpdateSectionQuery.eq("client_type_id", clientTypeId);
+    }
+
+    const [campuses, grades, sections] = await Promise.all([bulkUpdateCampusQuery, bulkUpdateGradeQuery, bulkUpdateSectionQuery]);
+
+    const campusMap = new Map((campuses.data || []).map(c => [normalizeString(c.name), c.id]));
+    const gradeMap = new Map((grades.data || []).map(g => [`${g.campus_id}:${normalizeString(g.name)}`, g.id]));
+    const sectionMap = new Map((sections.data || []).map(s => [`${s.grade_id}:${normalizeString(s.name)}`, s.id]));
 
     const updatedStudents = [];
     let successCount = 0;
@@ -1114,20 +1140,23 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
         if (clientId) {
           updates.client_id = clientId;
         }
+        if (body.client_type_id) {
+          updates.client_type_id = body.client_type_id;
+        }
 
         // Resolve ids from the (possibly updated) campus/grade/section text
         if (updates.campus) {
-          const campusId = campusMap.get(String(updates.campus).toLowerCase());
+          const campusId = campusMap.get(normalizeString(String(updates.campus)));
           if (campusId) {
             updates.campus_id = campusId;
 
             if (updates.grade) {
-              const gradeId = gradeMap.get(`${campusId}:${String(updates.grade).toLowerCase()}`);
+              const gradeId = gradeMap.get(`${campusId}:${normalizeString(String(updates.grade))}`);
               if (gradeId) {
                 updates.grade_id = gradeId;
 
                 if (updates.section) {
-                  const sectionId = sectionMap.get(`${gradeId}:${String(updates.section).toLowerCase()}`);
+                  const sectionId = sectionMap.get(`${gradeId}:${normalizeString(String(updates.section))}`);
                   if (sectionId) {
                     updates.section_id = sectionId;
                   }
@@ -1185,6 +1214,7 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
 async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) {
   const students = body.students || [];
   const clientId = body.client_id;
+  const clientTypeId = body.client_type_id;
 
   if (!students.length) {
     return new Response(
@@ -1194,27 +1224,34 @@ async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) 
   }
 
   try {
-    // 🔹 Fetch academic structure ONCE
-    const [campuses, grades, sections] = await Promise.all([
-      supabaseClient.from("campuses").select("id, name").eq("client_id", clientId),
-      supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId),
-      supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId)
-    ]);
+    // 🔹 Fetch academic structure ONCE - scoped by client_type_id so a name match
+    // doesn't resolve to another client type's campus/grade/section (same client_id).
+    let bulkCampusQuery = supabaseClient.from("campuses").select("id, name").eq("client_id", clientId);
+    let bulkGradeQuery = supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId);
+    let bulkSectionQuery = supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId);
+
+    if (clientTypeId) {
+      bulkCampusQuery = bulkCampusQuery.eq("client_type_id", clientTypeId);
+      bulkGradeQuery = bulkGradeQuery.eq("client_type_id", clientTypeId);
+      bulkSectionQuery = bulkSectionQuery.eq("client_type_id", clientTypeId);
+    }
+
+    const [campuses, grades, sections] = await Promise.all([bulkCampusQuery, bulkGradeQuery, bulkSectionQuery]);
 
     if (campuses.error) throw campuses.error;
     if (grades.error) throw grades.error;
     if (sections.error) throw sections.error;
 
     const campusMap = new Map(
-      (campuses.data || []).map(c => [String(c.name || '').toLowerCase(), c.id])
+      (campuses.data || []).map(c => [normalizeString(c.name), c.id])
     );
 
     const gradeMap = new Map(
-      (grades.data || []).map(g => [`${g.campus_id}:${String(g.name || '').toLowerCase()}`, g.id])
+      (grades.data || []).map(g => [`${g.campus_id}:${normalizeString(g.name)}`, g.id])
     );
 
     const sectionMap = new Map(
-      (sections.data || []).map(s => [`${s.grade_id}:${String(s.name || '').toLowerCase()}`, s.id])
+      (sections.data || []).map(s => [`${s.grade_id}:${normalizeString(s.name)}`, s.id])
     );
 
     const insertRows = [];
@@ -1222,9 +1259,9 @@ async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) 
 
     students.forEach((s: any, index: number) => {
       const row = index + 2;
-      const campusName = String(s.campus || '').toLowerCase();
-      const gradeName = String(s.grade || '').toLowerCase();
-      const sectionName = String(s.section || '').toLowerCase();
+      const campusName = normalizeString(String(s.campus || ''));
+      const gradeName = normalizeString(String(s.grade || ''));
+      const sectionName = normalizeString(String(s.section || ''));
 
       const campusId = campusMap.get(campusName);
       if (!campusId) return errors.push(`Row ${row}: Invalid campus "${s.campus}"`);
@@ -1244,18 +1281,24 @@ async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) 
         campus_id: campusId,
         grade_id: gradeId,
         section_id: sectionId,
-        client_id: clientId
+        client_id: clientId,
+        client_type_id: body.client_type_id || null
       });
     });
 
-    if (errors.length) {
+    // Rows that failed campus/grade/section resolution are skipped, but valid
+    // rows still get inserted - one bad row shouldn't block the whole batch.
+    if (insertRows.length === 0) {
       return new Response(
-        JSON.stringify({ valid: false, errors }),
+        JSON.stringify({ valid: false, success: false, count: 0, students: [], errors }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { error: insertError } = await supabaseClient.from("students").insert(insertRows);
+    const { data: insertedRows, error: insertError } = await supabaseClient
+      .from("students")
+      .insert(insertRows)
+      .select();
 
     if (insertError) {
       console.error("Bulk insert error:", insertError);
@@ -1265,8 +1308,24 @@ async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) 
       );
     }
 
+    const transformedInserted = (insertedRows || []).map((row: any) => ({
+      ...row,
+      studentId: row.student_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      grade_name: row.grade || '',
+      section_name: row.section || '',
+      campus_name: row.campus || ''
+    }));
+
     return new Response(
-      JSON.stringify({ success: true, inserted: insertRows.length }),
+      JSON.stringify({
+        success: true,
+        inserted: transformedInserted.length,
+        count: transformedInserted.length,
+        students: transformedInserted,
+        errors
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
@@ -1314,6 +1373,7 @@ async function handleValidateId(body: any, corsHeaders: Record<string, string>) 
 
 async function handleGetFormData(body: any, corsHeaders: Record<string, string>) {
   const clientId = body.client_id;
+  const clientTypeId = body.client_type_id;
   if (!clientId) {
     return new Response(
       JSON.stringify({ error: "Client ID is required" }),
@@ -1322,12 +1382,20 @@ async function handleGetFormData(body: any, corsHeaders: Record<string, string>)
   }
 
   try {
-    // Fetch all in parallel
-    const [campuses, grades, sections] = await Promise.all([
-      supabaseClient.from("campuses").select("id, name").eq("client_id", clientId),
-      supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId),
-      supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId)
-    ]);
+    // Fetch all in parallel - scoped by client_type_id too, so structure data
+    // (campuses/grades/sections) added under one client type doesn't leak
+    // into another client type's dropdowns for the same client_id.
+    let campusQuery = supabaseClient.from("campuses").select("id, name").eq("client_id", clientId);
+    let gradeQuery = supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId);
+    let sectionQuery = supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId);
+
+    if (clientTypeId) {
+      campusQuery = campusQuery.eq("client_type_id", clientTypeId);
+      gradeQuery = gradeQuery.eq("client_type_id", clientTypeId);
+      sectionQuery = sectionQuery.eq("client_type_id", clientTypeId);
+    }
+
+    const [campuses, grades, sections] = await Promise.all([campusQuery, gradeQuery, sectionQuery]);
 
     if (campuses.error) throw campuses.error;
     if (grades.error) throw grades.error;
@@ -1361,18 +1429,20 @@ async function handleBulkCheckIds(body: any, corsHeaders: Record<string, string>
   }
 
   try {
+    // Fetch all of this client's student IDs and compare case-insensitively -
+    // PostgREST's .in() is an exact match, so "stu001" wouldn't match "STU001".
     const { data, error } = await supabaseClient
       .from('students')
       .select('student_id')
-      .eq('client_id', client_id)
-      .in('student_id', studentIds);
+      .eq('client_id', client_id);
 
     if (error) throw error;
 
-    const existingStudentIds = data?.map(student => student.student_id) || [];
+    const existingLower = new Set((data || []).map(student => String(student.student_id).toLowerCase()));
+    const duplicates = studentIds.filter((id: string) => existingLower.has(String(id).toLowerCase()));
 
     return new Response(
-      JSON.stringify({ duplicates: existingStudentIds }),
+      JSON.stringify({ duplicates }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
@@ -1395,16 +1465,20 @@ async function handleBulkGetExisting(body: any, corsHeaders: Record<string, stri
   }
 
   try {
+    // Fetch all of this client's students and match case-insensitively in JS -
+    // PostgREST's .in() is an exact match, so "stu001" wouldn't match "STU001".
     const { data, error } = await supabaseClient
       .from('students')
       .select('id, student_id')
-      .eq('client_id', client_id)
-      .in('student_id', studentIds);
+      .eq('client_id', client_id);
 
     if (error) throw error;
 
+    const targetLower = new Set(studentIds.map((id: string) => String(id).toLowerCase()));
+    const matches = (data || []).filter(student => targetLower.has(String(student.student_id).toLowerCase()));
+
     return new Response(
-      JSON.stringify({ students: data || [] }),
+      JSON.stringify({ students: matches }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

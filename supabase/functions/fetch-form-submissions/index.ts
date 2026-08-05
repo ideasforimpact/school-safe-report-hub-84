@@ -34,6 +34,7 @@ serve(async (req) => {
       status,
       date_from,
       date_to,
+      search,
     } = await req.json();
 
     if (!form_id && !client_id) {
@@ -50,7 +51,7 @@ serve(async (req) => {
     }
 
     // Base filters shared by the paginated list query and the (status-independent) stats
-    // queries below — form/client scope plus the optional date range.
+    // queries below — form/client scope plus the optional date range and search term.
     const applyBaseFilters = (q: any) => {
       if (form_id) {
         q = q.eq('form_id', form_id);
@@ -59,6 +60,17 @@ serve(async (req) => {
       }
       if (date_from) q = q.gte('created_at', date_from);
       if (date_to) q = q.lte('created_at', date_to);
+      if (search && String(search).trim()) {
+        const term = String(search).trim()
+          .replace(/\\/g, '\\\\')
+          .replace(/%/g, '\\%')
+          .replace(/_/g, '\\_')
+          .replace(/"/g, '\\"');
+        const pattern = `"%${term}%"`;
+        q = q.or(
+          `submitter_name.ilike.${pattern},submitter_phone.ilike.${pattern},status.ilike.${pattern}`
+        );
+      }
       return q;
     };
 

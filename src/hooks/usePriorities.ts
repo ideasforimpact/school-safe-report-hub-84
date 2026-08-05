@@ -8,11 +8,14 @@ export function usePriorities(clientTypeId?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { employeeData, user } = useAuth();
+  const clientId = employeeData?.clientId || user?.clientId;
+
   const fetchPriorities = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await priorityService.getPriorities(false, clientTypeId);
+      const data = await priorityService.getPriorities(false, clientTypeId, clientId);
       // Sort active priorities to the top
       const sortedPriorities = (data || []).sort((a, b) => {
         // Active items first
@@ -30,7 +33,7 @@ export function usePriorities(clientTypeId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [clientTypeId]);
+  }, [clientTypeId, clientId]);
 
   useEffect(() => {
     fetchPriorities();
@@ -47,12 +50,13 @@ export function useActivePriorities() {
 
   const { employeeData, user } = useAuth();
   const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? undefined;
+  const clientId = employeeData?.clientId || user?.clientId;
 
   const fetchPriorities = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await priorityService.getPriorities(true, clientTypeId);
+      const data = await priorityService.getPriorities(true, clientTypeId, clientId);
       const sortedPriorities = (data || []).sort((a, b) => (b.weight || 0) - (a.weight || 0));
       setPriorities(sortedPriorities);
     } catch (err) {
@@ -62,7 +66,7 @@ export function useActivePriorities() {
     } finally {
       setLoading(false);
     }
-  }, [clientTypeId]);
+  }, [clientTypeId, clientId]);
 
   useEffect(() => {
     fetchPriorities();
