@@ -73,7 +73,10 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
 
   const resources = query.data?.resources ?? [];
   const totalCount = query.data?.totalCount ?? 0;
-  const loading = query.isFetching;
+  // With skipInitialFetch, the query stays disabled until the page's own effect
+  // calls refreshResources — until then query.isFetching is false, which would
+  // otherwise render as "no resources" instead of a loading state.
+  const loading = !initiated || query.isFetching;
 
   // Wrong concept previously: a missing client context silently returned an empty
   // list with only a console.log. Surface it to the user instead — and never call
