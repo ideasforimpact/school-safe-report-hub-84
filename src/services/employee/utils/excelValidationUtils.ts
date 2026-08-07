@@ -421,12 +421,12 @@ export const getEmployeeIdFieldErrors = (employeeId?: string): string[] => {
   return messages;
 };
 
-export const validateExcelData = async (data: Record<string, unknown>[], clientId?: string): Promise<{ errors: string[]; warnings: string[] }> => {
+export const validateExcelData = async (data: Record<string, unknown>[], clientId?: string): Promise<{ errors: string[]; warnings: string[]; validCount: number }> => {
   const errors: string[] = [];
   const warnings: string[] = [];
   if (!Array.isArray(data) || data.length === 0) {
     errors.push("No data found in the Excel file");
-    return { errors, warnings };
+    return { errors, warnings, validCount: 0 };
   }
 
   // Check for required headers/columns
@@ -490,30 +490,48 @@ export const validateExcelData = async (data: Record<string, unknown>[], clientI
     return ALLOWED_STATUS.includes(status.trim().toLowerCase());
   };
   // Check for duplicate employee IDs within the file
-  const employeeIds: string[] = [];
-  const emailsRaw: string[] = [];
-  data.forEach(row => {
+  const employeeIdEntries: { id: string; index: number }[] = [];
+  const emailEntries: { email: string; index: number }[] = [];
+  data.forEach((row, index) => {
     if (row.employeeId !== undefined && row.employeeId !== null && String(row.employeeId).trim() !== '') {
-      employeeIds.push(String(row.employeeId).trim());
+      employeeIdEntries.push({ id: String(row.employeeId).trim(), index });
     }
     if (row.email !== undefined && row.email !== null && String(row.email).trim() !== '') {
-      emailsRaw.push(String(row.email).trim().toLowerCase());
+      emailEntries.push({ email: String(row.email).trim().toLowerCase(), index });
     }
   });
-  const duplicateIds = employeeIds.filter((id, index) => employeeIds.indexOf(id) !== index);
-  if (duplicateIds.length > 0) {
-    const uniqueDuplicates = [...new Set(duplicateIds)];
-    uniqueDuplicates.forEach(id => {
-      warnings.push(`Employee ID '${id}' is duplicated in the file and will be skipped`);
-    });
-  }
-  const duplicateEmails = emailsRaw.filter((email, index) => emailsRaw.indexOf(email) !== index);
-  if (duplicateEmails.length > 0) {
-    const uniqueEmailDups = [...new Set(duplicateEmails)];
-    uniqueEmailDups.forEach(email => {
-      warnings.push(`Email '${email}' is duplicated and will be skipped`);
-    });
-  }
+  const employeeIds = employeeIdEntries.map(entry => entry.id);
+  const emailsRaw = emailEntries.map(entry => entry.email);
+
+  const skippedRowIndices = new Set<number>();
+  const duplicateReasonsByRow = new Map<number, string[]>();
+  const addDuplicateReason = (index: number, reason: string) => {
+    skippedRowIndices.add(index);
+    const existing = duplicateReasonsByRow.get(index);
+    if (existing) {
+      existing.push(reason);
+    } else {
+      duplicateReasonsByRow.set(index, [reason]);
+    }
+  };
+
+  const idFirstSeenAt = new Map<string, number>();
+  employeeIdEntries.forEach(({ id, index }) => {
+    if (idFirstSeenAt.has(id)) {
+      addDuplicateReason(index, `Employee ID '${id}' is duplicated in the file`);
+    } else {
+      idFirstSeenAt.set(id, index);
+    }
+  });
+
+  const emailFirstSeenAt = new Map<string, number>();
+  emailEntries.forEach(({ email, index }) => {
+    if (emailFirstSeenAt.has(email)) {
+      addDuplicateReason(index, `Email '${email}' is duplicated in the file`);
+    } else {
+      emailFirstSeenAt.set(email, index);
+    }
+  });
 
   // Check for existing employee IDs / emails in the database if clientId is provided
   if (clientId && (employeeIds.length > 0 || emailsRaw.length > 0)) {
@@ -524,18 +542,28 @@ export const validateExcelData = async (data: Record<string, unknown>[], clientI
         errors.push(...dbErrors);
       }
 
-      duplicateEmployeeIds.forEach(id => {
-        warnings.push(`Employee ID '${id}' already exists and will be skipped`);
+      employeeIdEntries.forEach(({ id, index }) => {
+        if (duplicateEmployeeIds.includes(id)) {
+          addDuplicateReason(index, `Employee ID '${id}' already exists`);
+        }
       });
-
-      duplicateEmails.forEach(email => {
-        warnings.push(`Email '${email}' already exists and will be skipped`);
+      emailEntries.forEach(({ email, index }) => {
+        if (duplicateEmails.includes(email)) {
+          addDuplicateReason(index, `Email '${email}' already exists`);
+        }
       });
     } catch (error) {
       console.error('Error checking bulk duplicates:', error);
       errors.push('Error validating employee IDs and emails against existing records');
     }
   }
+
+  [...duplicateReasonsByRow.entries()]
+    .sort(([indexA], [indexB]) => indexA - indexB)
+    .forEach(([index, reasons]) => {
+      const rowNum = index + 2; // +2 because Excel is 1-based and we're skipping header row
+      warnings.push(`Row ${rowNum}: ${reasons.join(', ')} — will be skipped`);
+    });
   // Validate each row
   data.forEach((row, index) => {
     const rowNum = index + 2; // +2 because Excel is 1-based and we're skipping header row
@@ -753,7 +781,8 @@ export const validateExcelData = async (data: Record<string, unknown>[], clientI
     });
   });
 
-  return { errors, warnings };
+  const validCount = errors.length === 0 ? data.length - skippedRowIndices.size : 0;
+  return { errors, warnings, validCount };
 };
 
 /**

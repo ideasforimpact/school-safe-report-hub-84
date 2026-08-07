@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, UploadCloud, FileCheck, Download, FileText, X, File } from 'lucide-react';
+import { Loader2, UploadCloud, FileCheck, Download, FileText, X, File, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { downloadExcelTemplate, downloadCSVTemplate, getTemplateFormatInfo } from '@/services/employee/utils/templateGenerator';
@@ -32,6 +32,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+  const [validCount, setValidCount] = useState<number | null>(null);
   
   const readFileWithRetry = async (file: File, retries = 5, delay = 300): Promise<ArrayBuffer> => {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -59,6 +60,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       setIsVerified(false);
       setValidationErrors([]);
       setValidationWarnings([]);
+      setValidCount(null);
 
       toast.success("File uploaded successfully.");
     } catch (err: unknown) {
@@ -77,6 +79,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
     setIsVerified(false);
     setValidationErrors([]);
     setValidationWarnings([]);
+    setValidCount(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -106,19 +109,21 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
     try {
       // Use the effective client ID for validation
       const effectiveClientId = manualClientId || clientId;
-      const { errors, warnings } = await validateEmployeeExcel(
+      const { errors, warnings, validCount: verifiedValidCount } = await validateEmployeeExcel(
         selectedFile,
         manualClientId || clientId
       );
 
       setValidationErrors(errors);
       setValidationWarnings(warnings);
+      setValidCount(verifiedValidCount);
       setIsVerified(errors.length === 0);
     } catch (error) {
       console.error("Error validating file:", error);
       setValidationErrors([
         `Validation failed: ${(error as Error).message}`,
       ]);
+      setValidCount(null);
       setIsVerified(false);
     } finally {
       setIsVerifying(false);
@@ -135,7 +140,12 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       toast.error("Please verify the file before importing");
       return;
     }
-    
+
+    if (validCount === 0) {
+      toast.error("No valid employees found to import");
+      return;
+    }
+
     console.log("Starting import process with client ID:", manualClientId || clientId);
     setIsLoading(true);
     try {
@@ -164,6 +174,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
     setIsLoading(false);
     setValidationErrors([]);
     setValidationWarnings([]);
+    setValidCount(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -322,6 +333,15 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
           warningFooterText="These employees will be skipped during import."
         />
 
+        {isVerified && validCount === 0 && (
+          <div className="border border-red-300 bg-red-50 rounded-md p-3 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+            <p className="text-sm text-red-700">
+              No valid employees found to import. All employees in this file already exist or are duplicates.
+            </p>
+          </div>
+        )}
+
         <AlertDialogFooter className="flex flex-col sm:flex-row sm:justify-between items-center">
           <Button 
             variant="secondary" 
@@ -347,9 +367,9 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleImport} 
-              disabled={!selectedFile || isLoading || !isVerified || validationErrors.length > 0}
+            <Button
+              onClick={handleImport}
+              disabled={!selectedFile || isLoading || !isVerified || validationErrors.length > 0 || validCount === 0}
               className="w-full sm:w-auto"
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
