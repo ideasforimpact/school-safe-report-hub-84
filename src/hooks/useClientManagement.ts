@@ -101,6 +101,10 @@ export const useClientManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modulesLoading, setModulesLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+  // Tracks which client's edit fetch is currently "live" so a slow fetch
+  // for a previously-opened client can't clobber the form after the user
+  // has already moved on to editing a different client.
+  const editRequestClientIdRef = useRef<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const clientManagementReadOnly = state.clientManagementReadOnly === true;
   const switchedAccessLevel = state.switchedAccessLevel;
@@ -362,8 +366,12 @@ export const useClientManagement = () => {
     // Open the dialog immediately and show a loading state while fetching
     setIsEditDialogOpen(true);
     setEditLoading(true);
+    editRequestClientIdRef.current = client.id;
 
-    // Prefill basic client info so user can see something immediately
+    // Prefill basic client info so user can see something immediately.
+    // superAdminEmail/secondarySuperAdminEmails are reset here (not carried
+    // over from the previous form state) so a stale super admin from the
+    // last client edited never flashes before the real fetch resolves.
     setFormData(prev => ({
       ...prev,
       id: client.id,
@@ -376,6 +384,8 @@ export const useClientManagement = () => {
       institutionType: (client.institutionType as InstitutionType) || 'Other',
       allowedDomains: client.allowedDomains || [],
       clientTypeId: client.clientTypeId || '',
+      superAdminEmail: '',
+      secondarySuperAdminEmails: [],
       superAdminAllowedDomains: client.superAdminAllowedDomains || [],
       authProviders: {
         google: client.authProviders?.google ?? false,
@@ -446,13 +456,16 @@ export const useClientManagement = () => {
           const logoPath = latestClientData.logo || latestClientData.client_logo;
           const logoUrl = logoPath ? buildClientLogoUrl(logoPath) : undefined;
           
-          // Update formData with latest auth_providers and logo
-          setFormData(prev => ({
-            ...prev,
-            authProviders: parsedAuthProviders,
-            logo: logoUrl || prev.logo || '',
-            isHeadOffice: latestClientData.is_head_office === true
-          }));
+          // Update formData with latest auth_providers and logo — but only
+          // if this fetch is still for the client currently being edited.
+          if (editRequestClientIdRef.current === clientId) {
+            setFormData(prev => ({
+              ...prev,
+              authProviders: parsedAuthProviders,
+              logo: logoUrl || prev.logo || '',
+              isHeadOffice: latestClientData.is_head_office === true
+            }));
+          }
         }
         
         // Fetch client modules with module names
@@ -594,29 +607,35 @@ export const useClientManagement = () => {
             parentHeadOfficeName = parentClient?.name || undefined;
           }
         }
-        // Update the remaining fields once data arrives
-        setFormData(prev => ({
-          ...prev,
-          superAdminEmail: employeeData?.email || '',
-          secondarySuperAdminEmails,
-          moduleInfoArray: moduleInfoArray,
-          whitelistedIPs: whitelistedIPs,
-          aiIncidentRecommendedActionsEnabled,
-          mappedClientIds: isCurrentClientHeadOffice
-            ? (mappingData || []).map((row: { sub_client_id: string }) => row.sub_client_id)
-            : [],
-          mappedClientAccessLevels: isCurrentClientHeadOffice
-            ? Object.fromEntries((mappingData || []).map((row: { sub_client_id: string }) => [row.sub_client_id, 'read_only']))
-            : {},
-          isHeadOffice: isCurrentClientHeadOffice,
-          parentHeadOfficeId,
-          parentHeadOfficeName,
-        }));
+        // Update the remaining fields once data arrives — guarded so a slow
+        // fetch for a client the user has since navigated away from can't
+        // overwrite the form of the client now being edited.
+        if (editRequestClientIdRef.current === clientId) {
+          setFormData(prev => ({
+            ...prev,
+            superAdminEmail: employeeData?.email || '',
+            secondarySuperAdminEmails,
+            moduleInfoArray: moduleInfoArray,
+            whitelistedIPs: whitelistedIPs,
+            aiIncidentRecommendedActionsEnabled,
+            mappedClientIds: isCurrentClientHeadOffice
+              ? (mappingData || []).map((row: { sub_client_id: string }) => row.sub_client_id)
+              : [],
+            mappedClientAccessLevels: isCurrentClientHeadOffice
+              ? Object.fromEntries((mappingData || []).map((row: { sub_client_id: string }) => [row.sub_client_id, 'read_only']))
+              : {},
+            isHeadOffice: isCurrentClientHeadOffice,
+            parentHeadOfficeId,
+            parentHeadOfficeName,
+          }));
+        }
       } catch (err) {
         console.error('Error in fetchClientData:', err);
         toast.error('Failed to load client data for editing');
       } finally {
-        setEditLoading(false);
+        if (editRequestClientIdRef.current === clientId) {
+          setEditLoading(false);
+        }
       }
     };
     

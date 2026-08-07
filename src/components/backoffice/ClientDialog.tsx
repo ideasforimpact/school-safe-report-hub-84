@@ -209,12 +209,13 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     switch (currentStep) {
       case 0:
         return (
-          <BasicInfoTab 
-            formData={safeFormData} 
-            setFormData={setFormData} 
+          <BasicInfoTab
+            formData={safeFormData}
+            setFormData={setFormData}
             handleLogoUpload={() => {}}
             showErrors={attemptedSteps.has(0)}
             isEdit={isEdit}
+            isLoading={isLoading}
           />
         );
       case 1:
