@@ -53,7 +53,7 @@ const DragDropFileUpload: React.FC<DragDropFileUploadProps> = ({
     }
   };
 
-  const processFiles = useCallback(async (selectedFiles: FileList) => {
+  const processFiles = useCallback(async (selectedFiles: File[]) => {
     if (files.length + selectedFiles.length > maxFiles) {
       toast.error(`You can upload a maximum of ${maxFiles} files.`);
       return;
@@ -139,14 +139,14 @@ const DragDropFileUpload: React.FC<DragDropFileUploadProps> = ({
     
     const droppedFiles = e.dataTransfer.files;
     if (droppedFiles.length > 0) {
-      processFiles(droppedFiles);
+      processFiles(Array.from(droppedFiles));
     }
   }, [processFiles]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
-      processFiles(selectedFiles);
+      processFiles(Array.from(selectedFiles));
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
