@@ -103,19 +103,13 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       }
     }
     
-    // Add validation errors to result
+    // Add validation errors to result. These are surfaced to the user once,
+    // via showImportResultNotifications after this function returns — do not
+    // toast them here too, or every error shows up twice.
     result.errors = validationErrors;
     result.errorCount = validationErrors.length;
-    
-    // If there are validation errors, show them but continue with valid employees
     if (validationErrors.length > 0) {
       console.warn(`Found ${validationErrors.length} validation errors:`, validationErrors);
-      
-      if (validationErrors.length <= 5) {
-        validationErrors.forEach(error => toast.error(error));
-      } else {
-        toast.error(`Found ${validationErrors.length} validation errors. Check console for details.`);
-      }
     }
     
     // If no valid employees after validation, return early
