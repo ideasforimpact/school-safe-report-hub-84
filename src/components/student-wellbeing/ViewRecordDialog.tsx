@@ -16,6 +16,8 @@ import {
 import { Eye, MessageSquare, Zap, Paperclip, FileText, Download, ExternalLink, Loader2 } from 'lucide-react';
 import { cn, buildPublicStorageUrl } from '@/lib/utils';
 import { toast } from 'sonner';
+import StudentOriginBadge from '@/components/common/StudentOriginBadge';
+import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 import type {
   StudentWellbeingRecord,
   StudentWellbeingConsultation,
@@ -78,6 +80,10 @@ export interface ViewRecordDialogProps {
 }
 
 export function ViewRecordDialog({ open, onClose, record }: ViewRecordDialogProps) {
+  // Origin of the student itself always comes from the record. This flag only decides
+  // whether an "Internal" tag is worth showing - i.e. whether external students can
+  // exist alongside it for this client. External records stay tagged regardless.
+  const { isIntegrationEnabled } = useClientIntegrationEnabled();
   const [downloadingPath, setDownloadingPath] = useState<string | null>(null);
 
   const getPublicUrl = (path: string): string | null => {
@@ -168,7 +174,15 @@ export function ViewRecordDialog({ open, onClose, record }: ViewRecordDialogProp
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Student</p>
-                  <p className="text-sm font-medium mt-0.5">{record.student_name ?? '—'}</p>
+                  {/* Origin comes from the flag saved on the record, so it stays accurate
+                      even if the client has since unlinked the other school */}
+                  <p className="text-sm font-medium mt-0.5 flex items-center gap-2">
+                    <span>{record.student_name ?? '—'}</span>
+                    <StudentOriginBadge
+                      isExternal={record.is_external_student}
+                      showWhenInternal={isIntegrationEnabled}
+                    />
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Grade / Section</p>

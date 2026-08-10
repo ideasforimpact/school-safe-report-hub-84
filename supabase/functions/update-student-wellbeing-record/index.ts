@@ -38,6 +38,7 @@ serve(async (req) => {
       gradeName,
       section_name,
       sectionName,
+      is_external_student,
       external_student_involved,
       type_of_concern_id,
       typeOfConcernId,
@@ -111,7 +112,27 @@ serve(async (req) => {
     }
     const isIntegrationEnabled =
       !!integrationData && integrationData.is_linked === true && integrationData.active === true;
-    const isExternalStudent = isIntegrationEnabled ? true : false;
+
+    // Externality is a property of the student that was selected, not of the client's
+    // current link status - a client can unlink while external records still exist, and
+    // those records must stay editable. So honour the caller's flag; but when a LINKED
+    // client claims a student is internal, verify it really is on our own roster (a
+    // linked client sees both kinds in one dropdown and can mislabel them).
+    let isExternalStudent = is_external_student === true;
+    if (!isExternalStudent && isIntegrationEnabled && studentIdResolved) {
+      const { data: internalStudent, error: internalLookupError } = await supabase
+        .from('students')
+        .select('id')
+        .eq('id', studentIdResolved)
+        .eq('client_id', clientIdResolved)
+        .maybeSingle();
+      if (internalLookupError) {
+        // Cannot verify - keep the caller's classification rather than guessing wrong
+        console.error('update-student-wellbeing-record internal student lookup error:', internalLookupError);
+      } else {
+        isExternalStudent = !internalStudent;
+      }
+    }
 
     let externalStudentInvolvedPayload: Record<string, unknown> | null = null;
     if (isExternalStudent) {
