@@ -2,12 +2,18 @@
 import React from 'react';
 import { Person } from '@/types/incident';
 import { Users } from 'lucide-react';
+import StudentOriginBadge from '@/components/common/StudentOriginBadge';
 
 interface PeopleInvolvedProps {
   people: Person[];
 }
 
 const PeopleInvolved: React.FC<PeopleInvolvedProps> = ({ people }) => {
+  // Only worth distinguishing origins when this incident actually involves an external
+  // student. Derived from the saved records, so it stays correct after unlinking - and
+  // stays silent for clients that never linked at all.
+  const hasExternalStudent = (people || []).some(person => person.is_external === true);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
@@ -31,6 +37,15 @@ const PeopleInvolved: React.FC<PeopleInvolvedProps> = ({ people }) => {
                 <span className="text-xs ms-3 px-2 py-1 bg-gray-100 rounded-full text-gray-700">
                   {person.role}
                 </span>
+                {/* Origin comes from the flag saved with the incident, so it stays
+                    accurate even if the client has since unlinked the other school */}
+                {person.role === 'Student' && (
+                  <StudentOriginBadge
+                    isExternal={person.is_external}
+                    showWhenInternal={hasExternalStudent}
+                    className="ms-2"
+                  />
+                )}
               </div>
               {person.notes && (
                 <p className="text-sm text-gray-600">{person.notes}</p>

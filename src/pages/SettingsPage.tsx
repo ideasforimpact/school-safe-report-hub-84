@@ -14,7 +14,6 @@ import AssessmentConfigurationContent from '@/components/configuration/Assessmen
 import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
 import GroupConfigurationContent from '@/components/configuration/GroupConfigurationContent';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
-import { useClientIntegration } from '@/hooks/useClientIntegration';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { useLang } from '@/hooks/useLang';
 
@@ -26,9 +25,6 @@ const SettingsPage = () => {
   const { employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [clientType, setClientType] = useState<string | null>(null);
-
-  // Check if client integration is linked
-  const { isClientLinked } = useClientIntegration();
 
   // Mirrors the active tab into the `?tab=` URL param. AssessmentContext reads
   // this to only fetch assessment templates while this tab is actually open —
@@ -120,8 +116,6 @@ const SettingsPage = () => {
                     <TabsTrigger
                       value="student"
                       className="flex items-center gap-2"
-                      disabled={isClientLinked}
-                      title={isClientLinked ? "Student Management is disabled when client integration is linked" : ""}
                     >
                       <GraduationCap className="h-4 w-4" />
                       <span>Student Management</span>

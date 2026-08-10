@@ -21,7 +21,6 @@ import { toast } from 'sonner';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 const ATTACHMENTS_MAX_FILES = 5;
 const ATTACHMENTS_MAX_SIZE_MB = 10;
 const ATTACHMENTS_MAX_TOTAL_MB = ATTACHMENTS_MAX_FILES * ATTACHMENTS_MAX_SIZE_MB;
@@ -49,7 +48,6 @@ export function NewWellBeingRecordDialog({
   onSuccess,
 }: NewWellBeingRecordDialogProps) {
   const { employeeData } = useAuth();
-  const { isIntegrationEnabled } = useClientIntegrationEnabled();
   const clientId = employeeData?.clientId;
   const employeeId = employeeData?.id;
  
@@ -158,11 +156,15 @@ export function NewWellBeingRecordDialog({
         type: f.type,
         base64: f.base64?.replace(/^data:[^;]+;base64,/, '') ?? '',
       }));
-      const isExternalStudent = isIntegrationEnabled && student?.is_external === true;
-      
+      // Externality is a property of the selected student, not of the client's current
+      // link status (a non-linked client can never surface an external option anyway).
+      const isExternalStudent = student?.is_external === true;
+
       const externalStudentInvolved = isExternalStudent
         ? {
             student: {
+              // Human-readable code (e.g. ST/ID/04), NOT the UUID in `student.id` -
+              // this value is surfaced directly as the "Student Id" column.
               id: student?.student_id ?? null,
               name: student?.name ?? null,
             },

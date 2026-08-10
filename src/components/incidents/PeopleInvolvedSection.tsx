@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { FormErrors } from '@/hooks/incident-form/useIncidentFormValidation';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
+import StudentOriginBadge from '@/components/common/StudentOriginBadge';
 import { NOTES_MAX_LENGTH } from '../constants';
 
 /** Student as returned by the edge function or transformClientStudent */
@@ -148,13 +149,11 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const [currentPersonData, setCurrentPersonData] = useState<Person | null>(null);
   const [hadSearchQuery, setHadSearchQuery] = useState(false);
 
+  // Internal students always belong to this client regardless of linked status -
+  // linking only adds the connected school's students on top of them.
   useEffect(() => {
-    if (isIntegrationEnabled) {
-      setFetchedStudents([]);
-      return;
-    }
     setFetchedStudents(students || []);
-  }, [students, isIntegrationEnabled]);
+  }, [students]);
 
   // Log when people are added
   useEffect(() => {
@@ -385,9 +384,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     setHadSearchQuery(false);
     
     // Add student locally for immediate UX feedback
-    if (!isIntegrationEnabled) {
-      setFetchedStudents((prev) => [...prev, newStudent]);
-    }
+    setFetchedStudents((prev) => [...prev, newStudent]);
     
     // Also call the parent callback if provided
     if (onStudentAdded) {
@@ -447,50 +444,39 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           })
         : availableStaff;
     } else if (role === 'Student') {
-      // If integration is enabled, don't show client-side students
-      if (isIntegrationEnabled) {
-        // Only show API search results when integration is enabled
-        if (searchQuery.length === 0) {
-          // Return empty array - no client-side data when integration is enabled
-          return [];
-        }
-      } else {
-        // Integration is NOT enabled - show client-side students
-        if (searchQuery.length === 0) {
-          // If search query is empty, show all internal students from client-side data
-          const availableInternalStudents = fetchedStudents.filter(student => {
-            const studentName = student.name;
-            return !selectedStudentNames.includes(studentName);
-          });
+      // Show all internal students up front - internal students always belong to this
+      // client regardless of linked status; linking only adds external ones on top
+      if (searchQuery.length === 0) {
+        const availableInternalStudents = fetchedStudents.filter(student => {
+          const studentName = student.name;
+          return !selectedStudentNames.includes(studentName);
+        });
 
-          // Transform to match API format (same as transformStudent in edge function)
-          const transformedInternal = availableInternalStudents.map(transformClientStudent);
-          
-          return transformedInternal;
-        }
+        // Transform to match API format (same as transformStudent in edge function)
+        return availableInternalStudents.map(transformClientStudent);
       }
-      
+
       // If search query is less than 3 characters, show message
       if (searchQuery.length > 0 && searchQuery.length < 3) {
         return [{ id: 'min-chars', name: 'Please type at least 3 characters', isMinCharsMessage: true } as MinCharsOption];
       }
 
-      // Use API search results if available (for Student role with >= 3 characters)
+      // Use API search results if available (for Student role with >= 3 characters).
+      // When the client is linked, these already include both internal and external
+      // students merged together, tagged via is_external.
       const apiSearchResults = searchResults[index] || [];
       const isAPILoading = isSearchingAPI[index];
 
-      // When integration is disabled, also include local students that match the search
-      let localStudents: ApiStudent[] = [];
-      if (!isIntegrationEnabled && searchQuery.length >= 3) {
-        const searchTerm = searchQuery.toLowerCase();
-        const matchingLocalStudents = fetchedStudents.filter(student => {
-          const studentName = student.name.toLowerCase();
-          const studentId = student.studentId?.toLowerCase() || '';
-          return (studentName.includes(searchTerm) || studentId.includes(searchTerm)) &&
-                 !selectedStudentNames.includes(student.name);
-        });
-        localStudents = matchingLocalStudents.map(transformClientStudent);
-      }
+      // Also include local (internal) students matching the search so results appear
+      // immediately, even before the debounced API call resolves
+      const searchTerm = searchQuery.toLowerCase();
+      const matchingLocalStudents = fetchedStudents.filter(student => {
+        const studentName = student.name.toLowerCase();
+        const studentId = student.studentId?.toLowerCase() || '';
+        return (studentName.includes(searchTerm) || studentId.includes(searchTerm)) &&
+               !selectedStudentNames.includes(student.name);
+      });
+      const localStudents: ApiStudent[] = matchingLocalStudents.map(transformClientStudent);
 
       // Combine API results and local students, removing duplicates
       const allStudents = [...apiSearchResults, ...localStudents];
@@ -520,8 +506,9 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         result.push({ id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as NoStudentOption);
       }
 
-      // Add "Add Student" option at the bottom (only if search query exists and integration is NOT enabled)
-      if (searchQuery.length >= 3 && !isIntegrationEnabled) {
+      // Add "Add Student" option at the bottom whenever there's a search query,
+      // regardless of linked status - staff can always add a new internal student
+      if (searchQuery.length >= 3) {
         result.push({ id: 'add-student', name: 'Add Student', isAddOption: true } as AddStudentOption);
       }
 
@@ -579,6 +566,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       if (
         person.role === 'Student' &&
         person.id &&
+        // fetchedStudents only ever holds this client's own (internal) roster, so an
+        // external student's id will never appear in it - skip those here rather than
+        // wrongly treating every external selection as a deleted student.
+        !person.is_external &&
         !validStudentIds.includes(person.id)
       ) {
         console.warn('[PeopleInvolved] Student deleted, removing:', person);
@@ -704,8 +695,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                     );
                   }
                   
-                  // Check if this is the "Add Student" option - render it at the bottom (only if integration is NOT enabled)
-                  if (person.role === 'Student' && 'isAddOption' in option && !isIntegrationEnabled) {
+                  // Check if this is the "Add Student" option - render it at the bottom
+                  if (person.role === 'Student' && 'isAddOption' in option) {
                     return (
                       <li
                         key="add-student"
@@ -744,11 +735,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                               <span className="font-medium">
                                 {(option as ApiStudent).name}
                               </span>
-                              {(option as ApiStudent).is_external && (
-                                <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
-                                  External
-                                </span>
-                              )}
+                              <StudentOriginBadge
+                                isExternal={(option as ApiStudent).is_external}
+                                showWhenInternal={isIntegrationEnabled}
+                              />
                             </div>
                             <div className="text-gray-500 text-xs mt-0.5">
                               ({(option as ApiStudent).student_id || (option as ApiStudent).studentId})
@@ -808,11 +798,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                                   <span className="font-medium">
                                     {(option as ApiStudent).name || (option as ApiStudent).name}
                                   </span>
-                                  {(option as ApiStudent).is_external && (
-                                    <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
-                                      External
-                                    </span>
-                                  )}
+                                  <StudentOriginBadge
+                                    isExternal={(option as ApiStudent).is_external}
+                                    showWhenInternal={isIntegrationEnabled}
+                                  />
                                 </div>
                                 <div className="text-gray-500 text-xs mt-0.5">
                                   ({(option as ApiStudent).student_id || (option as ApiStudent).studentId})
@@ -827,8 +816,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                           </div>
                         </li>
                       ))}
-                    {/* Show "Add Student" link at the bottom for Student role (only if integration is NOT enabled) */}
-                    {person.role === 'Student' && !isIntegrationEnabled && (
+                    {/* Show "Add Student" link at the bottom for Student role */}
+                    {person.role === 'Student' && (
                       <li
                         key="add-student"
                         className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-t border-gray-200"
@@ -852,8 +841,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
                   <ul className="py-1 text-sm">
                     {filteredOptions.map((option) => {
-                      // Check if this is the "Add Student" option (only if integration is NOT enabled)
-                      if (person.role === 'Student' && 'isAddOption' in option && !isIntegrationEnabled) {
+                      // Check if this is the "Add Student" option
+                      if (person.role === 'Student' && 'isAddOption' in option) {
                         return (
                           <li
                             key="add-student"

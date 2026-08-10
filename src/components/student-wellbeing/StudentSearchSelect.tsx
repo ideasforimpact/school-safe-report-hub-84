@@ -6,6 +6,7 @@ import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types/student';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
+import StudentOriginBadge from '@/components/common/StudentOriginBadge';
 
 // De-duplicate identical student-management invocations (handles React StrictMode double-effect in dev)
 type StudentMgmtInvokeResult = Awaited<ReturnType<typeof supabase.functions.invoke>>;
@@ -100,7 +101,7 @@ export function StudentSearchSelect({
   const clientId = employeeData?.clientId;
  
   const fetchStudents = useCallback(async () => {
-    if (isIntegrationEnabled || !clientId) {
+    if (!clientId) {
       setFetchedStudents([]);
       return;
     }
@@ -138,7 +139,7 @@ export function StudentSearchSelect({
     } finally {
       setIsLoadingStudents(false);
     }
-  }, [clientId, isIntegrationEnabled]);
+  }, [clientId]);
 
   useEffect(() => {
     fetchStudents();
@@ -177,64 +178,58 @@ export function StudentSearchSelect({
     }
   }, [clientId]);
  
+  const mapLocalStudents = useCallback(
+    (list: Student[]): StudentOption[] =>
+      list.map((s) => ({
+        id: s.id,
+        name: s.name,
+        student_id: s.studentId,
+        section_id: s.section_id ?? null,
+        grade_id: s.grade_id ?? null,
+        section_name: s.section ?? null,
+        grade_name: s.grade ?? null,
+        is_external: false,
+      })),
+    []
+  );
+
   useEffect(() => {
     if (!open) return;
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-    if (isIntegrationEnabled) {
-      if (searchQuery.length < 3) {
-        setSearchResults([]);
-        setIsSearchingAPI(false);
-        return;
-      }
-      setIsSearchingAPI(true);
-      timeoutRef.current = setTimeout(async () => {
-        const results = await searchStudentsAPI(searchQuery);
-        setSearchResults(results);
-        setIsSearchingAPI(false);
-        timeoutRef.current = null;
-      }, 500);
-      return () => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      };
-    } else {
-      if (!searchQuery.trim()) {
-        setSearchResults(
-          fetchedStudents.map((s) => ({
-            id: s.id,
-            name: s.name,
-            student_id: s.studentId,
-            section_id: s.section_id ?? null,
-            grade_id: s.grade_id ?? null,
-            section_name: s.section ?? null,
-            grade_name: s.grade ?? null,
-            is_external: false,
-          }))
-        );
-      } else {
-        const q = searchQuery.toLowerCase();
-        const filtered = fetchedStudents.filter(
-          (s) =>
-            s.name.toLowerCase().includes(q) ||
-            (s.studentId && s.studentId.toLowerCase().includes(q))
-        );
-        setSearchResults(
-          filtered.map((s) => ({
-            id: s.id,
-            name: s.name,
-            student_id: s.studentId,
-            section_id: s.section_id ?? null,
-            grade_id: s.grade_id ?? null,
-            section_name: s.section ?? null,
-            grade_name: s.grade ?? null,
-            is_external: false,
-          }))
-        );
-      }
+
+    // Internal students always belong to this client regardless of linked status -
+    // show them immediately, and merge in the connected school's students when linked
+    const q = searchQuery.trim().toLowerCase();
+    const localMatches = q
+      ? fetchedStudents.filter(
+          (s) => s.name.toLowerCase().includes(q) || (s.studentId && s.studentId.toLowerCase().includes(q))
+        )
+      : fetchedStudents;
+    setSearchResults(mapLocalStudents(localMatches));
+
+    if (!isIntegrationEnabled || searchQuery.length < 3) {
+      setIsSearchingAPI(false);
+      return;
     }
-  }, [open, searchQuery, isIntegrationEnabled, fetchedStudents, searchStudentsAPI]);
+
+    setIsSearchingAPI(true);
+    timeoutRef.current = setTimeout(async () => {
+      const results = await searchStudentsAPI(searchQuery);
+      // Merge API results (internal + external) with local ones, removing duplicates
+      setSearchResults((prev) => {
+        const merged = [...prev, ...results];
+        return merged.filter((s, idx, self) => idx === self.findIndex((o) => o.id === s.id));
+      });
+      setIsSearchingAPI(false);
+      timeoutRef.current = null;
+    }, 500);
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [open, searchQuery, isIntegrationEnabled, fetchedStudents, searchStudentsAPI, mapLocalStudents]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -253,7 +248,6 @@ export function StudentSearchSelect({
   const options = open ? searchResults : [];
   const trimmedSearchQuery = searchQuery.trim();
   const canAddStudent =
-    !isIntegrationEnabled &&
     trimmedSearchQuery.length >= 3 &&
     !isSearchingAPI &&
     options.length === 0;
@@ -312,13 +306,10 @@ export function StudentSearchSelect({
         <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
         {open && (
           <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-            {isIntegrationEnabled && searchQuery.length > 0 && searchQuery.length < 3 && (
-              <div className="px-3 py-2 text-sm text-gray-500">Type at least 3 characters</div>
-            )}
-            {isIntegrationEnabled && searchQuery.length >= 3 && isSearchingAPI && (
+            {isSearchingAPI && (
               <div className="px-3 py-2 text-sm text-gray-500">Searching...</div>
             )}
-            {!isSearchingAPI && options.length === 0 && searchQuery.length >= (isIntegrationEnabled ? 3 : 0) && (
+            {!isSearchingAPI && options.length === 0 && (
               <div className="px-3 py-2 text-sm text-gray-500">No results found</div>
             )}
             {!isSearchingAPI &&
@@ -326,7 +317,7 @@ export function StudentSearchSelect({
                 <button
                   key={opt.id}
                   type="button"
-                  className="flex w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-gray-100"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     onChange(opt);
@@ -334,7 +325,8 @@ export function StudentSearchSelect({
                     setOpen(false);
                   }}
                 >
-                  {opt.student_id ? `${opt.name} (${opt.student_id})` : opt.name}
+                  <span>{opt.student_id ? `${opt.name} (${opt.student_id})` : opt.name}</span>
+                  <StudentOriginBadge isExternal={opt.is_external} showWhenInternal={isIntegrationEnabled} />
                 </button>
               ))}
             {canAddStudent && (
