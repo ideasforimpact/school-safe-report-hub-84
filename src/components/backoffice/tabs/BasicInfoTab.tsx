@@ -27,6 +27,7 @@ import {
 import { toast } from 'sonner';
 import SecondarySuperAdminEmailList, { MAX_SECONDARY_SUPER_ADMINS } from './SecondarySuperAdminEmailList';
 import { Plus } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
  
 interface ClientType {
   id: string;
@@ -70,9 +71,11 @@ interface BasicInfoTabProps {
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   showErrors?: boolean;
   isEdit?: boolean;
+  /** True while the edit dialog's async fetch (super admin emails, etc.) is in flight */
+  isLoading?: boolean;
 }
 
-const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false, isEdit = false }: BasicInfoTabProps) => {
+const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false, isEdit = false, isLoading = false }: BasicInfoTabProps) => {
   const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
   const [clientsForMapping, setClientsForMapping] = useState<Array<{
     id: string;
@@ -514,6 +517,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
               not a standard contact form field.
             - data-{1p,lp,bw}-ignore → opt-out hints respected by the
               named password managers. */}
+      {isEdit && isLoading ? (
+        <Skeleton className="h-10 w-full" />
+      ) : (
       <div className="flex gap-2 items-start">
         <Input
           id="superAdminEmail"
@@ -561,7 +567,8 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           );
         })()}
       </div>
- 
+      )}
+
       {/* Inline status messages */}
       {checkingEmail && (
         <p className="text-xs text-gray-500">Checking email...</p>
@@ -607,6 +614,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
             Cap behavior: if adding would exceed the domain cap, the
             secondary email is still saved but the domain is skipped (the
             user can clean up the Authentication tab manually). */}
+        {isEdit && isLoading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : (
         <SecondarySuperAdminEmailList
           emails={formData.secondarySuperAdminEmails || []}
           onChange={(emails) => {
@@ -637,6 +647,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           }}
           isEdit={isEdit}
         />
+        )}
     </div>
       
       <div className="space-y-2">
