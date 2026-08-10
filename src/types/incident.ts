@@ -23,6 +23,12 @@ export interface Person {
   id?: string;
   student_id?:string;
   aadhar_verified_name?: string;
+  /**
+   * True when the student belongs to a connected (linked) school rather than this
+   * client. Persisted with the incident so the origin stays correct even if the
+   * client later unlinks - never re-derive it from the current link status.
+   */
+  is_external?: boolean;
 }
 
 export interface UserRef {

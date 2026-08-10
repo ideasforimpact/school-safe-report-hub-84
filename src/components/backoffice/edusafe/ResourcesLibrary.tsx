@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Download, FileText, ExternalLink, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,13 +34,6 @@ const ResourcesLibraryInner: React.FC = () => {
   const isFirstRender = useRef(true);
   const PAGE_SIZE = 10;
 
-  const filteredResources = resources.filter(resource => 
-    resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    resource.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    resource.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    resource.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     refreshResources(searchQuery, page, PAGE_SIZE);
@@ -55,22 +48,16 @@ const ResourcesLibraryInner: React.FC = () => {
     refreshResources(searchQuery, 1, PAGE_SIZE);
   }, [searchQuery, refreshResources]);
 
-  const displayTotalCount = totalCount || filteredResources.length;
-  const totalPages = Math.ceil(displayTotalCount / PAGE_SIZE);
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
 
+  // Refetch the corrected page too, not just relabel the pagination bar,
+  // otherwise the list keeps showing the stale/empty data from the old page.
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(totalPages);
+      refreshResources(searchQuery, totalPages, PAGE_SIZE);
     }
-  }, [displayTotalCount, totalPages, currentPage]);
-
-  const paginatedResources = useMemo(() => {
-    if (resources.length <= PAGE_SIZE) {
-      return filteredResources;
-    }
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return filteredResources.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [resources, filteredResources, currentPage, PAGE_SIZE]);
+  }, [totalCount, totalPages, currentPage, searchQuery, refreshResources]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -99,7 +86,7 @@ const ResourcesLibraryInner: React.FC = () => {
         />
         <div className="flex items-center">
           <span className="text-sm text-gray-500 mr-2">
-            {displayTotalCount} resource{displayTotalCount !== 1 ? 's' : ''}
+            {totalCount} resource{totalCount !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
@@ -117,8 +104,8 @@ const ResourcesLibraryInner: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedResources.length > 0 ? (
-              paginatedResources.map((resource) => (
+            {resources.length > 0 ? (
+              resources.map((resource) => (
                 <TableRow key={resource.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center">
@@ -184,7 +171,7 @@ const ResourcesLibraryInner: React.FC = () => {
         <TablePaginationBar
           currentPage={currentPage}
           totalPages={totalPages}
-          totalCount={displayTotalCount}
+          totalCount={totalCount}
           pageSize={PAGE_SIZE}
           itemLabel="resources"
           onPageChange={handlePageChange}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, FileText } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
@@ -15,9 +15,10 @@ import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedConte
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
+import Loader from '@/components/common/Loader';
 
 const EduSafeResourcesContent = () => {
-  const { resources, refreshResources, totalCount } = useEduSafe();
+  const { resources, refreshResources, totalCount, loading } = useEduSafe();
   const { user, employeeData } = useAuth();
   const { state: employeeState } = useEmployeeStore();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
@@ -27,6 +28,22 @@ const EduSafeResourcesContent = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
+  const MIN_INITIAL_LOADER_MS = 400;
+
+  // The first fetch after navigating into this module often resolves from
+  // react-query's cache within the same tick (staleTime keeps it "fresh" for
+  // 30s to avoid refetching on quick back-and-forth navigation) — so `loading`
+  // can flip straight to false before the browser ever paints the spinner.
+  // Enforce a minimum visible duration instead, same as IncidentsList does.
+  const [showInitialLoader, setShowInitialLoader] = useState(true);
+  const mountedAtRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (!showInitialLoader || loading) return;
+    const elapsed = Date.now() - mountedAtRef.current;
+    const timer = setTimeout(() => setShowInitialLoader(false), Math.max(0, MIN_INITIAL_LOADER_MS - elapsed));
+    return () => clearTimeout(timer);
+  }, [loading, showInitialLoader]);
 
   // Check if user has super admin access
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
@@ -91,6 +108,19 @@ const EduSafeResourcesContent = () => {
       refreshResources(searchTerm, totalPages, PAGE_SIZE, activeFilters);
     }
   }, [displayTotalCount, totalPages, currentPage, searchTerm, activeFilters, refreshResources]);
+
+  // Full-page loader for the initial navigation into the module — once it
+  // hides, later refetches (pagination, search, filters) no longer replace
+  // the whole page, matching TransportSafetyPage's pattern.
+  if (showInitialLoader) {
+    return (
+      <div className="w-full py-6">
+        <div className="flex items-center justify-center py-24">
+          <Loader text="Loading EduSafe Resources..." />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full py-6">

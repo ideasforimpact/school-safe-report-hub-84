@@ -975,7 +975,7 @@ useRealTimeSubHook({
           </DialogContent>
         </Dialog>
       )}
-      <EduSafeProvider>
+      <EduSafeProvider skipInitialFetch>
         <ResourcePreviewDialog
           resource={previewResource}
           open={!!previewResource}

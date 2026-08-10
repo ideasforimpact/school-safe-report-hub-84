@@ -121,7 +121,7 @@ export const processEmployeeExcel = async (
 export const validateEmployeeExcel = async (
   file: File,
   clientId?: string
-): Promise<{ errors: string[]; warnings: string[] }> => {
+): Promise<{ errors: string[]; warnings: string[]; validCount: number }> => {
   const rawData = await parseEmployeeFile(file);
   return validateExcelData(rawData, clientId);
 };

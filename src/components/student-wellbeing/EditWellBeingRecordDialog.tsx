@@ -23,7 +23,6 @@ import {
   updateStudentWellbeingRecord,
   type StudentWellbeingRecord,
 } from '@/services/student-wellbeing/studentWellbeingService';
-import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 //  Control future date selection from here
 const allowFutureDate = false;
 const CONCERN_MIN = 5;
@@ -57,7 +56,6 @@ export function EditWellBeingRecordDialog({
   record,
 }: EditWellBeingRecordDialogProps) {
   const { employeeData } = useAuth();
-  const { isIntegrationEnabled } = useClientIntegrationEnabled();
   const clientId = employeeData?.clientId;
  
   const [student, setStudent] = useState<StudentOption | null>(null);
@@ -84,6 +82,8 @@ export function EditWellBeingRecordDialog({
       if (record.is_external_student) {
         const external = record.external_student_involved;
         setStudent({
+          // External students have no row in our own students table, so the stored
+          // human-readable code doubles as the option identity.
           id: external?.student?.id ?? '',
           student_id: external?.student?.id ?? undefined,
           name: external?.student?.name ?? record.student_name,
@@ -181,12 +181,17 @@ export function EditWellBeingRecordDialog({
         type: f.type,
         base64: (f.base64 ?? '').replace(/^data:[^;]+;base64,/, ''),
       }));
-      const isExternalStudent = isIntegrationEnabled && student?.is_external === true;
-      
+      // Externality is a property of the selected student, not of the client's current
+      // link status - a client can unlink while old external records still exist, and
+      // re-classifying those as internal would try to write a non-UUID into student_id.
+      const isExternalStudent = student?.is_external === true;
+
       const externalStudentInvolved = isExternalStudent
         ? {
             student: {
-              id: student?.id ?? null,
+              // Human-readable code (e.g. ST/ID/04), NOT the UUID in `student.id` -
+              // this value is surfaced directly as the "Student Id" column.
+              id: student?.student_id ?? null,
               name: student?.name ?? null,
             },
             grade: {

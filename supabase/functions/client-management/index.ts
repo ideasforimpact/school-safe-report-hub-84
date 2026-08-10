@@ -30,6 +30,7 @@ interface ClientData {
   auth_providers?: string;
   moduleAccess?: Record<string, boolean>;
   superAdminEmail?: string;
+  secondarySuperAdminEmails?: string[];
   clientTypeId?: string;
   authProviders?: Record<string, boolean>;
   website?: string;
@@ -151,7 +152,11 @@ async function validateSuperAdminEmail(superAdminEmail: string, clientId?: strin
 }
 
 // Helper function to create employee from super admin email
-async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEmail: string) {
+async function createEmployeeFromSuperAdminEmail(
+  clientId: string,
+  superAdminEmail: string,
+  options: { isSecondary?: boolean } = {},
+) {
   try {
     // First validate the email
     const validation = await validateSuperAdminEmail(superAdminEmail, clientId);
@@ -199,6 +204,7 @@ async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEma
       employee_type: emptype.id,
       status: true,
       is_super_admin: true,
+      is_secondary_super_admin: !!options.isSecondary,
       client_id: clientId,
       joining_date: new Date().toISOString()
     };
@@ -232,6 +238,7 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
       .select('*')
       .eq('client_id', clientId)
       .eq('is_super_admin', true)
+      .eq('is_secondary_super_admin', false)
       .single();
 
     if (empError) {
@@ -286,6 +293,71 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
   } catch (err) {
     console.error('Error in updateSuperAdminEmployee:', err);
     return null;
+  }
+}
+
+// Feature 2 (multi super admin) — reconciles the client's secondary super
+// admin employees against the email list sent from the edit form.
+// - Emails no longer in the list get demoted (is_super_admin and
+//   is_secondary_super_admin both set to false) rather than deleted, since
+//   the underlying employees table row may be a real staff member.
+// - Emails newly added to the list are promoted if an employee with that
+//   email already exists for this client, or created fresh otherwise.
+// - Emails already present as a secondary are left untouched.
+async function syncSecondarySuperAdminEmployees(clientId: string, secondaryEmails: string[]) {
+  const desiredEmails = Array.from(
+    new Set((secondaryEmails || []).map((e) => (e || '').trim().toLowerCase()).filter((e) => e.length > 0))
+  );
+
+  const { data: clientEmployeesData, error: fetchError } = await supabase
+    .from('employees')
+    .select('id, email, is_secondary_super_admin')
+    .eq('client_id', clientId);
+
+  if (fetchError) {
+    console.error('Error fetching employees for secondary super admin sync:', fetchError);
+    throw new Error(`Failed to fetch employees for secondary super admin sync: ${fetchError.message}`);
+  }
+
+  const clientEmployees: any[] = clientEmployeesData || [];
+  const employeesByEmail = new Map(
+    clientEmployees.map((row) => [(row.email || '').toLowerCase(), row])
+  );
+  const currentSecondaries = clientEmployees.filter((row) => row.is_secondary_super_admin === true);
+
+  // Demote secondaries that were removed from the incoming list.
+  const toDemote = currentSecondaries.filter((row) => !desiredEmails.includes((row.email || '').toLowerCase()));
+  if (toDemote.length > 0) {
+    const { error: demoteError } = await supabase
+      .from('employees')
+      .update({ is_super_admin: false, is_secondary_super_admin: false })
+      .in('id', toDemote.map((row) => row.id));
+
+    if (demoteError) {
+      console.error('Error demoting removed secondary super admins:', demoteError);
+      throw new Error(`Failed to remove secondary super admin(s): ${demoteError.message}`);
+    }
+  }
+
+  // Promote or create secondaries that are newly present in the list.
+  for (const email of desiredEmails) {
+    const existing = employeesByEmail.get(email);
+
+    if (existing?.is_secondary_super_admin) continue;
+
+    if (existing) {
+      const { error: promoteError } = await supabase
+        .from('employees')
+        .update({ is_super_admin: true, is_secondary_super_admin: true })
+        .eq('id', existing.id);
+
+      if (promoteError) {
+        console.error(`Error promoting ${email} to secondary super admin:`, promoteError);
+        throw new Error(`Failed to promote ${email} to secondary super admin: ${promoteError.message}`);
+      }
+    } else {
+      await createEmployeeFromSuperAdminEmail(clientId, email, { isSecondary: true });
+    }
   }
 }
 
@@ -1436,7 +1508,7 @@ async function handleUpdateClient(clientData: any) {
   });
   
   try {
-    const { id: clientId, modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, aiFeatureIncidentRecommendedActions, ...clientInfo } = clientData;
+    const { id: clientId, modules, superAdminEmail, secondarySuperAdminEmails, clientTypeId, logo, whitelistedIPs, aiFeatureIncidentRecommendedActions, ...clientInfo } = clientData;
     const isHeadOfficeProvided = typeof clientData.is_head_office === 'boolean' || typeof clientData.isHeadOffice === 'boolean';
     const mappedClientIdsProvided = Array.isArray(clientData.mapped_client_ids) || Array.isArray(clientData.mappedClientIds);
     const requestedIsHeadOffice = resolveIsHeadOffice(clientData);
@@ -1572,7 +1644,13 @@ async function handleUpdateClient(clientData: any) {
         console.error('Failed to update super admin employee');
       }
     }
-    
+
+    // Reconcile secondary super admins against the incoming list — promotes
+    // newly added emails, demotes ones no longer present, leaves the rest.
+    if (Array.isArray(secondarySuperAdminEmails)) {
+      await syncSecondarySuperAdminEmployees(clientId, secondarySuperAdminEmails);
+    }
+
     // Process IP whitelist - always process if whitelistedIPs is provided (even if empty array)
     // Empty array means deactivate all IPs, undefined/null means don't change IPs
     // Check for both undefined and null to be safe
