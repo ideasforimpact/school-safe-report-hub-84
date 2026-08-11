@@ -23,13 +23,16 @@ export interface Client {
   clientTypeId?: string;
   moduleAccess?: Partial<ModulePermissions>;
   allowedDomains?: string[];
-  superAdminAllowedDomains?: string[]; 
+  superAdminAllowedDomains?: string[];
   superAdminEmail?: string;
+  secondarySuperAdminEmails?: string[];
   authProviders?: {
     [key in OAuthProviderName]?: boolean;
   };
   /** false = incident AI "Recommended Actions" off; undefined defaults to on */
   incidentRecommendedActionsEnabled?: boolean;
+  /** True if this client has any incidents at all; locks Client Type in Edit */
+  hasIncidents?: boolean;
   isHeadOffice?: boolean;
   mappedClientIds?: string[];
 }

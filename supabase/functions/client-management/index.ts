@@ -105,7 +105,16 @@ async function uploadLogoToStorage(logoBase64: string, clientId: string): Promis
 }
 
 // Helper function to validate super admin email before creation
-async function validateSuperAdminEmail(superAdminEmail: string, clientId?: string): Promise<{ isValid: boolean, existingEmployee?: any, error?: string }> {
+// allowCrossClientReuse: Feature 1 — a secondary super admin's email is
+// explicitly allowed to already be registered (primary or secondary) for
+// OTHER active clients; only a primary super admin registration must be
+// unique to one active client at a time. Callers registering a secondary
+// admin should pass this as true.
+async function validateSuperAdminEmail(
+  superAdminEmail: string,
+  clientId?: string,
+  options: { allowCrossClientReuse?: boolean } = {},
+): Promise<{ isValid: boolean, existingEmployee?: any, error?: string }> {
   try {
     // Check if employee with this email already exists
     const { data: existingEmployees, error: checkError } = await supabase
@@ -119,22 +128,28 @@ async function validateSuperAdminEmail(superAdminEmail: string, clientId?: strin
     }
 
     if (existingEmployees && existingEmployees.length > 0) {
-      // Check if any existing employee belongs to an active client
-      const activeClientEmployee = existingEmployees.find(emp => 
-        emp.clients && emp.clients.active && emp.clients.id !== clientId
+      // Check if any existing employee belongs to an active client. When
+      // allowCrossClientReuse is set (secondary admin registrations), the
+      // exception only covers reuse against ANOTHER SUPER ADMIN
+      // registration — an unrelated regular employee at a different active
+      // client must still block, so their identity can't be silently
+      // promoted to super admin elsewhere just by typing their email here.
+      const activeClientEmployee = existingEmployees.find(emp =>
+        emp.clients && emp.clients.active && emp.clients.id !== clientId &&
+        (!options.allowCrossClientReuse || emp.is_super_admin !== true)
       );
 
       if (activeClientEmployee) {
         console.error(`Employee with email ${superAdminEmail} already exists for active client: ${activeClientEmployee.clients.name}`);
-        return { 
-          isValid: false, 
+        return {
+          isValid: false,
           existingEmployee: activeClientEmployee,
-          error: `Employee with email ${superAdminEmail} already exists for active client: ${activeClientEmployee.clients.name}` 
+          error: `Employee with email ${superAdminEmail} already exists for active client: ${activeClientEmployee.clients.name}`
         };
       }
 
       // Check if employee exists for the same client (this might be an update scenario)
-      const sameClientEmployee = existingEmployees.find(emp => 
+      const sameClientEmployee = existingEmployees.find(emp =>
         emp.clients && emp.clients.id === clientId
       );
 
@@ -159,8 +174,10 @@ async function createEmployeeFromSuperAdminEmail(
 ) {
   try {
     // First validate the email
-    const validation = await validateSuperAdminEmail(superAdminEmail, clientId);
-    
+    const validation = await validateSuperAdminEmail(superAdminEmail, clientId, {
+      allowCrossClientReuse: options.isSecondary === true,
+    });
+
     if (!validation.isValid) {
       throw new Error(validation.error || 'Super admin email validation failed');
     }

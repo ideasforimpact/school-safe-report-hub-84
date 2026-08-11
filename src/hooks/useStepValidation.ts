@@ -22,9 +22,13 @@ export const useStepValidation = (formData: ClientFormData) => {
     !!formData.clientTypeId &&
     !!formData.institutionType;
 
+    // Use !== true (not === false) so an untouched, already-valid primary
+    // email (e.g. prefilled on Edit and never retyped) doesn't block
+    // progress just because the debounced existence-check never ran for
+    // it. The edge function re-validates uniqueness server-side regardless.
     const hasValidSuperAdminEmail =
       isValidEmail(formData.superAdminEmail) &&
-      formData.superAdminEmailExists === false;
+      formData.superAdminEmailExists !== true;
 
   const hasValidHeadOfficeMapping =
     formData.isHeadOffice !== true ||
