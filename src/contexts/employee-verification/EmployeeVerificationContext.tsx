@@ -49,6 +49,8 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     pageSize,
     totalEmployeesCount,
     verifiedEmployeesCount,
+    unverifiedEmployeesCount,
+    noDocumentsEmployeesCount,
   } = useEmployeeManagement();
 
   // Update employee status based on document verifications
@@ -173,6 +175,8 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     pageSize,
     totalEmployeesCount,
     verifiedEmployeesCount,
+    unverifiedEmployeesCount,
+    noDocumentsEmployeesCount,
 
     documents,
     addDocument,
@@ -192,6 +196,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     isVerifying, verificationError,
     employees, addEmployee, updateEmployee, deleteEmployee, getEmployee, fetchEmployees,
     currentPage, totalPages, totalCount, pageSize, totalEmployeesCount, verifiedEmployeesCount,
+    unverifiedEmployeesCount, noDocumentsEmployeesCount,
     documents, addDocument, verifyDocument, deleteDocument, getEmployeeDocuments, fetchEmployeeDocuments,
     documentTypes, documentStatuses, fetchDocumentTypes, fetchDocumentStatuses,
     isLoading, isEmployeeLoading, isDocumentLoading,

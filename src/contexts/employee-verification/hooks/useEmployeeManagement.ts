@@ -76,6 +76,8 @@ export const useEmployeeManagement = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [totalEmployeesCount, setTotalEmployeesCount] = useState(0);
   const [verifiedEmployeesCount, setVerifiedEmployeesCount] = useState(0);
+  const [unverifiedEmployeesCount, setUnverifiedEmployeesCount] = useState(0);
+  const [noDocumentsEmployeesCount, setNoDocumentsEmployeesCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
   const { state } = useEmployeeStore();
@@ -162,6 +164,8 @@ export const useEmployeeManagement = () => {
       if (data.stats) {
         setTotalEmployeesCount(data.stats.totalEmployees || 0);
         setVerifiedEmployeesCount(data.stats.verifiedEmployees || 0);
+        setUnverifiedEmployeesCount(data.stats.unverifiedEmployees || 0);
+        setNoDocumentsEmployeesCount(data.stats.noDocumentsEmployees || 0);
         statsLoadedRef.current = true;
       }
 
@@ -211,5 +215,7 @@ export const useEmployeeManagement = () => {
     pageSize: PAGE_SIZE,
     totalEmployeesCount,
     verifiedEmployeesCount,
+    unverifiedEmployeesCount,
+    noDocumentsEmployeesCount,
   };
 };

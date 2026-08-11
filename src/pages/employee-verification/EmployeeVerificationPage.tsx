@@ -11,7 +11,14 @@ import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import Loader from "@/components/common/Loader";
 
 const EmployeeVerificationPage = () => {
-  const { fetchEmployees, employees, totalEmployeesCount, verifiedEmployeesCount } = useEmployeeVerification();
+  const {
+    fetchEmployees,
+    employees,
+    totalEmployeesCount,
+    verifiedEmployeesCount,
+    unverifiedEmployeesCount,
+    noDocumentsEmployeesCount,
+  } = useEmployeeVerification();
   const [searchParams] = useSearchParams();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -88,6 +95,8 @@ const EmployeeVerificationPage = () => {
   const employeeAnalyticsStats = {
     totalEmployees: totalEmployeesCount,
     verifiedEmployees: verifiedEmployeesCount,
+    unverifiedEmployees: unverifiedEmployeesCount,
+    noDocumentsEmployees: noDocumentsEmployeesCount,
   };
 
 
@@ -149,18 +158,32 @@ const EmployeeVerificationPage = () => {
               </Button>
             </div>
 
-            <div className="flex gap-80">
-              <div className='ms-16 '>
+            <div className="flex justify-between px-16">
+              <div className="text-left">
                 <p className="text-sm text-gray-500">Total Employees</p>
                 <p className="text-3xl font-semibold text-gray-900">
                   {employeeAnalyticsStats.totalEmployees}
                 </p>
               </div>
 
-              <div>
+              <div className="text-left">
                 <p className="text-sm text-gray-500">Verified Employees</p>
                 <p className="text-3xl font-semibold text-green-600">
                   {employeeAnalyticsStats.verifiedEmployees}
+                </p>
+              </div>
+
+              <div className="text-left">
+                <p className="text-sm text-gray-500">Unverified Employees</p>
+                <p className="text-3xl font-semibold text-amber-600">
+                  {employeeAnalyticsStats.unverifiedEmployees}
+                </p>
+              </div>
+
+              <div className="text-left">
+                <p className="text-sm text-gray-500">No Documents Submitted</p>
+                <p className="text-3xl font-semibold text-red-600">
+                  {employeeAnalyticsStats.noDocumentsEmployees}
                 </p>
               </div>
             </div>
