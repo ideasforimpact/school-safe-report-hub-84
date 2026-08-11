@@ -60,6 +60,9 @@ export interface ClientFormData {
   mappedClientAccessLevels: Record<string, 'read_only' | 'read_write_delete'>;
   parentHeadOfficeId?: string;
   parentHeadOfficeName?: string;
+  /** True if this client has any incidents at all; locks Client Type in Edit.
+   * Undefined (not yet known) is treated the same as "locked" by the UI. */
+  hasIncidents?: boolean;
 }
 
 const initialFormData: ClientFormData = {
@@ -90,6 +93,7 @@ const initialFormData: ClientFormData = {
   mappedClientAccessLevels: {},
   parentHeadOfficeId: undefined,
   parentHeadOfficeName: undefined,
+  hasIncidents: false,
 };
 
 export const useClientManagement = () => {
@@ -106,6 +110,18 @@ export const useClientManagement = () => {
   // for a previously-opened client can't clobber the form after the user
   // has already moved on to editing a different client.
   const editRequestClientIdRef = useRef<string | null>(null);
+  // Snapshot of the super admin fields as they were prefilled from the
+  // client list, per client id. The Super Admin Email fields are editable
+  // immediately (no loading gate) since that prefill is usually already
+  // correct — but the background self-correction fetch below still runs,
+  // and without this it would unconditionally overwrite whatever the user
+  // has typed in the meantime. Comparing against this snapshot lets the
+  // correction apply only to a field the user hasn't touched yet.
+  const initialSuperAdminSnapshotRef = useRef<{
+    clientId: string;
+    superAdminEmail: string;
+    secondarySuperAdminEmails: string[];
+  } | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const clientManagementReadOnly = state.clientManagementReadOnly === true;
   const switchedAccessLevel = state.switchedAccessLevel;
@@ -180,6 +196,13 @@ export const useClientManagement = () => {
   const resetForm = () => {
     setFormData({...initialFormData});
     setCurrentClient(null);
+    // Invalidate any in-flight edit fetch's guard so a response that
+    // resolves after the form has been reset (e.g. Cancel clicked, then
+    // Add Client opened before the previous Edit's fetches finished) can't
+    // pass its `editRequestClientIdRef.current === clientId` check and
+    // write stale data into whatever's now open.
+    editRequestClientIdRef.current = null;
+    initialSuperAdminSnapshotRef.current = null;
   };
 
   // Function to load modules for new client
@@ -230,6 +253,10 @@ export const useClientManagement = () => {
       toast.error('Client management is read-only in switched context');
       return;
     }
+    // Always start from a blank form — otherwise data left over from an
+    // edit session (e.g. closed via the dialog's X button, which bypasses
+    // the Cancel handler's resetForm() call) would carry over into Add.
+    resetForm();
     setIsAddDialogOpen(true);
     // Load modules immediately when dialog opens
     await loadModulesForNewClient();
@@ -368,11 +395,16 @@ export const useClientManagement = () => {
     setIsEditDialogOpen(true);
     setEditLoading(true);
     editRequestClientIdRef.current = client.id;
+    initialSuperAdminSnapshotRef.current = {
+      clientId: client.id,
+      superAdminEmail: client.superAdminEmail || '',
+      secondarySuperAdminEmails: client.secondarySuperAdminEmails || [],
+    };
 
     // Prefill basic client info so user can see something immediately.
-    // superAdminEmail/secondarySuperAdminEmails are reset here (not carried
-    // over from the previous form state) so a stale super admin from the
-    // last client edited never flashes before the real fetch resolves.
+    // superAdminEmail/secondarySuperAdminEmails come straight from the
+    // client list join (never carried over from whichever client was
+    // previously edited), so they're correct from the first render.
     setFormData(prev => ({
       ...prev,
       id: client.id,
@@ -385,8 +417,8 @@ export const useClientManagement = () => {
       institutionType: (client.institutionType as InstitutionType) || 'Other',
       allowedDomains: client.allowedDomains || [],
       clientTypeId: client.clientTypeId || '',
-      superAdminEmail: '',
-      secondarySuperAdminEmails: [],
+      superAdminEmail: client.superAdminEmail || '',
+      secondarySuperAdminEmails: client.secondarySuperAdminEmails || [],
       superAdminAllowedDomains: client.superAdminAllowedDomains || [],
       authProviders: {
         google: client.authProviders?.google ?? false,
@@ -399,9 +431,76 @@ export const useClientManagement = () => {
       mappedClientAccessLevels: {},
       parentHeadOfficeId: undefined,
       parentHeadOfficeName: undefined,
+      hasIncidents: client.hasIncidents === true,
     }));
     
-    // Get the client modules and super admin employee for this client
+    // Both primary and secondary super admin emails are already shown from
+    // the client list join above. This fetch runs in the background purely
+    // to silently self-correct the form if the list data was stale (e.g.
+    // an admin was added/removed between the list load and this edit).
+    // Kicked off independent of fetchClientData below so it isn't held up
+    // by modules / IP whitelist / AI-feature / mappings. Pre-Feature-2 each
+    // client had exactly one super admin (primary); post-Feature-2 a client
+    // can have up to two extra secondaries. We split by
+    // is_secondary_super_admin and hydrate two distinct form fields so the
+    // UI can render the primary and the secondaries independently.
+    const fetchSuperAdminData = async (clientId: string) => {
+      try {
+        const { data: superAdminRows, error: employeeError } = await supabase
+          .from('employees')
+          .select('email, is_secondary_super_admin, created_at')
+          .eq('client_id', clientId)
+          .eq('is_super_admin', true)
+          .order('created_at', { ascending: true });
+
+        if (employeeError) {
+          console.error('Error fetching super admin email:', employeeError);
+          toast.error('Failed to load super admin data');
+          return;
+        }
+
+        // The generated Supabase types for `employees` predate the
+        // is_secondary_super_admin column, so the row shape has to be
+        // asserted explicitly here.
+        type SuperAdminRow = { email: string; is_secondary_super_admin: boolean | null };
+        const rows = (superAdminRows || []) as unknown as SuperAdminRow[];
+        const primaryRow = rows.find(
+          (row) => row.is_secondary_super_admin !== true
+        );
+        const secondaryRows = rows.filter(
+          (row) => row.is_secondary_super_admin === true
+        );
+
+        // Guarded so a slow response for a client the user has since
+        // navigated away from can't overwrite the form of the client now
+        // being edited (or clobber it with another client's email).
+        if (editRequestClientIdRef.current === clientId) {
+          setFormData(prev => {
+            const snapshot = initialSuperAdminSnapshotRef.current;
+            const snapshotMatches = snapshot?.clientId === clientId;
+            // Only apply the correction to a field the user hasn't already
+            // started editing — otherwise this fetch resolving mid-keystroke
+            // would silently discard whatever they've typed since the
+            // dialog opened.
+            const primaryUntouched = snapshotMatches && prev.superAdminEmail === snapshot.superAdminEmail;
+            const secondaryUntouched = snapshotMatches &&
+              JSON.stringify(prev.secondarySuperAdminEmails) === JSON.stringify(snapshot.secondarySuperAdminEmails);
+            return {
+              ...prev,
+              superAdminEmail: primaryUntouched ? (primaryRow?.email || '') : prev.superAdminEmail,
+              secondarySuperAdminEmails: secondaryUntouched
+                ? secondaryRows.map((row) => row.email)
+                : prev.secondarySuperAdminEmails,
+            };
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching super admin email:', err);
+        toast.error('Failed to load super admin data');
+      }
+    };
+
+    // Get the client modules and remaining client data for this client
     const fetchClientData = async (clientId: string) => {
       try {
         // Fetch latest client data from database to ensure we have the most up-to-date auth_providers
@@ -505,38 +604,7 @@ export const useClientManagement = () => {
             is_admin: isAdmin
           };
         }).filter((m) => m.module_id) : [];
-        
-        // Fetch ALL super admins for this client. Pre-Feature-2 each client
-        // had exactly one (primary); post-Feature-2 a client can have up to
-        // two extra secondaries. We split by is_secondary_super_admin and
-        // hydrate two distinct form fields so the UI can render the primary
-        // and the secondaries independently.
-        const { data: superAdminRows, error: employeeError } = await supabase
-          .from('employees')
-          .select('email, is_secondary_super_admin, created_at')
-          .eq('client_id', clientId)
-          .eq('is_super_admin', true)
-          .order('created_at', { ascending: true });
 
-        if (employeeError) {
-          console.error('Error fetching super admin email:', employeeError);
-          toast.error('Failed to load super admin data');
-        }
-
-        const primaryRow = (superAdminRows || []).find(
-          (row) => row.is_secondary_super_admin !== true
-        );
-        const secondaryRows = (superAdminRows || []).filter(
-          (row) => row.is_secondary_super_admin === true
-        );
-        // employeeData mirrors the legacy single-record fetch so the rest
-        // of this function (which still references employeeData?.email)
-        // keeps working unchanged.
-        const employeeData = primaryRow ? { email: primaryRow.email } : null;
-        const secondarySuperAdminEmails: string[] = secondaryRows.map(
-          (row) => row.email
-        );
-        
         // Fetch whitelisted IPs
         const { data: ipData, error: ipError } = await supabase
           .from('client_ip_whitelist')
@@ -614,8 +682,6 @@ export const useClientManagement = () => {
         if (editRequestClientIdRef.current === clientId) {
           setFormData(prev => ({
             ...prev,
-            superAdminEmail: employeeData?.email || '',
-            secondarySuperAdminEmails,
             moduleInfoArray: moduleInfoArray,
             whitelistedIPs: whitelistedIPs,
             aiIncidentRecommendedActionsEnabled,
@@ -640,6 +706,7 @@ export const useClientManagement = () => {
       }
     };
     
+    fetchSuperAdminData(client.id);
     fetchClientData(client.id);
   };
 

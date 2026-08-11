@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
           pageSize: payload.pageSize,
           search: payload.search,
           status: payload.status,
+          includeSuperAdminData: payload.includeSuperAdminData === true,
         })
       case 'fetchEmployeesByClient':
         if (!payload.clientId) {
@@ -123,6 +124,12 @@ interface FetchClientsParams {
   pageSize?: number
   search?: string
   status?: ClientStatusFilter
+  // Opt-in: joins in super admin emails and incidents-lock data (see below).
+  // Defaults to false so callers that don't need this (ClientContext's
+  // general client list, BasicInfoTab's head-office mapping dropdown —
+  // both call this same action unpaginated, on nearly every backoffice
+  // page/dialog) don't pay for two extra queries they never read from.
+  includeSuperAdminData?: boolean
 }
 
 const MAX_PAGE_SIZE = 100
@@ -192,12 +199,81 @@ async function fetchAllClients(params: FetchClientsParams = {}) {
     (aiRows || []).map((r: { client_id: string; enabled: boolean }) => [r.client_id, r.enabled]),
   )
 
+  // Join both the primary AND secondary super admin emails, plus the
+  // incidents-lock flag, in here too — scoped to just this page's client
+  // ids — so the Edit Client dialog can show all of them the instant it
+  // opens instead of waiting on separate per-client fetches. Gated behind
+  // `includeSuperAdminData` because this same action/function is also
+  // called by ClientContext's general client list and BasicInfoTab's
+  // head-office mapping dropdown, unpaginated, on nearly every backoffice
+  // page/dialog — neither of which reads these fields, so they shouldn't
+  // pay for the two extra queries below.
+  const clientIds = (data || []).map((row: Record<string, unknown>) => row.id as string)
+  const primaryEmailByClient = new Map<string, string>()
+  const secondaryEmailsByClient = new Map<string, string[]>()
+  const clientIdsWithIncidents = new Set<string>()
+
+  if (params.includeSuperAdminData && clientIds.length > 0) {
+    const { data: superAdminRows, error: superAdminError } = await supabase
+      .from('employees')
+      .select('client_id, email, is_secondary_super_admin, created_at')
+      .in('client_id', clientIds)
+      .eq('is_super_admin', true)
+      .order('created_at', { ascending: true })
+
+    if (superAdminError) {
+      console.error('Error fetching super admin emails:', superAdminError)
+      throw superAdminError
+    }
+
+    for (const row of (superAdminRows || []) as Array<{ client_id: string | null; email: string; is_secondary_super_admin: boolean | null }>) {
+      if (!row.client_id) continue
+      if (row.is_secondary_super_admin === true) {
+        const existing = secondaryEmailsByClient.get(row.client_id) || []
+        existing.push(row.email)
+        secondaryEmailsByClient.set(row.client_id, existing)
+        continue
+      }
+      if (primaryEmailByClient.has(row.client_id)) continue
+      primaryEmailByClient.set(row.client_id, row.email)
+    }
+
+    // Note: this pulls one row per matching incident (not deduplicated
+    // server-side), so a client with a very large incident history adds
+    // proportionally more rows to this query — bounded by page size today,
+    // but worth revisiting if that ever becomes an issue.
+    const { data: incidentRows, error: incidentsError } = await supabase
+      .from('incidents')
+      .select('client_id')
+      .in('client_id', clientIds)
+
+    if (incidentsError) {
+      console.error('Error fetching incidents for client type lock:', incidentsError)
+      throw incidentsError
+    }
+
+    for (const row of (incidentRows || []) as Array<{ client_id: string | null }>) {
+      if (row.client_id) clientIdsWithIncidents.add(row.client_id)
+    }
+  }
+
   const dataWithAi = (data || []).map((row: Record<string, unknown>) => {
     const id = row.id as string
     const incidentRecommendedActionsEnabled = enabledByClient.has(id)
       ? (enabledByClient.get(id) as boolean)
       : true
-    return { ...row, incident_recommended_actions_enabled: incidentRecommendedActionsEnabled }
+    const extra = params.includeSuperAdminData
+      ? {
+          super_admin_email: primaryEmailByClient.get(id) || null,
+          secondary_super_admin_emails: secondaryEmailsByClient.get(id) || [],
+          has_incidents: clientIdsWithIncidents.has(id),
+        }
+      : {}
+    return {
+      ...row,
+      incident_recommended_actions_enabled: incidentRecommendedActionsEnabled,
+      ...extra,
+    }
   })
 
   console.log('✅ Successfully fetched clients:', dataWithAi?.length || 0, 'total:', count)

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -19,10 +19,21 @@ import ClientSearchBar from '@/components/clients/ClientSearchBar';
 import ClientPagination from '@/components/clients/ClientPagination';
 import { Loader2 } from 'lucide-react';
 import Loader from '@/components/common/Loader';
+import { getClientTypes } from '@/services/client/clientTypeService';
 
 const ClientManagement = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+
+  // Warm the client_type cache as soon as this page loads, well before the
+  // user clicks Add/Edit — otherwise the very first dialog opened after a
+  // fresh page load (e.g. right after login) still pays for one network
+  // round trip before Client Type can render its label.
+  useEffect(() => {
+    getClientTypes().catch(() => {
+      // Swallowed — BasicInfoTab's own fetch will surface/retry the error.
+    });
+  }, []);
   const {
     clients,
     loading,

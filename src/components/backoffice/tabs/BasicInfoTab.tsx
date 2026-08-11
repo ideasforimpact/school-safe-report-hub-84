@@ -28,12 +28,10 @@ import { toast } from 'sonner';
 import SecondarySuperAdminEmailList, { MAX_SECONDARY_SUPER_ADMINS } from './SecondarySuperAdminEmailList';
 import { Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
- 
-interface ClientType {
-  id: string;
-  key: string;
-  name: string;
-}
+import { getClientTypes, ClientTypeOption } from '@/services/client/clientTypeService';
+
+type ClientType = ClientTypeOption;
+
 interface BasicInfoFormData {
   id?: string;
   name: string;
@@ -63,6 +61,7 @@ interface BasicInfoFormData {
   authProviders?: Record<string, unknown>;
   whitelistedIPs?: string[];
   superAdminEmailExists?: boolean;
+  hasIncidents?: boolean;
 }
 
 interface BasicInfoTabProps {
@@ -71,11 +70,9 @@ interface BasicInfoTabProps {
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   showErrors?: boolean;
   isEdit?: boolean;
-  /** True while the edit dialog's async fetch (super admin emails, etc.) is in flight */
-  isLoading?: boolean;
 }
 
-const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false, isEdit = false, isLoading = false }: BasicInfoTabProps) => {
+const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false, isEdit = false }: BasicInfoTabProps) => {
   const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
   const [clientsForMapping, setClientsForMapping] = useState<Array<{
     id: string;
@@ -86,7 +83,14 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
   const [existingMappings, setExistingMappings] = useState<Array<{ head_office_id: string; sub_client_id: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [mappingClientsLoading, setMappingClientsLoading] = useState(true);
-  const [hasIncidents, setHasIncidents] = useState(false);
+  const [incidentsOverride, setIncidentsOverride] = useState<{ clientId: string; hasIncidents: boolean } | null>(null);
+  const overrideMatchesCurrentClient = incidentsOverride !== null && incidentsOverride.clientId === formData.id;
+  const hasIncidents = overrideMatchesCurrentClient
+    ? incidentsOverride.hasIncidents
+    : formData.hasIncidents === true;
+  const hasIncidentsChecked = overrideMatchesCurrentClient
+    ? true
+    : formData.hasIncidents !== undefined;
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
@@ -106,11 +110,14 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
   useEffect(() => {
     if (!isEdit || !formData.id) return;
+    const clientId = formData.id;
     supabase
       .from('incidents')
       .select('id', { count: 'exact', head: true })
-      .eq('client_id', formData.id)
-      .then(({ count }) => setHasIncidents((count ?? 0) > 0));
+      .eq('client_id', clientId)
+      .then(({ count }) => {
+        setIncidentsOverride({ clientId, hasIncidents: (count ?? 0) > 0 });
+      });
   }, [isEdit, formData.id]);
   
  useEffect(() => {
@@ -158,17 +165,8 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
   const fetchClientTypes = async () => {
     try {
-      const { data, error } = await supabase
-        .from('client_type')
-        .select('id, key, name')
-        .order('name');
-
-      if (error) {
-        console.error('Error fetching client types:', error);
-        return;
-      }
-
-      setClientTypes(data || []);
+      const data = await getClientTypes();
+      setClientTypes(data);
     } catch (error) {
       console.error('Error fetching client types:', error);
     } finally {
@@ -441,11 +439,15 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         <RequiredFieldLabel>
           <label htmlFor="clientType">Client Type</label>
         </RequiredFieldLabel>
+
+        {isEdit && loading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : (
         <Select
           value={formData.clientTypeId || ''}
           onValueChange={(value) => setFormData({...formData, clientTypeId: value})}
           required
-          disabled={isEdit && hasIncidents}
+          disabled={isEdit && (!hasIncidentsChecked || hasIncidents)}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={loading ? "Loading..." : "Select client type"} />
@@ -458,6 +460,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
             ))}
           </SelectContent>
         </Select>
+        )}
         {isEdit && hasIncidents && (
           <p className="text-xs text-muted-foreground">
             Client type cannot be changed because incidents have already been created for this client.
@@ -517,9 +520,6 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
               not a standard contact form field.
             - data-{1p,lp,bw}-ignore → opt-out hints respected by the
               named password managers. */}
-      {isEdit && isLoading ? (
-        <Skeleton className="h-10 w-full" />
-      ) : (
       <div className="flex gap-2 items-start">
         <Input
           id="superAdminEmail"
@@ -567,7 +567,6 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           );
         })()}
       </div>
-      )}
 
       {/* Inline status messages */}
       {checkingEmail && (
@@ -613,10 +612,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
             stay in sync without the user having to manage them separately.
             Cap behavior: if adding would exceed the domain cap, the
             secondary email is still saved but the domain is skipped (the
-            user can clean up the Authentication tab manually). */}
-        {isEdit && isLoading ? (
-          <Skeleton className="h-10 w-full" />
-        ) : (
+            user can clean up the Authentication tab manually).
+
+         */}
         <SecondarySuperAdminEmailList
           emails={formData.secondarySuperAdminEmails || []}
           onChange={(emails) => {
@@ -647,9 +645,8 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           }}
           isEdit={isEdit}
         />
-        )}
     </div>
-      
+
       <div className="space-y-2">
         <RequiredFieldLabel>
           <label htmlFor="contactPerson">Contact Person</label>
