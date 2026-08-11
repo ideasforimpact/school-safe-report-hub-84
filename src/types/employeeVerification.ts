@@ -103,7 +103,6 @@ export interface VerificationDocument {
   };
   params?: {
     DOB?: string;
-    expiryDate?: string;
     verification_history?: Array<{
       action: 'completed' | 'rejected';
       comments: string;

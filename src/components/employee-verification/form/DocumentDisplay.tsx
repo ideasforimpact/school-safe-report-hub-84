@@ -59,10 +59,6 @@ const DocumentDisplay: React.FC<DocumentDisplayProps> = ({
       details.push(`DOB: ${new Date(params.DOB).toLocaleDateString()}`);
     }
 
-    if (documentType === 'driving_license' && params?.expiryDate) {
-      details.push(`Expiry Date: ${new Date(params.expiryDate).toLocaleDateString()}`);
-    }
-
     return details;
   };
 
