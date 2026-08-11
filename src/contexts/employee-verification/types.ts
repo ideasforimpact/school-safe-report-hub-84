@@ -23,6 +23,8 @@ export interface EmployeeVerificationContextType {
   pageSize: number;
   totalEmployeesCount: number;
   verifiedEmployeesCount: number;
+  unverifiedEmployeesCount: number;
+  noDocumentsEmployeesCount: number;
 
   // Document management
   documents: VerificationDocument[];
