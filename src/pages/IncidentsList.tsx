@@ -410,7 +410,7 @@ const incidentAnalyticsStats = useMemo(() => {
   if (showLoader) {
     return (
       <Layout>
-        <div className="flex items-center justify-center py-20">
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
           <Loader text="Loading incidents..." />
         </div>
       </Layout>

@@ -289,6 +289,11 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filtersVersion, setFiltersVersion] = useState(0);
   const isFirstFilterRender = useRef(true);
+  // Gates the very first fetch only, matching IncidentsList's showLoader pattern —
+  // hides header/filters until the initial page of data is in, then never fires
+  // again so later page/filter fetches only swap the table area's spinner.
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const hasFetchedOnceRef = useRef(false);
 
   // Log the clientId for debugging
   useEffect(() => {
@@ -507,7 +512,12 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   useEffect(() => {
     if (!clientId) return;
     const ac = new AbortController();
-    fetchEmployeesList(currentPage, ac.signal);
+    fetchEmployeesList(currentPage, ac.signal).finally(() => {
+      if (!hasFetchedOnceRef.current) {
+        hasFetchedOnceRef.current = true;
+        setIsInitialLoading(false);
+      }
+    });
     return () => ac.abort();
   }, [clientId, currentPage, filtersVersion, fetchEmployeesList]);
 
@@ -919,6 +929,19 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     );
   }
 
+  // Embedded (Settings tab) usage skips the full-page gate — its header/filters
+  // render immediately, matching StudentManagement's embedded behavior, and the
+  // inline isLoading-gated spinner further down covers first load there instead.
+  if (isInitialLoading && !embedded) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading employees..." />
+        </div>
+      </Layout>
+    );
+  }
+
   const content = (
     <div className="space-y-6">
       {!embedded && (
@@ -1075,7 +1098,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           </div>
           
           {isLoading ? (
-            <Loader text="Loading employees..." />
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading employees..." />
+            </div>
           ) : (
             <div>
               {employeeUsers && employeeUsers.length > 0 ? (

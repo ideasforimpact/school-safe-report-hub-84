@@ -10,6 +10,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import Loader from '@/components/common/Loader';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
@@ -24,6 +25,10 @@ const LearningPointsPage: React.FC = () => {
   const [pageSize, setPageSize] = React.useState<number>(10);
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [loading, setLoading] = React.useState<boolean>(true);
+  // Mirrors IncidentsList's showLoader pattern: hides header/filters until the
+  // first fetch settles, then never re-fires so later pagination/filter
+  // refetches only swap the table body below.
+  const [showLoader, setShowLoader] = React.useState<boolean>(true);
   const [data, setData] = React.useState<LearningPointRecord[]>([]);
   const [totalCount, setTotalCount] = React.useState<number>(0);
 
@@ -33,7 +38,10 @@ const LearningPointsPage: React.FC = () => {
   const [subcategories, setSubcategories] = React.useState<string[]>([]);
 
   const loadData = React.useCallback(async () => {
-    if (!clientId) return;
+    if (!clientId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const res = await fetchLearningPoints(clientId, currentPage, pageSize, {
       search,
@@ -55,10 +63,27 @@ const LearningPointsPage: React.FC = () => {
     void loadData();
   }, [loadData]);
 
+  React.useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
   const truncate = (value: string, limit: number) => {
     if (!value) return '';
     return value.length > limit ? value.slice(0, limit) + '...' : value;
   };
+
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading learning points..." />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -147,7 +172,11 @@ const LearningPointsPage: React.FC = () => {
                 <TableBody>
                   {loading && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">Loading...</TableCell>
+                      <TableCell colSpan={5} className="p-0">
+                        <div className="flex items-center justify-center py-20">
+                          <Loader text="Loading learning points..." />
+                        </div>
+                      </TableCell>
                     </TableRow>
                   )}
                   {!loading && data.length === 0 && (

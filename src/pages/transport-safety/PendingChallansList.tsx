@@ -82,7 +82,11 @@ const PendingChallansList = () => {
   }, [employeeData?.clientId]);
 
   if (loading) {
-    return <Loader text="Loading Challans..." />;
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader text="Loading Challans..." />
+      </div>
+    );
   }
 
 

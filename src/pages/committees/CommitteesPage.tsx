@@ -99,6 +99,10 @@ const CommitteesPage = () => {
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [committeeMemberIdsByCommittee, setCommitteeMemberIdsByCommittee] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
+  // Mirrors IncidentsList's showLoader pattern: hides header/filters until the
+  // first fetch settles, then never re-fires so later pagination/search
+  // refetches only swap the table area below.
+  const [showLoader, setShowLoader] = useState(true);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -190,6 +194,13 @@ const CommitteesPage = () => {
   useEffect(() => {
     loadCommittees(currentPage, debouncedSearch);
   }, [loadCommittees, currentPage, debouncedSearch]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   // Load employee names up front so the member-count hover card can resolve
   // member IDs to names without requiring the user to open the create/edit
@@ -590,6 +601,16 @@ const CommitteesPage = () => {
     return employeeNameById[committee.chairperson_employee_id] || '-';
   };
 
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading committees..." />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="w-full py-6">
@@ -663,7 +684,9 @@ const CommitteesPage = () => {
           </div>
 
           {loading ? (
-            <Loader text="Loading committees..."/>
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading committees..." />
+            </div>
           ) : committees.length === 0 ? (
             <div className="text-center py-12 text-gray-500">No committees found</div>
           ) : (

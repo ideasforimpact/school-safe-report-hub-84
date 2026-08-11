@@ -141,6 +141,17 @@ const SOPPage = () => {
     limit: PAGE_SIZE,
   });
 
+  // Mirrors IncidentsList's showLoader pattern: hides header/stats/filters until
+  // the first fetch settles, then never re-fires so later pagination/filter
+  // refetches only swap the table area below.
+  const [showLoader, setShowLoader] = useState(true);
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
   const sops: SOP[] = useMemo(() => sopData?.data || [], [sopData]);
   const totalCount = sopData?.pagination?.total ?? sops.length;
 
@@ -397,6 +408,16 @@ const SOPPage = () => {
     setViewDialogOpen(true);
   };
 
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading SOPs..." />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="w-full py-6">
@@ -473,7 +494,9 @@ const SOPPage = () => {
 
 
           {loading ? (
-            <Loader text="Loading SOPs..." />
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading SOPs..." />
+            </div>
           ) : sops.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No SOPs found</p>
