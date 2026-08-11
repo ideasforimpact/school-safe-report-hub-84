@@ -92,7 +92,6 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     documentImage?: string;
     documentNumber?: string;
     dateOfBirth?: string;
-    expiryDate?: string;
     accountNumber?: string;
     ifscCode?: string;
   }) => {
@@ -201,16 +200,6 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       return;
     }
 
-    // For driving license, validate expiry date
-    if (isDrivingLicense(selectedTypeId) && !values.expiryDate) {
-      toast({
-        title: 'Error',
-        description: 'Please provide expiry date for the driving license',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     // For bank account, validate account number and IFSC code
     if (isBankAccount(selectedTypeId) && (!values.accountNumber || !values.ifscCode)) {
       toast({
@@ -228,9 +217,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
       // Prepare params object based on document type
       let params;
-      if (isDrivingLicense(selectedTypeId) && values.dateOfBirth) {
-        params = { DOB: values.dateOfBirth, expiryDate: values.expiryDate };
-      } else if (isPassport(selectedTypeId) && values.dateOfBirth) {
+      if ((isDrivingLicense(selectedTypeId) || isPassport(selectedTypeId)) && values.dateOfBirth) {
         params = { DOB: values.dateOfBirth };
       } else if (isBankAccount(selectedTypeId)) {
         params = { 
@@ -249,7 +236,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         documentImage: isBankAccount(selectedTypeId) ? 'not-required-for-bank-account' : values.documentImage,
         documentStatusId: pendingStatus?.id,
         verificationStatus: 'pending' as 'pending' | 'verified' | 'failed',
-        params: params // Add params object with DOB/expiryDate for driving license or account details for bank
+        params: params // Add params object with DOB for driving license or account details for bank
       };
 
       console.log('Adding document with data:', {
