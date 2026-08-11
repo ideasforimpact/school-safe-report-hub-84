@@ -34,6 +34,7 @@ interface DocumentFormValues {
   documentNumber?: string;
   documentImage?: string;
   dateOfBirth?: string;
+  expiryDate?: string;
   accountNumber?: string;
   ifscCode?: string;
   otherType?: string;
@@ -64,6 +65,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [documentNumber, setDocumentNumber] = useState('');
   const [documentImage, setDocumentImage] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date>();
+  const [expiryDate, setExpiryDate] = useState<Date>();
   const [accountNumber, setAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
   const [otherType, setOtherType] = useState('');
@@ -126,6 +128,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       setAccountNumber('');
       setIfscCode('');
       setDateOfBirth(undefined);
+      setExpiryDate(undefined);
       setOtherType('');
       setCustomDocumentName('');
       setCustomDocumentFiles([]);
@@ -633,6 +636,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       documentNumber,
       documentImage,
       dateOfBirth: dateOfBirth ? format(dateOfBirth, 'yyyy-MM-dd') : undefined,
+      expiryDate: expiryDate ? format(expiryDate, 'yyyy-MM-dd') : undefined,
       accountNumber,
       ifscCode,
       otherType
@@ -828,6 +832,26 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                 )
               }
               max={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Expiry Date for Driving License */}
+      {isDrivingLicense && (
+        <div>
+          <Label className="text-sm font-medium">
+            Expiry Date <span className="text-red-500">*</span>
+          </Label>
+          <div className="mt-1">
+            <Input
+              type="date"
+              value={expiryDate ? format(expiryDate, 'yyyy-MM-dd') : ''}
+              onChange={(e) =>
+                setExpiryDate(
+                  e.target.value ? new Date(e.target.value) : undefined
+                )
+              }
             />
           </div>
         </div>
