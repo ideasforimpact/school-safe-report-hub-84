@@ -495,6 +495,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                                             Valid
                                           </span>
                                         )}
+                                        {expiryDate && (
+                                          <span className="text-xs text-gray-500 font-normal">
+                                            (Exp: {formatDate(expiryDate)})
+                                          </span>
+                                        )}
                                       </>
                                     )}
                                   </span>
