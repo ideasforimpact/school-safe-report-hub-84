@@ -1073,7 +1073,7 @@ async function handleList(supabaseClient: any, requestData: any) {
   // === Global stats (employee verification counts) — only when requested ===
   // Requested on initial page load (includeStats: true) to populate the header counters.
   // Subsequent pagination/filter calls skip this to avoid redundant queries.
-  let globalStats: { totalEmployees: number; verifiedEmployees: number } | null = null;
+  let globalStats: { totalEmployees: number; verifiedEmployees: number; unverifiedEmployees: number; noDocumentsEmployees: number } | null = null;
   if (requestData.includeStats === true) {
     try {
       const { count: totalActive } = await supabaseClient
@@ -1090,6 +1090,8 @@ async function handleList(supabaseClient: any, requestData: any) {
 
       const allEmpIdsForStats: string[] = (allEmpForStats || []).map((e: any) => e.id);
       let verifiedCount = 0;
+      let unverifiedCount = 0;
+      let noDocumentsCount = allEmpIdsForStats.length;
 
       if (allEmpIdsForStats.length > 0) {
         const { data: allDocsForStats } = await supabaseClient
@@ -1103,14 +1105,26 @@ async function handleList(supabaseClient: any, requestData: any) {
           if (!docsByEmpForStats.has(d.employee_id)) docsByEmpForStats.set(d.employee_id, []);
           docsByEmpForStats.get(d.employee_id)!.push(d.verification_status || 'pending');
         });
+
+        // Mirror the exact bucket logic used by the "documentStatus" list filter above,
+        // so this count always matches what filtering by "Pending" returns.
         docsByEmpForStats.forEach((statuses) => {
-          if (statuses.length > 0 && statuses.every((s: string) => s === 'verified' || s === 'completed')) {
-            verifiedCount++;
-          }
+          const hasFailed = statuses.some((s: string) => s === 'failed' || s === 'rejected');
+          const hasPending = statuses.some((s: string) => s === 'pending' || s === 'in-progress');
+          const hasVerified = statuses.some((s: string) => s === 'verified' || s === 'completed');
+          if (!hasFailed && !hasPending && hasVerified) verifiedCount++;
+          else if (!hasFailed && hasPending) unverifiedCount++;
         });
+        noDocumentsCount = allEmpIdsForStats.length - docsByEmpForStats.size;
       }
 
-      globalStats = { totalEmployees: totalActive || 0, verifiedEmployees: verifiedCount };
+      const totalEmployees = totalActive || 0;
+      globalStats = {
+        totalEmployees,
+        verifiedEmployees: verifiedCount,
+        unverifiedEmployees: unverifiedCount,
+        noDocumentsEmployees: noDocumentsCount,
+      };
     } catch (statsErr) {
       console.error("Error computing global stats:", statsErr);
     }
