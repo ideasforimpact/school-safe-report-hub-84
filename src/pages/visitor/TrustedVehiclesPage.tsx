@@ -55,6 +55,9 @@ const TrustedVehiclesPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [trustedVehicles, setTrustedVehicles] = useState<TrustedVehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  // Mirrors IncidentsList's showLoader pattern: hides header/filters until the
+  // first fetch settles, then never re-fires again.
+  const [showLoader, setShowLoader] = useState(true);
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   // Filter state
@@ -106,6 +109,13 @@ const TrustedVehiclesPage = () => {
   useEffect(() => {
     fetchTrustedVehicles();
   }, [fetchTrustedVehicles]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   // Keep list in sync with realtime changes on trusted_vehicle table
   useRealTimeSubHook({
@@ -261,6 +271,16 @@ const TrustedVehiclesPage = () => {
       setIsDeleting(false);
     }
   };
+
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading trusted vehicles..." />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

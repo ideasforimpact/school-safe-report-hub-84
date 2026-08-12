@@ -16,6 +16,7 @@ import GroupConfigurationContent from '@/components/configuration/GroupConfigura
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { useLang } from '@/hooks/useLang';
+import Loader from '@/components/common/Loader';
 
 const SETTINGS_TAB_VALUES = ['incident', 'assessment', 'form', 'user', 'group', 'student', 'educational'];
 
@@ -35,6 +36,13 @@ const SettingsPage = () => {
   const [currentTab, setCurrentTab] = useState(
     SETTINGS_TAB_VALUES.includes(initialTabParam ?? '') ? (initialTabParam as string) : 'incident'
   );
+
+  // Mirrors IncidentsList's showLoader pattern: hides the header/tab bar behind
+  // a single full-page spinner until the initially-active tab's first fetch
+  // settles. Only the default "incident" tab reports back — landing directly
+  // on another tab via `?tab=` skips the gate and falls back to that tab's
+  // own (already centered) inline spinner.
+  const [isInitialLoading, setIsInitialLoading] = useState(currentTab === 'incident');
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
@@ -76,7 +84,17 @@ const SettingsPage = () => {
 
   return (
     <Layout>
-      <div className="w-full py-6">
+      {isInitialLoading && (
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading settings..." />
+        </div>
+      )}
+
+      {/* Kept mounted (just visually hidden) while the initial load is in
+          flight so the active tab's own fetch effect can run and report back
+          via onInitialLoadChange — unmounting it would never resolve
+          isInitialLoading. */}
+      <div className={isInitialLoading ? 'hidden' : 'w-full py-6'}>
         <div className="space-y-8">
           <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
             <div className="flex items-start gap-4">
@@ -136,7 +154,7 @@ const SettingsPage = () => {
                   <CardDescription>Configure incident categories, priorities, and other settings</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <IncidentConfigurationContent />
+                  <IncidentConfigurationContent onInitialLoadChange={setIsInitialLoading} />
                 </CardContent>
               </Card>
             </TabsContent>

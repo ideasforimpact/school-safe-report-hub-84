@@ -22,6 +22,11 @@ const EmployeeVerificationPage = () => {
   const [searchParams] = useSearchParams();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  // Gates the very first fetch only — matches IncidentsList's showLoader pattern,
+  // hiding header/stats/filters until the initial data is in, then never firing
+  // again so later filter/pagination fetches use EmployeesList's own centered spinner.
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const isFirstLoadRef = React.useRef(true);
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,8 +41,7 @@ const EmployeeVerificationPage = () => {
       : 'all';
   });
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
-  const [loading, setLoading] = useState(true);
-  
+
   const departments = useMemo(() => {
     const uniqueDepartments = new Set(
       employees
@@ -60,14 +64,16 @@ const EmployeeVerificationPage = () => {
   // like "pending" get scattered across pages instead of appearing together.
   useEffect(() => {
     const loadEmployees = async () => {
-      setLoading(true);
       await fetchEmployees({
         search: searchTerm,
         departmentId: departmentFilter,
         documentTypeId: documentTypeFilter,
         documentStatus: documentStatusFilter,
       }, 1);
-      setLoading(false);
+      if (isFirstLoadRef.current) {
+        isFirstLoadRef.current = false;
+        setIsInitialLoading(false);
+      }
     };
 
     loadEmployees();
@@ -75,13 +81,11 @@ const EmployeeVerificationPage = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    setLoading(true);
 
   await Promise.all([
     fetchEmployees(),
     new Promise((resolve) => setTimeout(resolve, 500))
   ]);
-    setLoading(false);
     setIsRefreshing(false);
   };
 
@@ -125,6 +129,17 @@ const EmployeeVerificationPage = () => {
     enabled: true,
     onPayload: handleEmployeesRealtime,
   });
+
+  if (isInitialLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading employees..." />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="w-full py-6">
@@ -209,11 +224,7 @@ const EmployeeVerificationPage = () => {
             totalCount={employees.length}
           />
           
-          {loading ? (
-            <Loader text="Loading employees..." />
-          ) : (
-            <EmployeesList employees={filteredEmployees} />
-          )}
+          <EmployeesList employees={filteredEmployees} />
         </div>
       </div>
     </Layout>

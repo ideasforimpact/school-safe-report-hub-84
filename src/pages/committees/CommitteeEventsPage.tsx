@@ -28,6 +28,7 @@ import {
 import { toast } from 'sonner';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import Loader from '@/components/common/Loader';
 
 type EmployeeOption = { id: string; name: string };
 
@@ -71,6 +72,9 @@ const CommitteeEventsPage = () => {
   const [events, setEvents] = useState<CommitteeEvent[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [loading, setLoading] = useState(true);
+  // Mirrors IncidentsList's showLoader pattern: hides header/filters until the
+  // first fetch settles, then never re-fires again.
+  const [showLoader, setShowLoader] = useState(true);
   const [isCommitteeMember, setIsCommitteeMember] = useState(false);
   const [meetingDateFilter, setMeetingDateFilter] = useState('');
   const [eventTypeFilter, setEventTypeFilter] = useState<'all' | 'mom' | 'event'>('all');
@@ -146,6 +150,13 @@ const CommitteeEventsPage = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   const resetForm = () => {
     setEditingEvent(null);
@@ -419,6 +430,16 @@ const CommitteeEventsPage = () => {
     );
   };
 
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading MOM/Event list..." />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="w-full py-6">
@@ -491,7 +512,9 @@ const CommitteeEventsPage = () => {
             )}
           </div>
           {loading ? (
-            <div className="text-center py-10 text-gray-500">Loading MOM/Event list...</div>
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading MOM/Event list..." />
+            </div>
           ) : filteredEvents.length === 0 ? (
             <div className="text-center py-10 text-gray-500">No Record Found.</div>
           ) : (

@@ -97,6 +97,16 @@ const ReportIncident = () => {
   const { formData: configData, employees: configEmployees, loading: employeesLoading } = useIncidentFormData();
   const priorities = configData.priorities;
 
+  // Mirrors IncidentsList's showLoader pattern: hides the header/form until
+  // the reference-data fetch settles, then never re-fires again.
+  const [showLoader, setShowLoader] = useState(true);
+  useEffect(() => {
+    if (!employeesLoading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [employeesLoading]);
+
   // Set edit mode based on incidentId
   useEffect(() => {
     setIsEditMode(!!incidentId);
@@ -641,27 +651,11 @@ const ReportIncident = () => {
     priority: getPriorityName(formData.priorityId)
   };
 
-  // Show loading state for employees only
-  if (employeesLoading) {
+  if (showLoader) {
     return (
       <Layout>
-        <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
-          <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
-            <div className="max-w-7xl mx-auto">
-              <h1 className="text-2xl font-semibold text-gray-900">
-                Report New Incident
-              </h1>
-              <p className="text-gray-600 text-sm mt-1">
-                Loading form data...
-              </p>
-            </div>
-          </div>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-center items-center min-h-[400px]">
-                
-              <Loader text= "Loading..."/>
-            </div>
-          </div>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading form data..." />
         </div>
       </Layout>
     );

@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts';
 import { supabase } from '@/integrations/supabase/client';
 import { Committee, CommitteeEvent, fetchCommitteeById, fetchCommitteeEventById } from '@/services/committees/committeeService';
 import { toast } from 'sonner';
+import Loader from '@/components/common/Loader';
 
 const CommitteeEventViewPage = () => {
   const { committeeId = '', eventId = '' } = useParams();
@@ -81,7 +82,9 @@ const CommitteeEventViewPage = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           {loading ? (
-            <div className="py-10 text-center text-gray-500">Loading details...</div>
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading details..." />
+            </div>
           ) : !event ? (
             <div className="py-10 text-center text-gray-500">MOM/Event not found.</div>
           ) : (

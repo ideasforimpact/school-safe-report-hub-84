@@ -159,6 +159,10 @@ const StudentWellBeingPage = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  // Mirrors IncidentsList's showLoader pattern: hides header/stats/filters until
+  // the first fetch settles, then never re-fires so later pagination/filter
+  // refetches only swap the table area below.
+  const [showLoader, setShowLoader] = useState(true);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -237,6 +241,13 @@ const StudentWellBeingPage = () => {
   useEffect(() => {
     loadRecords();
   }, [loadRecords]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   const handleDeleteConfirm = async () => {
     if (!recordToDelete || !clientId || !employeeData?.id) return;
@@ -383,6 +394,16 @@ const StudentWellBeingPage = () => {
   };
 
 
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading Student Records..." />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="w-full py-6">
@@ -504,7 +525,9 @@ const StudentWellBeingPage = () => {
           </div>
 
           {loading ? (
-            <Loader text="Loading Records..." />
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading Students Records..." />
+            </div>
           ) : records.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
               <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-3" />

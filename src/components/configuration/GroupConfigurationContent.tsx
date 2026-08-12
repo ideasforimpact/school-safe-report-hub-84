@@ -253,12 +253,6 @@ const GroupConfigurationContent = () => {
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
   };
 
-  if (loading) {
-    return (
-      <Loader text="Loading groups..." />
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Filters and Add Button */}
@@ -320,6 +314,11 @@ const GroupConfigurationContent = () => {
       </div>
 
       {/* Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader text="Loading groups..." />
+        </div>
+      ) : (
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -461,6 +460,7 @@ const GroupConfigurationContent = () => {
           onPageChange={setCurrentPage}
         />
       </div>
+      )}
 
       {/* Add/Edit Dialog */}
       <AddGroupDialog

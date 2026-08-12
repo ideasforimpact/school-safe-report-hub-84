@@ -114,10 +114,8 @@ const EduSafeResourcesContent = () => {
   // the whole page, matching TransportSafetyPage's pattern.
   if (showInitialLoader) {
     return (
-      <div className="w-full py-6">
-        <div className="flex items-center justify-center py-24">
-          <Loader text="Loading EduSafe Resources..." />
-        </div>
+      <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+        <Loader text="Loading EduSafe Resources..." />
       </div>
     );
   }

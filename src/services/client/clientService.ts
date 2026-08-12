@@ -145,17 +145,28 @@ export const fetchClientsPage = async ({
   status = 'active',
 }: FetchClientsPageParams): Promise<FetchClientsPageResult> => {
   const { data: response, error } = await supabase.functions.invoke('backoffice-client-management', {
-    body: { action: 'fetch-clients', page, pageSize, search, status },
+    // Only this caller needs super admin emails / incidents-lock data
+    // (for the Edit Client dialog), so it's the only one that opts in —
+    // other callers of this same action (ClientContext, BasicInfoTab's
+    // head-office mapping dropdown) don't pay for those extra joins.
+    body: { action: 'fetch-clients', page, pageSize, search, status, includeSuperAdminData: true },
   });
 
   if (error) throw error;
 
-  const rows: Array<ClientRecord & { incident_recommended_actions_enabled?: boolean }> =
-    Array.isArray(response?.data) ? response.data : [];
+  const rows: Array<ClientRecord & {
+    incident_recommended_actions_enabled?: boolean;
+    super_admin_email?: string | null;
+    secondary_super_admin_emails?: string[];
+    has_incidents?: boolean;
+  }> = Array.isArray(response?.data) ? response.data : [];
   const clients: Client[] = rows.map((dbClient) => ({
     ...mapDbClientToClient(dbClient),
     clientTypeId: dbClient.client_type_id,
     incidentRecommendedActionsEnabled: dbClient.incident_recommended_actions_enabled !== false,
+    superAdminEmail: dbClient.super_admin_email || undefined,
+    secondarySuperAdminEmails: dbClient.secondary_super_admin_emails || [],
+    hasIncidents: dbClient.has_incidents === true,
   }));
 
   return { clients, total: typeof response?.total === 'number' ? response.total : clients.length };

@@ -102,7 +102,11 @@ const ComplianceDocumentsPage: React.FC = () => {
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadItems, setUploadItems] = useState<{ id: string; name: string; progress: number; status: 'uploading' | 'done' | 'error'; error?: string }[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  // Mirrors IncidentsList's showLoader pattern: hides header/filters/upload
+  // zone until the first fetch settles, then never re-fires so later folder
+  // navigations only swap the grid area below.
+  const [showLoader, setShowLoader] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -392,7 +396,10 @@ const ComplianceDocumentsPage: React.FC = () => {
   }, [uploading, uploadItems]);
 
   const refresh = useCallback(async () => {
-    if (!clientId) return;
+    if (!clientId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const { data: result, error } = await supabase.functions.invoke('compliance-docs', {
       body: { action: 'list', clientId },
@@ -594,12 +601,22 @@ const ComplianceDocumentsPage: React.FC = () => {
 
   const fetchedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId) {
+      setLoading(false);
+      return;
+    }
     const key = `${clientId}::${currentFolderId ?? ''}`;
     if (fetchedKeyRef.current === key) return;
     fetchedKeyRef.current = key;
     refresh();
   }, [clientId, currentFolderId, refresh]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   // Build a flat list of all files for export (independent of current folder view)
   const fetchAllFilesForExport = async () => {
@@ -1099,6 +1116,15 @@ const ComplianceDocumentsPage: React.FC = () => {
     }
   }, [searchParams]);
 
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading compliance documents..." />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -1344,7 +1370,7 @@ const ComplianceDocumentsPage: React.FC = () => {
           </div>
 
           {/* Grid of folders/files */}
-          {!currentFolderId && (
+          {!loading && !currentFolderId && (
             <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
               {visibleRootFolders.map((f) => (
                 <div key={f.folder_id} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
@@ -1454,7 +1480,7 @@ const ComplianceDocumentsPage: React.FC = () => {
             </div>
           )}
 
-          {currentFolderId && (
+          {!loading && currentFolderId && (
             <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
               {/* child folders */}
               {visibleChildFolders.map((f) => (
