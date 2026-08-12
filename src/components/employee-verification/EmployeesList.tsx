@@ -83,7 +83,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
     // isn't enough on its own for this department.
     const isDriver = (employee.department || '').toLowerCase() === 'driver';
     const hasVerifiedLicense = documents.some(
-      doc => doc.documentTypeName === 'driving_license' &&
+      doc => (doc.documentTypeName || '').toLowerCase().replace(/[\s_]+/g, '') === 'drivinglicense' &&
         (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed')
     );
 
