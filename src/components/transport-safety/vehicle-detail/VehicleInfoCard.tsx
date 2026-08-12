@@ -34,7 +34,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   getCommonVehicleTypeIcon,
   getLatestVerificationFieldValue,
+  getRcStatusColor,
 } from '@/utils/transport-safety/documentStatusUtils';
+import { cn } from '@/lib/utils';
 import VerificationDetailsDialog from '../VerificationDetailsDialog';
 import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
 import { VehicleChallans } from '@/types/transportSafety';
@@ -368,11 +370,11 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle, onVehicleUpd
         
         {/* Display verification status if available */}
           {vehicle.verificationStatus && (
-            <div className="mt-2 text-sm text-left">
-              <span className="font-medium">RC Status:</span> 
-              <span className={`ml-1 ${vehicle.verificationStatus === 'active' ? 'text-green-600' : 'text-amber-600'}`}>
+            <div className="mt-2 flex items-center text-sm text-left">
+              <span className="font-medium">RC Status:</span>
+              <Badge className={cn('ml-1.5', getRcStatusColor(vehicle.verificationStatus))} variant="outline">
                 {vehicle.verificationStatus.toUpperCase()}
-              </span>
+              </Badge>
             </div>
           )}
 
