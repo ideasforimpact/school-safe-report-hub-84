@@ -1,7 +1,7 @@
 import { Vehicle, VehicleVerificationField, VehicleVerificationData } from '@/types/transportSafety';
 
 export interface DocumentStatus {
-  status: 'valid' | 'expired' | 'expiring_soon' | 'missing';
+  status: 'valid' | 'expired' | 'expiring_soon' | 'missing' | 'not_applicable';
   expiryDate?: Date | null;
 }
 
@@ -62,6 +62,20 @@ const normalizeVehicleTypeText = (value: unknown): string =>
     .trim()
     .toLowerCase()
     .replace(/[_-]+/g, ' ');
+
+/**
+ * Whether a vehicle's RC data identifies it as an electric vehicle.
+ * VAHAN fuel_type convention, e.g. "PURE EV", "ELECTRIC(BOV)". Hybrids
+ * ("STRONG HYBRID EV") still carry an engine and need PUC, so they're
+ * excluded even though their fuel_type also contains "EV".
+ */
+export const isElectricVehicle = (vehicle: Vehicle): boolean => {
+  const fuelType = getLatestVerificationFieldValue(vehicle, 'fuel_type');
+  if (typeof fuelType !== 'string') return false;
+  const normalized = fuelType.toUpperCase();
+  if (normalized.includes('HYBRID')) return false;
+  return normalized.includes('ELECTRIC') || normalized.includes('BOV') || /\bEV\b/.test(normalized);
+};
 
 export const getCommonVehicleTypeLabel = (vehicle: Vehicle): string => {
   const candidates = [
@@ -159,9 +173,14 @@ export const getDocumentStatus = (vehicle: Vehicle, docType: string): DocumentSt
     return { status: 'missing' };
   }
   
+  // Electric vehicles are exempt from pollution (PUC) certification
+  if (docType === 'pollution' && isElectricVehicle(vehicle)) {
+    return { status: 'not_applicable' };
+  }
+
   // Get latest verification log
   const verificationLog = getLatestVerificationLog(vehicle);
-  
+
   // Determine which field to look for based on document type
   let fieldName: string;
   switch (docType) {
@@ -268,10 +287,10 @@ export const hasAllValidDocuments = (vehicle: Vehicle): boolean => {
   const fitnessStatus = getDocumentStatus(vehicle, 'fitness').status;
   const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
   const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
-  
-  return fitnessStatus === 'valid' && 
-         insuranceStatus === 'valid' && 
-         pollutionStatus === 'valid';
+
+  return fitnessStatus === 'valid' &&
+         insuranceStatus === 'valid' &&
+         (pollutionStatus === 'valid' || pollutionStatus === 'not_applicable');
 };
 
 /**
@@ -292,7 +311,7 @@ export const hasValidVehicle = (vehicle: Vehicle): boolean => {
   let validCount = 0;
   if (fitnessStatus === 'valid' || fitnessStatus === 'expiring_soon') validCount++;
   if (insuranceStatus === 'valid' || insuranceStatus === 'expiring_soon') validCount++;
-  if (pollutionStatus === 'valid' || pollutionStatus === 'expiring_soon') validCount++;
+  if (pollutionStatus === 'valid' || pollutionStatus === 'expiring_soon' || pollutionStatus === 'not_applicable') validCount++;
   
   // Vehicle is valid if at least 2 out of 3 certificates are valid/expiring soon
   return validCount >= 2;
@@ -332,6 +351,8 @@ export const getDocumentStatusColor = (status: string): string => {
       return 'bg-red-100 border-red-200 text-red-800';
     case 'expiring_soon':
       return 'bg-yellow-100 border-yellow-200 text-yellow-800';
+    case 'not_applicable':
+      return 'bg-green-100 border-green-200 text-green-800';
     case 'unverified':
       return 'bg-gray-100 border-gray-200 text-gray-800';
     default:
