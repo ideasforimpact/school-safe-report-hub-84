@@ -264,7 +264,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   };
   
   const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
-    if (document.verificationStatus !== 'verified') {
+    if (document.verificationStatus !== 'verified' && document.verificationStatus !== 'completed') {
       return undefined;
     }
 
@@ -621,7 +621,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <TableCell>
                     {statusName === 'governance' ? (
                       <span className="text-sm text-gray-900">Government</span>
-                    ) : statusName === 'backoffice' ? (
+                    ) : statusName === 'backoffice' || statusName === 'completed' ? (
                       <span className="text-sm text-gray-900">Backoffice Admin</span>
                     ) : statusName === 'manual' || doc.verifiedByEmployeeId ? (
                       <span className="text-sm text-gray-900">Manual</span>
