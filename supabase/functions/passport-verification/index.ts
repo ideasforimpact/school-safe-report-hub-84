@@ -410,7 +410,7 @@ serve(async (req) => {
       const logs = existing?.employee_docs_log || [];
 
       await supabase.from('employee_documents').update({
-        document_status_id: governanceStatusId,
+        document_status_id: manualStatusId,
         verification_status: 'verified',
         verified_by: verified_by_employee_id || null,
         employee_docs_log: [...logs, { timestamp: new Date().toISOString(), action: 'verify_passport_manual', notes: verification_notes || 'Document manually verified by staff.' }]
@@ -446,7 +446,7 @@ serve(async (req) => {
       await supabase.from('employee_documents').update({
         document_status_id: rejectedStatusId,
         verification_status: 'failed',
-        verified_by: null,
+        verified_by: verified_by_employee_id || null,
         reject_reason: reject_reason || 'Document verification rejected by staff.',
         api_verification_date: null,
         employee_docs_log: [...logs, { timestamp: new Date().toISOString(), action: 'reject_passport', notes: reject_reason || 'Document verification rejected by staff.' }]

@@ -79,6 +79,8 @@ export const getStatusDisplayName = (status: string) => {
   switch (status) {
     case 'governance':
       return 'Governance';
+    case 'backoffice':
+      return 'Backoffice Admin';
     case 'rejected':
       return 'Rejected';
     case 'pending':

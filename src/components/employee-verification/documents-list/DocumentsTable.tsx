@@ -59,7 +59,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onViewGovernment,
   isReadOnly = false,
 }) => {
-  const { documentStatuses, deleteDocument, employees, fetchEmployeeDocuments } = useEmployeeVerification();
+  const { deleteDocument, fetchEmployeeDocuments } = useEmployeeVerification();
   const { toast } = useToast();
   const { user } = useAuth();
   const clientId = user?.clientId || '';
@@ -264,12 +264,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   };
   
   const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
-    if (!document.documentStatusId || document.verificationStatus !== 'verified' || documentStatuses.length === 0) {
+    if (document.verificationStatus !== 'verified') {
       return undefined;
     }
-    
-    const status = documentStatuses.find(s => s.id === document.documentStatusId);
-    return status?.name;
+
+    return document.documentStatusName || undefined;
   };
 
   const handleCommentsClick = (doc: VerificationDocument) => {
@@ -329,27 +328,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
 
-  // Helper to get "Verified by" employee name using verifiedByEmployeeId
-  const getVerifiedByName = (doc: VerificationDocument): string | undefined => {
-    // First check if we have verifiedByEmployeeId (new system)
-    if (doc.verifiedByEmployeeId && employees.length > 0) {
-      const employee = employees.find(emp => emp.id === doc.verifiedByEmployeeId);
-      if (employee) {
-        const fullName = employee.aadharVerifiedName || employee.name || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email;
-        return fullName.charAt(0).toUpperCase() + fullName.slice(1);
-      }
-    }
-    
-    // Fallback to verification history (old system)
-    const history = doc.params?.verification_history;
-    if (!Array.isArray(history) || history.length === 0) return undefined;
-    const withUser = history.filter((e) => e && e.verified_by);
-    if (withUser.length === 0) return undefined;
-    withUser.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    const verifiedBy = withUser[0].verified_by as string;
-    return verifiedBy.charAt(0).toUpperCase() + verifiedBy.slice(1);
-  };
-  
   // Helper function to get proper document number display
   const getDisplayDocumentNumber = (doc: VerificationDocument): string => {
     const docType = doc.documentTypeName?.toLowerCase();
@@ -595,21 +573,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         
                         // Determine label based on actual database status
                         let labelOverride: string | undefined;
-                        
+
                         if (isApiFailedWithReason) {
-                          labelOverride = 'Verification Rejected';
-                        } else if (doc.verificationStatus === 'verified') {
-                          // Check the actual status name from database
-                          if (statusName === 'governance') {
-                            labelOverride = 'Verified by Government';
-                          } else if (statusName === 'manual') {
-                            labelOverride = 'Verified by Manual';
-                          } else if (doc.verifiedByEmployeeId) {
-                            // Fallback: if verified_by is set but status name is not available
-                            labelOverride = 'Verified by Manual';
-                          }
-                          // If statusName is undefined or something else, don't override (use default badge)
+                          labelOverride = 'Rejected';
                         }
+                        // Otherwise use the default badge text (Verified / Pending / Failed)
 
                         // Only make badge clickable for "Verified by Government" (governance status)
                         // "Verified by Manual" should not be clickable
@@ -651,40 +619,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </TableCell>
                   {/* Verified by Column */}
                   <TableCell>
-                    {(() => {
-                      // For manual documents, show "SafeSchool - date time" using latest verification history
-                      if (docType === 'manual') {
-                        const history = doc.params?.verification_history;
-                        if (Array.isArray(history) && history.length > 0) {
-                          const latest = [...history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-                          const ts = latest?.timestamp || doc.updatedAt;
-                          return (
-                            <span className="text-sm text-gray-900">
-                              SafeSchool{ts ? ` - ${formatDate(ts, { isTiming: true })}` : ''}
-                            </span>
-                          );
-                        }
-                        // Fallback to updatedAt if no history
-                        if (doc.updatedAt) {
-                          return (
-                            <span className="text-sm text-gray-900">
-                              SafeSchool - {formatDate(doc.updatedAt, { isTiming: true })}
-                            </span>
-                          );
-                        }
-                        return <span className="text-muted-foreground">—</span>;
-                      }
-                      const name = getVerifiedByName(doc);
-                      const updatedAt = doc.updatedAt;
-                      
-                      return name ? (
-                        <span className="text-sm text-gray-900">
-                          {name}{updatedAt && ` on ${formatDate(updatedAt, { isTiming: true })}`}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      );
-                    })()}
+                    {statusName === 'governance' ? (
+                      <span className="text-sm text-gray-900">Government</span>
+                    ) : statusName === 'backoffice' ? (
+                      <span className="text-sm text-gray-900">Backoffice Admin</span>
+                    ) : statusName === 'manual' || doc.verifiedByEmployeeId ? (
+                      <span className="text-sm text-gray-900">Manual</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   
                   {/* Actions Column */}
