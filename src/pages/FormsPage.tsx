@@ -47,6 +47,12 @@ const FormsPage = () => {
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [selectedForm, setSelectedForm] = useState<CustomForm | null>(null);
   const [loading, setLoading] = useState(false);
+  // Mirrors IncidentsList's showLoader pattern for the non-backoffice Grievances
+  // view: hides header/stat-cards/filters until the first submissions fetch
+  // settles, then never re-fires so later pagination/filter refetches only
+  // swap the table area below. Backoffice Form Management keeps its existing
+  // per-table loading behavior untouched.
+  const [showLoader, setShowLoader] = useState(true);
   const [showFormConfig, setShowFormConfig] = useState(false);
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,6 +179,14 @@ const FormsPage = () => {
     effectiveClientId || null,
     { page: currentPage, pageSize: PAGE_SIZE, status: statusFilter, dateFrom, dateTo, search: searchTerm }
   );
+
+  useEffect(() => {
+    if (isBackoffice) return;
+    if (!submissionsLoading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isBackoffice, submissionsLoading]);
 
   // For backoffice, preselect first active client when list loads
   useEffect(() => {
@@ -787,9 +801,13 @@ const Content = (
           </div>
 
           {loading ? (
-            <Loader text="Loading forms..." />
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading forms..." />
+            </div>
           ) : submissionsLoading ? (
-            <Loader text="Loading grievances..." />
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading grievances..." />
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -1238,6 +1256,16 @@ const Content = (
       </div>
     </div>
   );
+
+  if (!isBackoffice && showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading grievances..." />
+        </div>
+      </Layout>
+    );
+  }
 
   // Always render within the existing app layout for consistency across modules
   return <Layout>{Content}</Layout>;

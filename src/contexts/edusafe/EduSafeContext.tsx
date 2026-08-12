@@ -4,11 +4,13 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useEduSafeResourcesList,
   useAddEduSafeResource,
   useUpdateEduSafeResource,
   useDeleteEduSafeResource,
+  edusafeResourceKeys,
   EduSafeResourceFetchFilters,
 } from '@/hooks/edusafe/useEduSafeResourceQueries';
 
@@ -46,6 +48,7 @@ interface EduSafeListParams {
 export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialFetch?: boolean }> = ({ children, skipInitialFetch = false }) => {
   const { user } = useAuth();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [listParams, setListParams] = useState<EduSafeListParams>({});
   const [initiated, setInitiated] = useState(!skipInitialFetch);
   const noClientIdToastShownRef = useRef(false);
@@ -290,8 +293,27 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode; skipInitialF
       return;
     }
 
+    // Force this specific page/filter combination to be treated as stale even
+    // if it's still within the query's staleTime window — otherwise navigating
+    // back to an already-visited page (e.g. page 1 after page 2) finds fresh
+    // cached data, skips the network call entirely, and `query.isFetching`
+    // (and therefore `loading`) never flips true for that page.
+    queryClient.invalidateQueries({
+      queryKey: edusafeResourceKeys.list({
+        clientId: user?.clientId ?? null,
+        isClientContext,
+        clientTypeId,
+        searchQuery,
+        page,
+        limit,
+        category: filters?.category,
+        ownerType: filters?.ownerType,
+      }),
+      exact: true,
+    });
+
     setListParams({ searchQuery, page, limit, filters });
-  }, []);
+  }, [queryClient, user?.clientId, isClientContext, clientTypeId]);
 
   const value = {
     resources,

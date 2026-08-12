@@ -97,10 +97,8 @@ const TransportSafetyPage = () => {
   if (!initialLoadComplete) {
     return (
       <Layout>
-        <div className="w-full py-6">
-          <div className="flex items-center justify-center py-24">
-            <Loader text="Loading Transport Safety..." />
-          </div>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading Transport Safety..." />
         </div>
       </Layout>
     );

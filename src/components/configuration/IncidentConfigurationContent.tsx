@@ -27,7 +27,11 @@ interface PriorityItem {
   is_active: boolean;
 }
 
-const IncidentConfigurationContent = () => {
+interface IncidentConfigurationContentProps {
+  onInitialLoadChange?: (isInitialLoading: boolean) => void;
+}
+
+const IncidentConfigurationContent = ({ onInitialLoadChange }: IncidentConfigurationContentProps = {}) => {
   const [activeTab, setActiveTab] = useState('categories');
   const [contributingFactors, setContributingFactors] = useState<ContributingFactorItem[]>([]);
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
@@ -72,6 +76,18 @@ const IncidentConfigurationContent = () => {
   useEffect(() => {
     setPriorities(hookPriorities as PriorityItem[]);
   }, [hookPriorities]);
+
+  // Mirrors IncidentsList's showLoader pattern: notifies the parent Settings
+  // page once, the first time this tab's combined loading state settles, so
+  // it can hide the header/tab bar behind a single full-page spinner on
+  // first mount without re-hiding on later realtime-triggered refetches.
+  const isInitialLoad = loading || categoriesLoading;
+  useEffect(() => {
+    if (!isInitialLoad) {
+      const timer = setTimeout(() => onInitialLoadChange?.(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialLoad, onInitialLoadChange]);
 
   // Handle contributing factors operations
   const handleAddContributingFactor = async (name: string, description: string, weight: string) => {
@@ -281,9 +297,9 @@ const IncidentConfigurationContent = () => {
   // Wait for data to load
   if (loading || categoriesLoading) {
     return (
-      
+      <div className="flex items-center justify-center py-20">
         <Loader text="Loading configuration..." />
-      
+      </div>
     );
   }
 

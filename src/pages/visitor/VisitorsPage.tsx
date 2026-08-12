@@ -57,6 +57,10 @@ const VisitorsPage = () => {
   const navigate = useNavigate();
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
+  // Mirrors IncidentsList's showLoader pattern: hides header/filters until the
+  // first fetch settles, then never re-fires so later pagination fetches only
+  // swap the table area below.
+  const [showLoader, setShowLoader] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Pagination state
@@ -331,6 +335,13 @@ const VisitorsPage = () => {
       fetchVisitors(currentPage);
     }
   }, [clientId, currentPage, fetchVisitors]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   // Fetch trusted vehicles separately (for filtering logic)
   useEffect(() => {
@@ -787,6 +798,16 @@ const VisitorsPage = () => {
     }
   }, [filteredVisitors, visitors, getVehicleTypeName]);
 
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading visitors..." />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="w-full py-6">
@@ -898,7 +919,9 @@ const VisitorsPage = () => {
 
           {/* Visitors Table */}
           {loading ? (
-            <Loader text="Loading visitors..." />
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading visitors..." />
+            </div>
           ) : filteredVisitors.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500">No visitors found</p>

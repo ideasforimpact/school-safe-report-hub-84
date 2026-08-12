@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts';
 import Loader from '@/components/common/Loader';
 import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
+import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -362,7 +363,15 @@ const ChildAuditPage = () => {
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   const [loading, setLoading] = useState(true);
+  // Mirrors IncidentsList's showLoader pattern: hides the title/search bar
+  // until the first student list fetch settles, then never re-fires so
+  // later search-triggered refetches only swap the list area below.
+  const [showLoader, setShowLoader] = useState(true);
   const [students, setStudents] = useState<ChildAuditStudentRow[]>([]);
+  const STUDENTS_PAGE_SIZE = 10;
+  const [studentsCurrentPage, setStudentsCurrentPage] = useState(1);
+  const [studentsTotalCount, setStudentsTotalCount] = useState(0);
+  const [studentsTotalPages, setStudentsTotalPages] = useState(1);
   const [search, setSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<ChildAuditStudentRow | null>(null);
   const [checkTypeDetails, setCheckTypeDetails] = useState<ChildAuditCheckTypeDetail[]>([]);
@@ -537,20 +546,30 @@ const ChildAuditPage = () => {
   const loadStudents = useCallback(async () => {
     if (!clientId) {
       setStudents([]);
+      setStudentsTotalCount(0);
+      setStudentsTotalPages(1);
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      const rows = await fetchChildAuditStudents(clientId, { search: search.trim() || undefined });
-      setStudents(rows);
+      const result = await fetchChildAuditStudents(clientId, {
+        search: search.trim() || undefined,
+        page: studentsCurrentPage,
+        pageSize: STUDENTS_PAGE_SIZE,
+      });
+      setStudents(result.students);
+      setStudentsTotalCount(result.totalCount);
+      setStudentsTotalPages(result.totalPages);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load Child Audit');
       setStudents([]);
+      setStudentsTotalCount(0);
+      setStudentsTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [clientId, search]);
+  }, [clientId, search, studentsCurrentPage]);
 
   const loadStudentRecords = useCallback(async () => {
     if (!clientId || !selectedStudent) {
@@ -610,6 +629,13 @@ const ChildAuditPage = () => {
   }, [loadStudents]);
 
   useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
+  useEffect(() => {
     loadStudentRecords();
   }, [loadStudentRecords]);
 
@@ -650,29 +676,7 @@ const ChildAuditPage = () => {
     };
   }, [selectedStudent, checkTypeDetails]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return students;
-    const normalizedQuery = q.replace(/[-_/]/g, ' ');
-    return students.filter((r) => {
-      const id = (r.student_id ?? '').toLowerCase();
-      const name = (r.name ?? '').toLowerCase();
-      const gs = (r.grade_section ?? '').toLowerCase();
-      const grade = (r.grade ?? '').toLowerCase();
-      const section = (r.section ?? '').toLowerCase();
-      const gsNormalized = gs.replace(/[-_/]/g, ' ');
-      const combined = `${grade} ${section}`.trim();
-      return (
-        id.includes(q) ||
-        name.includes(q) ||
-        gs.includes(q) ||
-        gsNormalized.includes(normalizedQuery) ||
-        grade.includes(q) ||
-        section.includes(q) ||
-        combined.includes(normalizedQuery)
-      );
-    });
-  }, [students, search]);
+  const safeStudentsCurrentPage = Math.min(studentsCurrentPage, studentsTotalPages);
 
   const recentRecord = records[0];
   const selectedCheckTypeRecord = useMemo(
@@ -1068,6 +1072,16 @@ const diagnostics = {
     </div>
   );
 
+  if (showLoader && !selectedStudent) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading Child Audit Details..." />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="w-full pt-0 py-6">
@@ -1087,18 +1101,20 @@ const diagnostics = {
                 <div className="w-full mb-5">
                   <DebouncedSearchInput
                     value={search}
-                    onChange={setSearch}
+                    onChange={(value) => { setSearch(value); setStudentsCurrentPage(1); }}
                     placeholder="search students..."
                     className="h-11 text-base"
                     triggerOnEnter
                   />
                 </div>
                 {loading ? (
-                  <Loader text="Loading students..." />
+                  <div className="flex items-center justify-center py-20">
+                    <Loader text="Loading students..." />
+                  </div>
                 ) : (
                   <Card className="w-full">
                     <CardContent className="p-4 space-y-3">
-                      {filtered.map((row) => (
+                      {students.map((row) => (
                         <div
                           key={row.id}
                           className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 transition-colors"
@@ -1134,10 +1150,22 @@ const diagnostics = {
                           </div>
                         </div>
                       ))}
-                      {filtered.length === 0 && (
+                      {students.length === 0 && (
                         <div className="py-10 text-center text-base text-muted-foreground">No students found.</div>
                       )}
                     </CardContent>
+                    {students.length > 0 && (
+                      <div className="px-4 pb-4">
+                        <TablePaginationBar
+                          currentPage={safeStudentsCurrentPage}
+                          totalPages={studentsTotalPages}
+                          totalCount={studentsTotalCount}
+                          pageSize={STUDENTS_PAGE_SIZE}
+                          itemLabel="students"
+                          onPageChange={setStudentsCurrentPage}
+                        />
+                      </div>
+                    )}
                   </Card>
                 )}
               </>
@@ -1239,7 +1267,9 @@ const diagnostics = {
             {detailLoading ? (
               <Card className="mt-4">
                 <CardContent className="py-8">
-                  <Loader text="Loading child audit details..." />
+                  <div className="flex items-center justify-center py-12">
+                    <Loader text="Loading child audit details..." />
+                  </div>
                 </CardContent>
               </Card>
             ) : (
@@ -1595,7 +1625,9 @@ const diagnostics = {
 
               <TabsContent value="audit" className="space-y-4">
                 {recordsLoading ? (
-                  <Loader text="Loading audit timeline..." />
+                  <div className="flex items-center justify-center py-20">
+                    <Loader text="Loading audit timeline..." />
+                  </div>
                 ) : records.length === 0 ? (
                   <Card>
                     <CardContent className="py-10 text-center text-base text-muted-foreground">

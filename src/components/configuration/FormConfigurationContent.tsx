@@ -320,16 +320,6 @@ const FormConfigurationContent = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="py-12">
-          <Loader text="Loading forms..." />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6 relative">
       {/* Loading Overlay */}
@@ -341,16 +331,57 @@ const FormConfigurationContent = () => {
           </div>
         </div>
       )}
-      
-      {forms.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-center">
+
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative w-72">
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search forms..."
+                className="w-full border rounded px-3 py-2 text-sm"
+                disabled={isPageLoading}
+              />
+            </div>
+            <div>
+              <Select onValueChange={(value) => setStatusFilter(value as 'all' | 'active' | 'inactive')} defaultValue="all">
+                <SelectTrigger className="w-[180px]" disabled={isPageLoading}>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Form type filter hidden */}
+            {(search || statusFilter !== 'all' || formTypeFilter !== 'all') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setSearch(''); setStatusFilter('all'); setFormTypeFilter('all'); }}
+                className="text-sm"
+                disabled={isPageLoading}
+              >
+                <X className="h-4 w-4" />
+                Clear Filters ({activeFilterCount})
+              </Button>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading forms..." />
+            </div>
+          ) : forms.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
               <h3 className="text-lg font-medium mb-2">
                 {isBackoffice ? 'No forms created yet' : 'No forms available'}
               </h3>
               <p className="text-gray-500 mb-6">
-                {isBackoffice 
+                {isBackoffice
                   ? 'Create your first custom form to start collecting data'
                   : 'There are no forms configured for your organisation yet.'}
               </p>
@@ -358,47 +389,7 @@ const FormConfigurationContent = () => {
                 <Button onClick={handleCreateForm} disabled={isPageLoading}>Create Form</Button>
               )}
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative w-72">
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search forms..."
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  disabled={isPageLoading}
-                />
-              </div>
-              <div>
-                <Select onValueChange={(value) => setStatusFilter(value as 'all' | 'active' | 'inactive')} defaultValue="all">
-                  <SelectTrigger className="w-[180px]" disabled={isPageLoading}>
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Form type filter hidden */}
-              {(search || statusFilter !== 'all' || formTypeFilter !== 'all') && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setSearch(''); setStatusFilter('all'); setFormTypeFilter('all'); }}
-                  className="text-sm"
-                  disabled={isPageLoading}
-                >
-                  <X className="h-4 w-4" />
-                  Clear Filters ({activeFilterCount})
-                </Button>
-              )}
-            </div>
+          ) : (
             <div className="p-0">
             <Table>
               <TableHeader>
@@ -490,9 +481,9 @@ const FormConfigurationContent = () => {
               </TableBody>
             </Table>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

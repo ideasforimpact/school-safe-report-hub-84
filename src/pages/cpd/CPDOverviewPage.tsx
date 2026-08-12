@@ -414,6 +414,9 @@ const CPDOverviewPage: React.FC = () => {
 
   const [data, setData] = useState<CpdOverviewResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  // Mirrors IncidentsList's showLoader pattern: hides header/stats/search until
+  // the first fetch settles, then never re-fires again.
+  const [showLoader, setShowLoader] = useState(true);
   const [search, setSearch] = useState<string>('');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeCpdRow | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -455,6 +458,13 @@ const CPDOverviewPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   const filteredEmployees = (data?.employees ?? []).filter((row) => {
     if (!search.trim()) return true;
@@ -530,6 +540,16 @@ const CPDOverviewPage: React.FC = () => {
     }
   };
 
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading employee CPD records..." />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="w-full py-6">
@@ -598,8 +618,10 @@ const CPDOverviewPage: React.FC = () => {
             </div>
           </div>
 
-          {loading ? (            
-              <Loader text="Loading employee CPD records..." />            
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading employee CPD records..." />
+            </div>
           ) : filteredEmployees.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
               <p className="text-gray-500 text-sm">

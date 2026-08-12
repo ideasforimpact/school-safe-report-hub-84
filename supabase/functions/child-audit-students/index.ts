@@ -1,6 +1,6 @@
 /**
  * Child Audit — list students for a client with grade/section.
- * - App: POST JSON { client_id, search? } + Authorization Bearer (user JWT).
+ * - App: POST JSON { client_id, search?, page?, page_size? } + Authorization Bearer (user JWT).
  * - External API (optional): same body + x-api-key: INTEGRATION_API_KEY when env is set.
  */
 
@@ -123,16 +123,24 @@ serve(async (req) => {
     const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
     let clientId: string | null = null;
     let search: string | null = null;
+    let page = 1;
+    let pageSize = 10;
 
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
       clientId = typeof body.client_id === 'string' ? body.client_id.trim() : null;
       if (!clientId && typeof body.clientId === 'string') clientId = body.clientId.trim();
       search = typeof body.search === 'string' ? body.search.trim() : null;
+      if (typeof body.page === 'number' && body.page > 0) page = Math.floor(body.page);
+      if (typeof body.page_size === 'number' && body.page_size > 0) pageSize = Math.floor(body.page_size);
     } else {
       const url = new URL(req.url);
       clientId = url.searchParams.get('client_id')?.trim() ?? null;
       search = url.searchParams.get('search')?.trim() ?? null;
+      const pageParam = Number(url.searchParams.get('page'));
+      if (Number.isFinite(pageParam) && pageParam > 0) page = Math.floor(pageParam);
+      const pageSizeParam = Number(url.searchParams.get('page_size'));
+      if (Number.isFinite(pageSizeParam) && pageSizeParam > 0) pageSize = Math.floor(pageSizeParam);
     }
 
     if (!clientId) {
@@ -169,11 +177,14 @@ serve(async (req) => {
       );
     }
 
+    const offset = (page - 1) * pageSize;
+
     let query = supabase
       .from('students')
-      .select('id, student_id, name, grade, section, campus, client_id, created_at, updated_at')
+      .select('id, student_id, name, grade, section, campus, client_id, created_at, updated_at', { count: 'exact' })
       .eq('client_id', clientId)
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .range(offset, offset + pageSize - 1);
 
     if (search && search.length > 0) {
       const term = search.replace(/%/g, '\\%').replace(/_/g, '\\_');
@@ -182,7 +193,7 @@ serve(async (req) => {
       );
     }
 
-    const { data: rows, error: fetchError } = await query;
+    const { data: rows, error: fetchError, count } = await query;
 
     if (fetchError) {
       console.error('child-audit-students fetch:', fetchError);
@@ -210,11 +221,17 @@ serve(async (req) => {
       updated_at: r.updated_at,
     }));
 
+    const totalCount = count ?? data.length;
+
     return json({
       ok: true,
       version: API_VERSION,
       client_id: clientId,
-      meta: { count: data.length },
+      meta: { count: totalCount },
+      total_count: totalCount,
+      page,
+      page_size: pageSize,
+      total_pages: Math.max(1, Math.ceil(totalCount / pageSize)),
       data,
     });
   } catch (e) {

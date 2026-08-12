@@ -64,9 +64,10 @@ interface AssessmentStatusCounts {
 
 interface AssessmentsTableProps {
   onDataLoaded?: (counts: AssessmentStatusCounts) => void;
+  onInitialLoadChange?: (isInitialLoading: boolean) => void;
 }
 
-const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => {
+const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded, onInitialLoadChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -125,6 +126,21 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
   const fetchAssessmentsRef = useRef<(page: number, isMetaLoad?: boolean) => Promise<void>>(async () => {});
   const currentPageRef = useRef(1);
   const lastFetchTimeRef = useRef<number>(0);
+
+  // Mirrors IncidentsList's showLoader pattern: hides the very first render's
+  // flicker between "loading" and "loaded" without re-triggering on later
+  // (pagination/filter) fetches, since this effect only reacts to loading
+  // transitioning to false, never sets it true again.
+  const [showInitialLoader, setShowInitialLoader] = useState(true);
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setShowInitialLoader(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+  useEffect(() => {
+    onInitialLoadChange?.(showInitialLoader);
+  }, [showInitialLoader, onInitialLoadChange]);
 
   const assessmentIdFromUrl = searchParams.get('assessmentId');
 
@@ -612,12 +628,6 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
     );
   }
 
-  if (loading) {
-    return (      
-      <Loader text="Loading assessments..." />
-    );
-  }
-
   if (error) {
     return (
       <div className="bg-white rounded-lg shadow overflow-visible">
@@ -821,7 +831,11 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded }) => 
         )}
 
         <div className="p-0">
-          {assessments.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader text="Loading assessments..." />
+            </div>
+          ) : assessments.length === 0 ? (
             <div className="p-8 text-center">
               <p className="text-gray-500">No assessments found matching your filters</p>
             </div>

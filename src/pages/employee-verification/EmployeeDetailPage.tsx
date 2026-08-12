@@ -357,10 +357,8 @@ const EmployeeDetailPage = () => {
   if (isLoading || !employee) {
     return (
       <Layout>
-        <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
-          <div className="flex items-center justify-center p-8">           
-            <Loader text="Loading employee details..." />            
-          </div>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading employee details..." />
         </div>
       </Layout>
     );

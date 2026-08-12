@@ -18,16 +18,18 @@ import { summaryData, assessmentTypes, recentAssessments } from '@/components/as
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentsTable from '@/components/assessments/AssessmentsTable';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import Loader from '@/components/common/Loader';
 
 const AssessmentsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { hasAssessmentAdmin } = useAssessmentAccess();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
-  
+
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
   const [assessmentStats, setAssessmentStats] = useState({ total: 0, open: 0, draft: 0, submitted: 0, closed: 0 });
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Handle assessment creation button click
   const handleCreateAssessment = () => {
@@ -112,7 +114,13 @@ const AssessmentsPage = () => {
 
   return (
     <Layout>
-      <div className="w-full py-6">
+      {isInitialLoading && (
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading assessments..." />
+        </div>
+      )}
+
+      <div className={isInitialLoading ? 'hidden' : 'w-full py-6'}>
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-6 mx-6 mb-8 rounded-xl border border-gray-200">
           <AssessmentsHeader
@@ -133,7 +141,10 @@ const AssessmentsPage = () => {
               onCancel={() => setShowCreateAssessment(false)}
             />
           ) : (
-            <AssessmentsTable onDataLoaded={counts => setAssessmentStats({ total: counts.total, open: counts.new, draft: counts.draft, submitted: counts.submitted, closed: counts.completed })} />
+            <AssessmentsTable
+              onDataLoaded={counts => setAssessmentStats({ total: counts.total, open: counts.new, draft: counts.draft, submitted: counts.submitted, closed: counts.completed })}
+              onInitialLoadChange={setIsInitialLoading}
+            />
           )}
         </div>
       </div>

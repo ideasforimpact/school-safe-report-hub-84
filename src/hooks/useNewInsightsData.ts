@@ -124,7 +124,10 @@ export const useNewInsightsData = (dateRange?: DateRange) => {
   // Fetch incidents data
   useEffect(() => {
     const fetchData = async () => {
-      if (!clientId) return;
+      if (!clientId) {
+        setIsLoading(false);
+        return;
+      }
 
       try {
         setIsLoading(true);
