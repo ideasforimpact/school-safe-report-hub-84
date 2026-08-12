@@ -306,7 +306,9 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle, onVehicleUpd
             <VehicleTypeIcon type={type} icon={commonVehicleIcon} size={32} />
           </div>
           <div>
-            <CardTitle>{make} {model}</CardTitle>
+            <CardTitle>
+              {(getLatestVerificationFieldValue(vehicle, 'maker_description') as string) || `${make} ${model}`}
+            </CardTitle>
             <div className="text-gray-500 text-left">{registrationNumber}</div>
           </div>
         </div>
