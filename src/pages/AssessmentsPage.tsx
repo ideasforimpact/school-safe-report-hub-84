@@ -30,12 +30,18 @@ const AssessmentsPage = () => {
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
   const [assessmentStats, setAssessmentStats] = useState({ total: 0, open: 0, draft: 0, submitted: 0, closed: 0 });
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  // Gates the header/stats behind a full-page spinner each time the create
+  // form opens, until its own reference-data fetch settles — mirrors the
+  // isInitialLoading gate used for the table view.
+  const [isCreateFormLoading, setIsCreateFormLoading] = useState(true);
+  const showFullPageLoader = showCreateAssessment ? isCreateFormLoading : isInitialLoading;
 
   // Handle assessment creation button click
   const handleCreateAssessment = () => {
     console.log("Create assessment button clicked");
     setShowCreateAssessment(true);
     setShowCreateTemplate(false);
+    setIsCreateFormLoading(true);
   };
 
   // Handle template creation button click (keeping existing functionality)
@@ -114,17 +120,17 @@ const AssessmentsPage = () => {
 
   return (
     <Layout>
-      {isInitialLoading && (
+      {showFullPageLoader && (
         <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
-          <Loader text="Loading assessments..." />
+          <Loader text={showCreateAssessment ? "Loading..." : "Loading assessments..."} />
         </div>
       )}
 
-      <div className={isInitialLoading ? 'hidden' : 'w-full py-6'}>
+      <div className={showFullPageLoader ? 'hidden' : 'w-full py-6'}>
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-6 mx-6 mb-8 rounded-xl border border-gray-200">
           <AssessmentsHeader
-            onCreateAssessment={() => setShowCreateAssessment(true)}
+            onCreateAssessment={handleCreateAssessment}
             canCreateAssessment={!isReadOnlySwitchedContext}
             totalCount={assessmentStats.total}
             openCount={assessmentStats.open}
@@ -139,6 +145,7 @@ const AssessmentsPage = () => {
           {showCreateAssessment ? (
             <CreateAssessmentForm
               onCancel={() => setShowCreateAssessment(false)}
+              onInitialLoadChange={setIsCreateFormLoading}
             />
           ) : (
             <AssessmentsTable
