@@ -321,6 +321,23 @@ export const getVehicleRowClassName = (vehicle: Vehicle): string => {
 };
 
 /**
+ * Get RC verification status color classes (green=active, red=failed, orange=expired)
+ */
+export const getRcStatusColor = (status: string): string => {
+  const normalized = status.toLowerCase();
+  if (normalized === 'active') {
+    return 'bg-green-100 border-green-200 text-green-800';
+  }
+  if (normalized === 'failed') {
+    return 'bg-red-100 border-red-200 text-red-800';
+  }
+  if (normalized.includes('expired')) {
+    return 'bg-orange-100 border-orange-200 text-orange-800';
+  }
+  return 'bg-gray-100 border-gray-200 text-gray-800';
+};
+
+/**
  * Get document status color classes
  */
 export const getDocumentStatusColor = (status: string): string => {
