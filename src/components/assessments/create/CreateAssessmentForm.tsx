@@ -30,10 +30,12 @@ import { AssigneeEmployee } from '@/types/assessment';
 
 interface CreateAssessmentFormProps {
   onCancel?: () => void;
+  onInitialLoadChange?: (isInitialLoading: boolean) => void;
 }
 
 const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   onCancel,
+  onInitialLoadChange,
 }) => {
   const navigate = useNavigate();
   const { user, employeeData } = useAuth();
@@ -100,6 +102,13 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   useEffect(() => {
     fetchFormData();
   }, [fetchFormData]);
+
+  // Reports the initial reference-data fetch up to the parent page so it can
+  // hide its own header/stats behind a single full-page spinner while this
+  // form's data loads, mirroring AssessmentsTable's onInitialLoadChange.
+  useEffect(() => {
+    onInitialLoadChange?.(formDataLoading);
+  }, [formDataLoading, onInitialLoadChange]);
 
   // Demo Setup: fill name + description + templateId from one of three
   // pre-canned scenarios, and pre-populate assignedTo with the currently
@@ -307,7 +316,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
   if (formDataLoading) {
     return (
-      <div className="space-y-6">        
+      <div className="flex items-center justify-center py-20">
         <Loader text="Loading..." />
       </div>
     );
