@@ -32,7 +32,7 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
   try {
     // Pre-validate for duplicates with client-specific checking
     const studentIds = rawData.map(row => String(row.studentId).trim());
-    const { duplicates, errors: duplicateErrors } = await checkBulkStudentIdDuplicates(studentIds, clientId);
+    const { duplicates, errors: duplicateErrors } = await checkBulkStudentIdDuplicates(studentIds, clientId, clientTypeId);
     
     if (duplicateErrors.length > 0) {
       result.errors.push(...duplicateErrors);
@@ -73,7 +73,8 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
         headers: { path: 'bulk-get-existing', 'client-id': clientId },
         body: {
           studentIds: validData.map(row => String(row.studentId).trim()),
-          client_id: clientId
+          client_id: clientId,
+          client_type_id: clientTypeId || null
         }
       }
     );

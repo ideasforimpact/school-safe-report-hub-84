@@ -168,7 +168,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
       lastValidatedId.current = debouncedStudentId;
       setIsCheckingStudentId(true);
       try {
-        const exists = await checkStudentIdExists(debouncedStudentId, employeeData.clientId);
+        const exists = await checkStudentIdExists(debouncedStudentId, employeeData.clientId, employeeData.clientType?.id);
         setStudentIdExists(exists);
         setStudentIdValidationMessage(
           exists ? `${lang.labels.memberId} already exists` : `${lang.labels.memberId} is available`
@@ -182,7 +182,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
     };
 
     validateStudentId();
-  }, [debouncedStudentId, employeeData?.clientId, defaultValues?.studentId]);
+  }, [debouncedStudentId, employeeData?.clientId, employeeData?.clientType?.id, defaultValues?.studentId]);
 
   // Student ID validation function (alphanumeric, max 15 characters)
   const isValidStudentId = (studentId: string) => {

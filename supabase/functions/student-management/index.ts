@@ -642,7 +642,8 @@ async function validateEducationalStructure(campus: string, grade: string, secti
 async function handleValidateImport(body: any, corsHeaders: Record<string, string>) {
   const students = body.students || [];
   const clientId = body.client_id;
-  
+  const clientTypeId = body.client_type_id;
+
   if (!Array.isArray(students) || students.length === 0) {
     return new Response(
       JSON.stringify({ error: "No student data provided" }),
@@ -691,36 +692,48 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
     );
   }
 
-  // Fetch all valid campuses, grades and sections for this client
+  // Fetch all valid campuses, grades and sections for this client, scoped by
+  // client_type_id too (when provided) so structure belonging to a different
+  // client type (e.g. institute vs school) for the same client_id isn't
+  // treated as valid/available here — matching handleGetFormData/handleListStudents.
   let campusQuery = supabaseClient.from("campuses").select("id, name");
   if (clientId) {
     campusQuery = campusQuery.eq("client_id", clientId);
   }
+  if (clientTypeId) {
+    campusQuery = campusQuery.eq("client_type_id", clientTypeId);
+  }
   const { data: campusData, error: campusError } = await campusQuery;
-  
+
   if (campusError) {
     return new Response(
       JSON.stringify({ error: "Database error while validating campuses" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-  
+
   let gradeQuery = supabaseClient.from("grades").select("id, name, campus_id");
   if (clientId) {
     gradeQuery = gradeQuery.eq("client_id", clientId);
   }
+  if (clientTypeId) {
+    gradeQuery = gradeQuery.eq("client_type_id", clientTypeId);
+  }
   const { data: gradeData, error: gradeError } = await gradeQuery;
-  
+
   if (gradeError) {
     return new Response(
       JSON.stringify({ error: "Database error while validating grades" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-  
+
   let sectionQuery = supabaseClient.from("sections").select("id, name, grade_id");
   if (clientId) {
     sectionQuery = sectionQuery.eq("client_id", clientId);
+  }
+  if (clientTypeId) {
+    sectionQuery = sectionQuery.eq("client_type_id", clientTypeId);
   }
   const { data: sectionData, error: sectionError } = await sectionQuery;
   
@@ -1338,8 +1351,8 @@ async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) 
 }
 
 async function handleValidateId(body: any, corsHeaders: Record<string, string>) {
-  const { studentId, client_id } = body;
-  
+  const { studentId, client_id, client_type_id } = body;
+
   if (!studentId || !client_id) {
     return new Response(
       JSON.stringify({ error: "Student ID and Client ID are required" }),
@@ -1348,12 +1361,20 @@ async function handleValidateId(body: any, corsHeaders: Record<string, string>) 
   }
 
   try {
-    const { data, error } = await supabaseClient
+    // Scoped by client_type_id too (when provided), so a student ID that only
+    // exists under a different client type (e.g. institute vs school) for the
+    // same client_id isn't flagged as a duplicate here.
+    let idQuery = supabaseClient
       .from('students')
       .select('id')
       .eq('student_id', studentId)
-      .eq('client_id', client_id)
-      .maybeSingle();
+      .eq('client_id', client_id);
+
+    if (client_type_id) {
+      idQuery = idQuery.eq('client_type_id', client_type_id);
+    }
+
+    const { data, error } = await idQuery.maybeSingle();
 
     if (error) throw error;
 
@@ -1419,7 +1440,7 @@ async function handleGetFormData(body: any, corsHeaders: Record<string, string>)
 }
 
 async function handleBulkCheckIds(body: any, corsHeaders: Record<string, string>) {
-  const { studentIds, client_id } = body;
+  const { studentIds, client_id, client_type_id } = body;
 
   if (!studentIds || !Array.isArray(studentIds) || !client_id) {
     return new Response(
@@ -1431,10 +1452,18 @@ async function handleBulkCheckIds(body: any, corsHeaders: Record<string, string>
   try {
     // Fetch all of this client's student IDs and compare case-insensitively -
     // PostgREST's .in() is an exact match, so "stu001" wouldn't match "STU001".
-    const { data, error } = await supabaseClient
+    // Also scoped by client_type_id (when provided), matching handleListStudents,
+    // so a student ID under a different client type isn't treated as a duplicate.
+    let idsQuery = supabaseClient
       .from('students')
       .select('student_id')
       .eq('client_id', client_id);
+
+    if (client_type_id) {
+      idsQuery = idsQuery.eq('client_type_id', client_type_id);
+    }
+
+    const { data, error } = await idsQuery;
 
     if (error) throw error;
 
@@ -1455,7 +1484,7 @@ async function handleBulkCheckIds(body: any, corsHeaders: Record<string, string>
 }
 
 async function handleBulkGetExisting(body: any, corsHeaders: Record<string, string>) {
-  const { studentIds, client_id } = body;
+  const { studentIds, client_id, client_type_id } = body;
 
   if (!studentIds || !Array.isArray(studentIds) || !client_id) {
     return new Response(
@@ -1467,10 +1496,18 @@ async function handleBulkGetExisting(body: any, corsHeaders: Record<string, stri
   try {
     // Fetch all of this client's students and match case-insensitively in JS -
     // PostgREST's .in() is an exact match, so "stu001" wouldn't match "STU001".
-    const { data, error } = await supabaseClient
+    // Scoped by client_type_id (when provided) so a student under a different
+    // client type isn't mistaken for an existing record to update.
+    let existingQuery = supabaseClient
       .from('students')
       .select('id, student_id')
       .eq('client_id', client_id);
+
+    if (client_type_id) {
+      existingQuery = existingQuery.eq('client_type_id', client_type_id);
+    }
+
+    const { data, error } = await existingQuery;
 
     if (error) throw error;
 
