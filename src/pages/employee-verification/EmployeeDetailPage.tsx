@@ -215,7 +215,7 @@ const EmployeeDetailPage = () => {
     setIsDocumentRefreshing(true);
     try {
       console.log('Refetching documents for employee:', employeeId);
-      const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter);
+      const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter, true);
       setDocuments(refreshedDocuments);
       console.log('Documents refetched successfully');
     } catch (error) {
@@ -251,7 +251,7 @@ const EmployeeDetailPage = () => {
       console.log('Refresh button clicked for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
       setIsRefreshing(true);
       try {
-        const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter);
+        const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter, true);
         setDocuments(refreshedDocuments);
         console.log('Documents refreshed for employee:', employeeId);
         
