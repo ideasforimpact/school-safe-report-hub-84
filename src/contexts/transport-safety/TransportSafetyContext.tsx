@@ -368,8 +368,35 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     toast.success(status === 'verified' ? 'Document verified successfully' : 'Document verification failed');
   };
 
+  const applySingleVehicleUpdate = useCallback(async (vehicleId: string) => {
+    try {
+      const refreshed = await getVehicleById(vehicleId, clientIdRef.current);
+      if (!refreshed) { await fetchVehicles(); return; }
+      if (refreshed.clientId !== clientIdRef.current) return;
+
+      setVehicles(prev => {
+        const exists = prev.some(v => v.id === refreshed.id);
+        return exists ? prev.map(v => (v.id === refreshed.id ? refreshed : v)) : [refreshed, ...prev];
+      });
+    } catch {
+      await fetchVehicles();
+    }
+  }, [fetchVehicles]);
+
+  // Realtime broadcasts one event per changed row, so a bulk import inserting
+  // N rows fires N events in quick succession. Coalesce bursts like that into
+  // a single list refresh instead of one getVehicleById fetch per row.
+  const pendingVehicleIdsRef = useRef<Set<string>>(new Set());
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+    };
+  }, []);
+
   const handleVehicleUpdate = useCallback(
-    async (payload: RealtimePostgresChangesPayload<VehicleRealtimeRow>) => {
+    (payload: RealtimePostgresChangesPayload<VehicleRealtimeRow>) => {
       const event = payload.eventType;
       const newVehicle = payload.new as Partial<VehicleRealtimeRow> | undefined;
       const oldVehicle = payload.old as Partial<VehicleRealtimeRow> | undefined;
@@ -383,22 +410,21 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       }
 
       const vehicleId = newVehicle?.id || oldVehicle?.id || null;
-      if (!vehicleId) { await fetchVehicles(); return; }
+      if (!vehicleId) { fetchVehicles(); return; }
 
-      try {
-        const refreshed = await getVehicleById(vehicleId, clientIdRef.current);
-        if (!refreshed) { await fetchVehicles(); return; }
-        if (refreshed.clientId !== clientIdRef.current) return;
-
-        setVehicles(prev => {
-          const exists = prev.some(v => v.id === refreshed.id);
-          return exists ? prev.map(v => (v.id === refreshed.id ? refreshed : v)) : [refreshed, ...prev];
-        });
-      } catch {
-        await fetchVehicles();
-      }
+      pendingVehicleIdsRef.current.add(vehicleId);
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      realtimeDebounceRef.current = setTimeout(() => {
+        const ids = Array.from(pendingVehicleIdsRef.current);
+        pendingVehicleIdsRef.current.clear();
+        if (ids.length === 1) {
+          applySingleVehicleUpdate(ids[0]);
+        } else if (ids.length > 1) {
+          fetchVehicles();
+        }
+      }, 250);
     },
-    [fetchVehicles],
+    [fetchVehicles, applySingleVehicleUpdate],
   );
 
   useRealTimeSubHook({

@@ -441,6 +441,59 @@ serve(async (req) => {
         });
       }
 
+      // ── bulk_create (vehicle import) ────────────────────────────────────────
+      if (operation === 'bulk_create') {
+        const { vehicles, clientId } = body;
+
+        if (!Array.isArray(vehicles) || vehicles.length === 0) {
+          return new Response(JSON.stringify({ vehicles: [] }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (clientId) {
+          const ipValidation = await validateIPWhitelist(supabase, req, clientId, url.pathname);
+          if (!ipValidation.allowed) {
+            return new Response(
+              JSON.stringify({ error: 'IP_NOT_WHITELISTED', message: 'Access denied. Your IP address is not whitelisted for this client.' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            );
+          }
+        }
+
+        const processedRows = vehicles.map((v: any) => ({
+          ...v,
+          year: v.year ? parseInt(v.year) : null,
+          capacity: v.capacity ? parseInt(v.capacity) : null,
+          employee_id: v.employee_id || null,
+        }));
+
+        const employeeIds = Array.from(
+          new Set(processedRows.map((v: any) => v.employee_id).filter(Boolean)),
+        );
+        if (employeeIds.length > 0) {
+          const { data: employeesFound, error: empError } = await supabase
+            .from('employees')
+            .select('id')
+            .in('id', employeeIds);
+          if (empError) throw empError;
+          const foundIds = new Set((employeesFound || []).map((e: any) => e.id));
+          const missing = employeeIds.some((id) => !foundIds.has(id));
+          if (missing) {
+            return new Response(JSON.stringify({ error: 'Invalid employee_id provided' }), {
+              status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+
+        const { error } = await supabase.from('vehicles').insert(processedRows);
+        if (error) throw error;
+
+        return new Response(JSON.stringify({ success: true, count: processedRows.length }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       // ── update ─────────────────────────────────────────────────────────────
       if (operation === 'update') {
         const { id, updates } = body;
