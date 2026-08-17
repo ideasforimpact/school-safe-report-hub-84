@@ -19,7 +19,7 @@ const requiredFields: (keyof RawStudentData)[] = [
  * Validate Excel/CSV data to ensure all required fields are present and valid
  * Now includes client-specific duplicate student ID checking
  */
-export const validateExcelData = async (data: RawStudentData[], clientId?: string): Promise<{
+export const validateExcelData = async (data: RawStudentData[], clientId?: string, clientTypeId?: string): Promise<{
   errors: string[];
   warnings: string[];
   skippedRowNumbers: Set<number>;
@@ -102,7 +102,7 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
   }
 
   // Check for existing student IDs in the database
-  const { duplicates, errors: duplicateErrors } = await checkBulkStudentIdDuplicates(studentIdsToCheck, clientId);
+  const { duplicates, errors: duplicateErrors } = await checkBulkStudentIdDuplicates(studentIdsToCheck, clientId, clientTypeId);
   
   // Add duplicate check errors
   errors.push(...duplicateErrors);
@@ -140,7 +140,8 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
           section: String(row.section),
           campus: String(row.campus)
         })),
-        client_id: clientId
+        client_id: clientId,
+        client_type_id: clientTypeId
       }
     });
 

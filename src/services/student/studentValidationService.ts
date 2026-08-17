@@ -1,14 +1,14 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export const checkStudentIdExists = async (studentId: string, clientId: string): Promise<boolean> => {
+export const checkStudentIdExists = async (studentId: string, clientId: string, clientTypeId?: string): Promise<boolean> => {
   try {
     if (!studentId || !clientId) {
       return false;
     }
 
     const { data, error } = await supabase.functions.invoke('student-management', {
-      body: { studentId, client_id: clientId },
+      body: { studentId, client_id: clientId, client_type_id: clientTypeId },
       headers: { path: 'validate-id' }
     });
 
@@ -28,8 +28,9 @@ export const checkStudentIdExists = async (studentId: string, clientId: string):
  * Bulk check for duplicate student IDs within a client
  */
 export const checkBulkStudentIdDuplicates = async (
-  studentIds: string[], 
-  clientId: string
+  studentIds: string[],
+  clientId: string,
+  clientTypeId?: string
 ): Promise<{ duplicates: string[], errors: string[] }> => {
   try {
     if (!studentIds || studentIds.length === 0 || !clientId) {
@@ -38,13 +39,13 @@ export const checkBulkStudentIdDuplicates = async (
 
     // Remove empty or invalid student IDs and create unique list
     const validStudentIds = [...new Set(studentIds.filter(id => id && typeof id === 'string' && id.trim()))];
-    
+
     if (validStudentIds.length === 0) {
       return { duplicates: [], errors: [] };
     }
 
     const { data, error } = await supabase.functions.invoke('student-management', {
-      body: { studentIds: validStudentIds, client_id: clientId },
+      body: { studentIds: validStudentIds, client_id: clientId, client_type_id: clientTypeId },
       headers: { path: 'bulk-check-ids' }
     });
 

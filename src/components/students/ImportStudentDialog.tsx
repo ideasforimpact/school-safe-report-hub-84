@@ -75,7 +75,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     setValidationWarnings([]);
 
     try {
-      const { errors, warnings, skippedRowNumbers } = await validateExcelData(structuredClone(data), employeeData.clientId);
+      const { errors, warnings, skippedRowNumbers } = await validateExcelData(structuredClone(data), employeeData.clientId, employeeData.clientType?.id);
       setValidationErrors(errors);
       setValidationWarnings(warnings);
       const mergedSkippedRows = new Set<number>([
