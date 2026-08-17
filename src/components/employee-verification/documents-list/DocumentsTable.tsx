@@ -99,6 +99,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   };
 
   const getDrivingLicenseDoe = (doc: VerificationDocument): string | undefined => {
+    const successLog = doc.latestSuccessLog;
+    if (successLog?.response && (successLog.response.success === true || successLog.response.status_code === 200)) {
+      const raw = successLog.response?.data;
+      const data = raw?.data?.data || raw?.data || raw;
+      if (data?.doe) return data.doe;
+    }
+
+    // Fallback for documents not yet written to employee_verification_audit_log.
     const govLog = doc.employee_docs_log?.find(log =>
       log.response && (log.response.success === true || log.response.status_code === 200)
     );

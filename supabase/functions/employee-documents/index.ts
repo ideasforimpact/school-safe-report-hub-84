@@ -674,6 +674,25 @@ async function handleListDocuments(employeeId: string, clientId: string | null, 
     const { data, error } = await query;
     if (error) throw error;
 
+    // Join the latest successful verification response per document (quickekyc/surepass
+    // providers write this on every API verification call — see _shared/verificationAuditlog.ts)
+    const documentIds = data.map(doc => doc.id);
+    const latestSuccessLogByDocId: Record<string, unknown> = {};
+    if (documentIds.length > 0) {
+      const { data: auditRows, error: auditError } = await supabase
+        .from('employee_verification_audit_log')
+        .select('document_id, latest_success_log')
+        .in('document_id', documentIds);
+
+      if (auditError) {
+        console.error('Error fetching employee verification audit logs:', auditError);
+      } else {
+        for (const row of auditRows || []) {
+          latestSuccessLogByDocId[row.document_id] = row.latest_success_log;
+        }
+      }
+    }
+
     const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL') ||
       `${Deno.env.get('SUPABASE_URL') || ''}/storage/v1/object/public`;
 
@@ -700,6 +719,7 @@ async function handleListDocuments(employeeId: string, clientId: string | null, 
         apiVerificationDate: doc.api_verification_date || null,
         apiVerificationMethod: doc.api_verification_method || null,
         params: doc.params || {}, // Include params in the response
+        latestSuccessLog: latestSuccessLogByDocId[doc.id] || null,
         employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
         documents_files: Array.isArray(doc.documents_files) ? doc.documents_files : [],
         comments: Array.isArray(doc.comments) ? doc.comments : [],

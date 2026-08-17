@@ -31,6 +31,7 @@ const mapEdgeDocument = (doc: Record<string, unknown>): VerificationDocument => 
   apiVerificationDate: doc.apiVerificationDate || undefined,
   apiVerificationMethod: doc.apiVerificationMethod || undefined,
   params: doc.params || {},
+  latestSuccessLog: (doc.latestSuccessLog as VerificationDocument['latestSuccessLog']) || null,
   employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
   documents_files: Array.isArray(doc.documents_files) ? doc.documents_files : [],
   comments: Array.isArray(doc.comments) ? doc.comments : [],
