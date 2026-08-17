@@ -606,41 +606,18 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         {/* Feature 2: secondary super admins (edit view only). The header
             and "+" button now live above (inline with the primary input).
             This component renders only the input rows.
- 
-            onChange wrapper auto-adds each secondary email's domain to the
-            superAdminAllowedDomains list (capped at 3) so the two lists
-            stay in sync without the user having to manage them separately.
-            Cap behavior: if adding would exceed the domain cap, the
-            secondary email is still saved but the domain is skipped (the
-            user can clean up the Authentication tab manually).
 
+            Deliberately does NOT touch superAdminAllowedDomains — both domain
+            lists are entered by hand on the Authentication step. Auto-adding
+            here meant a domain the user removed there reappeared on the very
+            next keystroke.
          */}
         <SecondarySuperAdminEmailList
           emails={formData.secondarySuperAdminEmails || []}
           onChange={(emails) => {
-            const MAX_SUPER_ADMIN_DOMAINS = 3;
-            const currentDomains = formData.superAdminAllowedDomains || [];
-            const nextDomains = [...currentDomains];
-            for (const email of emails) {
-              const trimmed = (email || '').trim();
-              if (!trimmed || !isValidEmail(trimmed)) continue;
-              const domain = trimmed.split('@')[1]?.toLowerCase();
-              if (!domain) continue;
-              const already = nextDomains.some(
-                d => d.toLowerCase() === domain
-              );
-              if (already) continue;
-              if (nextDomains.length >= MAX_SUPER_ADMIN_DOMAINS) {
-                // Silently skip — admin can add manually if needed.
-                continue;
-              }
-              nextDomains.push(domain);
-            }
-            const domainsChanged = nextDomains.length !== currentDomains.length;
             setFormData({
               ...formData,
               secondarySuperAdminEmails: emails,
-              ...(domainsChanged ? { superAdminAllowedDomains: nextDomains } : {}),
             });
           }}
           isEdit={isEdit}
