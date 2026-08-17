@@ -12,7 +12,6 @@ import { toast } from 'sonner';
 import { AssessmentQuestion, QuestionFile } from '@/types/assessment';
 import { templateService } from '@/services/assessment/templateService';
 import { FileItem } from '@/types/fileTypes';
-import { supabase } from '@/integrations/supabase/client';
 import Loader from "@/components/common/Loader";
 import { ASSESSMENT_TITLE } from '@/components/constants';
 
@@ -68,17 +67,19 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       setIsActive(template.isActive);
 
       if (template.category_id) {
-        const { data, error } = await supabase
-          .from('template_categories')
-          .select('name')
-          .eq('id', template.category_id)
-          .maybeSingle();
-
-        if (!error && data?.name && isMounted) {
-          setType(data.name.trim());
-        } else if (isMounted) {
-          const fallback = (template.type || '').trim();
-          setType(fallback.toLowerCase() !== 'unknown' ? fallback : '');
+        try {
+          const name = await templateService.getTemplateCategoryName(template.category_id);
+          if (name && isMounted) {
+            setType(name.trim());
+          } else if (isMounted) {
+            const fallback = (template.type || '').trim();
+            setType(fallback.toLowerCase() !== 'unknown' ? fallback : '');
+          }
+        } catch {
+          if (isMounted) {
+            const fallback = (template.type || '').trim();
+            setType(fallback.toLowerCase() !== 'unknown' ? fallback : '');
+          }
         }
       } else {
         const fallback = (template.type || '').trim();
