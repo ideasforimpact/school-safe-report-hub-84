@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock, File, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import GovernmentEmblemIcon from '@/components/ui/GovernmentEmblemIcon';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ import {
 import { VerificationDocument } from '@/types/employeeVerification';
 import VerificationStatusBadge from '../VerificationStatusBadge';
 import { getDocumentIcon, formatDocumentTypeName, getManualVerificationDisplayName } from '../utils/documentUtils';
+import { DOCUMENT_STATUS_NAME, VERIFIED_BY_LABEL } from '@/constant/documentVerificationConstant';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import {formatDate} from '@/lib/Dateformat';
@@ -399,7 +401,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
             {sortDocumentsByStatus(documents).map((doc) => {
               const statusName = getDocumentStatusName(doc);
               const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-              const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
+              const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === DOCUMENT_STATUS_NAME.GOVERNANCE;
               const docType = doc.documentTypeName?.toLowerCase();
               const showCommentsIcon = docType === 'other' && hasVerificationHistory(doc);
               const hasVerifyApi =
@@ -581,7 +583,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
 
                         // Only make badge clickable for "Verified by Government" (governance status)
                         // "Verified by Manual" should not be clickable
-                        const shouldBeClickable = doc.verificationStatus !== 'pending' && statusName === 'governance';
+                        const shouldBeClickable = doc.verificationStatus !== 'pending' && statusName === DOCUMENT_STATUS_NAME.GOVERNANCE;
                         
                         return (
                           <VerificationStatusBadge 
@@ -619,12 +621,18 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </TableCell>
                   {/* Verified by Column */}
                   <TableCell>
-                    {statusName === 'governance' ? (
-                      <span className="text-sm text-gray-900">Government</span>
-                    ) : statusName === 'backoffice' || statusName === 'completed' ? (
-                      <span className="text-sm text-gray-900">Backoffice Admin</span>
-                    ) : statusName === 'manual' || doc.verifiedByEmployeeId ? (
-                      <span className="text-sm text-gray-900">Manual</span>
+                    {statusName === DOCUMENT_STATUS_NAME.GOVERNANCE ? (
+                      <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-blue-100 text-blue-800 border-blue-200">
+                        {VERIFIED_BY_LABEL.GOVERNMENT}
+                      </Badge>
+                    ) : statusName === DOCUMENT_STATUS_NAME.BACKOFFICE || statusName === DOCUMENT_STATUS_NAME.COMPLETED ? (
+                      <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-purple-100 text-purple-800 border-purple-200">
+                        {VERIFIED_BY_LABEL.BACKOFFICE}
+                      </Badge>
+                    ) : statusName === DOCUMENT_STATUS_NAME.MANUAL || doc.verifiedByEmployeeId ? (
+                      <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-gray-100 text-gray-800 border-gray-200">
+                        {VERIFIED_BY_LABEL.MANUAL}
+                      </Badge>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}

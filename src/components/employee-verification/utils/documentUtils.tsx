@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { FileText, CreditCard, Car, Globe2 as Globe, FileCheck, Vote, File, Wallet } from 'lucide-react';
+import { DOCUMENT_STATUS_NAME } from '@/constant/documentVerificationConstant';
 
 export const getDocumentIcon = (documentType: string) => {
   switch (documentType) {
@@ -77,13 +78,13 @@ export const getDocumentTypeLabel = (documentType: string) => {
 
 export const getStatusDisplayName = (status: string) => {
   switch (status) {
-    case 'governance':
+    case DOCUMENT_STATUS_NAME.GOVERNANCE:
       return 'Governance';
-    case 'backoffice':
-      return 'Backoffice Admin';
-    case 'rejected':
+    case DOCUMENT_STATUS_NAME.BACKOFFICE:
+      return 'Backoffice';
+    case DOCUMENT_STATUS_NAME.REJECTED:
       return 'Rejected';
-    case 'pending':
+    case DOCUMENT_STATUS_NAME.PENDING:
       return 'Pending';
     default:
       return status.charAt(0).toUpperCase() + status.slice(1);
