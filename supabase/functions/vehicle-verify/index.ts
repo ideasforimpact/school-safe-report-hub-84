@@ -1017,7 +1017,15 @@ function computeDocumentStatusUpToDate(currentRcData: any): boolean {
   if (!data || typeof data !== 'object') return false;
 
   const now = new Date();
-  const fields = [data.insurance_upto, data.fit_up_to, data.pucc_upto];
+  // Electric vehicles (VAHAN fuel_type e.g. "PURE EV", "ELECTRIC(BOV)") are exempt from PUC —
+  // a missing pucc_upto isn't staleness. Hybrids ("STRONG HYBRID EV") still have an engine
+  // and need PUC, so they're excluded even though their fuel_type also contains "EV".
+  const fuelTypeValue = typeof data.fuel_type === 'string' ? data.fuel_type.toUpperCase() : '';
+  const isElectric = !fuelTypeValue.includes('HYBRID') &&
+    (fuelTypeValue.includes('ELECTRIC') || fuelTypeValue.includes('BOV') || /\bEV\b/.test(fuelTypeValue));
+  const fields = isElectric
+    ? [data.insurance_upto, data.fit_up_to]
+    : [data.insurance_upto, data.fit_up_to, data.pucc_upto];
 
   for (const value of fields) {
     if (!value) return false;

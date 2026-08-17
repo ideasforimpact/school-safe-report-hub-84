@@ -1,12 +1,11 @@
 import { parseVehicleFile } from './excelVehicleProcess';
-import { supabase } from '@/integrations/supabase/client';
 import { validateVehicleRows } from './importVehicleValidation';
-import { checkExistingRegistrations, fetchVehicleTypeMap } from '../transport-safety/vehicleService';
+import { checkExistingRegistrations, fetchVehicleTypeMap, bulkCreateVehicles } from '../transport-safety/vehicleService';
 
 export const validateVehicleExcel = async (
   file: File,
   clientId: string
-): Promise<{ errors: string[]; warnings: string[] }> => {
+): Promise<{ errors: string[]; warnings: string[]; existingRegs: string[] }> => {
   const rawData = await parseVehicleFile(file);
 
   const errors = validateVehicleRows(rawData);
@@ -34,8 +33,9 @@ export const validateVehicleExcel = async (
     }
   });
 
+  let existingRegs: string[] = [];
   if (normalizedRegs.length > 0) {
-    const existingRegs = await checkExistingRegistrations(
+    existingRegs = await checkExistingRegistrations(
       normalizedRegs,
       clientId
     );
@@ -50,14 +50,15 @@ export const validateVehicleExcel = async (
     });
   }
 
-  return { errors, warnings };
+  return { errors, warnings, existingRegs };
 };
 
 
 export const importVehicles = async (
   file: File,
   clientId: string,
-  employeeId: string
+  employeeId: string,
+  knownExistingRegs?: string[]
 ): Promise<{ skippedVehicles: string[] }> => {
   const vehicles = await parseVehicleFile(file);
   const normalizedRegs = vehicles
@@ -68,7 +69,10 @@ export const importVehicles = async (
     )
     .filter(Boolean);
 
-  const existingRegs = await checkExistingRegistrations(
+  // The Verify step (validateVehicleExcel) already ran this same check against
+  // the same file/clientId — reuse its result instead of hitting
+  // check_existing_registrations again for the Import click.
+  const existingRegs = knownExistingRegs ?? await checkExistingRegistrations(
     normalizedRegs,
     clientId
   );
@@ -145,11 +149,9 @@ export const importVehicles = async (
   }).filter((v): v is NonNullable<typeof v> => Boolean(v));
 
   if (payload.length > 0) {
-    const { error } = await supabase
-      .from('vehicles')
-      .insert(payload);
-
-    if (error) {
+    try {
+      await bulkCreateVehicles(payload, clientId);
+    } catch (error) {
       console.error(error);
       throw new Error('Failed to import vehicles');
     }

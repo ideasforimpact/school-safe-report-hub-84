@@ -51,6 +51,7 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+    const [verifiedExistingRegs, setVerifiedExistingRegs] = useState<string[]>([]);
 
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +63,7 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
         setIsLoading(false);
         setValidationErrors([]);
         setValidationWarnings([]);
+        setVerifiedExistingRegs([]);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -137,6 +139,7 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
             setSelectedFile(safeFile);
             setIsVerified(false);
             setValidationErrors([]);
+            setVerifiedExistingRegs([]);
             toast.success('File uploaded successfully');
         } catch (err: unknown) {
             console.error('Could not read file:', err);
@@ -157,6 +160,7 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
         setSelectedFile(null);
         setIsVerified(false);
         setValidationErrors([]);
+        setVerifiedExistingRegs([]);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -171,13 +175,14 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
         setIsVerifying(true);
         setValidationErrors([]);
         try {
-            const { errors, warnings } = await validateVehicleExcel(
+            const { errors, warnings, existingRegs } = await validateVehicleExcel(
                 selectedFile,
                 employeeData.clientId,
             );
 
             setValidationErrors(errors);
             setValidationWarnings(warnings);
+            setVerifiedExistingRegs(existingRegs);
 
             // Verified if NO blocking errors
             setIsVerified(errors.length === 0);
@@ -203,6 +208,7 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
                 selectedFile,
                 employeeData.clientId,
                 employeeData.id,
+                verifiedExistingRegs,
             );
 
             toast.success('Vehicles imported successfully');

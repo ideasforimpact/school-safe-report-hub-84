@@ -165,7 +165,8 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
         const fcStatus = getDocumentStatus(vehicle, 'fitness').status;
         const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
         const isStrictValid =
-          insuranceStatus === 'valid' && fcStatus === 'valid' && pollutionStatus === 'valid';
+          insuranceStatus === 'valid' && fcStatus === 'valid' &&
+          (pollutionStatus === 'valid' || pollutionStatus === 'not_applicable');
 
         if (documentStatusFilters.valid && !documentStatusFilters.expired && !documentStatusFilters.expiring_soon) {
           matchesDocumentStatus = isStrictValid;

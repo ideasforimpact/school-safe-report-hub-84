@@ -55,6 +55,8 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
         return <FileX className="h-4 w-4 text-red-600" />;
       case 'expiring_soon':
         return <ShieldAlert className="h-4 w-4 text-yellow-600" />;
+      case 'not_applicable':
+        return <FileCheck className="h-4 w-4 text-green-600" />;
       default:
         return <FileX className="h-4 w-4 text-gray-400" />;
     }

@@ -95,7 +95,9 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     return {
       insurance: insuranceStatus === 'missing' ? 'expired' : insuranceStatus,
       fitness: fcStatus === 'missing' ? 'expired' : fcStatus,
-      pollution: pollutionStatus === 'missing' ? 'expired' : pollutionStatus
+      pollution: pollutionStatus === 'not_applicable'
+        ? 'not applicable'
+        : (pollutionStatus === 'missing' ? 'expired' : pollutionStatus)
     };
   };
   

@@ -360,6 +360,31 @@ export const addVehicle = async (
   return data.vehicle ? mapVehicle(data.vehicle) : null;
 };
 
+// ─── Bulk create vehicles (import) ───────────────────────────────────────────
+
+export interface VehicleImportRow {
+  registration_number: string;
+  internal_vehicle_name: string;
+  type: string;
+  make: string;
+  model: string;
+  year: number | null;
+  status: string;
+  capacity: number | null;
+  driver: string;
+  route: string;
+  active: boolean;
+  client_id: string;
+  employee_id: string;
+}
+
+export const bulkCreateVehicles = async (
+  vehicles: VehicleImportRow[],
+  clientId: string,
+): Promise<void> => {
+  await invokeVehicles('bulk_create', { vehicles, clientId });
+};
+
 // ─── Update a vehicle ─────────────────────────────────────────────────────────
 
 export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Promise<Vehicle | null> => {
@@ -422,18 +447,43 @@ export const checkExistingRegistrations = async (
   return data.registrationNumbers || [];
 };
 
+// Vehicle types change rarely within a session — dedupe the several independent
+// call sites (import, template downloads) that all hit list_vehicle_types.
+const VEHICLE_TYPES_DEDUPE_MS = 60_000;
+let vehicleTypesInflight: Promise<{ id: string; name: string }[]> | null = null;
+let vehicleTypesRecent: RecentValue<{ id: string; name: string }[]> | null = null;
+
+const fetchVehicleTypesRaw = async (): Promise<{ id: string; name: string }[]> => {
+  if (vehicleTypesRecent && Date.now() - vehicleTypesRecent.at < VEHICLE_TYPES_DEDUPE_MS) {
+    return vehicleTypesRecent.value;
+  }
+  if (vehicleTypesInflight) return vehicleTypesInflight;
+
+  const request = (async () => {
+    const data = await invokeVehicles<{ vehicleTypes: { id: string; name: string }[] }>('list_vehicle_types');
+    const types = data.vehicleTypes || [];
+    vehicleTypesRecent = { at: Date.now(), value: types };
+    return types;
+  })().finally(() => {
+    vehicleTypesInflight = null;
+  });
+
+  vehicleTypesInflight = request;
+  return request;
+};
+
 export const fetchVehicleTypeMap = async (): Promise<Record<string, string>> => {
-  const data = await invokeVehicles<{ vehicleTypes: { id: string; name: string }[] }>('list_vehicle_types');
+  const types = await fetchVehicleTypesRaw();
   const map: Record<string, string> = {};
-  (data.vehicleTypes || []).forEach(v => {
+  types.forEach(v => {
     map[v.name.trim().toUpperCase()] = v.id;
   });
   return map;
 };
 
 export const fetchVehicleTypes = async (): Promise<string[]> => {
-  const data = await invokeVehicles<{ vehicleTypes: { id: string; name: string }[] }>('list_vehicle_types');
-  return (data.vehicleTypes || []).map(v => v.name.trim());
+  const types = await fetchVehicleTypesRaw();
+  return types.map(v => v.name.trim());
 };
 
 // ─── Get vehicle challans ─────────────────────────────────────────────────────
