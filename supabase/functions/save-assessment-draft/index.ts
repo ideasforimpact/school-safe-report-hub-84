@@ -3,15 +3,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 import { triggerImmediateEmailProcessing } from '../_shared/triggerEmailProcessing.ts';
 import { renderAssessmentTemplate } from '../_shared/assessmentNotificationTemplates.ts';
-import { getFrontendUrl } from '../_shared/env.ts';
-import {
-  getAssessmentCorsHeaders,
-  jsonError,
-  jsonOk,
-  recomputeAssessmentAggregate,
-} from '../_shared/assessmentAssignees.ts';
 
-const corsHeaders = getAssessmentCorsHeaders();
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, path, id, client-id",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+};
 
 const supabaseClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -37,7 +34,10 @@ serve(async (req) => {
       const url = new URL(req.url);
       const ipValidation = await validateIPWhitelist(supabaseClient, req, clientIdForValidation, url.pathname);
       if (!ipValidation.allowed) {
-        return jsonError("IP_NOT_WHITELISTED: Access denied. Your IP address is not whitelisted.", 403);
+        return new Response(
+          JSON.stringify({ error: 'IP_NOT_WHITELISTED', message: 'Access denied. Your IP address is not whitelisted.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
     switch (path) {
@@ -48,37 +48,27 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error("Error processing request:", error);
-    return jsonError((error as Error).message);
+    return new Response(
+      JSON.stringify({ error: (error as Error).message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
-
-// ─── shared lookup ─────────────────────────────────────────────────────────────
-
-async function resolveAssessment(assessment_id: number, client_id: string) {
-  return supabaseClient
-    .from("assessments")
-    .select("id, name, created_by")
-    .eq("assessment_id", assessment_id)
-    .eq("client_id", client_id)
-    .single();
-}
 
 // ─── draft ───────────────────────────────────────────────────────────────────
 
 async function handleDraft(body: any): Promise<Response> {
-  const { assessment_id, client_id, employee_id, status, answers, submit_comment, submit_attachment } = body;
+  const { assessment_id, client_id, status, answers, submit_comment, submit_attachment } = body;
 
-  if (!assessment_id || !client_id || !employee_id) {
-    return jsonError("assessment_id, client_id, and employee_id are required", 400);
-  }
-
-  const { data: assessment, error: assessmentError } = await resolveAssessment(assessment_id, client_id);
-  if (assessmentError || !assessment) {
-    return jsonError(assessmentError?.message || "Assessment not found");
+  if (!assessment_id || !client_id) {
+    return new Response(
+      JSON.stringify({ error: "assessment_id and client_id are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   const { data, error } = await supabaseClient
-    .from("assessment_assignees")
+    .from("assessments")
     .update({
       status,
       answers,
@@ -86,34 +76,39 @@ async function handleDraft(body: any): Promise<Response> {
       submit_attachment: submit_attachment ?? null,
       updated_at: new Date().toISOString(),
     })
-    .eq("assessment_id", assessment.id)
-    .eq("employee_id", employee_id)
+    .eq("assessment_id", assessment_id)
+    .eq("client_id", client_id)
     .select()
     .single();
 
   if (error) {
-    return jsonError(error.message);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
-  return jsonOk({ assessment: data });
+  return new Response(
+    JSON.stringify({ assessment: data }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
 
 // ─── submit ──────────────────────────────────────────────────────────────────
 
 async function handleSubmit(body: any): Promise<Response> {
-  const { assessment_id, client_id, employee_id, score, answers, submit_comment, submit_attachment, performed_by } = body;
+  const { assessment_id, client_id, score, answers, submit_comment, submit_attachment, performed_by, assessment_info } = body;
+  const base_url = Deno.env.get("SITE_URL") ?? "";
 
-  if (!assessment_id || !client_id || !employee_id) {
-    return jsonError("assessment_id, client_id, and employee_id are required", 400);
-  }
-
-  const { data: assessment, error: assessmentError } = await resolveAssessment(assessment_id, client_id);
-  if (assessmentError || !assessment) {
-    return jsonError(assessmentError?.message || "Assessment not found");
+  if (!assessment_id || !client_id) {
+    return new Response(
+      JSON.stringify({ error: "assessment_id and client_id are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   const { error } = await supabaseClient
-    .from("assessment_assignees")
+    .from("assessments")
     .update({
       status: "Submitted",
       is_reworked: false,
@@ -123,117 +118,86 @@ async function handleSubmit(body: any): Promise<Response> {
       submit_attachment: submit_attachment ?? null,
       updated_at: new Date().toISOString(),
     })
-    .eq("assessment_id", assessment.id)
-    .eq("employee_id", employee_id);
+    .eq("assessment_id", assessment_id)
+    .eq("client_id", client_id);
 
   if (error) {
-    return jsonError(error.message);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
-  await recomputeAssessmentAggregate(supabaseClient, assessment.id);
-
-  if (assessment.created_by && performed_by) {
-    queueSubmittedNotification(
-      { id: assessment.id, name: assessment.name, created_by: assessment.created_by },
-      performed_by,
-      client_id,
-      getFrontendUrl()
-    ).catch(e => console.error("submit notification error:", e));
+  if (assessment_info?.created_by && performed_by) {
+    queueSubmittedNotification(assessment_info, performed_by, client_id, base_url)
+      .catch(e => console.error("submit notification error:", e));
   }
 
-  return jsonOk({ success: true });
+  return new Response(
+    JSON.stringify({ success: true }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
 
 // ─── complete ────────────────────────────────────────────────────────────────
 
-// Reviewed by the assessment's creator. Applies to every assignee who has
-// currently submitted their own copy — each assignee completes
-// independently, so "Complete" approves whichever submissions are pending
-// review rather than a single shared row.
 async function handleComplete(body: any): Promise<Response> {
   const { id, client_id, closure_comments, closure_attachment, completed_by, completed_on, performed_by, assessment_info } = body;
+  const base_url = Deno.env.get("SITE_URL") ?? "";
 
   if (!id || !client_id) {
-    return jsonError("id and client_id are required", 400);
+    return new Response(
+      JSON.stringify({ error: "id and client_id are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
-
-  const { data: submittedRows, error: fetchError } = await supabaseClient
-    .from("assessment_assignees")
-    .select("employee_id")
-    .eq("assessment_id", id)
-    .eq("status", "Submitted")
-    .is("unassigned_at", null);
-
-  if (fetchError) {
-    return jsonError(fetchError.message);
-  }
-
-  if (!submittedRows || submittedRows.length === 0) {
-    return jsonError("No submitted assignee found to complete", 400);
-  }
-
-  const completedOn = completed_on || new Date().toISOString();
 
   const { error } = await supabaseClient
-    .from("assessment_assignees")
+    .from("assessments")
     .update({
       status: "Completed",
       completed_by: completed_by || null,
-      completed_on: completedOn,
+      completed_on: completed_on || new Date().toISOString(),
       closure_comments: closure_comments || null,
       closure_attachment: closure_attachment ?? null,
       updated_at: new Date().toISOString(),
     })
-    .eq("assessment_id", id)
-    .eq("status", "Submitted")
-    .is("unassigned_at", null);
+    .eq("id", id)
+    .eq("client_id", client_id);
 
   if (error) {
-    return jsonError(error.message);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
-  await recomputeAssessmentAggregate(supabaseClient, id);
-
-  if (performed_by) {
-    const base_url = getFrontendUrl();
-    for (const row of submittedRows) {
-      queueCompletedNotification(id, { ...assessment_info, assigned_to: row.employee_id }, performed_by, client_id, base_url)
-        .catch(e => console.error("complete notification error:", e));
-    }
+  if (assessment_info?.assigned_to && performed_by) {
+    queueCompletedNotification(id, assessment_info, performed_by, client_id, base_url)
+      .catch(e => console.error("complete notification error:", e));
   }
 
-  return jsonOk({ success: true });
+  return new Response(
+    JSON.stringify({ success: true }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
 
 // ─── rework ──────────────────────────────────────────────────────────────────
 
-// Same "applies to every currently-submitted assignee" shape as complete —
-// sends back everyone who submitted for rework, independently of assignees
-// who haven't submitted anything yet.
 async function handleRework(body: any): Promise<Response> {
   const { id, client_id, rework_comments, rework_attachments, performed_by, assessment_info } = body;
+  const base_url = Deno.env.get("SITE_URL") ?? "";
 
   if (!id || !client_id) {
-    return jsonError("id and client_id are required", 400);
-  }
-
-  const { data: submittedRows, error: fetchError } = await supabaseClient
-    .from("assessment_assignees")
-    .select("employee_id")
-    .eq("assessment_id", id)
-    .eq("status", "Submitted")
-    .is("unassigned_at", null);
-
-  if (fetchError) {
-    return jsonError(fetchError.message);
-  }
-
-  if (!submittedRows || submittedRows.length === 0) {
-    return jsonError("No submitted assignee found to rework", 400);
+    return new Response(
+      JSON.stringify({ error: "id and client_id are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   const { error } = await supabaseClient
-    .from("assessment_assignees")
+    .from("assessments")
     .update({
       status: "Draft",
       is_reworked: true,
@@ -241,25 +205,25 @@ async function handleRework(body: any): Promise<Response> {
       rework_attachments: rework_attachments ?? null,
       updated_at: new Date().toISOString(),
     })
-    .eq("assessment_id", id)
-    .eq("status", "Submitted")
-    .is("unassigned_at", null);
+    .eq("id", id)
+    .eq("client_id", client_id);
 
   if (error) {
-    return jsonError(error.message);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
-  await recomputeAssessmentAggregate(supabaseClient, id);
-
-  if (performed_by) {
-    const base_url = getFrontendUrl();
-    for (const row of submittedRows) {
-      queueReworkNotification(id, { ...assessment_info, assigned_to: row.employee_id }, rework_comments, performed_by, client_id, base_url)
-        .catch(e => console.error("rework notification error:", e));
-    }
+  if (assessment_info?.assigned_to && performed_by) {
+    queueReworkNotification(id, assessment_info, rework_comments, performed_by, client_id, base_url)
+      .catch(e => console.error("rework notification error:", e));
   }
 
-  return jsonOk({ success: true });
+  return new Response(
+    JSON.stringify({ success: true }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
 
 // ─── notification helpers ─────────────────────────────────────────────────────

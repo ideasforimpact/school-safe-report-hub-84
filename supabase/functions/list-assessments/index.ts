@@ -1,15 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
-import {
-  buildAssigneeVisibilityFilter,
-  fetchAssigneeAssessmentIds,
-  getAssessmentCorsHeaders,
-  jsonError,
-  jsonOk,
-} from '../_shared/assessmentAssignees.ts';
 
-const corsHeaders = getAssessmentCorsHeaders();
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, path, id, client-id",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+};
 
 const supabaseClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -48,7 +45,10 @@ serve(async (req) => {
       const url = new URL(req.url);
       const ipValidation = await validateIPWhitelist(supabaseClient, req, clientIdForValidation, url.pathname);
       if (!ipValidation.allowed) {
-        return jsonError("IP_NOT_WHITELISTED: Access denied. Your IP address is not whitelisted.", 403);
+        return new Response(
+          JSON.stringify({ error: 'IP_NOT_WHITELISTED', message: 'Access denied. Your IP address is not whitelisted.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
     switch (path) {
@@ -62,7 +62,10 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error("Error processing request:", error);
-    return jsonError((error as Error).message);
+    return new Response(
+      JSON.stringify({ error: (error as Error).message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
 
@@ -91,38 +94,7 @@ interface AssessmentRow {
   is_reworked?: boolean;
   creator: PersonName | null;
   assignee: PersonName | null;
-  assessment_assignees: {
-    employee_id: string;
-    unassigned_at: string | null;
-    status: string;
-    answers: unknown;
-    score: number | null;
-    employee: PersonName | null;
-  }[] | null;
   template: { questions: unknown } | null;
-}
-
-/**
- * Resolves an assessment row's active assignees from assessment_assignees,
- * falling back to the legacy single assigned_to/assignee columns for rows
- * written before that table existed (or by a code path that regressed to
- * single-assignee writes) so they never show as unassigned.
- */
-function resolveActiveAssignees(row: Pick<AssessmentRow, 'assessment_assignees' | 'assigned_to' | 'assignee'>) {
-  const activeAssignees = (row.assessment_assignees || [])
-    .filter((a) => !a.unassigned_at)
-    .map((a) => ({
-      id: a.employee_id,
-      name: a.employee ? `${a.employee.first_name} ${a.employee.last_name}` : 'Unknown',
-    }));
-
-  if (activeAssignees.length > 0) return activeAssignees;
-
-  if (row.assigned_to && row.assignee) {
-    return [{ id: row.assigned_to, name: `${row.assignee.first_name} ${row.assignee.last_name}` }];
-  }
-
-  return activeAssignees;
 }
 
 interface ListResponse {
@@ -159,15 +131,11 @@ async function handleList(body: RequestBody): Promise<Response> {
   } = body;
 
   if (!client_id) {
-    return jsonError("client_id is required", 400);
+    return new Response(
+      JSON.stringify({ error: "client_id is required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
-
-  // One assessment can now have multiple assignees (assessment_assignees), so
-  // role-based visibility must also include assessments where this employee
-  // is an assignee but not the legacy single assessments.assigned_to.
-  const assigneeAssessmentIds = !is_admin && employee_id
-    ? await fetchAssigneeAssessmentIds(supabaseClient, employee_id)
-    : [];
 
   const buildBaseQuery = () =>
     supabaseClient
@@ -177,7 +145,6 @@ async function handleList(body: RequestBody): Promise<Response> {
         `template_id,created_at,score,answers,client_id,is_reworked,` +
         `creator:employees!assessments_created_by_fkey(first_name,last_name),` +
         `assignee:employees!assessments_assigned_to_fkey(first_name,last_name),` +
-        `assessment_assignees(employee_id,unassigned_at,status,answers,score,employee:employees!assessment_assignees_employee_id_fkey(first_name,last_name)),` +
         `template:assessment_templates(questions)`,
         { count: 'exact' }
       )
@@ -185,7 +152,7 @@ async function handleList(body: RequestBody): Promise<Response> {
 
   const applyFilters = (q: ReturnType<typeof buildBaseQuery>) => {
     if (!is_admin && employee_id) {
-      q = q.or(buildAssigneeVisibilityFilter(employee_id, assigneeAssessmentIds));
+      q = q.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`);
     }
     if (assessment_id_url) {
       q = q.eq("id", assessment_id_url);
@@ -211,55 +178,23 @@ async function handleList(body: RequestBody): Promise<Response> {
   const { data, error, count } = await pageQuery;
 
   if (error) {
-    return jsonError(error.message);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   const totalCount = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const assessments = (data || []).map((a: AssessmentRow) => {
-    const activeAssignees = resolveActiveAssignees(a);
-    const activeRows = (a.assessment_assignees || []).filter((row) => !row.unassigned_at);
-    const totalQuestions = Array.isArray(a.template?.questions) ? (a.template!.questions as unknown[]).length : 0;
-
-    // Each assignee's status/progress is independent — if the viewer is
-    // themself an assignee, show THEIR OWN row here, not the shared
-    // parent's aggregate. Falls back to the parent (e.g. for an admin
-    // viewing an assessment they're not personally assigned to).
-    const myRow = employee_id ? activeRows.find((row) => row.employee_id === employee_id) : null;
-
-    // assessments.answers is no longer written once there's a real
-    // assessment_assignees row (answers live per-assignee now), so
-    // completion % must come from there too, not the now-stale parent
-    // column — otherwise it freezes at 0% forever once someone submits.
-    const answeredCount = (answers: unknown) =>
-      Array.isArray(answers)
-        ? answers.filter((x) => x && typeof x === "object" && (x as { answer?: unknown }).answer !== undefined).length
-        : 0;
-    const percentageFor = (answers: unknown) =>
-      totalQuestions === 0 ? 0 : Math.round((answeredCount(answers) / totalQuestions) * 100);
-
-    const completionPercentage = myRow
-      ? percentageFor(myRow.answers)
-      : activeRows.length > 0
-        ? Math.round(activeRows.reduce((sum, row) => sum + percentageFor(row.answers), 0) / activeRows.length)
-        : percentageFor(a.answers);
-
-    return {
-      ...a,
-      status: myRow ? myRow.status : a.status,
-      answers: Array.isArray(myRow ? myRow.answers : a.answers) ? (myRow ? myRow.answers : a.answers) : [],
-      score: myRow ? myRow.score : a.score,
-      completion_percentage: completionPercentage,
-      creator_name: a.creator ? `${a.creator.first_name} ${a.creator.last_name}` : 'Unknown',
-      assignees: activeAssignees,
-      assignee_name: activeAssignees.length > 0
-        ? activeAssignees.map((x) => x.name).join(', ')
-        : 'Unassigned',
-      template: a.template
-        ? { questions: Array.isArray(a.template.questions) ? a.template.questions : [] }
-        : undefined,
-    };
-  });
+  const assessments = (data || []).map((a: AssessmentRow) => ({
+    ...a,
+    answers: Array.isArray(a.answers) ? a.answers : [],
+    creator_name: a.creator ? `${a.creator.first_name} ${a.creator.last_name}` : 'Unknown',
+    assignee_name: a.assignee ? `${a.assignee.first_name} ${a.assignee.last_name}` : 'Unassigned',
+    template: a.template
+      ? { questions: Array.isArray(a.template.questions) ? a.template.questions : [] }
+      : undefined,
+  }));
 
   const response: ListResponse = { assessments, totalCount, page, pageSize: PAGE_SIZE, totalPages };
 
@@ -269,7 +204,7 @@ async function handleList(body: RequestBody): Promise<Response> {
       .select("status")
       .eq("client_id", client_id);
     if (!is_admin && employee_id) {
-      statusQuery = statusQuery.or(buildAssigneeVisibilityFilter(employee_id, assigneeAssessmentIds));
+      statusQuery = statusQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`);
     }
     const { data: allStatuses } = await statusQuery;
     const statuses: { status: string }[] = allStatuses || [];
@@ -286,47 +221,44 @@ async function handleList(body: RequestBody): Promise<Response> {
       .select(
         `created_by,assigned_to,` +
         `creator:employees!assessments_created_by_fkey(first_name,last_name),` +
-        `assignee:employees!assessments_assigned_to_fkey(first_name,last_name),` +
-        `assessment_assignees(employee_id,unassigned_at,employee:employees!assessment_assignees_employee_id_fkey(first_name,last_name))`
+        `assignee:employees!assessments_assigned_to_fkey(first_name,last_name)`
       )
       .eq("client_id", client_id);
     if (!is_admin && employee_id) {
-      metaQuery = metaQuery.or(buildAssigneeVisibilityFilter(employee_id, assigneeAssessmentIds));
+      metaQuery = metaQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`);
     }
     const { data: metaData } = await metaQuery;
 
     const creatorsMap = new Map<string, string>();
     const assigneesMap = new Map<string, string>();
-    (metaData || []).forEach((a: {
-      created_by: string; assigned_to: string; creator: PersonName | null; assignee: PersonName | null;
-      assessment_assignees: { employee_id: string; unassigned_at: string | null; employee: PersonName | null }[] | null;
-    }) => {
+    (metaData || []).forEach((a: { created_by: string; assigned_to: string; creator: PersonName | null; assignee: PersonName | null }) => {
       if (a.created_by && a.creator) {
         creatorsMap.set(a.created_by, `${a.creator.first_name} ${a.creator.last_name}`);
       }
       if (a.assigned_to && a.assignee) {
         assigneesMap.set(a.assigned_to, `${a.assignee.first_name} ${a.assignee.last_name}`);
       }
-      (a.assessment_assignees || []).forEach((row) => {
-        if (!row.unassigned_at && row.employee_id && row.employee) {
-          assigneesMap.set(row.employee_id, `${row.employee.first_name} ${row.employee.last_name}`);
-        }
-      });
     });
     response.creators  = Array.from(creatorsMap.entries()).map(([id, name]) => ({ id, name }));
     response.assignees = Array.from(assigneesMap.entries()).map(([id, name]) => ({ id, name }));
   }
 
-  return jsonOk(response);
+  return new Response(
+    JSON.stringify(response),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
 
 // ─── get ─────────────────────────────────────────────────────────────────────
 
-async function handleGet(body: RequestBody & { employee_id?: string }): Promise<Response> {
-  const { assessment_id, client_id, employee_id } = body;
+async function handleGet(body: RequestBody): Promise<Response> {
+  const { assessment_id, client_id } = body;
 
   if (!client_id || !assessment_id) {
-    return jsonError("client_id and assessment_id are required", 400);
+    return new Response(
+      JSON.stringify({ error: "client_id and assessment_id are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   const { data, error } = await supabaseClient
@@ -338,49 +270,23 @@ async function handleGet(body: RequestBody & { employee_id?: string }): Promise<
       `creator:employees!assessments_created_by_fkey(first_name,last_name),` +
       `assignee:employees!assessments_assigned_to_fkey(first_name,last_name),` +
       `completed_by_employee:employees!assessments_completed_by_fkey(first_name,last_name),` +
-      `assessment_assignees(id,employee_id,unassigned_at,status,answers,score,submit_comment,submit_attachment,` +
-        `closure_comments,closure_attachment,rework_comments,rework_attachments,is_reworked,completed_by,completed_on,` +
-        `employee:employees!assessment_assignees_employee_id_fkey(first_name,last_name)),` +
-      `template:assessment_templates(id,title,description,questions,client_id,completion_mode)`
+      `template:assessment_templates(id,title,description,questions,client_id)`
     )
     .eq("assessment_id", assessment_id)
     .eq("client_id", client_id)
     .single();
 
   if (error) {
-    return jsonError(error.message);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
-  const activeAssignees = (data.assessment_assignees || []).filter((a: any) => !a.unassigned_at);
-  const myAssignee = employee_id ? activeAssignees.find((a: any) => a.employee_id === employee_id) : null;
-
-  return jsonOk({
-    assessment: {
-      ...data,
-      // Every assignee's own independent progress, for the creator/reviewer view.
-      assignees: activeAssignees.map((a: any) => ({
-        id: a.id,
-        employee_id: a.employee_id,
-        name: a.employee ? `${a.employee.first_name} ${a.employee.last_name}` : "Unknown",
-        status: a.status,
-        answers: a.answers,
-        score: a.score,
-        completed_by: a.completed_by,
-        completed_on: a.completed_on,
-        closure_comments: a.closure_comments,
-        rework_comments: a.rework_comments,
-      })),
-      // The viewing employee's own copy, when they are themselves an
-      // assignee — the answer screen reads/writes THIS, never the shared
-      // parent fields, so one assignee's progress can never appear as
-      // another assignee's status.
-      my_status: myAssignee?.status ?? null,
-      my_answers: myAssignee?.answers ?? null,
-      my_score: myAssignee?.score ?? null,
-      my_submit_comment: myAssignee?.submit_comment ?? null,
-      my_submit_attachment: myAssignee?.submit_attachment ?? null,
-    },
-  });
+  return new Response(
+    JSON.stringify({ assessment: data }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
 
 // ─── employees ───────────────────────────────────────────────────────────────
