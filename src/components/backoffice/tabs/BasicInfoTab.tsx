@@ -103,29 +103,6 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
     'CBSE', 'IB', 'IGCSE', 'ICSE', 'Matric', 'Combined Campus', 'Other'
   ];
 
-  /**
-   * Domains of secondary super admins that aren't in the Allowed Super Admin Email
-   * Domains list. Display only — nothing here writes back into formData, so a domain
-   * the user removed on the Authentication step stays removed.
-   */
-  const missingSuperAdminDomains = React.useMemo(() => {
-    const allowed = new Set(
-      (formData.superAdminAllowedDomains || []).map((d) => d.trim().toLowerCase())
-    );
-    const missing = new Set<string>();
-
-    (formData.secondarySuperAdminEmails || []).forEach((email) => {
-      const trimmed = (email || '').trim();
-      if (!trimmed || !isValidEmail(trimmed)) return;
-      const domain = trimmed.split('@')[1]?.toLowerCase();
-      if (domain && !allowed.has(domain)) {
-        missing.add(domain);
-      }
-    });
-
-    return Array.from(missing);
-  }, [formData.secondarySuperAdminEmails, formData.superAdminAllowedDomains]);
-
   useEffect(() => {
     fetchClientTypes();
     fetchClientsForMapping();
@@ -630,11 +607,10 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
             and "+" button now live above (inline with the primary input).
             This component renders only the input rows.
 
-            Deliberately does NOT touch superAdminAllowedDomains. Both domain
-            lists are entered by hand on the Authentication step — auto-adding
-            here meant a domain the user removed there reappeared on the next
-            keystroke. Instead we surface a warning below when a secondary
-            admin's domain is missing, and leave the decision to the user.
+            Deliberately does NOT touch superAdminAllowedDomains — both domain
+            lists are entered by hand on the Authentication step. Auto-adding
+            here meant a domain the user removed there reappeared on the very
+            next keystroke.
          */}
         <SecondarySuperAdminEmailList
           emails={formData.secondarySuperAdminEmails || []}
@@ -646,19 +622,6 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           }}
           isEdit={isEdit}
         />
-
-        {/* Super admins are checked against super_admin_allowed_domain at login,
-            so a secondary admin on an un-listed domain would be denied access
-            with no explanation. Warn only — never auto-add, never block saving. */}
-        {isEdit && missingSuperAdminDomains.length > 0 && (
-          <p className="text-xs text-amber-600">
-            {missingSuperAdminDomains.join(', ')}
-            {missingSuperAdminDomains.length === 1 ? ' is' : ' are'} not in Allowed Super Admin
-            Email Domains. Add {missingSuperAdminDomains.length === 1 ? 'it' : 'them'} on the
-            Authentication step, or {missingSuperAdminDomains.length === 1 ? 'this user' : 'these users'} will
-            not be able to sign in.
-          </p>
-        )}
     </div>
 
       <div className="space-y-2">
