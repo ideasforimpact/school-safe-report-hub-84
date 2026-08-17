@@ -57,10 +57,6 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   }, [fetchDocumentTypes]);
 
   useEffect(() => {
-    filterDocuments();
-  }, [filterDocuments]);
-
-  useEffect(() => {
     if (!employee?.id) return;
 
     const channel = supabase
@@ -202,6 +198,10 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
     setFilteredDocuments(filtered);
   }, [employee.documents, documentTypes, verificationFilter, searchTerm, dateRange, isManualOrFailedDocument, getDisplayDocumentTypeName]);
+
+  useEffect(() => {
+    filterDocuments();
+  }, [filterDocuments]);
 
   const getDocumentCounts = () => {
     // Count manual documents and failed passports

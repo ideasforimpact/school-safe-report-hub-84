@@ -360,7 +360,7 @@ serve(async (req) => {
           .update({
             verification_status: 'failed',
             document_status_id: statusMap[DOC_STATUS.REJECTED],
-            verified_by: null,
+            verified_by: verified_by_employee_id || null,
             employee_docs_log: [...existingLogs, logEntry],
             reject_reason: reject_reason || "Document verification rejected",
             api_verification_date: null,

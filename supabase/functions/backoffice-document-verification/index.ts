@@ -55,7 +55,8 @@ serve(async (req) => {
     }
 
     // Backoffice manual verify flow:
-    // - employee_documents.document_status_id => manual
+    // - employee_documents.document_status_id => backoffice (falls back to manual if that
+    //   status row hasn't been migrated in yet, so verification never hard-fails on it)
     // - employee_documents.verification_status => verified
     // - employee_verification_audit_log.latest_status_code => 200
     // - employee_verification_audit_log.is_verified_by_backoffice => 1
@@ -83,22 +84,33 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Employee does not belong to client' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // 3) Resolve manual status id from document_status
-      const { data: manualStatus, error: manualStatusErr } = await supabase
+      // 3) Resolve the status id to tag this document with: prefer 'backoffice', fall back
+      // to 'manual' if that row doesn't exist yet (e.g. migration not applied in this env)
+      const { data: backofficeStatus } = await supabase
         .from('document_status')
         .select('id')
-        .eq('name', 'manual')
-        .single();
+        .eq('name', 'backoffice')
+        .maybeSingle();
 
-      if (manualStatusErr || !manualStatus) {
-        return new Response(JSON.stringify({ error: 'manual status not found' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      let resolvedStatusId = backofficeStatus?.id;
+      if (!resolvedStatusId) {
+        const { data: manualStatus, error: manualStatusErr } = await supabase
+          .from('document_status')
+          .select('id')
+          .eq('name', 'manual')
+          .single();
+
+        if (manualStatusErr || !manualStatus) {
+          return new Response(JSON.stringify({ error: 'manual status not found' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        resolvedStatusId = manualStatus.id;
       }
 
       // 4) Update employee document
       const { data: updatedDoc, error: updateDocErr } = await supabase
         .from('employee_documents')
         .update({
-          document_status_id: manualStatus.id,
+          document_status_id: resolvedStatusId,
           verification_status: 'verified',
           updated_at: new Date().toISOString()
         })
@@ -110,17 +122,16 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: `Failed to update document: ${updateDocErr.message}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // 5) Upsert audit log
+      // 5) Upsert audit log (insert if this is the document's first audit entry, update otherwise)
       const { error: auditErr } = await supabase
       .from('employee_verification_audit_log')
-      .update({
+      .upsert({
+        employee_id: employeeId,
+        document_id: documentId,
         provider: 'backoffice',
-        // latest_status_code: 200,
         is_verified_by_backoffice: 1,
         updated_at: new Date().toISOString()
-      })
-      .eq('employee_id', employeeId)
-      .eq('document_id', documentId);
+      }, { onConflict: 'employee_id,document_id' });
 
       if (auditErr) {
         return new Response(JSON.stringify({ error: `Failed to update audit log: ${auditErr.message}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

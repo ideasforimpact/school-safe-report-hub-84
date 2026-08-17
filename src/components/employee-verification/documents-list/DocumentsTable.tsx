@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock, File, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import GovernmentEmblemIcon from '@/components/ui/GovernmentEmblemIcon';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ import {
 import { VerificationDocument } from '@/types/employeeVerification';
 import VerificationStatusBadge from '../VerificationStatusBadge';
 import { getDocumentIcon, formatDocumentTypeName, getManualVerificationDisplayName } from '../utils/documentUtils';
+import { DOCUMENT_STATUS_NAME, VERIFIED_BY_LABEL } from '@/constant/documentVerificationConstant';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import {formatDate} from '@/lib/Dateformat';
@@ -59,7 +61,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onViewGovernment,
   isReadOnly = false,
 }) => {
-  const { documentStatuses, deleteDocument, employees, fetchEmployeeDocuments } = useEmployeeVerification();
+  const { deleteDocument, fetchEmployeeDocuments } = useEmployeeVerification();
   const { toast } = useToast();
   const { user } = useAuth();
   const clientId = user?.clientId || '';
@@ -264,12 +266,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   };
   
   const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
-    if (!document.documentStatusId || document.verificationStatus !== 'verified' || documentStatuses.length === 0) {
+    if (document.verificationStatus !== 'verified' && document.verificationStatus !== 'completed') {
       return undefined;
     }
-    
-    const status = documentStatuses.find(s => s.id === document.documentStatusId);
-    return status?.name;
+
+    return document.documentStatusName || undefined;
   };
 
   const handleCommentsClick = (doc: VerificationDocument) => {
@@ -329,27 +330,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
 
-  // Helper to get "Verified by" employee name using verifiedByEmployeeId
-  const getVerifiedByName = (doc: VerificationDocument): string | undefined => {
-    // First check if we have verifiedByEmployeeId (new system)
-    if (doc.verifiedByEmployeeId && employees.length > 0) {
-      const employee = employees.find(emp => emp.id === doc.verifiedByEmployeeId);
-      if (employee) {
-        const fullName = employee.aadharVerifiedName || employee.name || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email;
-        return fullName.charAt(0).toUpperCase() + fullName.slice(1);
-      }
-    }
-    
-    // Fallback to verification history (old system)
-    const history = doc.params?.verification_history;
-    if (!Array.isArray(history) || history.length === 0) return undefined;
-    const withUser = history.filter((e) => e && e.verified_by);
-    if (withUser.length === 0) return undefined;
-    withUser.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    const verifiedBy = withUser[0].verified_by as string;
-    return verifiedBy.charAt(0).toUpperCase() + verifiedBy.slice(1);
-  };
-  
   // Helper function to get proper document number display
   const getDisplayDocumentNumber = (doc: VerificationDocument): string => {
     const docType = doc.documentTypeName?.toLowerCase();
@@ -421,7 +401,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
             {sortDocumentsByStatus(documents).map((doc) => {
               const statusName = getDocumentStatusName(doc);
               const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-              const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
+              const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === DOCUMENT_STATUS_NAME.GOVERNANCE;
               const docType = doc.documentTypeName?.toLowerCase();
               const showCommentsIcon = docType === 'other' && hasVerificationHistory(doc);
               const hasVerifyApi =
@@ -595,25 +575,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         
                         // Determine label based on actual database status
                         let labelOverride: string | undefined;
-                        
+
                         if (isApiFailedWithReason) {
-                          labelOverride = 'Verification Rejected';
-                        } else if (doc.verificationStatus === 'verified') {
-                          // Check the actual status name from database
-                          if (statusName === 'governance') {
-                            labelOverride = 'Verified by Government';
-                          } else if (statusName === 'manual') {
-                            labelOverride = 'Verified by Manual';
-                          } else if (doc.verifiedByEmployeeId) {
-                            // Fallback: if verified_by is set but status name is not available
-                            labelOverride = 'Verified by Manual';
-                          }
-                          // If statusName is undefined or something else, don't override (use default badge)
+                          labelOverride = 'Rejected';
                         }
+                        // Otherwise use the default badge text (Verified / Pending / Failed)
 
                         // Only make badge clickable for "Verified by Government" (governance status)
                         // "Verified by Manual" should not be clickable
-                        const shouldBeClickable = doc.verificationStatus !== 'pending' && statusName === 'governance';
+                        const shouldBeClickable = doc.verificationStatus !== 'pending' && statusName === DOCUMENT_STATUS_NAME.GOVERNANCE;
                         
                         return (
                           <VerificationStatusBadge 
@@ -651,40 +621,21 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </TableCell>
                   {/* Verified by Column */}
                   <TableCell>
-                    {(() => {
-                      // For manual documents, show "SafeSchool - date time" using latest verification history
-                      if (docType === 'manual') {
-                        const history = doc.params?.verification_history;
-                        if (Array.isArray(history) && history.length > 0) {
-                          const latest = [...history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-                          const ts = latest?.timestamp || doc.updatedAt;
-                          return (
-                            <span className="text-sm text-gray-900">
-                              SafeSchool{ts ? ` - ${formatDate(ts, { isTiming: true })}` : ''}
-                            </span>
-                          );
-                        }
-                        // Fallback to updatedAt if no history
-                        if (doc.updatedAt) {
-                          return (
-                            <span className="text-sm text-gray-900">
-                              SafeSchool - {formatDate(doc.updatedAt, { isTiming: true })}
-                            </span>
-                          );
-                        }
-                        return <span className="text-muted-foreground">—</span>;
-                      }
-                      const name = getVerifiedByName(doc);
-                      const updatedAt = doc.updatedAt;
-                      
-                      return name ? (
-                        <span className="text-sm text-gray-900">
-                          {name}{updatedAt && ` on ${formatDate(updatedAt, { isTiming: true })}`}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      );
-                    })()}
+                    {statusName === DOCUMENT_STATUS_NAME.GOVERNANCE ? (
+                      <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-blue-100 text-blue-800 border-blue-200">
+                        {VERIFIED_BY_LABEL.GOVERNMENT}
+                      </Badge>
+                    ) : statusName === DOCUMENT_STATUS_NAME.BACKOFFICE || statusName === DOCUMENT_STATUS_NAME.COMPLETED ? (
+                      <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-purple-100 text-purple-800 border-purple-200">
+                        {VERIFIED_BY_LABEL.BACKOFFICE}
+                      </Badge>
+                    ) : statusName === DOCUMENT_STATUS_NAME.MANUAL || doc.verifiedByEmployeeId ? (
+                      <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-gray-100 text-gray-800 border-gray-200">
+                        {VERIFIED_BY_LABEL.MANUAL}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   
                   {/* Actions Column */}

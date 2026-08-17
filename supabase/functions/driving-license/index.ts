@@ -796,7 +796,7 @@ serve(async (req) => {
             verification_status: 'failed',
             employee_docs_log: [...existingLogs, logEntry],
             document_status_id: rejectedStatusId,
-            verified_by: null,
+            verified_by: verified_by_employee_id || null,
             reject_reason: reject_reason || "Document verification rejected",
             api_verification_date: null,
             updated_at: new Date().toISOString()
