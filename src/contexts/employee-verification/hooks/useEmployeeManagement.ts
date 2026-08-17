@@ -47,9 +47,10 @@ const mapEdgeEmployeeToEmployee = (record: Record<string, unknown>): Employee =>
   return {
     id: record.id,
     employeeId: record.employee_id || '',
-    name: `${record.first_name || ''} ${record.last_name || ''}`.trim(),
+    name: (record.aadhar_verified_name as string) || `${record.first_name || ''} ${record.last_name || ''}`.trim(),
     firstName: record.first_name || '',
     lastName: record.last_name || '',
+    aadharVerifiedName: (record.aadhar_verified_name as string) || undefined,
     email: record.email || '',
     phone: record.phone || '',
     designation: record.designation || '',

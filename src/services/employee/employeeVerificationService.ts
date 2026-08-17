@@ -7,6 +7,7 @@ import { Employee, VerificationDocument } from '@/types/employeeVerification';
 // new network call. Prevents the post-verification callback + realtime double-fetch pattern.
 const docFetchInflight = new Map<string, Promise<VerificationDocument[]>>();
 const docFetchLastTime = new Map<string, number>();
+const docFetchLastResult = new Map<string, VerificationDocument[]>();
 const DOC_FETCH_COOLDOWN_MS = 3000;
 
 // Map the edge function document response to VerificationDocument
@@ -188,10 +189,11 @@ export const fetchEmployeeDocuments = async (
   const inflight = docFetchInflight.get(key);
   if (inflight) return inflight;
 
-  // Sequential cooldown (3s) — skip unless force=true (user-initiated refresh)
+  // Sequential cooldown (3s) — skip unless force=true (user-initiated refresh).
+  // Return the last known result (not []) so a skipped fetch never looks like "no documents".
   if (!force) {
     const last = docFetchLastTime.get(key) || 0;
-    if (Date.now() - last < DOC_FETCH_COOLDOWN_MS) return [];
+    if (Date.now() - last < DOC_FETCH_COOLDOWN_MS) return docFetchLastResult.get(key) || [];
   }
 
   const promise = (async () => {
@@ -201,11 +203,13 @@ export const fetchEmployeeDocuments = async (
         body: { employeeId, timeframe: timeframe && timeframe !== 'all' ? timeframe : undefined },
       });
       if (error) throw error;
-      return (data?.documents || []).map(mapEdgeDocument);
+      const result = (data?.documents || []).map(mapEdgeDocument);
+      docFetchLastResult.set(key, result);
+      return result;
     } catch (error) {
       console.error('Error in fetchEmployeeDocuments:', error);
       docFetchLastTime.delete(key); // allow immediate retry on error
-      return [];
+      return docFetchLastResult.get(key) || [];
     } finally {
       docFetchInflight.delete(key);
     }
