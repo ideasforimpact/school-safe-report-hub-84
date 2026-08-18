@@ -95,6 +95,22 @@ export interface VerificationDocument {
     response: unknown;
     notes?: string;
   }>;
+  // Latest successful quickekyc/surepass verification response for this document,
+  // from employee_verification_audit_log.latest_success_log (null if never verified via API).
+  latestSuccessLog?: {
+    provider?: 'quickekyc' | 'surepass';
+    status_code?: number;
+    response?: {
+      success?: boolean;
+      status_code?: number;
+      data?: unknown;
+      [key: string]: unknown;
+    };
+    document_type_id?: string;
+    document_type_name?: string;
+    document_number?: string;
+    document_context?: Record<string, unknown>;
+  } | null;
   details?: {
     address?: string;
     name?: string;

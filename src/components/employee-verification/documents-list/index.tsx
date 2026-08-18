@@ -128,19 +128,31 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   };
 
   const handleViewGovernment = (doc: VerificationDocument) => {
-    const logs = doc.employee_docs_log || [];
     const docType = doc.documentTypeName?.toLowerCase();
 
-    const govLog = logs.find(
-      (log) =>
-        log.action?.includes("verify") &&
-        log.response &&
-        (log.response.success === true || log.response.status_code === 200)
-    );
+    // Preferred source: employee_verification_audit_log.latest_success_log, populated
+    // by the quickekyc/surepass providers (PAN, Voter ID, Driving License, Aadhaar).
+    const successLog = doc.latestSuccessLog;
+    const isLatestLogSuccessful =
+      !!successLog?.response &&
+      (successLog.response.success === true || successLog.response.status_code === 200);
 
-    if (!govLog) return;
+    let governmentData: unknown;
+    if (isLatestLogSuccessful) {
+      governmentData = successLog.response.data;
+    } else {
+      // Fallback for document types not yet written to employee_verification_audit_log
+      // (e.g. bank account verification).
+      const logs = doc.employee_docs_log || [];
+      const govLog = logs.find(
+        (log) =>
+          log.action?.includes("verify") &&
+          log.response &&
+          (log.response.success === true || log.response.status_code === 200)
+      );
+      governmentData = govLog?.response?.data;
+    }
 
-    const governmentData = govLog.response?.data;
     if (!governmentData) return;
 
     const normalized = normalizeApiData(
