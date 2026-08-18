@@ -11,7 +11,9 @@ import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedConte
 import {
   getVehiclesWithPendingChallans,
   getPendingChallansFromVehicleChallans,
+  getAllVehicles,
 } from '@/services/transport-safety/vehicleService';
+import { hasExpiredDocuments } from '@/utils/transport-safety/documentStatusUtils';
 import Loader from '@/components/common/Loader';
 
 const TransportSafetyPage = () => {
@@ -20,6 +22,8 @@ const TransportSafetyPage = () => {
   const [pendingAmount, setPendingAmount] = useState(0);
   const [pendingChallanCount, setPendingChallanCount] = useState(0);
   const [pendingChallansLoaded, setPendingChallansLoaded] = useState(false);
+  const [nonCompliantCount, setNonCompliantCount] = useState(0);
+  const [nonCompliantLoaded, setNonCompliantLoaded] = useState(false);
 
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const navigate = useNavigate();
@@ -86,13 +90,47 @@ const TransportSafetyPage = () => {
     };
   }, [employeeData?.clientId]);
 
-  // The page's first paint waits on BOTH data sources before rendering
-  // anything — vehicles (context: hasFetched) and pending challans
-  // (pendingChallansLoaded). `!vehiclesLoading` is included alongside
-  // hasFetched to cover the edge case where there's no clientId at all —
-  // TransportSafetyContext skips the fetch entirely in that case, so
-  // hasFetched never flips true, but loading does settle to false.
-  const initialLoadComplete = (vehiclesHasFetched || !vehiclesLoading) && pendingChallansLoaded;
+  // Non-compliant count (any vehicle with an expired/missing Insurance, FC,
+  // or PUC document) must reflect every vehicle, not just the current page
+  // of VehiclesList, so — same as pending challans above — it's computed
+  // from a separate, unpaginated fetch keyed ONLY on clientId.
+  useEffect(() => {
+    if (!employeeData?.clientId) {
+      setNonCompliantLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadNonCompliant = async () => {
+      try {
+        const vehicles = await getAllVehicles(employeeData.clientId);
+        if (cancelled) return;
+
+        setNonCompliantCount(vehicles.filter(hasExpiredDocuments).length);
+      } catch (error) {
+        console.error('Failed to load non-compliant vehicle count:', error);
+      } finally {
+        if (!cancelled) setNonCompliantLoaded(true);
+      }
+    };
+
+    loadNonCompliant();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeData?.clientId]);
+
+  // The page's first paint waits on ALL data sources before rendering
+  // anything — vehicles (context: hasFetched), pending challans
+  // (pendingChallansLoaded), and non-compliant count (nonCompliantLoaded).
+  // `!vehiclesLoading` is included alongside hasFetched to cover the edge
+  // case where there's no clientId at all — TransportSafetyContext skips
+  // the fetch entirely in that case, so hasFetched never flips true, but
+  // loading does settle to false.
+  const initialLoadComplete =
+    (vehiclesHasFetched || !vehiclesLoading) && pendingChallansLoaded && nonCompliantLoaded;
 
   if (!initialLoadComplete) {
     return (
@@ -120,7 +158,7 @@ const TransportSafetyPage = () => {
                   Manage and verify school transport vehicles and documentation
                 </p>
 
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-44">
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-8">
                   <div>
                     <p className="text-sm text-gray-500">Total Vehicles</p>
                     <p className="text-3xl font-semibold text-gray-900">
@@ -148,6 +186,16 @@ const TransportSafetyPage = () => {
                       <ExternalLink className="h-4 w-4" />
                       View all pending challans →
                     </button>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-500">Non-Compliant Vehicles</p>
+                    <p className="text-3xl font-semibold text-red-600">
+                      {nonCompliantCount}
+                    </p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Expired or missing Insurance, FC, or PUC
+                    </p>
                   </div>
                 </div>
               </div>
