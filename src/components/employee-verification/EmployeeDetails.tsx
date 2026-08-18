@@ -54,19 +54,25 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
   // Calculate verification summary from employee documents
   const getVerificationSummary = () => {
     const employeeDocuments = documents || getEmployeeDocuments(employee.id);
-    
-    const verified = employeeDocuments.filter(doc => 
+    const verified = employeeDocuments.filter(doc =>
       doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed'
     ).length;
-    
-    const pending = employeeDocuments.filter(doc => 
+    let pending = employeeDocuments.filter(doc =>
       doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress'
     ).length;
-    
-    const failed = employeeDocuments.filter(doc => 
+    const failed = employeeDocuments.filter(doc =>
       doc.verificationStatus === 'failed' || doc.verificationStatus === 'rejected'
     ).length;
-    
+    // Drivers must have a verified Driving License before the overall status
+    // can show "Verified" — matches the same rule enforced in EmployeesList.
+    const isDriver = (employee.department || '').toLowerCase() === 'driver';
+    const hasVerifiedLicense = employeeDocuments.some(
+      doc => (doc.documentTypeName || '').toLowerCase().replace(/[\s_]+/g, '') === 'drivinglicense' &&
+        (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed')
+    );
+    if (isDriver && !hasVerifiedLicense && failed === 0 && pending === 0) {
+      pending = 1;
+    }
     return {
       verified,
       pending,
