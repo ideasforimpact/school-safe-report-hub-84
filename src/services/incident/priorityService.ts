@@ -1,7 +1,4 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { incidentReferenceService } from "./incidentReferenceService";
 import { invokeIncidentConfig } from "@/components/incident/incidentConfigurationEdgeService";
 
 export interface PriorityItem {
@@ -17,28 +14,14 @@ export const priorityService = {
   // Check for duplicate priority name within client (and client type, when given)
   checkDuplicatePriority: async (name: string, clientId: string, excludeId?: string, clientTypeId?: string): Promise<boolean> => {
     try {
-      const filters: Record<string, string> = { client_id: clientId };
-      if (clientTypeId) {
-        filters.client_type_id = clientTypeId;
-      }
-
-      let query = supabase
-        .from('incident_priorities')
-        .select('id')
-        .match(filters)
-        .ilike('name', name.trim());
-
-      if (excludeId) {
-        query = query.neq('id', excludeId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      return data && data.length > 0;
+      return await invokeIncidentConfig<boolean>({
+        resource: 'priorities',
+        operation: 'checkDuplicate',
+        clientId,
+        clientTypeId,
+        excludeId,
+        payload: { name: name.trim() },
+      });
     } catch (error) {
       console.error('Error checking duplicate priority:', error);
       return false;
@@ -63,7 +46,8 @@ export const priorityService = {
     }
   },
 
-  // Add priority - RLS handles client validation automatically
+  // Add priority - server-side create (duplicate check + insert) via the
+  // incident-configuration edge function; client scoping is resolved there.
   addPriority: async (name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientId?: string, clientTypeId?: string) => {
     try {
       const trimmedName = name.trim();
@@ -71,64 +55,27 @@ export const priorityService = {
         throw new Error('Priority name cannot be empty');
       }
 
-      let finalClientId = clientId;
-
-      // If clientId not provided, get it from current user's employee record
-      if (!finalClientId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
-
-        console.log(user.id,"userData");
-        
-        const { data: employee, error: employeeError } = await supabase
-          .from('employees')
-          .select('client_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (employeeError || !employee) {
-          throw new Error('Employee record not found');
-        }
-
-        finalClientId = employee.client_id;
-      }
-
-      // Check for duplicate
-      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, finalClientId, undefined, clientTypeId);
-      if (isDuplicate) {
-        throw new Error('A priority with this name already exists');
-      }
-      
-      const { data, error } = await supabase
-        .from('incident_priorities')
-        .insert([
-          {
-            name: trimmedName,
-            description: description || null,
-            color: color || null,
-            weight: weight || 0,
-            client_id: finalClientId,
-            client_type_id: clientTypeId || null
-          }
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding priority:', error);
-        throw error;
-      }
-
-      return data as PriorityItem;
+      return await invokeIncidentConfig<PriorityItem>({
+        resource: 'priorities',
+        operation: 'create',
+        clientId,
+        clientTypeId,
+        payload: {
+          name: trimmedName,
+          description: description || null,
+          color: color || null,
+          weight: weight || 0,
+        },
+      });
     } catch (error) {
       console.error('Error adding priority:', error);
       throw error;
     }
   },
 
-  // Update priority - RLS handles client validation automatically
+  // Update priority - server-side update (duplicate check + update) via the
+  // incident-configuration edge function; client_id is resolved there from
+  // the caller's own employee record (via the auth JWT), not fetched here.
   updatePriority: async (id: string, name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientTypeId?: string) => {
     try {
       const trimmedName = name.trim();
@@ -136,93 +83,33 @@ export const priorityService = {
         throw new Error('Priority name cannot be empty');
       }
 
-      // Get client_id for duplicate check
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data: employee, error: employeeError } = await supabase
-        .from('employees')
-        .select('client_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (employeeError || !employee) {
-        throw new Error('Employee record not found');
-      }
-
-      // Check for duplicate (excluding current record)
-      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, employee.client_id, id, clientTypeId);
-      if (isDuplicate) {
-        throw new Error('A priority with this name already exists');
-      }
-
-      const { data, error } = await supabase
-        .from('incident_priorities')
-        .update({ 
-          name: trimmedName, 
+      return await invokeIncidentConfig<PriorityItem>({
+        resource: 'priorities',
+        operation: 'update',
+        id,
+        clientTypeId,
+        payload: {
+          name: trimmedName,
           description: description || null,
           color: color || null,
-          weight: weight || 0
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating priority:', error);
-        throw error;
-      }
-
-      if (!data) {
-        const errorMsg = 'Priority not found or access denied';
-        console.error(errorMsg);
-        throw new Error(errorMsg);
-      }
-
-      return data as PriorityItem;
+          weight: weight || 0,
+        },
+      });
     } catch (error) {
       console.error('Error updating priority:', error);
       throw error;
     }
   },
 
-  // Delete priority - RLS handles client validation automatically
+  // Delete priority - server-side reference check + delete via the
+  // incident-configuration edge function.
   deletePriority: async (id: string) => {
     try {
-      // Get client_id for reference check
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data: employee, error: employeeError } = await supabase
-        .from('employees')
-        .select('client_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (employeeError || !employee) {
-        throw new Error('Employee record not found');
-      }
-
-      // Check if priority is referenced by incidents
-      const referenceCheck = await incidentReferenceService.checkPriorityReferences(id, employee.client_id);
-      
-      if (referenceCheck.hasReferences) {
-        throw new Error(referenceCheck.message);
-      }
-
-      const { error } = await supabase
-        .from('incident_priorities')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting priority:', error);
-        throw error;
-      }
+      await invokeIncidentConfig<boolean>({
+        resource: 'priorities',
+        operation: 'delete',
+        id,
+      });
 
       return true;
     } catch (error) {
@@ -231,58 +118,16 @@ export const priorityService = {
     }
   },
 
-  // Toggle priority status - RLS handles client validation automatically
+  // Toggle priority status - server-side reference check (on deactivate) + update
+  // via the incident-configuration edge function.
   togglePriorityStatus: async (id: string, isActive: boolean) => {
     try {
-      // If deactivating, check if priority is referenced by incidents
-      if (!isActive) {
-        // Get client_id for reference check
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
-
-        const { data: employee, error: employeeError } = await supabase
-          .from('employees')
-          .select('client_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (employeeError || !employee) {
-          throw new Error('Employee record not found');
-        }
-
-        // Check if priority is referenced by incidents
-        const referenceCheck = await incidentReferenceService.checkPriorityReferences(id, employee.client_id);
-        
-        if (referenceCheck.hasReferences) {
-          // Replace "delete" with "deactivate" in the error message
-          const deactivateMessage = referenceCheck.message.replace('Cannot delete', 'Cannot deactivate');
-          throw new Error(deactivateMessage);
-        }
-      }
-
-      const { data, error } = await supabase
-        .from('incident_priorities')
-        .update({ 
-          is_active: isActive 
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error toggling priority status:', error);
-        throw error;
-      }
-
-      if (!data) {
-        const errorMsg = 'Priority not found or access denied';
-        console.error(errorMsg);
-        throw new Error(errorMsg);
-      }
-
-      return data as PriorityItem;
+      return await invokeIncidentConfig<PriorityItem>({
+        resource: 'priorities',
+        operation: 'toggleStatus',
+        id,
+        payload: { isActive },
+      });
     } catch (error) {
       console.error('Error toggling priority status:', error);
       throw error;

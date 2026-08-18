@@ -57,6 +57,8 @@ serve(async (req) => {
       case "names":        return await handleNames(body);
       case "audit-logs":   return await handleAuditLogs(body);
       case "templates":    return await handleTemplates(body);
+      case "categories":   return await handleCategories();
+      case "category":     return await handleCategoryById(body);
       case "create-form":  return await handleCreateForm(body);
       default:             return await handleList(body);
     }
@@ -435,6 +437,58 @@ async function handleTemplates(body: RequestBody): Promise<Response> {
 
   return new Response(
     JSON.stringify({ templates: data || [] }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+// ─── categories ──────────────────────────────────────────────────────────────
+
+async function handleCategories(): Promise<Response> {
+  const { data, error } = await supabaseClient
+    .from("template_categories")
+    .select("name")
+    .order("name", { ascending: true });
+
+  if (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ categories: (data || []).map((c: any) => c.name) }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+// ─── category (single, by id) ────────────────────────────────────────────────
+
+async function handleCategoryById(body: any): Promise<Response> {
+  const { id } = body;
+
+  if (!id) {
+    return new Response(
+      JSON.stringify({ error: "id is required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const { data, error } = await supabaseClient
+    .from("template_categories")
+    .select("name")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ name: data?.name ?? null }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 }
