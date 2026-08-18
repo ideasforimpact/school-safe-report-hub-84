@@ -576,33 +576,86 @@ interface ChallanLogEntry {
   };
 }
 
-export const getPendingChallansFromVehicleChallans = (
+const getLatestSuccessChallanPayload = (
   vehicleChallans: VehicleChallans | null,
-): RawChallan[] => {
+): RawChallanPayload | null => {
   const logs = vehicleChallans?.challan_history_log;
-  if (!logs || typeof logs !== 'object') return [];
+  if (!logs || typeof logs !== 'object') return null;
 
   const successLogs = Object.entries(logs).filter(
     ([, entry]: [string, ChallanLogEntry]) => entry?.data?.status_code === 200,
   );
 
-  if (successLogs.length === 0) return [];
+  if (successLogs.length === 0) return null;
 
   successLogs.sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime());
 
   const [, latestLog] = successLogs[0] as [string, ChallanLogEntry];
-  const challanData = latestLog?.data?.data;
+  return latestLog?.data?.data ?? null;
+};
+
+// All challans (pending + paid/disposed) from the latest successful challan check.
+export const getAllChallansFromVehicleChallans = (
+  vehicleChallans: VehicleChallans | null,
+): RawChallan[] => {
+  const challanData = getLatestSuccessChallanPayload(vehicleChallans);
   if (!challanData) return [];
 
   const rawChallans =
     challanData?.challan_details?.challans || challanData?.challan_data || [];
 
   if (!Array.isArray(rawChallans)) return [];
-  const challans = dedupeChallans(rawChallans);
+  return dedupeChallans(rawChallans);
+};
 
-  return challans.filter(
+export const getPendingChallansFromVehicleChallans = (
+  vehicleChallans: VehicleChallans | null,
+): RawChallan[] =>
+  getAllChallansFromVehicleChallans(vehicleChallans).filter(
     (c) => c?.challan_status && !isDisposedChallanStatus(c.challan_status),
   );
+
+export const getPaidChallansFromVehicleChallans = (
+  vehicleChallans: VehicleChallans | null,
+): RawChallan[] =>
+  getAllChallansFromVehicleChallans(vehicleChallans).filter(
+    (c) => c?.challan_status && isDisposedChallanStatus(c.challan_status),
+  );
+
+// ─── Challan date-range filter ────────────────────────────────────────────────
+
+export interface ChallanDateRange {
+  from?: Date;
+  to?: Date;
+}
+
+const parseChallanDate = (challan: RawChallan): Date | null => {
+  const raw = challan?.challan_date_time || challan?.challan_date;
+  if (!raw) return null;
+  const date = new Date(String(raw));
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export const filterChallansByDateRange = (
+  challans: RawChallan[],
+  range?: ChallanDateRange,
+): RawChallan[] => {
+  if (!range?.from && !range?.to) return challans;
+
+  const from = range.from
+    ? new Date(range.from.getFullYear(), range.from.getMonth(), range.from.getDate(), 0, 0, 0, 0)
+    : null;
+  const to = range.to
+    ? new Date(range.to.getFullYear(), range.to.getMonth(), range.to.getDate(), 23, 59, 59, 999)
+    : null;
+
+  return challans.filter((challan) => {
+    const date = parseChallanDate(challan);
+    if (!date) return false;
+    if (from && date < from) return false;
+    if (to && date > to) return false;
+    return true;
+  });
 };
 
 // Legacy — kept for backward compatibility
@@ -643,5 +696,30 @@ export const getVehiclesWithPendingChallans = async (clientId: string): Promise<
   });
 
   vehiclesWithChallansInflight.set(clientId, request);
+  return request;
+};
+
+// Vehicles with any challans on record — pending or already paid/disposed.
+export const getVehiclesWithChallans = async (clientId: string): Promise<Vehicle[]> => {
+  const cacheKey = `all:${clientId}`;
+  const recent = vehiclesWithChallansRecent.get(cacheKey);
+  if (recent && Date.now() - recent.at < DETAIL_READ_DEDUPE_MS) return recent.value;
+
+  const inflight = vehiclesWithChallansInflight.get(cacheKey);
+  if (inflight) return inflight;
+
+  const request = (async () => {
+    const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_with_challans', { clientId });
+    const vehicles = (data.vehicles || []).map(mapVehicle).filter(vehicle => {
+      const all = getAllChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+      return all.length > 0;
+    });
+    vehiclesWithChallansRecent.set(cacheKey, { at: Date.now(), value: vehicles });
+    return vehicles;
+  })().finally(() => {
+    vehiclesWithChallansInflight.delete(cacheKey);
+  });
+
+  vehiclesWithChallansInflight.set(cacheKey, request);
   return request;
 };

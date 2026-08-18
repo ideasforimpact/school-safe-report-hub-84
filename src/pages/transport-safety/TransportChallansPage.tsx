@@ -25,7 +25,7 @@ const TransportChallansPage = () => {
           <div>
             <h1 className="text-2xl font-bold">Transport Challans</h1>
             <p className="text-sm text-gray-500">
-              Pending challans for transport vehicles
+              Pending and paid challans for transport vehicles
             </p>
           </div>
         </div>
