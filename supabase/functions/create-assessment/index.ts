@@ -1,15 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
-import {
-  getAssessmentCorsHeaders,
-  jsonError,
-  jsonOk,
-  normalizeAssigneeIds,
-  queueAssessmentAssignedNotification,
-} from '../_shared/assessmentAssignees.ts';
+import { triggerImmediateEmailProcessing } from '../_shared/triggerEmailProcessing.ts';
+import { renderAssessmentTemplate } from '../_shared/assessmentNotificationTemplates.ts';
 
-const corsHeaders = getAssessmentCorsHeaders();
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, path, id, client-id",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+};
 
 const supabaseClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -30,25 +29,43 @@ serve(async (req) => {
       const url = new URL(req.url);
       const ipValidation = await validateIPWhitelist(supabaseClient, req, clientIdForValidation, url.pathname);
       if (!ipValidation.allowed) {
-        return jsonError("IP_NOT_WHITELISTED: Access denied. Your IP address is not whitelisted.", 403);
+        return new Response(
+          JSON.stringify({ error: 'IP_NOT_WHITELISTED', message: 'Access denied. Your IP address is not whitelisted.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
     return await handle(body);
   } catch (error) {
     console.error("Error processing request:", error);
-    return jsonError((error as Error).message);
+    return new Response(
+      JSON.stringify({ error: (error as Error).message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
 
 // ─── handle ──────────────────────────────────────────────────────────────────
 
 async function handle(body: any): Promise<Response> {
-  const { client_id, name, description, template_id, assigned_to, target_completion_date, created_by, assignees } = body;
+  const {
+    client_id,
+    name,
+    description,
+    template_id,
+    assigned_to,
+    target_completion_date,
+    created_by,
+    assignee,
+  } = body;
 
-  const assigneeIds = normalizeAssigneeIds(assigned_to);
+  const base_url = Deno.env.get("SITE_URL") ?? "";
 
-  if (!client_id || !name || !template_id || assigneeIds.length === 0 || !created_by) {
-    return jsonError("Missing required fields", 400);
+  if (!client_id || !name || !template_id || !assigned_to || !created_by) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   const { data: assessment, error: insertError } = await supabaseClient
@@ -57,9 +74,7 @@ async function handle(body: any): Promise<Response> {
       name,
       description: description || null,
       template_id,
-      // Kept populated for the common single-assignee case so legacy
-      // reads that still filter on assessments.assigned_to keep working.
-      assigned_to: assigneeIds.length === 1 ? assigneeIds[0] : null,
+      assigned_to,
       target_completion_date: target_completion_date || null,
       status: "New",
       client_id,
@@ -69,32 +84,177 @@ async function handle(body: any): Promise<Response> {
     .single();
 
   if (insertError) {
-    return jsonError(insertError.message);
-  }
-
-  const { error: assigneesError } = await supabaseClient
-    .from("assessment_assignees")
-    .insert(
-      assigneeIds.map((employeeId) => ({
-        assessment_id: assessment.id,
-        employee_id: employeeId,
-        client_id,
-        assigned_by: created_by,
-      }))
+    return new Response(
+      JSON.stringify({ error: insertError.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
-  if (assigneesError) {
-    return jsonError(assigneesError.message);
   }
 
-  const assigneesToNotify = (assignees || []).filter(
-    (assignee: any) => assigneeIds.includes(assignee?.id) && assignee.id !== created_by && assignee?.email
+  if (assigned_to !== created_by && assignee?.email) {
+    queueAssessmentAssignedNotification(assessment, assignee, base_url)
+      .catch(e => console.error("Failed to queue notification:", e));
+  }
+
+  return new Response(
+    JSON.stringify({ assessment }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
+}
 
-  for (const assignee of assigneesToNotify) {
-    queueAssessmentAssignedNotification(supabaseClient, assessment, assignee)
-      .catch((e) => console.error("Failed to queue notification:", e));
+// ─── notification ─────────────────────────────────────────────────────────────
+
+async function queueAssessmentAssignedNotification(assessment: any, assignee: any, baseUrl: string) {
+  const assigneeName = `${assignee.first_name} ${assignee.last_name}`;
+
+  const { data: rules } = await supabaseClient
+    .from("notification_rules")
+    .select("skip_conditions")
+    .eq("module", "assessment")
+    .eq("type", "assessment_assigned")
+    .eq("is_active", true)
+    .limit(1);
+
+  if (rules && rules.length > 0) {
+    const conditions: string[] = (rules[0].skip_conditions || []).map((c: string) => c.toLowerCase());
+
+    if (conditions.includes("self_action") && assessment.created_by === assignee.id) {
+      await supabaseClient.from("notification_logs").insert({
+        module: "assessment",
+        type: "assessment_assigned",
+        recipient_id: assignee.id,
+        recipient_email: assignee.email,
+        subject: "",
+        body: "",
+        status: "skipped",
+        metadata: { skipReason: "self_action" },
+      });
+      return;
+    }
+
+    if (conditions.includes("no_email") && !assignee.email?.trim()) {
+      await supabaseClient.from("notification_logs").insert({
+        module: "assessment",
+        type: "assessment_assigned",
+        recipient_id: assignee.id,
+        recipient_email: "",
+        subject: "",
+        body: "",
+        status: "skipped",
+        metadata: { skipReason: "no_email" },
+      });
+      return;
+    }
+
+    if (conditions.includes("inactive_user")) {
+      const { data: emp } = await supabaseClient
+        .from("employees")
+        .select("status")
+        .eq("id", assignee.id)
+        .maybeSingle();
+      if (emp && !emp.status) {
+        await supabaseClient.from("notification_logs").insert({
+          module: "assessment",
+          type: "assessment_assigned",
+          recipient_id: assignee.id,
+          recipient_email: assignee.email,
+          subject: "",
+          body: "",
+          status: "skipped",
+          metadata: { skipReason: "inactive_user" },
+        });
+        return;
+      }
+    }
+
+    if (conditions.includes("already_notified")) {
+      const { data: recent } = await supabaseClient
+        .from("notification_logs")
+        .select("created_at")
+        .eq("module", "assessment")
+        .eq("type", "assessment_assigned")
+        .eq("recipient_id", assignee.id)
+        .gte("created_at", new Date(Date.now() - 86400000).toISOString())
+        .limit(1);
+      if (recent && recent.length > 0) {
+        await supabaseClient.from("notification_logs").insert({
+          module: "assessment",
+          type: "assessment_assigned",
+          recipient_id: assignee.id,
+          recipient_email: assignee.email,
+          subject: "",
+          body: "",
+          status: "skipped",
+          metadata: { skipReason: "already_notified" },
+        });
+        return;
+      }
+    }
   }
 
-  return jsonOk({ assessment });
+  const assignedDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const dueDate = assessment.target_completion_date
+    ? new Date(assessment.target_completion_date).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "Not specified";
+  const assessmentUrl = `${baseUrl}/assessments`;
+  const templateVariables = {
+    User_Name: assigneeName,
+    Assessment_ID: assessment.id,
+    Assessment_Title: assessment.name,
+    Assigned_Date: assignedDate,
+    Due_Date: dueDate,
+    Assessment_URL: assessmentUrl,
+  };
+  const { subject, body } = renderAssessmentTemplate("assessment_assigned", templateVariables);
+
+  const { data: eq } = await supabaseClient
+    .from("email_queue")
+    .insert({
+      module_name: "assessment",
+      notification_type: "assessment_assigned",
+      client_id: assessment.client_id,
+      recipient_email: assignee.email,
+      recipient_name: assigneeName,
+      subject,
+      body,
+      params: {
+        ...templateVariables,
+        template_id: "frontend-assessment-assigned",
+        module: "assessment",
+        type: "assessment_assigned",
+        priority: "medium",
+      },
+      priority: 0,
+    })
+    .select("id")
+    .single();
+
+  await supabaseClient.from("notification_logs").insert({
+    module: "assessment",
+    type: "assessment_assigned",
+    recipient_id: assignee.id,
+    recipient_email: assignee.email,
+    subject,
+    body: "",
+    status: "pending",
+    email_queue_id: eq?.id || null,
+    metadata: {
+      assessmentId: assessment.id,
+      createdBy: assessment.created_by,
+      assignedTo: assessment.assigned_to,
+      actionBy: assessment.created_by,
+    },
+  });
+
+  await triggerImmediateEmailProcessing(eq?.id);
 }
+
