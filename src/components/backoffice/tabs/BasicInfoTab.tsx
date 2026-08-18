@@ -17,7 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuIte
 import { InstitutionType } from '@/contexts/ClientContext';
 import { supabase } from '@/integrations/supabase/client';
 import { buildClientLogoUrl } from '@/lib/utils';
-import { checkSuperAdminEmailExists } from '@/services/employee/employeeValidationService';
+import { checkSuperAdminEmailExists, checkBulkDuplicates } from '@/services/employee/employeeValidationService';
 import {
   isValidClientName,
   isValidContactPerson,
@@ -61,6 +61,7 @@ interface BasicInfoFormData {
   authProviders?: Record<string, unknown>;
   whitelistedIPs?: string[];
   superAdminEmailExists?: boolean;
+  secondarySuperAdminEmailInvalid?: boolean;
   hasIncidents?: boolean;
 }
 
@@ -94,6 +95,13 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  // Secondary emails the user has actually typed. Prefilled rows are never checked —
+  // the duplicate lookup cannot exclude super-admin rows, so an already-saved
+  // secondary would otherwise come back as a false positive on every open.
+  // Keyed by email rather than row index: removing a row shifts every later index,
+  // which would otherwise mark an untouched, already-saved secondary as touched.
+  const [touchedSecondaryEmails, setTouchedSecondaryEmails] = useState<Record<string, boolean>>({});
+  const [existingEmployeeEmails, setExistingEmployeeEmails] = useState<string[]>([]);
   const [headOfficeMappingDialogOpen, setHeadOfficeMappingDialogOpen] = useState(false);
   const [mappingDropdownOpen, setMappingDropdownOpen] = useState(false);
   const [draftMappedClientIds, setDraftMappedClientIds] = useState<string[]>([]);
@@ -161,6 +169,83 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
   return () => clearTimeout(timeout);
 }, [formData.superAdminEmail, emailTouched, setFormData]);
+
+  // ---- Secondary super admin validation ----
+  // A secondary super admin must be a new person for this client: not the primary
+  // super admin, and not an existing employee. The backend rejects both with a 400;
+  // these checks surface the problem inline before the user hits Save.
+
+  const secondaryEmails = React.useMemo(
+    () => formData.secondarySuperAdminEmails || [],
+    [formData.secondarySuperAdminEmails]
+  );
+
+  // Only look up rows the user has typed in. The duplicate endpoint cannot exclude
+  // super-admin rows, so checking a prefilled secondary would always report itself.
+  const secondaryEmailsToCheck = React.useMemo(() => {
+    const clientId = formData.id;
+    if (!isEdit || !clientId) return [];
+    return Array.from(
+      new Set(
+        secondaryEmails
+          .map((email) => (email || '').trim().toLowerCase())
+          .filter((email) => email.length > 0 && isValidEmail(email) && touchedSecondaryEmails[email])
+      )
+    );
+  }, [secondaryEmails, touchedSecondaryEmails, isEdit, formData.id]);
+
+  const secondaryLookupKey = secondaryEmailsToCheck.join(',');
+
+  useEffect(() => {
+    const clientId = formData.id;
+    if (!clientId || secondaryEmailsToCheck.length === 0) {
+      setExistingEmployeeEmails([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = setTimeout(async () => {
+      const { duplicateEmails } = await checkBulkDuplicates([], secondaryEmailsToCheck, clientId);
+      if (cancelled) return;
+      setExistingEmployeeEmails((duplicateEmails || []).map((email) => email.toLowerCase()));
+    }, 600);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+    // secondaryLookupKey collapses the array into a stable dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secondaryLookupKey, formData.id]);
+
+  const secondaryEmailErrors = React.useMemo(() => {
+    const primary = (formData.superAdminEmail || '').trim().toLowerCase();
+    const existing = new Set(existingEmployeeEmails);
+
+    return secondaryEmails.map((rawEmail) => {
+      const email = (rawEmail || '').trim().toLowerCase();
+      if (!email || !isValidEmail(email)) return null;
+
+      if (primary && email === primary) {
+        return 'This is already the Super Admin email for this client.';
+      }
+      if (touchedSecondaryEmails[email] && existing.has(email)) {
+        return 'This email already belongs to an employee of this client.';
+      }
+      return null;
+    });
+  }, [secondaryEmails, formData.superAdminEmail, existingEmployeeEmails, touchedSecondaryEmails]);
+
+  const hasSecondaryEmailError = secondaryEmailErrors.some((error) => error !== null);
+
+  // Mirrors the superAdminEmailExists channel so useStepValidation can gate Next/Submit.
+  useEffect(() => {
+    setFormData((prev) =>
+      prev.secondarySuperAdminEmailInvalid === hasSecondaryEmailError
+        ? prev
+        : { ...prev, secondarySuperAdminEmailInvalid: hasSecondaryEmailError }
+    );
+  }, [hasSecondaryEmailError, setFormData]);
 
 
   const fetchClientTypes = async () => {
@@ -615,12 +700,27 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         <SecondarySuperAdminEmailList
           emails={formData.secondarySuperAdminEmails || []}
           onChange={(emails) => {
+            // Mark only values that weren't already in the list as touched. Comparing
+            // by value (not by row index) means removing a row can't mis-flag the
+            // already-saved secondaries that shift up to fill the gap.
+            const previous = new Set(
+              (formData.secondarySuperAdminEmails || []).map((e) => (e || '').trim().toLowerCase())
+            );
+            setTouchedSecondaryEmails((prev) => {
+              const next = { ...prev };
+              emails.forEach((email) => {
+                const normalised = (email || '').trim().toLowerCase();
+                if (normalised && !previous.has(normalised)) next[normalised] = true;
+              });
+              return next;
+            });
             setFormData({
               ...formData,
               secondarySuperAdminEmails: emails,
             });
           }}
           isEdit={isEdit}
+          errors={secondaryEmailErrors}
         />
     </div>
 

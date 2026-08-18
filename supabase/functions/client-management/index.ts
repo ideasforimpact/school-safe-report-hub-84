@@ -318,8 +318,9 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
 // - Emails no longer in the list get demoted (is_super_admin and
 //   is_secondary_super_admin both set to false) rather than deleted, since
 //   the underlying employees table row may be a real staff member.
-// - Emails newly added to the list are promoted if an employee with that
-//   email already exists for this client, or created fresh otherwise.
+// - Emails newly added to the list are created fresh. An email that already
+//   belongs to an employee of this client is REJECTED, not promoted — a
+//   secondary super admin must be a new person for the client.
 // - Emails already present as a secondary are left untouched.
 async function syncSecondarySuperAdminEmployees(clientId: string, secondaryEmails: string[]) {
   const desiredEmails = Array.from(
@@ -363,15 +364,12 @@ async function syncSecondarySuperAdminEmployees(clientId: string, secondaryEmail
     if (existing?.is_secondary_super_admin) continue;
 
     if (existing) {
-      const { error: promoteError } = await supabase
-        .from('employees')
-        .update({ is_super_admin: true, is_secondary_super_admin: true })
-        .eq('id', existing.id);
-
-      if (promoteError) {
-        console.error(`Error promoting ${email} to secondary super admin:`, promoteError);
-        throw new Error(`Failed to promote ${email} to secondary super admin: ${promoteError.message}`);
-      }
+      // An existing employee of this client is never promotable — a secondary super
+      // admin must be a new person. handleUpdateClient rejects this up front with a
+      // 400; this throw is the backstop so no other caller can promote silently.
+      throw new Error(
+        `${email} already belongs to an employee of this client and cannot be added as a secondary super admin.`
+      );
     } else {
       await createEmployeeFromSuperAdminEmail(clientId, email, { isSecondary: true });
     }
@@ -1530,7 +1528,63 @@ async function handleUpdateClient(clientData: any) {
     const mappedClientIdsProvided = Array.isArray(clientData.mapped_client_ids) || Array.isArray(clientData.mappedClientIds);
     const requestedIsHeadOffice = resolveIsHeadOffice(clientData);
     const requestedMappedClientIds = resolveMappedClientIds(clientData);
-        
+
+    // ---- Pre-flight: validate secondary super admin emails BEFORE any writes ----
+    // A secondary super admin must be a brand new person for this client. Promoting an
+    // existing employee is not allowed. This runs here, ahead of the logo upload and the
+    // clients row update, because the update path has no rollback — rejecting later would
+    // leave a partially-written client.
+    if (Array.isArray(secondarySuperAdminEmails)) {
+      const normalise = (value: unknown) => String(value ?? '').trim().toLowerCase();
+
+      const desiredSecondaries = Array.from(
+        new Set(secondarySuperAdminEmails.map(normalise).filter((e: string) => e.length > 0))
+      );
+
+      if (desiredSecondaries.length > 0) {
+        const { data: existingEmployees, error: employeeLookupError } = await supabase
+          .from('employees')
+          .select('id, email, is_super_admin, is_secondary_super_admin')
+          .eq('client_id', clientId);
+
+        if (employeeLookupError) {
+          console.error('Error loading employees for secondary super admin validation:', employeeLookupError);
+          throw new Error(`Failed to validate secondary super admins: ${employeeLookupError.message}`);
+        }
+
+        // Compare on normalised emails — rows are stored as typed, so a plain equality
+        // check would let a differently-cased duplicate through.
+        const employeeByEmail = new Map(
+          (existingEmployees || []).map((row: any) => [normalise(row.email), row])
+        );
+        const primaryEmail = normalise(superAdminEmail);
+
+        for (const email of desiredSecondaries) {
+          if (primaryEmail && email === primaryEmail) {
+            return new Response(
+              JSON.stringify({
+                error: 'SECONDARY_ADMIN_INVALID',
+                message: `${email} is already the Super Admin for this client and cannot also be a secondary super admin.`,
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          const existing: any = employeeByEmail.get(email);
+          // Already a secondary → unchanged echo-back on save, which must stay a no-op.
+          if (!existing || existing.is_secondary_super_admin === true) continue;
+
+          return new Response(
+            JSON.stringify({
+              error: 'SECONDARY_ADMIN_INVALID',
+              message: `${email} already belongs to an employee of this client and cannot be added as a secondary super admin.`,
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
     console.log('Logo data check:', {
       logoExists: !!logo,
       logoType: typeof logo,

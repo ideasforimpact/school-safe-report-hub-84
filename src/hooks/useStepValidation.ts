@@ -34,14 +34,21 @@ export const useStepValidation = (formData: ClientFormData) => {
     formData.isHeadOffice !== true ||
     ((formData.mappedClientIds?.length || 0) > 0);
 
+  // Secondary super admins must not clash with the primary or with an existing
+  // employee of this client; BasicInfoTab sets this flag when either is true.
+  const hasValidSecondarySuperAdmins =
+    formData.secondarySuperAdminEmailInvalid !== true;
+
   return hasRequired && hasValidSuperAdminEmail && hasValidClientName
-  && hasValidContactPerson && hasValidPhone && hasValidHeadOfficeMapping;
+  && hasValidContactPerson && hasValidPhone && hasValidHeadOfficeMapping
+  && hasValidSecondarySuperAdmins;
 }, [
     formData.name,
     formData.email,
     formData.contactPerson,
     formData.phone,
     formData.superAdminEmail,
+    formData.secondarySuperAdminEmailInvalid,
     formData.clientTypeId,
     formData.superAdminEmailExists,
     formData.institutionType,
