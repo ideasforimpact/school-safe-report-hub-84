@@ -20,6 +20,12 @@ interface SecondarySuperAdminEmailListProps {
    * them without being able to mutate.
    */
   isEdit: boolean;
+  /**
+   * Per-row validation message, indexed alongside `emails`. Supplied by the
+   * parent because the checks need the primary super admin email and a
+   * client-scoped lookup, neither of which this component owns.
+   */
+  errors?: (string | null)[];
 }
 
 /**
@@ -44,6 +50,7 @@ const SecondarySuperAdminEmailList: React.FC<SecondarySuperAdminEmailListProps> 
   emails,
   onChange,
   isEdit,
+  errors = [],
 }) => {
   const multiEnabled = import.meta.env.VITE_IS_MULTI_SUPER_ADMIN === 'true';
 
@@ -73,6 +80,10 @@ const SecondarySuperAdminEmailList: React.FC<SecondarySuperAdminEmailListProps> 
         // user may be mid-typing or just clicked + to open a new row.
         const showInvalid =
           multiEnabled && !!email && !isValidEmail(email);
+        // A parent-supplied error (duplicate employee / clashes with the primary)
+        // takes precedence over the generic format message.
+        const rowError = multiEnabled ? errors[index] || null : null;
+        const hasError = showInvalid || !!rowError;
 
         // Unique input id/name per row + multiple autofill-defense
         // signals. Chrome ignores autoComplete="off" on type="email", so
@@ -104,7 +115,7 @@ const SecondarySuperAdminEmailList: React.FC<SecondarySuperAdminEmailListProps> 
                 onChange={(e) => handleEdit(index, e.target.value)}
                 placeholder="secondary.admin@example.com"
                 disabled={disabled}
-                className={showInvalid ? 'border-red-500' : ''}
+                className={hasError ? 'border-red-500' : ''}
                 aria-label={`Additional super admin email ${index + 1}`}
               />
               {multiEnabled && (
@@ -119,11 +130,13 @@ const SecondarySuperAdminEmailList: React.FC<SecondarySuperAdminEmailListProps> 
                 </Button>
               )}
             </div>
-            {showInvalid && (
+            {rowError ? (
+              <p className="text-xs text-red-600">{rowError}</p>
+            ) : showInvalid ? (
               <p className="text-xs text-red-600">
                 Enter a valid email address
               </p>
-            )}
+            ) : null}
           </div>
         );
       })}

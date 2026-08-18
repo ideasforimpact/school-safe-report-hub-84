@@ -44,6 +44,9 @@ export interface ClientFormData {
     [key in OAuthProviderName]?: boolean;
   };
   superAdminEmailExists?: boolean;
+  // Set by BasicInfoTab when a secondary super admin email clashes with the
+  // primary or with an existing employee of this client. Gates step 1.
+  secondarySuperAdminEmailInvalid?: boolean;
   // Feature 2: emails of any secondary super admins for THIS client (up to 2).
   // Only meaningful on edit; ignored by the create flow regardless of env.
   // Persists straight through to the edge function which reconciles
