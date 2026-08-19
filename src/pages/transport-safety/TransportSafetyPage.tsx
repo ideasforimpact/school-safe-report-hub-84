@@ -183,15 +183,15 @@ const TransportSafetyPage = () => {
                   Manage and verify school transport vehicles and documentation
                 </p>
 
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
-                  <div>
+                <div className="mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-x-28 gap-y-6">
+                  <div className="sm:max-w-[180px]">
                     <p className="text-sm text-gray-500">Total Vehicles</p>
                     <p className="text-3xl font-semibold text-gray-900">
                       {totalVehicles}
                     </p>
                   </div>
 
-                  <div>
+                  <div className="sm:max-w-[180px]">
                     <p className="text-sm text-gray-500">Compliant Vehicles</p>
                     <p className="text-3xl font-semibold text-green-600">
                       {compliantCount}
@@ -201,7 +201,7 @@ const TransportSafetyPage = () => {
                     </p>
                   </div>
 
-                  <div>
+                  <div className="sm:max-w-[180px]">
                     <p className="text-sm text-gray-500">Non-Compliant Vehicles</p>
                     <p className="text-3xl font-semibold text-red-600">
                       {nonCompliantCount}
@@ -211,7 +211,7 @@ const TransportSafetyPage = () => {
                     </p>
                   </div>
 
-                  <div>
+                  <div className="sm:max-w-[210px]">
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-gray-500">Pending Challan</p>
                       {pendingChallanCount > 0 && (
@@ -226,14 +226,14 @@ const TransportSafetyPage = () => {
 
                     <button
                       onClick={() => navigate('/transport-safety/challans?type=pending')}
-                      className="mt-2 inline-flex items-center gap-1 text-sm text-orange-600 hover:underline"
+                      className="mt-2 inline-flex items-center gap-1 text-sm text-orange-600 hover:underline whitespace-nowrap"
                     >
                       <ExternalLink className="h-4 w-4" />
                       View all pending challans →
                     </button>
                   </div>
 
-                  <div>
+                  <div className="sm:max-w-[210px]">
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-gray-500">Paid Challan</p>
                       {paidChallanCount > 0 && (
@@ -248,7 +248,7 @@ const TransportSafetyPage = () => {
 
                     <button
                       onClick={() => navigate('/transport-safety/challans?type=paid')}
-                      className="mt-2 inline-flex items-center gap-1 text-sm text-green-600 hover:underline"
+                      className="mt-2 inline-flex items-center gap-1 text-sm text-green-600 hover:underline whitespace-nowrap"
                     >
                       <ExternalLink className="h-4 w-4" />
                       View all paid challans →
