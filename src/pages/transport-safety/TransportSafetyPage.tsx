@@ -9,8 +9,9 @@ import { useAuth } from '@/contexts';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import {
-  getVehiclesWithPendingChallans,
+  getVehiclesWithChallans,
   getPendingChallansFromVehicleChallans,
+  getPaidChallansFromVehicleChallans,
   getAllVehicles,
 } from '@/services/transport-safety/vehicleService';
 import { hasExpiredDocuments } from '@/utils/transport-safety/documentStatusUtils';
@@ -21,7 +22,10 @@ const TransportSafetyPage = () => {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [pendingAmount, setPendingAmount] = useState(0);
   const [pendingChallanCount, setPendingChallanCount] = useState(0);
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [paidChallanCount, setPaidChallanCount] = useState(0);
   const [pendingChallansLoaded, setPendingChallansLoaded] = useState(false);
+  const [compliantCount, setCompliantCount] = useState(0);
   const [nonCompliantCount, setNonCompliantCount] = useState(0);
   const [nonCompliantLoaded, setNonCompliantLoaded] = useState(false);
 
@@ -59,23 +63,33 @@ const TransportSafetyPage = () => {
 
     const loadPendingChallans = async () => {
       try {
-        const vehicles = await getVehiclesWithPendingChallans(employeeData.clientId);
+        const vehicles = await getVehiclesWithChallans(employeeData.clientId);
         if (cancelled) return;
 
         let totalPendingAmount = 0;
         let totalPendingCount = 0;
+        let totalPaidAmount = 0;
+        let totalPaidCount = 0;
 
-        vehicles.forEach(vehicle => {
-          const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
-          totalPendingCount += pending.length;
-          totalPendingAmount += pending.reduce((sum, c) => {
+        const sumChallanAmount = (challans: { amount?: string | number; challan_amount?: string | number }[]) =>
+          challans.reduce((sum, c) => {
             const amount = Number(c.amount || c.challan_amount || 0);
             return sum + (isNaN(amount) ? 0 : amount);
           }, 0);
+
+        vehicles.forEach(vehicle => {
+          const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+          const paid = getPaidChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+          totalPendingCount += pending.length;
+          totalPendingAmount += sumChallanAmount(pending);
+          totalPaidCount += paid.length;
+          totalPaidAmount += sumChallanAmount(paid);
         });
 
         setPendingAmount(totalPendingAmount);
         setPendingChallanCount(totalPendingCount);
+        setPaidAmount(totalPaidAmount);
+        setPaidChallanCount(totalPaidCount);
       } catch (error) {
         console.error('Failed to load pending challans:', error);
       } finally {
@@ -90,10 +104,15 @@ const TransportSafetyPage = () => {
     };
   }, [employeeData?.clientId]);
 
-  // Non-compliant count (any vehicle with an expired/missing Insurance, FC,
-  // or PUC document) must reflect every vehicle, not just the current page
-  // of VehiclesList, so — same as pending challans above — it's computed
-  // from a separate, unpaginated fetch keyed ONLY on clientId.
+  // Compliant/non-compliant counts must reflect every vehicle, not just the
+  // current page of VehiclesList, so — same as pending challans above —
+  // they're computed from a separate, unpaginated fetch keyed ONLY on
+  // clientId. A vehicle that has never been run through a safety check has
+  // no verificationData at all — hasExpiredDocuments treats that as "not
+  // expired" (unverified, not confirmed bad), so it must NOT be counted as
+  // compliant either, or a never-checked vehicle would misleadingly show up
+  // as safe. Only vehicles that have actually been verified and have no
+  // expired/missing document count as compliant.
   useEffect(() => {
     if (!employeeData?.clientId) {
       setNonCompliantLoaded(true);
@@ -102,20 +121,26 @@ const TransportSafetyPage = () => {
 
     let cancelled = false;
 
-    const loadNonCompliant = async () => {
+    const loadCompliance = async () => {
       try {
         const vehicles = await getAllVehicles(employeeData.clientId);
         if (cancelled) return;
 
+        const isVerified = (vehicle: typeof vehicles[number]) =>
+          Boolean(vehicle.verificationData && vehicle.verificationData.length > 0);
+
         setNonCompliantCount(vehicles.filter(hasExpiredDocuments).length);
+        setCompliantCount(
+          vehicles.filter(vehicle => isVerified(vehicle) && !hasExpiredDocuments(vehicle)).length,
+        );
       } catch (error) {
-        console.error('Failed to load non-compliant vehicle count:', error);
+        console.error('Failed to load compliance counts:', error);
       } finally {
         if (!cancelled) setNonCompliantLoaded(true);
       }
     };
 
-    loadNonCompliant();
+    loadCompliance();
 
     return () => {
       cancelled = true;
@@ -158,15 +183,35 @@ const TransportSafetyPage = () => {
                   Manage and verify school transport vehicles and documentation
                 </p>
 
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-8">
-                  <div>
+                <div className="mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-x-28 gap-y-6">
+                  <div className="sm:max-w-[180px]">
                     <p className="text-sm text-gray-500">Total Vehicles</p>
                     <p className="text-3xl font-semibold text-gray-900">
                       {totalVehicles}
                     </p>
                   </div>
 
-                  <div>
+                  <div className="sm:max-w-[180px]">
+                    <p className="text-sm text-gray-500">Compliant Vehicles</p>
+                    <p className="text-3xl font-semibold text-green-600">
+                      {compliantCount}
+                    </p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Valid Insurance, FC, and PUC
+                    </p>
+                  </div>
+
+                  <div className="sm:max-w-[180px]">
+                    <p className="text-sm text-gray-500">Non-Compliant Vehicles</p>
+                    <p className="text-3xl font-semibold text-red-600">
+                      {nonCompliantCount}
+                    </p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Expired or missing Insurance, FC, or PUC
+                    </p>
+                  </div>
+
+                  <div className="sm:max-w-[210px]">
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-gray-500">Pending Challan</p>
                       {pendingChallanCount > 0 && (
@@ -180,22 +225,34 @@ const TransportSafetyPage = () => {
                     </p>
 
                     <button
-                      onClick={() => navigate('/transport-safety/challans')}
-                      className="mt-2 inline-flex items-center gap-1 text-sm text-orange-600 hover:underline"
+                      onClick={() => navigate('/transport-safety/challans?type=pending')}
+                      className="mt-2 inline-flex items-center gap-1 text-sm text-orange-600 hover:underline whitespace-nowrap"
                     >
                       <ExternalLink className="h-4 w-4" />
                       View all pending challans →
                     </button>
                   </div>
 
-                  <div>
-                    <p className="text-sm text-gray-500">Non-Compliant Vehicles</p>
-                    <p className="text-3xl font-semibold text-red-600">
-                      {nonCompliantCount}
+                  <div className="sm:max-w-[210px]">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-500">Paid Challan</p>
+                      {paidChallanCount > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-green-500 rounded-full">
+                          {paidChallanCount}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-3xl font-semibold text-green-600">
+                      ₹{paidAmount.toLocaleString('en-IN')}
                     </p>
-                    <p className="mt-2 text-sm text-gray-500">
-                      Expired or missing Insurance, FC, or PUC
-                    </p>
+
+                    <button
+                      onClick={() => navigate('/transport-safety/challans?type=paid')}
+                      className="mt-2 inline-flex items-center gap-1 text-sm text-green-600 hover:underline whitespace-nowrap"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View all paid challans →
+                    </button>
                   </div>
                 </div>
               </div>

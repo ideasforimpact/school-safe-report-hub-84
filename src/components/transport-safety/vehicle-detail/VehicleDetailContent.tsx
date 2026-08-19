@@ -62,12 +62,8 @@ const VehicleDetailContent: React.FC = () => {
   // Show loading state while data is being fetched
   if (loading) {
     return (
-      <div className="container mx-auto py-6 max-w-7xl">
-        <VehicleHeader />
-
-        
-          <Loader text="Loading vehicle details..." />
-        
+      <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+        <Loader text="Loading vehicle details..." />
       </div>
     );
   }

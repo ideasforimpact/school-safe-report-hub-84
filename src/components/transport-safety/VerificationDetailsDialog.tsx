@@ -75,6 +75,8 @@ interface VerificationDetailsDialogProps {
     vehicleChallans?: VehicleChallans | null; // vehicle_challans from database
     showChallanTabs?: boolean; // If false, shows all challans without Pending/Disposed tabs (for TransportChallansPage)
     hideMainTabs?: boolean; // If true, hides Verification/Challan Details tabs and shows only challan content (for TransportChallansPage)
+    dateRange?: { from?: Date; to?: Date }; // Restrict challans shown to this challan-date range (for TransportChallansPage)
+    challanStatusFilter?: 'pending' | 'paid'; // Restrict challans shown to this status (for TransportChallansPage, used with hideMainTabs)
     // Fired after a successful unmask so the parent can persist the real values into
     // the in-memory vehicle (context), keeping them visible on RUN-again and history.
     onUnmasked?: (values: { chasi?: string; engine?: string; owner?: string }) => void;
@@ -91,6 +93,8 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     vehicleChallans,
     showChallanTabs = true, // Default to true to maintain existing behavior
     hideMainTabs = false, // Default to false to maintain existing behavior
+    dateRange,
+    challanStatusFilter,
     onUnmasked,
 }) => {
     const [activeTab, setActiveTab] = React.useState<'verification' | 'challan'>('verification');
@@ -350,8 +354,26 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             deduped.set(key, existing ? mergeChallan(existing, challan) : challan);
         });
 
-        return Array.from(deduped.values());
-    }, [latestChallanSuccessLog]);
+        const allChallans = Array.from(deduped.values());
+        if (!dateRange?.from && !dateRange?.to) return allChallans;
+
+        const from = dateRange?.from
+            ? new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate(), 0, 0, 0, 0)
+            : null;
+        const to = dateRange?.to
+            ? new Date(dateRange.to.getFullYear(), dateRange.to.getMonth(), dateRange.to.getDate(), 23, 59, 59, 999)
+            : null;
+
+        return allChallans.filter((challan) => {
+            const raw = challan.challan_date_time || challan.challan_date;
+            if (!raw) return false;
+            const date = new Date(String(raw));
+            if (Number.isNaN(date.getTime())) return false;
+            if (from && date < from) return false;
+            if (to && date > to) return false;
+            return true;
+        });
+    }, [latestChallanSuccessLog, dateRange?.from, dateRange?.to]);
     const normalizeChallanStatus = (status?: string) => (status || '').trim().toUpperCase();
     const isDisposedStatus = (status?: string) =>
         ['DISPOSED', 'PAID', 'CASH'].includes(normalizeChallanStatus(status));
@@ -385,6 +407,20 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             return sum + (isNaN(amount) ? 0 : amount);
         }, 0);
     }, [challanDetails]);
+
+    // When hideMainTabs is used with a status filter (TransportChallansPage's
+    // Pending/Paid type select), only show challans matching that status —
+    // e.g. selecting "Paid" there shouldn't reveal a vehicle's pending challans.
+    const visibleChallanDetails = React.useMemo(() => {
+        if (!challanStatusFilter) return challanDetails;
+        return challanStatusFilter === 'paid' ? disposedChallans : pendingChallans;
+    }, [challanDetails, challanStatusFilter, disposedChallans, pendingChallans]);
+
+    const visibleChallanTotalAmount = challanStatusFilter === 'paid'
+        ? totalDisposedAmount
+        : challanStatusFilter === 'pending'
+            ? totalPendingAmount
+            : totalChallanAmount;
     const ChallanCard = ({ challan }: { challan: ChallanRecord }) => {
         const normalizedStatus = normalizeChallanStatus(challan.challan_status);
         const isDisposed = isDisposedStatus(challan.challan_status);
@@ -487,21 +523,27 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                 </div>
                             )}
 
-                            {!challanErrorMessage && challanDetails.length === 0 && (
+                            {!challanErrorMessage && visibleChallanDetails.length === 0 && (
                                 <div className="text-sm text-gray-500 text-center py-6">
-                                    No challans
+                                    {dateRange?.from || dateRange?.to
+                                        ? `No ${challanStatusFilter ? `${challanStatusFilter} ` : ''}challans in the selected date range`
+                                        : `No ${challanStatusFilter ? `${challanStatusFilter} ` : ''}challans`}
                                 </div>
                             )}
 
-                            {!challanErrorMessage && challanDetails.length > 0 && (
+                            {!challanErrorMessage && visibleChallanDetails.length > 0 && (
                                 <div className="mt-4">
                                     <div className="flex justify-end mb-3">
-                                        <Badge className="border-orange-300 text-orange-700 bg-orange-50 font-semibold px-3 py-1">
-                                            Total Amount: ₹{totalChallanAmount.toLocaleString('en-IN')}
+                                        <Badge className={
+                                            challanStatusFilter === 'paid'
+                                                ? 'border-green-300 text-green-700 bg-green-50 font-semibold px-3 py-1'
+                                                : 'border-orange-300 text-orange-700 bg-orange-50 font-semibold px-3 py-1'
+                                        }>
+                                            Total Amount: ₹{visibleChallanTotalAmount.toLocaleString('en-IN')}
                                         </Badge>
                                     </div>
                                     <div className="space-y-3">
-                                        {challanDetails.map((challan: ChallanRecord, index: number) => (
+                                        {visibleChallanDetails.map((challan: ChallanRecord, index: number) => (
                                             <ChallanCard key={index} challan={challan} />
                                         ))}
                                     </div>
