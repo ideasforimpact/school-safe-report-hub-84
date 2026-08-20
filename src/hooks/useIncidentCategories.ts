@@ -138,7 +138,7 @@ export function useIncidentCategories() {
     }
 
     try {
-      await categoryService.updateCategory(id, name, undefined, employeeData.clientId);
+      await categoryService.updateCategory(id, name, undefined, employeeData.clientId, clientTypeId);
       
       // Refresh data from server to ensure consistency
       const [categoriesData, subcategoriesData] = await Promise.all([

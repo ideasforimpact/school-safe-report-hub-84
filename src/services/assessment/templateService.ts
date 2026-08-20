@@ -122,6 +122,46 @@ async function convertFilesToBase64(questions: AssessmentQuestion[]): Promise<Pr
 }
 
 export const templateService = {
+  // Get all template category names, alphabetically sorted
+  getTemplateCategories: async (): Promise<string[]> => {
+    try {
+      const { data: result, error } = await supabase.functions.invoke('list-assessments', {
+        body: {},
+        headers: { path: 'categories' },
+      });
+
+      if (error) {
+        console.error('Error fetching template categories:', error);
+        throw new Error(`Failed to fetch template categories: ${error.message}`);
+      }
+
+      return (result?.categories as string[]) || [];
+    } catch (error) {
+      console.error('Error in getTemplateCategories:', error);
+      throw error;
+    }
+  },
+
+  // Get a single template category's name by id
+  getTemplateCategoryName: async (categoryId: string): Promise<string | null> => {
+    try {
+      const { data: result, error } = await supabase.functions.invoke('list-assessments', {
+        body: { id: categoryId },
+        headers: { path: 'category' },
+      });
+
+      if (error) {
+        console.error('Error fetching template category:', error);
+        throw new Error(`Failed to fetch template category: ${error.message}`);
+      }
+
+      return (result?.name as string | null) ?? null;
+    } catch (error) {
+      console.error('Error in getTemplateCategoryName:', error);
+      throw error;
+    }
+  },
+
   // Get all templates for a client
   getTemplates: async (clientId: string, clientTypeId?: string): Promise<AssessmentTemplate[]> => {
     try {

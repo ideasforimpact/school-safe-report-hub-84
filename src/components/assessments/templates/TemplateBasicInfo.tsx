@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { supabase } from '@/integrations/supabase/client';
+import { templateService } from '@/services/assessment/templateService';
 import { ASSESSMENT_TITLE } from '@/components/constants';
 
 interface TemplateBasicInfoProps {
@@ -38,20 +38,14 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
 
   useEffect(() => {
     const fetchTemplateTypes = async () => {
-      const { data, error } = await supabase
-        .from('template_categories')
-        .select('name')
-        .order('name', { ascending: true });
-
-      if (error) {
+      try {
+        const categories = await templateService.getTemplateCategories();
+        setTemplateTypes(categories);
+      } catch (error) {
         console.error('Error fetching template categories:', error);
+      } finally {
         setLoadingTypes(false);
-        return;
       }
-
-      const categories = data.map((item) => item.name);
-      setTemplateTypes(categories);
-      setLoadingTypes(false);
     };
 
     fetchTemplateTypes();
