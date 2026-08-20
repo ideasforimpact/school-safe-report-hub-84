@@ -80,11 +80,11 @@ serve(async (req) => {
       case "list":
         return json({ data: await listItems(supabase, typedResource, clientId, { categoryId, activeOnly, clientTypeId: body.clientTypeId }) });
       case "checkDuplicate":
-        return json({ data: await checkDuplicate(supabase, typedResource, clientId, payload.name, { categoryId, excludeId }) });
+        return json({ data: await checkDuplicate(supabase, typedResource, clientId, payload.name, { categoryId, excludeId, clientTypeId: body.clientTypeId }) });
       case "create":
         return json({ data: await createItem(supabase, typedResource, clientId, payload, body.clientTypeId) });
       case "update":
-        return json({ data: await updateItem(supabase, typedResource, clientId, id, payload, categoryId) });
+        return json({ data: await updateItem(supabase, typedResource, clientId, id, payload, categoryId, body.clientTypeId) });
       case "delete":
         await deleteItem(supabase, typedResource, clientId, id);
         return json({ data: true });
@@ -124,6 +124,20 @@ function getUserIdFromAuthorization(authHeader: string | null) {
 async function resolveClientId(supabase: any, userId: string | null, requestedClientId?: string, id?: string, resource?: Resource) {
   if (requestedClientId) return requestedClientId;
 
+  // Resolve from the calling user's own employee record first — this is the
+  // only branch with real authorization meaning (which client this user
+  // belongs to). The id-based lookup below just derives a row's own
+  // client_id with no check that the caller belongs to it, so it must stay
+  // a last resort, not take priority over the caller's actual identity.
+  if (userId) {
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("client_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (employee?.client_id) return employee.client_id;
+  }
+
   if (id && resource && resourceConfig[resource]) {
     const { data } = await supabase
       .from(resourceConfig[resource].table)
@@ -133,14 +147,7 @@ async function resolveClientId(supabase: any, userId: string | null, requestedCl
     if (data?.client_id) return data.client_id;
   }
 
-  if (!userId) return null;
-
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("client_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  return employee?.client_id ?? null;
+  return null;
 }
 
 async function listItems(supabase: any, resource: Resource, clientId: string, options: { categoryId?: string; activeOnly?: boolean; clientTypeId?: string }) {
@@ -173,7 +180,7 @@ async function checkDuplicate(
   resource: Resource,
   clientId: string,
   name: unknown,
-  options: { categoryId?: string; excludeId?: string },
+  options: { categoryId?: string; excludeId?: string; clientTypeId?: string },
 ) {
   const trimmedName = String(name ?? "").trim();
   if (!trimmedName) return false;
@@ -186,6 +193,14 @@ async function checkDuplicate(
 
   if (resource === "subcategories" && options.categoryId) {
     query = query.eq("category_id", options.categoryId);
+  }
+
+  // categories/subcategories/priorities/reportTypes/contributingFactors are all
+  // scoped by client_type_id (see buildRecord/listItems) — the same name is
+  // allowed to exist once per client type under the same client, so the
+  // duplicate check must be scoped the same way or it false-positives across types.
+  if (options.clientTypeId) {
+    query = query.eq("client_type_id", options.clientTypeId);
   }
 
   if (options.excludeId) {
@@ -206,6 +221,7 @@ async function createItem(supabase: any, resource: Resource, clientId: string, p
 
   const duplicate = await checkDuplicate(supabase, resource, clientId, name, {
     categoryId: payload.categoryId as string | undefined,
+    clientTypeId,
   });
   if (duplicate) throw new Error(duplicateMessage(resource));
 
@@ -227,6 +243,7 @@ async function updateItem(
   id: string,
   payload: Record<string, unknown>,
   categoryId?: string,
+  clientTypeId?: string,
 ) {
   if (!id) throw new Error("Record ID is required");
   const name = String(payload.name ?? "").trim();
@@ -243,6 +260,7 @@ async function updateItem(
   const duplicate = await checkDuplicate(supabase, resource, clientId, name, {
     categoryId: resolvedCategoryId,
     excludeId: id,
+    clientTypeId,
   });
   if (duplicate) throw new Error(duplicateMessage(resource));
 

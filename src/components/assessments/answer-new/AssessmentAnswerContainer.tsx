@@ -77,8 +77,8 @@ const AssessmentAnswerContainer = () => {
       className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 print:bg-white print:min-h-0"
     >
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
-        <AssessmentAnswerHeader
-          assessment={{ ...assessment, status: assessment.my_status ?? assessment.status }}
+        <AssessmentAnswerHeader 
+          assessment={assessment}
           template={template}
           progress={progress}
         />
