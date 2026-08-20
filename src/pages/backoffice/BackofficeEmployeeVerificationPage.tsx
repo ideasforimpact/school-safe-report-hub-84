@@ -34,15 +34,18 @@ const TruncatedText = ({ text, maxLength = 30 }: { text: string; maxLength?: num
 };
 
 // Helper function to get status from documentsSummary
+// Priority: Failed > Pending > In Progress > Verified (matches VerificationStatusSummary's badge logic)
 const getStatusFromSummary = (summary: EmployeeWithDocumentsSummary['documentsSummary']): 'Verified' | 'Pending' | 'In Progress' | 'Failed' => {
+  // Legacy summaries have no inProgress field — their "pending" count actually means in-progress.
+  const isLegacySummary = summary.inProgress === undefined;
+  const inProgress = isLegacySummary ? summary.pending : summary.inProgress;
+  const pending = isLegacySummary ? 0 : summary.pending;
   if (summary.failed > 0) {
     return 'Failed';
-  } else if ((summary.inProgress || 0) > 0) {
-    return 'In Progress';
-  } else if (summary.inProgress === undefined && summary.pending > 0) {
-    return 'In Progress';
-  } else if (summary.pending > 0) {
+  } else if (pending > 0) {
     return 'Pending';
+  } else if (inProgress > 0) {
+    return 'In Progress';
   } else {
     return 'Verified';
   }

@@ -26,9 +26,10 @@ const VerificationStatusSummary = ({ summary, className = '' }: VerificationStat
   }
 
   // Priority-based status logic
-  // Priority: Failed > In Progress > Pending > Verified
+  // Priority: Failed > Pending > In Progress > Verified
   // If ANY document failed → Show "Failed"
-  // If no failures but ANY pending → Show "Pending"  
+  // If no failures but ANY pending → Show "Pending"
+  // If no failures/pending but ANY in progress → Show "In Progress"
   // If ALL documents verified → Show "Verified"
   const getOverallStatus = () => {
     if (failed > 0) {
@@ -38,19 +39,19 @@ const VerificationStatusSummary = ({ summary, className = '' }: VerificationStat
         iconColor: 'text-red-600',
         badgeClass: 'bg-red-100 text-red-800 border-red-200'
       };
-    } else if (inProgress > 0) {
-      return {
-        status: 'In Progress',
-        icon: Clock,
-        iconColor: 'text-blue-600',
-        badgeClass: 'bg-blue-100 text-blue-800 border-blue-200'
-      };
     } else if (pending > 0) {
       return {
         status: 'Pending',
         icon: Clock,
         iconColor: 'text-amber-600',
         badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      };
+    } else if (inProgress > 0) {
+      return {
+        status: 'In Progress',
+        icon: Clock,
+        iconColor: 'text-blue-600',
+        badgeClass: 'bg-blue-100 text-blue-800 border-blue-200'
       };
     } else {
       return {

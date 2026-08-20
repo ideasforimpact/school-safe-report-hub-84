@@ -63,8 +63,9 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
     
     // Group by verification status
     const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
-    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
-    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed' || doc.verificationStatus === 'rejected');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+    const inProgress = documents.filter(doc => doc.verificationStatus === 'in-progress');
     const total = documents.length;
 
     if (total === 0) {
@@ -88,9 +89,10 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
     );
 
     // Priority-based status logic (same as VerificationStatusSummary)
-    // Priority: Failed > Pending > Verified
+    // Priority: Failed > Pending > In Progress > Verified
     // If ANY document failed → Show "Failed"
     // If no failures but ANY pending → Show "Pending"
+    // If no failures/pending but ANY in progress → Show "In Progress"
     // If ALL documents verified → Show "Verified"
     const getOverallStatus = () => {
       if (failed.length > 0) {
@@ -106,6 +108,13 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
           icon: Clock,
           iconColor: 'text-amber-600',
           badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        };
+      } else if (inProgress.length > 0) {
+        return {
+          status: 'In Progress',
+          icon: Clock,
+          iconColor: 'text-blue-600',
+          badgeClass: 'bg-blue-100 text-blue-800 border-blue-200'
         };
       } else {
         return {
