@@ -112,7 +112,7 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
     return () => {
       cancelled = true;
     };
-  }, [isClientFilterActive, clientId, searchQuery, statusFilter, typeFilter]);
+  }, [isClientFilterActive, clientId, searchQuery, statusFilter, typeFilter, documentStatusFilters, documentTypeFilter]);
 
   // Reset back to page 1 whenever the active filter set changes
   useEffect(() => {

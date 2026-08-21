@@ -243,7 +243,7 @@ return (
           before the new data arrives. (The initial load itself is gated by
           TransportSafetyPage, so `loading` is already false the first time
           this component mounts.) */}
-      {loading ? (
+      {loading || isFetchingAllMatching ? (
         <div className="flex items-center justify-center py-20">
           <Loader text="Loading vehicles..." />
         </div>
