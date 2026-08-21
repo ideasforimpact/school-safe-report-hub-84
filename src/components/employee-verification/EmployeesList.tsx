@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import {CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
+import { Settings, FileX, AlertTriangle, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
 import Loader from '@/components/common/Loader';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -18,6 +18,7 @@ import { Employee } from '@/types/employeeVerification';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { formatDepartment, capitalizeWords } from '@/lib/formatUtils';
 import { aggregatePersonalInfo } from './utils/personalInfoUtils';
+import { getOverallVerificationStatus } from './utils/verificationStatusPriority';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -88,45 +89,17 @@ const EmployeesList: React.FC<EmployeesListProps> = ({ employees }) => {
         (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed')
     );
 
-    // Priority-based status logic (same as VerificationStatusSummary)
-    // Priority: Failed > Pending > In Progress > Verified
-    // If ANY document failed → Show "Failed"
-    // If no failures but ANY pending → Show "Pending"
-    // If no failures/pending but ANY in progress → Show "In Progress"
-    // If ALL documents verified → Show "Verified"
-    const getOverallStatus = () => {
-      if (failed.length > 0) {
-        return {
-          status: 'Failed',
-          icon: XCircle,
-          iconColor: 'text-red-600',
-          badgeClass: 'bg-red-100 text-red-800 border-red-200'
-        };
-      } else if (pending.length > 0 || (isDriver && !hasVerifiedLicense)) {
-        return {
-          status: 'Pending',
-          icon: Clock,
-          iconColor: 'text-amber-600',
-          badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-        };
-      } else if (inProgress.length > 0) {
-        return {
-          status: 'In Progress',
-          icon: Clock,
-          iconColor: 'text-blue-600',
-          badgeClass: 'bg-blue-100 text-blue-800 border-blue-200'
-        };
-      } else {
-        return {
-          status: 'Verified',
-          icon: CheckCircle,
-          iconColor: 'text-emerald-600',
-          badgeClass: 'bg-green-100 text-green-800 border-green-200'
-        };
-      }
-    };
+    const driverForcesPending = isDriver && !hasVerifiedLicense && failed.length === 0 && pending.length === 0;
 
-    const { status, icon: StatusIcon, iconColor, badgeClass } = getOverallStatus();
+    // Precedence order lives in VERIFICATION_STATUS_PRIORITY (utils/verificationStatusPriority.ts) —
+    // reorder that list to change which status wins when multiple conditions are true at once.
+    const { status, icon: StatusIcon, iconColor, badgeClass } = getOverallVerificationStatus({
+      verified: verified.length,
+      pending: pending.length + (driverForcesPending ? 1 : 0),
+      inProgress: inProgress.length,
+      failed: failed.length,
+      total,
+    });
 
     // Debug log to check what's being rendered in list
     console.log('EmployeesList - Rendering status:', status, 'with icon:', StatusIcon.name);
