@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StatusSwitch } from '@/components/ui/status-switch';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Vehicle } from '@/types/transportSafety';
@@ -168,7 +169,13 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose,onSuc
 
       if (isEditMode && vehicle) {
         console.log('Updating vehicle with ID:', vehicle.id);
-        await updateVehicle(vehicle.id, vehicleData);
+        // Only include `status` in the update when it actually changed — the vehicles
+        // edge function does an extra lookup + maintenance-history bookkeeping whenever
+        // `status` is present, so sending it unchanged on every unrelated edit would pay
+        // that cost for nothing (and widen the window for the status-transition race).
+        const { status, ...vehicleDataWithoutStatus } = vehicleData;
+        const updatePayload = status !== vehicle.status ? vehicleData : vehicleDataWithoutStatus;
+        await updateVehicle(vehicle.id, updatePayload);
         // toast.success('Vehicle updated successfully');
       } else {
         console.log('Creating new vehicle');
@@ -361,6 +368,28 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose,onSuc
                 </div>
               );
             })()}
+
+            {/* Status toggle — only meaningful once a vehicle exists; new vehicles
+                always start Active. */}
+            {isEditMode && (
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <div className="flex items-center gap-3">
+                  <StatusSwitch
+                    variant="status"
+                    checked={watch('status') !== 'maintenance'}
+                    onCheckedChange={(checked) => {
+                      setValue('status', checked ? 'active' : 'maintenance', { shouldDirty: true });
+                    }}
+                    disabled={isSubmitting}
+                    aria-label={watch('status') === 'maintenance' ? 'Set vehicle to Active' : 'Move vehicle to Maintenance'}
+                  />
+                  <p className={`text-sm font-medium ${watch('status') === 'maintenance' ? 'text-red-600' : 'text-green-600'}`}>
+                    {watch('status') === 'maintenance' ? 'Vehicle moved to Maintenance' : 'Vehicle is Active'}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

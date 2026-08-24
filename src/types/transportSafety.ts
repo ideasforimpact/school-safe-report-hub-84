@@ -92,3 +92,12 @@ export interface Vehicle {
   // Challan data
   vehicleChallans?: VehicleChallans | null;
 }
+
+export interface VehicleMaintenanceHistoryEntry {
+  id: string;
+  vehicleId: string;
+  startedAt: string;
+  endedAt: string | null;
+  changedBy: string | null;
+  durationDays: number; // whole days spent in maintenance; 0 while the period is still open
+}

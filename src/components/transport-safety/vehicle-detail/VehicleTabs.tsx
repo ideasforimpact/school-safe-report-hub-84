@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/Dateformat';
-import { History, FilePlus, FileText, FileX, Eye, Trash2, Check, Info, Calendar } from 'lucide-react';
+import { History, FilePlus, FileText, FileX, Eye, Trash2, Check, Info, Calendar, Wrench, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -30,8 +30,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import VerificationDetailsDialog from '../VerificationDetailsDialog';
-import { getVehicleChallans, getVehicleDocuments } from '@/services/transport-safety/vehicleService';
-import { VehicleChallans } from '@/types/transportSafety';
+import { getVehicleChallans, getVehicleDocuments, fetchVehicleMaintenanceHistory } from '@/services/transport-safety/vehicleService';
+import { VehicleChallans, VehicleMaintenanceHistoryEntry } from '@/types/transportSafety';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { Json } from '@/integrations/supabase/types';
 
@@ -59,6 +59,21 @@ interface UploadSuccessResult {
   documentData?: UploadedDocument;
 }
 
+const formatMaintenanceDuration = (startedAt: string, endedAt: string | null): string => {
+  const end = endedAt ? new Date(endedAt) : new Date();
+  const ms = Math.max(0, end.getTime() - new Date(startedAt).getTime());
+  const minutes = Math.floor(ms / 60000);
+
+  if (minutes < 1) return 'Less than a minute';
+  if (minutes < 60) return `${minutes} min`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours > 1 ? 's' : ''} ${minutes % 60} min`;
+
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ${hours % 24} hr${hours % 24 !== 1 ? 's' : ''}`;
+};
+
 const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [showVerificationDetails, setShowVerificationDetails] = React.useState(false);
@@ -75,6 +90,8 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
   const [documentToDelete, setDocumentToDelete] = useState<{ document: UploadedDocument; fileIndex: number } | null>(null);
   const [documentName, setDocumentName] = useState("");
   const [duplicateError, setDuplicateError] = useState("");
+  const [maintenanceHistory, setMaintenanceHistory] = useState<VehicleMaintenanceHistoryEntry[]>([]);
+  const [isLoadingMaintenanceHistory, setIsLoadingMaintenanceHistory] = useState(false);
   const isUploadDisabled = !documentName || documentName.trim().length === 0;
   const existingDocumentNames = uploadedDocuments.map(d => d.name.toLowerCase());
 
@@ -106,6 +123,26 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  useEffect(() => {
+    if (!vehicleId) return;
+
+    let cancelled = false;
+    setIsLoadingMaintenanceHistory(true);
+
+    fetchVehicleMaintenanceHistory(vehicleId)
+      .then((history) => {
+        if (!cancelled) setMaintenanceHistory(history);
+      })
+      .catch((error) => {
+        console.error('Error fetching maintenance history:', error);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingMaintenanceHistory(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [vehicleId]);
 
   const fetchVehicleChallansForHistory = useCallback(async () => {
     if (!vehicleId) return;
@@ -521,6 +558,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
       <TabsList className="mb-4">
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="history">History</TabsTrigger>
+        <TabsTrigger value="maintenance">Maintenance History</TabsTrigger>
       </TabsList>
       
       {/* Documents Tab Content */}
@@ -738,7 +776,73 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
         </div>
       )}
     </TabsContent>
-      
+
+      {/* Maintenance History Tab Content */}
+      <TabsContent value="maintenance" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+        <h2 className="text-lg font-medium mb-4 text-left">Maintenance History</h2>
+
+        {isLoadingMaintenanceHistory ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Loading maintenance history...</span>
+          </div>
+        ) : maintenanceHistory.length === 0 ? (
+          <div className="text-center py-8 border border-dashed rounded-md bg-gray-50">
+            <Wrench className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-gray-500 mb-1">No Maintenance History</h3>
+            <p className="text-gray-400 text-sm">
+              This vehicle has not been placed in maintenance mode yet.
+            </p>
+          </div>
+        ) : (
+          <ol className="relative border-l-2 border-gray-100 ml-3">
+            {maintenanceHistory.map((entry) => {
+              const isOngoing = !entry.endedAt;
+              return (
+                <li key={entry.id} className="mb-6 ml-6 last:mb-0">
+                  <span
+                    className={`absolute flex items-center justify-center w-7 h-7 rounded-full -left-[15px] ring-4 ring-white ${
+                      isOngoing ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    <Wrench className="h-3.5 w-3.5" />
+                  </span>
+
+                  <div className="border rounded-md p-4">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <p className="font-medium text-sm">
+                        {isOngoing
+                          ? formatMaintenanceDuration(entry.startedAt, entry.endedAt)
+                          : `${entry.durationDays} day${entry.durationDays !== 1 ? 's' : ''}`}{' '}
+                        in maintenance
+                      </p>
+                      {isOngoing && (
+                        <Badge className="bg-amber-100 text-amber-800 border-amber-200 shrink-0" variant="outline">
+                          Ongoing
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-400 text-xs uppercase tracking-wide mb-0.5">Moved to Maintenance</p>
+                        <p className="text-gray-700">{formatDate(entry.startedAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-xs uppercase tracking-wide mb-0.5">Back to Active</p>
+                        <p className={isOngoing ? 'text-amber-600 font-medium' : 'text-gray-700'}>
+                          {isOngoing ? 'Present' : formatDate(entry.endedAt as string)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </TabsContent>
+
       {/* Verification Details Dialog */}
    <VerificationDetailsDialog
   open={showVerificationDetails}
