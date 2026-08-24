@@ -398,6 +398,43 @@ serve(async (req) => {
         });
       }
 
+      // ── get_vehicle_renewal_history ──────────────────────────────────────────
+      if (operation === 'get_vehicle_renewal_history') {
+        const { vehicleId, clientId } = body;
+
+        if (!vehicleId || !clientId) {
+          return new Response(JSON.stringify({ error: 'Vehicle ID and client ID are required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const { data: vehicle, error: vehicleError } = await supabase
+          .from('vehicles')
+          .select('id')
+          .eq('id', vehicleId)
+          .eq('client_id', clientId)
+          .maybeSingle();
+
+        if (vehicleError) throw vehicleError;
+        if (!vehicle) {
+          return new Response(JSON.stringify({ renewals: [] }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const { data, error } = await supabase
+          .from('vehicle_certificate_renewals')
+          .select('*')
+          .eq('vehicle_id', vehicleId)
+          .order('verification_timestamp', { ascending: false });
+
+        if (error) throw error;
+        return new Response(JSON.stringify({ renewals: data || [] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       // ── create ─────────────────────────────────────────────────────────────
       if (operation === 'create') {
         const { vehicleData, clientId } = body;

@@ -1204,16 +1204,18 @@ serve(async (req) => {
     let existingVerificationLog = {};
     let savedVehicleTypeId: string | null = null;
     let savedVehicleTypeName: string | null = null;
-    
+    let vehicleClientId: string | null = null;
     if (vehicleId) {
       const { data: vehicleData, error } = await supabase
         .from('vehicles')
-        .select('verification_data, type')
+        .select('verification_data, type, client_id')
         .eq('id', vehicleId)
-        .single();
+        .singl
+e();
 
       if (!error && vehicleData) {
         savedVehicleTypeId = vehicleData.type || null;
+        vehicleClientId = vehicleData.client_id || null;
 
         if (Array.isArray(vehicleData.verification_data)) {
           // Find the verification_log entry
@@ -1242,7 +1244,17 @@ serve(async (req) => {
         savedVehicleTypeName = vehicleTypeData?.name || savedVehicleTypeId;
       }
     }
-    
+
+    // Snapshot of the most recent previous verification run (by timestamp key), used
+    // below to detect FC/insurance/pollution renewals and record any coverage gap.
+    // existingVerificationLog is never mutated in place, so reading it here is safe
+    // even though it's spread into updatedVerificationLog further down.
+    const previousTimestamps = Object.keys(existingVerificationLog)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    const previousLatestEntry: Array<{ field: string; value: any }> | null = previousTimestamps.length > 0
+      ? (existingVerificationLog as Record<string, any>)[previousTimestamps[0]]
+      : null;
+
     // Create verification data from the response fields
     const currentVerificationData: Array<{ field: string; value: any; verified: boolean }> = [];
     
@@ -1268,11 +1280,47 @@ serve(async (req) => {
       });
     }
     
+    // Rows to insert into vehicle_certificate_renewals once a certificate renewal
+    // (a changed FC/insurance/pollution expiry vs. the previous check) is detected below.
+    const renewalHistoryRows: Record<string, unknown>[] = [];
+
     // Create verification data from the response fields
     if (providerData.data) {
       const data = providerData.data;
       console.log(data,"Debugging the RC response data");
-      
+
+      const findPreviousCertificateValue = (fieldName: string): string | null => {
+        if (!Array.isArray(previousLatestEntry)) return null;
+        const item = previousLatestEntry.find((f) => f.field === fieldName);
+        return typeof item?.value === 'string' && item.value ? item.value : null;
+      };
+
+      const CERTIFICATE_FIELD_MAP: Array<{ documentType: 'fitness' | 'insurance' | 'pollution'; rcField: string }> = [
+        { documentType: 'fitness', rcField: 'fit_up_to' },
+        { documentType: 'insurance', rcField: 'insurance_upto' },
+        { documentType: 'pollution', rcField: 'pucc_upto' },
+      ];
+
+      for (const { documentType, rcField } of CERTIFICATE_FIELD_MAP) {
+        const newValue = typeof data[rcField] === 'string' && data[rcField] ? data[rcField] : null;
+        const oldValue = findPreviousCertificateValue(rcField);
+
+        // Only record when a previous value existed AND it actually changed:
+        // - oldValue === null -> first time we've seen this doc type for this vehicle, nothing to diff.
+        // - newValue === null -> RC no longer returns this field this run, nothing to record.
+        // - newValue === oldValue -> unchanged, no renewal happened.
+        if (oldValue && newValue && newValue !== oldValue) {
+          renewalHistoryRows.push({
+            vehicle_id: vehicleId,
+            client_id: vehicleClientId,
+            document_type: documentType,
+            previous_end_date: oldValue,
+            renew_start_date: verificationDate.slice(0, 10),
+            renew_end_date: newValue,
+            verification_timestamp: verificationDate,
+          });
+        }
+      }
       // After successful verification, update the vehicles table fields based on registration_number
       try {
         // Only proceed when we have a valid registration number and data
@@ -1393,6 +1441,15 @@ serve(async (req) => {
         console.error("Error updating vehicle verification data:", updateError);
       } else {
         console.log("Vehicle verification data updated successfully");
+      }
+
+      if (renewalHistoryRows.length > 0 && vehicleClientId) {
+        const { error: renewalInsertError } = await supabase
+          .from('vehicle_certificate_renewals')
+          .insert(renewalHistoryRows);
+        if (renewalInsertError) {
+          console.error('Error inserting vehicle_certificate_renewals rows:', renewalInsertError);
+        }
       }
     }
     } else if (vehicleId) {

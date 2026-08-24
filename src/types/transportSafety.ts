@@ -42,6 +42,30 @@ export interface VehicleVerificationData {
   verified: boolean;
 }
 
+export type CertificateDocumentType = 'fitness' | 'insurance' | 'pollution';
+
+export interface VehicleCertificateRenewalRow {
+  id: string;
+  vehicle_id: string;
+  document_type: CertificateDocumentType;
+  previous_end_date: string | null;
+  renew_start_date: string;
+  renew_end_date: string;
+  renewal_gap_days: number | null;
+  verification_timestamp: string;
+}
+
+export interface VehicleCertificateRenewal {
+  id: string;
+  vehicleId: string;
+  documentType: CertificateDocumentType;
+  previousEndDate: string | null;
+  renewStartDate: string;
+  renewEndDate: string;
+  renewalGapDays: number | null;
+  verificationTimestamp: string;
+}
+
 export interface VehicleChallans {
   id: string;
   vehicle_id: string;
