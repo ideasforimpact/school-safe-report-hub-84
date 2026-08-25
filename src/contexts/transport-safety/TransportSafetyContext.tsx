@@ -263,7 +263,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
 
   const updateVehicle = async (id: string, updates: Partial<Vehicle>) => {
     try {
-      const updatedVehicle = await updateVehicleService(id, updates);
+      const updatedVehicle = await updateVehicleService(id, updates, user?.id);
       if (updatedVehicle) {
         setVehicles(prev => prev.map(v => (v.id === id ? updatedVehicle : v)));
         toast.success('Vehicle updated successfully');

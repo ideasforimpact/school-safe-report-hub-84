@@ -417,12 +417,14 @@ serve(async (req) => {
       submissions90Days: submissions90Days.length
     })
 
-    // Get vehicle verification stats (only active vehicles)
+    // Get vehicle verification stats (only active vehicles, excluding those
+    // currently in maintenance — they shouldn't count toward the compliance score)
     const { data: allVehicles, error: vehiclesError } = await supabase
       .from('vehicles')
       .select('id, verification_data')
       .eq('client_id', client_id)
       .eq('active', true)
+      .neq('status', 'maintenance')
 
     if (vehiclesError) {
       console.error('Error fetching vehicles for verification stats:', vehiclesError)

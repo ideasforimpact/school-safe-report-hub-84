@@ -533,7 +533,7 @@ serve(async (req) => {
 
       // ── update ─────────────────────────────────────────────────────────────
       if (operation === 'update') {
-        const { id, updates } = body;
+        const { id, updates, changedBy } = body;
 
         const processedUpdates = {
           ...updates,
@@ -557,11 +557,92 @@ serve(async (req) => {
           }
         }
 
+        // Track the vehicle's prior status so we can open/close a maintenance
+        // history period when `status` transitions across the 'maintenance' boundary.
+        let previousStatus: string | null = null;
+        if (processedUpdates.status) {
+          const { data: existingVehicle, error: statusLookupError } = await supabase
+            .from('vehicles')
+            .select('status')
+            .eq('id', id)
+            .maybeSingle();
+          if (statusLookupError) {
+            // Don't guess: an unreadable prior status must not be treated as "no prior
+            // status", which would misfire a spurious maintenance-history insert below.
+            console.error('Error looking up vehicle status before update:', statusLookupError);
+          } else {
+            previousStatus = existingVehicle?.status ?? null;
+          }
+        }
+
         const { data, error } = await supabase.from('vehicles').update(processedUpdates).eq('id', id).select().single();
         if (error) throw error;
 
+        if (processedUpdates.status && processedUpdates.status !== previousStatus) {
+          if (processedUpdates.status === 'maintenance') {
+            const { error: insertError } = await supabase.from('vehicle_maintenance_history').insert({
+              vehicle_id: id,
+              client_id: data.client_id ?? null,
+              changed_by: changedBy ?? null,
+            });
+            // 23505 = unique_violation on idx_vehicle_maintenance_history_open_period —
+            // a concurrent request already opened a period for this vehicle; that's the
+            // constraint doing its job, not a failure worth surfacing to the caller.
+            if (insertError && insertError.code !== '23505') {
+              console.error('Error opening vehicle maintenance history period:', insertError);
+            }
+          } else if (previousStatus === 'maintenance') {
+            const { data: openPeriod, error: openPeriodError } = await supabase
+              .from('vehicle_maintenance_history')
+              .select('id, started_at')
+              .eq('vehicle_id', id)
+              .is('ended_at', null)
+              .order('started_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (openPeriodError) {
+              console.error('Error looking up open vehicle maintenance history period:', openPeriodError);
+            } else if (openPeriod) {
+              const endedAt = new Date();
+              const startedAt = new Date(openPeriod.started_at);
+              const startDate = new Date(startedAt.getFullYear(), startedAt.getMonth(), startedAt.getDate());
+              const endDate = new Date(endedAt.getFullYear(), endedAt.getMonth(), endedAt.getDate());
+              const durationDays = Math.max(
+                0,
+                Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
+              );
+
+              const { error: closeError } = await supabase
+                .from('vehicle_maintenance_history')
+                .update({ ended_at: endedAt.toISOString(), duration_days: durationDays })
+                .eq('id', openPeriod.id);
+              if (closeError) {
+                console.error('Error closing vehicle maintenance history period:', closeError);
+              }
+            }
+          }
+        }
+
         const [enriched] = await enrichWithVehicleTypes(supabase, [data]);
         return new Response(JSON.stringify({ vehicle: enriched }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // ── get_maintenance_history ───────────────────────────────────────────
+      if (operation === 'get_maintenance_history') {
+        const { vehicleId } = body;
+
+        const { data, error } = await supabase
+          .from('vehicle_maintenance_history')
+          .select('*')
+          .eq('vehicle_id', vehicleId)
+          .order('started_at', { ascending: false });
+
+        if (error) throw error;
+
+        return new Response(JSON.stringify({ history: data || [] }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }

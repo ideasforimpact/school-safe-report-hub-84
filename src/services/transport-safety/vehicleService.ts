@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Vehicle, VehicleType, VehicleChallans, VehicleTypeOption, VehicleVerificationData, VehicleCertificateRenewal, VehicleCertificateRenewalRow } from "@/types/transportSafety";
+import { Vehicle, VehicleType, VehicleChallans, VehicleTypeOption, VehicleVerificationData, VehicleCertificateRenewal, VehicleCertificateRenewalRow,VehicleMaintenanceHistoryEntry } from "@/types/transportSafety";
 import { UploadedDocument } from "@/types/fileTypes";
 
 export type { VehicleTypeOption };
@@ -387,7 +387,11 @@ export const bulkCreateVehicles = async (
 
 // ─── Update a vehicle ─────────────────────────────────────────────────────────
 
-export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Promise<Vehicle | null> => {
+export const updateVehicle = async (
+  id: string,
+  updates: Partial<Vehicle>,
+  changedBy?: string | null,
+): Promise<Vehicle | null> => {
   const dbUpdates: Record<string, unknown> = {};
 
   if (updates.registrationNumber) dbUpdates.registration_number = updates.registrationNumber;
@@ -417,8 +421,36 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
     }));
   }
 
-  const data = await invokeVehicles<{ vehicle: VehicleRow | null }>('update', { id, updates: dbUpdates });
+  const data = await invokeVehicles<{ vehicle: VehicleRow | null }>('update', { id, updates: dbUpdates, changedBy });
   return data.vehicle ? mapVehicle(data.vehicle) : null;
+};
+
+// ─── Vehicle maintenance history ────────────────────────────────────────────
+
+interface VehicleMaintenanceHistoryRow {
+  id: string;
+  vehicle_id: string;
+  started_at: string;
+  ended_at: string | null;
+  changed_by: string | null;
+  duration_days: number;
+}
+
+export const fetchVehicleMaintenanceHistory = async (
+  vehicleId: string,
+): Promise<VehicleMaintenanceHistoryEntry[]> => {
+  const data = await invokeVehicles<{ history: VehicleMaintenanceHistoryRow[] }>(
+    'get_maintenance_history',
+    { vehicleId },
+  );
+  return (data.history || []).map(row => ({
+    id: row.id,
+    vehicleId: row.vehicle_id,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    changedBy: row.changed_by,
+    durationDays: row.duration_days ?? 0,
+  }));
 };
 
 // ─── Delete a vehicle ─────────────────────────────────────────────────────────

@@ -3,7 +3,8 @@ import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit, Eye } from 'lucide-react';
+import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit, Eye, Car, Wrench } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { Link } from 'react-router-dom';
@@ -157,8 +158,23 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-left">
-                      {vehicle.internalVehicleName || '-'}
+                    <div className="text-left flex items-center gap-2 flex-wrap">
+                      <div className="font-medium">{vehicle.internalVehicleName || '-'}</div>
+                      {vehicle.status === 'maintenance' && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="relative inline-flex items-center justify-center h-7 w-7 rounded-full bg-amber-50 border border-amber-200 shrink-0">
+                                <Car className="h-4 w-4 text-amber-600" />
+                                <span className="absolute -bottom-0.5 -right-0.5 inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-amber-500 ring-1 ring-white">
+                                  <Wrench className="h-2 w-2 text-white" />
+                                </span>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>Vehicle is currently in maintenance</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
