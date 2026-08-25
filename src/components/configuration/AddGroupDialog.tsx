@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Loader2, X } from 'lucide-react';
 import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
 import SearchMultiSelect, { SearchMultiSelectOption } from '@/components/common/SearchMultiSelect';
+import { extractEdgeFunctionErrorMessage } from '@/utils/edgeFunctionError';
 
 interface AddGroupDialogProps {
   isOpen: boolean;
@@ -257,7 +258,11 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
         body: payload,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(
+          await extractEdgeFunctionErrorMessage(error, editingGroup ? 'Failed to update group' : 'Failed to create group')
+        );
+      }
 
       if (data?.error) {
         throw new Error(data.error);
