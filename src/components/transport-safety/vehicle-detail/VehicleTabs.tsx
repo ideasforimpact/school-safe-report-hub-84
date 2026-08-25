@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/Dateformat';
-import { History, FilePlus, FileText, FileX, Eye, Trash2, Check, Info, Calendar, Wrench, Loader2 } from 'lucide-react';
+import { History, FilePlus, FileText, FileX, Eye, Trash2, Check, Info, Calendar, Car, Wrench, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -59,19 +59,14 @@ interface UploadSuccessResult {
   documentData?: UploadedDocument;
 }
 
-const formatMaintenanceDuration = (startedAt: string, endedAt: string | null): string => {
+// Calendar-date difference (not a 24h period count) — crossing midnight counts as a day,
+// even if less than 24h has elapsed. `endedAt` defaults to now for an open (ongoing) period.
+const getMaintenanceDurationDays = (startedAt: string, endedAt: string | null): number => {
+  const start = new Date(startedAt);
   const end = endedAt ? new Date(endedAt) : new Date();
-  const ms = Math.max(0, end.getTime() - new Date(startedAt).getTime());
-  const minutes = Math.floor(ms / 60000);
-
-  if (minutes < 1) return 'Less than a minute';
-  if (minutes < 60) return `${minutes} min`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hr${hours > 1 ? 's' : ''} ${minutes % 60} min`;
-
-  const days = Math.floor(hours / 24);
-  return `${days} day${days > 1 ? 's' : ''} ${hours % 24} hr${hours % 24 !== 1 ? 's' : ''}`;
+  const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const endDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  return Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
 };
 
 const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
@@ -788,7 +783,12 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
           </div>
         ) : maintenanceHistory.length === 0 ? (
           <div className="text-center py-8 border border-dashed rounded-md bg-gray-50">
-            <Wrench className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <div className="relative h-12 w-12 mx-auto mb-3">
+              <Car className="h-12 w-12 text-gray-300" />
+              <span className="absolute -bottom-1 -right-1 inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-200 ring-2 ring-white">
+                <Wrench className="h-3 w-3 text-gray-500" />
+              </span>
+            </div>
             <h3 className="text-gray-500 mb-1">No Maintenance History</h3>
             <p className="text-gray-400 text-sm">
               This vehicle has not been placed in maintenance mode yet.
@@ -798,29 +798,43 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
           <ol className="relative border-l-2 border-gray-100 ml-3">
             {maintenanceHistory.map((entry) => {
               const isOngoing = !entry.endedAt;
+              const daysInMaintenance = getMaintenanceDurationDays(entry.startedAt, entry.endedAt);
               return (
                 <li key={entry.id} className="mb-6 ml-6 last:mb-0">
                   <span
-                    className={`absolute flex items-center justify-center w-7 h-7 rounded-full -left-[15px] ring-4 ring-white ${
-                      isOngoing ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'
+                    className={`absolute flex items-center justify-center w-7 h-7 rounded-full -left-[15px] ring-4 ring-white border ${
+                      isOngoing ? 'bg-amber-50 border-amber-200' : 'bg-gray-100 border-gray-200'
                     }`}
                   >
-                    <Wrench className="h-3.5 w-3.5" />
+                    <span className="relative inline-flex items-center justify-center h-4 w-4">
+                      <Car className={`h-4 w-4 ${isOngoing ? 'text-amber-600' : 'text-gray-500'}`} />
+                      <span
+                        className={`absolute -bottom-1 -right-1 inline-flex items-center justify-center h-2.5 w-2.5 rounded-full ring-1 ring-white ${
+                          isOngoing ? 'bg-amber-500' : 'bg-gray-400'
+                        }`}
+                      >
+                        <Wrench className="h-1.5 w-1.5 text-white" />
+                      </span>
+                    </span>
                   </span>
 
                   <div className="border rounded-md p-4">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <p className="font-medium text-sm">
-                        {isOngoing
-                          ? formatMaintenanceDuration(entry.startedAt, entry.endedAt)
-                          : `${entry.durationDays} day${entry.durationDays !== 1 ? 's' : ''}`}{' '}
-                        in maintenance
-                      </p>
-                      {isOngoing && (
-                        <Badge className="bg-amber-100 text-amber-800 border-amber-200 shrink-0" variant="outline">
-                          Ongoing
+                    <div className="flex items-start justify-end gap-3 mb-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {isOngoing && (
+                          <Badge className="bg-amber-100 text-amber-800 border-amber-200 shrink-0" variant="outline">
+                            Ongoing
+                          </Badge>
+                        )}
+                        <Badge
+                          className={`shrink-0 ${
+                            isOngoing ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                          }`}
+                          variant="outline"
+                        >
+                          {daysInMaintenance} D
                         </Badge>
-                      )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-sm">

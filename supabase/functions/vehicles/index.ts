@@ -568,8 +568,12 @@ serve(async (req) => {
               console.error('Error looking up open vehicle maintenance history period:', openPeriodError);
             } else if (openPeriod) {
               const endedAt = new Date();
-              const durationDays = Math.floor(
-                (endedAt.getTime() - new Date(openPeriod.started_at).getTime()) / (1000 * 60 * 60 * 24),
+              const startedAt = new Date(openPeriod.started_at);
+              const startDate = new Date(startedAt.getFullYear(), startedAt.getMonth(), startedAt.getDate());
+              const endDate = new Date(endedAt.getFullYear(), endedAt.getMonth(), endedAt.getDate());
+              const durationDays = Math.max(
+                0,
+                Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
               );
 
               const { error: closeError } = await supabase
