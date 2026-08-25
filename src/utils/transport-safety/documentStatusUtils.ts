@@ -255,7 +255,11 @@ export const hasExpiredDocuments = (vehicle: Vehicle): boolean => {
 };
 
 /**
- * Check if vehicle has any documents expiring soon but none expired
+ * Check if vehicle has any document expiring soon. This is independent of
+ * hasExpiredDocuments - a vehicle can have one document expired and another
+ * expiring soon, and should match both "Any Expired/Missing" and
+ * "Expiring Soon" in that case, rather than the expired one hiding the
+ * expiring one.
  */
 export const hasExpiringDocuments = (vehicle: Vehicle): boolean => {
   // If no verification data, don't treat as expiring
@@ -266,13 +270,9 @@ export const hasExpiringDocuments = (vehicle: Vehicle): boolean => {
   const fitnessStatus = getDocumentStatus(vehicle, 'fitness');
   const insuranceStatus = getDocumentStatus(vehicle, 'insurance');
   const pollutionStatus = getDocumentStatus(vehicle, 'pollution');
-  
-  // No expired documents but at least one expiring soon
-  return !hasExpiredDocuments(vehicle) && (
-    fitnessStatus.status === 'expiring_soon' || 
-    insuranceStatus.status === 'expiring_soon' || 
-    pollutionStatus.status === 'expiring_soon'
-  );
+  return fitnessStatus.status === 'expiring_soon' ||
+    insuranceStatus.status === 'expiring_soon' ||
+    pollutionStatus.status === 'expiring_soon';
 };
 
 /**
@@ -294,15 +294,19 @@ export const hasAllValidDocuments = (vehicle: Vehicle): boolean => {
 };
 
 /**
- * Check if vehicle is considered valid (at least 2 out of 3 certificates valid or expiring soon)
- * This is used for the "valid" filter to be more lenient
+ * Check if vehicle is considered valid (at least 2 out of 3 certificates valid or expiring soon,
+ * and none expired). This is used for the "valid" filter to be more lenient about missing/
+ * not-applicable documents, while still excluding any vehicle with an expired document -
+ * consistent with hasExpiringDocuments and getVehicleRowClassName.
  */
 export const hasValidVehicle = (vehicle: Vehicle): boolean => {
   // If no verification data, can't be valid
   if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
     return false;
   }
-  
+  if (hasExpiredDocuments(vehicle)) {
+    return false;
+  }
   const fitnessStatus = getDocumentStatus(vehicle, 'fitness').status;
   const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
   const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
