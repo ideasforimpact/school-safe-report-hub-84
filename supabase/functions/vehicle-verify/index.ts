@@ -54,6 +54,15 @@ const PRIMARY_PROVIDER: ProviderName = VEHICLE_VERIFY_PRIMARY_PROVIDER;
 const FALLBACK_PROVIDER: ProviderName = VEHICLE_VERIFY_FALLBACK_PROVIDER;
 
 // ============================================================================
+// Safety-check caching thresholds — env-configurable so the windows can be
+// tuned per environment without a code deploy. Number(undefined) / Number('')
+// is NaN, and NaN is falsy, so an unset or blank env var correctly falls back
+// to the default on the right of `||`.
+// ============================================================================
+const DOCUMENT_EXPIRY_THRESHOLD_DAYS = Number(Deno.env.get('DOCUMENT_EXPIRY_THRESHOLD_DAYS')) || 15;
+const CHALLAN_COOLDOWN_HOURS = Number(Deno.env.get('CHALLAN_COOLDOWN_HOURS')) || 48;
+
+// ============================================================================
 // QuickEKYC Functions
 // ============================================================================
 
@@ -689,6 +698,9 @@ async function updateVehicleChallans(
   if (isSuccess) {
     challanRecord.success_api_count = currentSuccessCount + 1;
     challanRecord.error_api_count = currentErrorCount;
+    // Only a 200 stamps last_success_at — this is what the 48h cooldown gates on.
+    // A failing call must stay retryable at any time, so it must NOT touch this field.
+    challanRecord.last_success_at = new Date().toISOString();
   } else {
     challanRecord.success_api_count = currentSuccessCount;
     challanRecord.error_api_count = currentErrorCount + 1;
@@ -1006,17 +1018,21 @@ console.log(`[vehicle-verify] Provider order — primary: ${PRIMARY_PROVIDER}, f
 
 /**
  * Server-side mirror of the UI Document Status check (getDocumentStatus in
- * src/utils/transport-safety/documentStatusUtils.ts). Returns true only when the
- * cached RC data has Insurance / Fitness / PUC dates that are all present, parseable
- * and NOT past-expiry (>= today). Any missing/unparseable/expired field, or missing
- * RC data, returns false so the caller refreshes RC from the providers.
- * "Expiring soon" still counts as up to date (past-expiry only, per requirement).
+ * src/utils/transport-safety/documentStatusUtils.ts), extended with a 15-day
+ * lookahead. Returns true only when the cached RC data has Insurance / Fitness / PUC
+ * dates that are all present, parseable, and more than `thresholdDays` away from
+ * expiry. Any missing/unparseable field, or a field expiring within the window
+ * (including one already expired — a negative days-until-expiry is always <=
+ * thresholdDays), returns false so the caller refreshes RC from the providers.
+ * An already-expired document keeps returning false on every call until the
+ * provider returns a renewed date past the window.
  */
-function computeDocumentStatusUpToDate(currentRcData: any): boolean {
+function computeDocumentStatusUpToDate(currentRcData: any, thresholdDays = DOCUMENT_EXPIRY_THRESHOLD_DAYS): boolean {
   const data = currentRcData?.data;
   if (!data || typeof data !== 'object') return false;
 
   const now = new Date();
+  const msPerDay = 24 * 60 * 60 * 1000;
   // Electric vehicles (VAHAN fuel_type e.g. "PURE EV", "ELECTRIC(BOV)") are exempt from PUC —
   // a missing pucc_upto isn't staleness. Hybrids ("STRONG HYBRID EV") still have an engine
   // and need PUC, so they're excluded even though their fuel_type also contains "EV".
@@ -1031,9 +1047,43 @@ function computeDocumentStatusUpToDate(currentRcData: any): boolean {
     if (!value) return false;
     const expiry = new Date(value);
     if (Number.isNaN(expiry.getTime())) return false;
-    if (expiry < now) return false;
+    const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / msPerDay);
+    if (daysUntilExpiry <= thresholdDays) return false;
   }
   return true;
+}
+
+/**
+ * Reads the cached vehicle_challans row used to decide whether the Challan API is due.
+ */
+async function getCachedChallanRow(supabase: any, vehicleId: string | undefined): Promise<any> {
+  if (!vehicleId) return null;
+  const { data, error } = await supabase
+    .from('vehicle_challans')
+    .select('latest_challan_data, challan_status, last_success_at')
+    .eq('vehicle_id', vehicleId)
+    .maybeSingle();
+  if (error) {
+    console.error('Failed to read cached challan row:', error);
+    return null;
+  }
+  return data;
+}
+
+/**
+ * Challan staleness is time-based, not expiry-based, and depends on the outcome of
+ * the LAST call: a successful (200) call starts a 48h cooldown; a failing call
+ * (e.g. 500) leaves no restriction so the next click can retry immediately. No prior
+ * row (never checked) always calls.
+ */
+function shouldCallChallanApi(challanRow: any, thresholdHours = CHALLAN_COOLDOWN_HOURS): boolean {
+  if (!challanRow) return true;
+  if (!challanRow.challan_status) return true; // last attempt failed — no cooldown
+  if (!challanRow.last_success_at) return true;
+  const lastSuccess = new Date(challanRow.last_success_at);
+  if (Number.isNaN(lastSuccess.getTime())) return true;
+  const hoursSinceSuccess = (Date.now() - lastSuccess.getTime()) / (60 * 60 * 1000);
+  return hoursSinceSuccess > thresholdHours;
 }
 
 serve(async (req) => {
@@ -1079,9 +1129,15 @@ serve(async (req) => {
     }
 
     // Documents are "up to date" only when the cached RC Insurance/Fitness/PUC dates
-    // are all present and not past-expiry. When true we reuse the cached RC and skip
-    // the RC API (both providers); challan is always refreshed below.
+    // are all present and more than 15 days from expiry. When true we reuse the
+    // cached RC and skip the RC API (both providers).
     const documentStatusUpToDate = computeDocumentStatusUpToDate(cachedRcData);
+
+    // Challan gate is independent of the RC gate: evaluated from its own cached row
+    // (48h cooldown after a 200, no cooldown after a failure). One click of Run
+    // Safety Check can therefore call neither, either, or both APIs.
+    const cachedChallanRow = await getCachedChallanRow(supabase, vehicleId);
+    const shouldRefreshChallan = shouldCallChallanApi(cachedChallanRow);
 
     let providerData: any;
     if (documentStatusUpToDate) {
@@ -1146,12 +1202,17 @@ serve(async (req) => {
       // the SurePass fallback will validate chassis/engine itself if needed
       const canCallChallan = rcNumber && (chassisNumber && engineNumber || true); // Can always try (QuickEKYC needs only rcNumber, SurePass fallback needs all)
       
-      if (canCallChallan) {
+      if (!shouldRefreshChallan) {
+        // Last challan call succeeded within the last 48h — reuse the cached data
+        // instead of paying for another call.
+        console.log('[Challan API] last call succeeded within 48h — skipping, reusing cached latest_challan_data');
+        challanData = cachedChallanRow?.latest_challan_data ?? null;
+      } else if (canCallChallan) {
         try {
           // Call Challan API with fallback: QuickEKYC primary, SurePass secondary if error
           const { response: challanResponse, data: challanResponseData, provider: challanProvider, statusCode: challanStatusCode } = await callChallanAPI(
-            rcNumber, 
-            chassisNumber, 
+            rcNumber,
+            chassisNumber,
             engineNumber,
             supabase,
             vehicleId,
@@ -1210,8 +1271,7 @@ serve(async (req) => {
         .from('vehicles')
         .select('verification_data, type, client_id')
         .eq('id', vehicleId)
-        .singl
-e();
+        .single();
 
       if (!error && vehicleData) {
         savedVehicleTypeId = vehicleData.type || null;
@@ -1454,9 +1514,10 @@ e();
     }
     } else if (vehicleId) {
       // Skip path: documents are up to date, so we did NOT call the RC API and must
-      // not touch current_rc_data / verification_data. But a safety check DID run
-      // (challan was refreshed), so advance the timestamp/status only — otherwise the
-      // "last checked" date would revert to its previous value on the next page load.
+      // not touch current_rc_data / verification_data. A safety check still ran
+      // (independently, the challan gate above may or may not have called out), so
+      // advance the timestamp/status only — otherwise the "last checked" date would
+      // revert to its previous value on the next page load.
       const { error: skipUpdateError } = await supabase
         .from('vehicles')
         .update({
@@ -1481,7 +1542,8 @@ e();
           transformed: completeTransformedData,
           status: verificationStatus,
           verificationDate: verificationDate,
-          document_status_up_to_date: documentStatusUpToDate
+          document_status_up_to_date: documentStatusUpToDate,
+          challan_status_up_to_date: !shouldRefreshChallan
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
