@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Calendar, Trash2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -79,6 +79,11 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle, onVehicleUpd
   const [apiResponseData, setApiResponseData] = useState<VehicleVerificationApiResponse | null>(null);
   const [showSafetyCheckConsent, setShowSafetyCheckConsent] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  // Guards against a fast double-click firing two vehicle-verify requests: the
+  // "Okay" button only disappears once isChecking re-renders, which is one tick
+  // too late to block a second click that lands in the same tick. A ref is
+  // synchronous, so it closes that race even though state alone can't.
+  const isCheckingRef = useRef(false);
   const navigate = useNavigate();
   const [challanError, setChallanError] = useState<string | null>(null);
   const [hasChallanData, setHasChallanData] = useState<boolean>(true);
@@ -132,7 +137,8 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle, onVehicleUpd
   };
 
   const handleSafetyCheckConsent = async () => {
-    if (isReadOnlySwitchedContext) return;
+    if (isReadOnlySwitchedContext || isCheckingRef.current) return;
+    isCheckingRef.current = true;
     // Don't close popup immediately, keep it open for loading state
     setIsChecking(true);
     
@@ -234,6 +240,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle, onVehicleUpd
       // Show error in popup instead of toast
       setVerificationError('Verification failed. Please try again later.');
     } finally {
+      isCheckingRef.current = false;
       setIsChecking(false);
     }
   };
