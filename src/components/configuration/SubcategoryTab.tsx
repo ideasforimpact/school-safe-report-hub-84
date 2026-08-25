@@ -27,6 +27,7 @@ import { CategoryItem, SubcategoryItem } from '@/services/incident/categoryServi
 import { EditDialog } from './EditDialog';
 import { useAuth } from '@/contexts/auth/useAuth';
 import Loader from '../common/Loader';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Validation: allow any characters, up to 50 characters
 const isValidSubcategoryName = (name: string) => {
@@ -271,15 +272,44 @@ export const SubcategoryTab = ({
                           <Pencil className="h-4 w-4" />
                         </Button>
                         
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(subcategory)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          disabled={isRefreshing}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {subcategory.is_used_by_incident ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled
+                                    aria-disabled="true"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                    }}
+                                    className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" align="center" sideOffset={8} className="max-w-xs whitespace-normal text-left">
+                                <p className="text-xs leading-snug text-left">
+                                  This subcategory is linked to one or more incidents and cannot be deleted
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteClick(subcategory)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            disabled={isRefreshing}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                       )}
                     </TableCell>

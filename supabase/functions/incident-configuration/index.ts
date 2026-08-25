@@ -172,7 +172,31 @@ async function listItems(supabase: any, resource: Resource, clientId: string, op
 
   const { data, error } = await query.order(config.order, { ascending: true });
   if (error) throw error;
-  return data ?? [];
+  const rows = data ?? [];
+
+  if (resource === "categories" || resource === "subcategories") {
+    return attachIncidentUsage(supabase, resource, clientId, rows);
+  }
+
+  return rows;
+}
+
+// Batch-checks which of the given categories/subcategories are referenced by at
+// least one incident, so the UI can hide the Delete action instead of only
+// discovering the block after the user confirms deletion (see checkReferences).
+async function attachIncidentUsage(supabase: any, resource: "categories" | "subcategories", clientId: string, rows: any[]) {
+  if (rows.length === 0) return rows;
+
+  const column = resource === "categories" ? "category_id" : "subcategory_id";
+  const { data, error } = await supabase
+    .from("incidents")
+    .select(column)
+    .eq("client_id", clientId)
+    .not(column, "is", null);
+  if (error) throw error;
+
+  const usedIds = new Set((data ?? []).map((row: any) => row[column]));
+  return rows.map((row: any) => ({ ...row, is_used_by_incident: usedIds.has(row.id) }));
 }
 
 async function checkDuplicate(
