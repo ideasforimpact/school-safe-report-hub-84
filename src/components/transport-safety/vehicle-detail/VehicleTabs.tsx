@@ -67,6 +67,8 @@ const getMaintenanceDurationDays = (startedAt: string, endedAt: string | null): 
   const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   const endDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
   return Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+};
+
 const CERTIFICATE_LABEL: Record<string, string> = {
   fitness: 'Fitness Certificate',
   insurance: 'Insurance',
@@ -898,6 +900,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
               );
             })}
           </ol>
+        )}
+      </TabsContent>
+
       {/* Renewal History Tab Content */}
       <TabsContent value="renewals" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
         <h2 className="text-lg font-medium mb-4 text-left">Certificate Renewal History</h2>
