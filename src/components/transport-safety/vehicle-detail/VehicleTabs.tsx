@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Vehicle, VehicleDocument, VehicleVerificationData } from '@/types/transportSafety';
+import { Vehicle, VehicleDocument, VehicleVerificationData, VehicleCertificateRenewal } from '@/types/transportSafety';
 import DocumentUploader from '../documents/DocumentUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -30,7 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import VerificationDetailsDialog from '../VerificationDetailsDialog';
-import { getVehicleChallans, getVehicleDocuments, fetchVehicleMaintenanceHistory } from '@/services/transport-safety/vehicleService';
+import { getVehicleChallans, getVehicleDocuments, fetchVehicleMaintenanceHistory, getVehicleRenewalHistory } from '@/services/transport-safety/vehicleService';
 import { VehicleChallans, VehicleMaintenanceHistoryEntry } from '@/types/transportSafety';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { Json } from '@/integrations/supabase/types';
@@ -67,6 +67,16 @@ const getMaintenanceDurationDays = (startedAt: string, endedAt: string | null): 
   const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   const endDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
   return Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+const CERTIFICATE_LABEL: Record<string, string> = {
+  fitness: 'Fitness Certificate',
+  insurance: 'Insurance',
+  pollution: 'Pollution Certificate',
+};
+
+const CERTIFICATE_NOUN: Record<string, string> = {
+  fitness: 'certificate',
+  insurance: 'policy',
+  pollution: 'certificate',
 };
 
 const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
@@ -149,6 +159,29 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
     }
   }, [vehicleId]);
 
+  const [renewalHistory, setRenewalHistory] = useState<VehicleCertificateRenewal[]>([]);
+
+  const fetchRenewalHistory = useCallback(async () => {
+    if (!vehicleId || !vehicle.clientId) return;
+    setRenewalHistory(await getVehicleRenewalHistory(vehicleId, vehicle.clientId));
+  }, [vehicleId, vehicle.clientId]);
+
+  useEffect(() => {
+    fetchRenewalHistory();
+  }, [fetchRenewalHistory]);
+
+  const renewalHistoryByDate = React.useMemo(() => {
+    const groups = new Map<string, VehicleCertificateRenewal[]>();
+    renewalHistory.forEach((row) => {
+      const dateKey = row.verificationTimestamp.slice(0, 10);
+      if (!groups.has(dateKey)) groups.set(dateKey, []);
+      groups.get(dateKey)!.push(row);
+    });
+    return Array.from(groups.entries())
+      .map(([date, rows]) => ({ date, rows }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [renewalHistory]);
+
   const handleDocumentUpdate = useCallback(async () => {
     await fetchDocuments(true);
   }, [fetchDocuments]);
@@ -206,6 +239,16 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
     filter: vehicleId ? `vehicle_id=eq.${vehicleId}` : undefined,
     enabled: !!vehicleId,
     onPayload: fetchVehicleChallansForHistory,
+  });
+
+  // Re-fetch certificate renewal history whenever a fresh Run Safety Check records a renewal
+  useRealTimeSubHook({
+    channelName: `vehicle-certificate-renewals-${vehicleId}`,
+    events: "*",
+    table: "vehicle_certificate_renewals",
+    filter: vehicleId ? `vehicle_id=eq.${vehicleId}` : undefined,
+    enabled: !!vehicleId,
+    onPayload: fetchRenewalHistory,
   });
   // Find verification log entry to get history
   // const getVerificationLog = () => {
@@ -554,6 +597,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="history">History</TabsTrigger>
         <TabsTrigger value="maintenance">Maintenance History</TabsTrigger>
+        <TabsTrigger value="renewals">Renewal History</TabsTrigger>
       </TabsList>
       
       {/* Documents Tab Content */}
@@ -854,6 +898,48 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId, vehicle }) => {
               );
             })}
           </ol>
+      {/* Renewal History Tab Content */}
+      <TabsContent value="renewals" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+        <h2 className="text-lg font-medium mb-4 text-left">Certificate Renewal History</h2>
+
+        {!renewalHistory.length && (
+          <p className="text-gray-500 text-left">
+            No certificate renewals have been recorded yet. This history is populated automatically when a Run Safety Check detects a renewed FC, insurance, or pollution certificate.
+          </p>
+        )}
+
+        {renewalHistory.length > 0 && (
+          <div className="space-y-3">
+            {renewalHistoryByDate.map(({ date, rows }) => (
+              <div key={date} className="border rounded-md p-4">
+                <h4 className="font-medium mb-2">Verification Date: {formatDate(date)}</h4>
+
+                <div className="space-y-2">
+                  {rows.map((row) => {
+                    const label = CERTIFICATE_LABEL[row.documentType] || row.documentType;
+                    const noun = CERTIFICATE_NOUN[row.documentType] || 'certificate';
+                    const hasGap = !!row.renewalGapDays && row.renewalGapDays > 0;
+
+                    return (
+                      <div key={row.id} className="text-xs text-gray-500">
+                        <span className="font-medium text-gray-700">{label}:</span>{' '}
+                        {hasGap ? (
+                          <>
+                            <span className="text-amber-600 font-medium">
+                              {row.renewalGapDays} day{row.renewalGapDays === 1 ? '' : 's'} after
+                            </span>{' '}
+                            the previous {noun} expired on {formatDate(row.previousEndDate)}
+                          </>
+                        ) : (
+                          <span className="text-green-600">no gap</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </TabsContent>
 

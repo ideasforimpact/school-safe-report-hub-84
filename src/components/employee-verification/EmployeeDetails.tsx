@@ -58,13 +58,17 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
       doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed'
     ).length;
     let pending = employeeDocuments.filter(doc =>
-      doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress'
+      doc.verificationStatus === 'pending'
+    ).length;
+    const inProgress = employeeDocuments.filter(doc =>
+      doc.verificationStatus === 'in-progress'
     ).length;
     const failed = employeeDocuments.filter(doc =>
       doc.verificationStatus === 'failed' || doc.verificationStatus === 'rejected'
     ).length;
     // Drivers must have a verified Driving License before the overall status
-    // can show "Verified" — matches the same rule enforced in EmployeesList.
+    // can show anything but "Pending" — missing or unverified license outranks
+    // an in-progress status on some other document. Matches EmployeesList.
     const isDriver = (employee.department || '').toLowerCase() === 'driver';
     const hasVerifiedLicense = employeeDocuments.some(
       doc => (doc.documentTypeName || '').toLowerCase().replace(/[\s_]+/g, '') === 'drivinglicense' &&
@@ -76,6 +80,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
     return {
       verified,
       pending,
+      inProgress,
       failed,
       total: employeeDocuments.length
     };

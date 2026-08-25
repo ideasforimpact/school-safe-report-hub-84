@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Vehicle, VehicleType, VehicleChallans, VehicleTypeOption, VehicleVerificationData, VehicleMaintenanceHistoryEntry } from "@/types/transportSafety";
+import { Vehicle, VehicleType, VehicleChallans, VehicleTypeOption, VehicleVerificationData, VehicleCertificateRenewal, VehicleCertificateRenewalRow,VehicleMaintenanceHistoryEntry } from "@/types/transportSafety";
 import { UploadedDocument } from "@/types/fileTypes";
 
 export type { VehicleTypeOption };
@@ -526,6 +526,32 @@ export const getVehicleChallans = async (vehicleId: string): Promise<VehicleChal
     return data.vehicleChallans ?? null;
   } catch {
     return null;
+  }
+};
+
+const mapVehicleCertificateRenewal = (row: VehicleCertificateRenewalRow): VehicleCertificateRenewal => ({
+  id: row.id,
+  vehicleId: row.vehicle_id,
+  documentType: row.document_type,
+  previousEndDate: row.previous_end_date,
+  renewStartDate: row.renew_start_date,
+  renewEndDate: row.renew_end_date,
+  renewalGapDays: row.renewal_gap_days,
+  verificationTimestamp: row.verification_timestamp,
+});
+
+export const getVehicleRenewalHistory = async (
+  vehicleId: string,
+  clientId: string
+): Promise<VehicleCertificateRenewal[]> => {
+  try {
+    const data = await invokeVehicles<{ renewals: VehicleCertificateRenewalRow[] }>(
+      'get_vehicle_renewal_history',
+      { vehicleId, clientId }
+    );
+    return (data.renewals || []).map(mapVehicleCertificateRenewal);
+  } catch {
+    return [];
   }
 };
 

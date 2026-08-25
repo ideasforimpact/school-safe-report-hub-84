@@ -920,6 +920,7 @@ async function handleList(supabaseClient: any, requestData: any) {
     const n = status.toLowerCase();
     if (n === 'verified' || n === 'completed') return 'verified';
     if (n === 'failed' || n === 'rejected') return 'failed';
+    if (n === 'in-progress') return 'in-progress';
     return 'pending';
   };
 

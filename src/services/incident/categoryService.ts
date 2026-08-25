@@ -7,6 +7,7 @@ export interface CategoryItem {
   name: string;
   description?: string;
   client_id?: string | null;
+  is_used_by_incident?: boolean;
 }
 
 export interface SubcategoryItem {
@@ -15,6 +16,7 @@ export interface SubcategoryItem {
   description?: string;
   category_id?: string | null;
   client_id?: string | null;
+  is_used_by_incident?: boolean;
 }
 
 export const categoryService = {

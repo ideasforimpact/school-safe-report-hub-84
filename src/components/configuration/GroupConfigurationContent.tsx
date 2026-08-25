@@ -7,6 +7,7 @@ import { Plus, Edit, Trash2, X, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { extractEdgeFunctionErrorMessage } from '@/utils/edgeFunctionError';
 import AddGroupDialog from './AddGroupDialog';
 import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
@@ -74,7 +75,9 @@ const GroupConfigurationContent = () => {
         body: { action: 'list', client_id: clientId, employee_id: employeeId },
       });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(await extractEdgeFunctionErrorMessage(error, 'Failed to load groups'));
+      }
 
       const data = result?.groups ?? [];
 
@@ -96,7 +99,7 @@ const GroupConfigurationContent = () => {
       setGroups(mapped);
     } catch (error) {
       console.error('Error fetching groups:', error);
-      toast.error('Failed to load groups');
+      toast.error(error instanceof Error ? error.message : 'Failed to load groups');
     } finally {
       setLoading(false);
     }
@@ -224,7 +227,9 @@ const GroupConfigurationContent = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(await extractEdgeFunctionErrorMessage(error, 'Failed to delete group'));
+      }
 
       toast.success('Group deleted successfully');
       fetchGroups();
