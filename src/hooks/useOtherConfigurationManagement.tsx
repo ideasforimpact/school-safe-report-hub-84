@@ -5,11 +5,13 @@ import { toast } from 'sonner';
 import { ConfigItem, SectionItem } from '@/contexts/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLang } from './useLang';
 
 export function useOtherConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('designations');
   const { employeeData } = useAuth();
+  const { structure: s } = useLang();
   
   const { 
     designations: contextDesignations,
@@ -191,7 +193,7 @@ export function useOtherConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => [...prev, { id: data.campus.id, name: data.campus.name }]);
-      toast.success("Campus added successfully");
+      toast.success(`${s.campus} added successfully`);
     } catch (error) {
       console.error("Error adding campus:", error);
       toast.error("Failed to add campus");

@@ -134,13 +134,15 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       return;
     }
 
+    setError(null);
     try {
-      setError(null); setIsSaving(true);
+      setIsSaving(true);
       await reportTypeService.addReportType(newTypeName.trim(), newTypeDescription.trim(), employeeData.clientId, clientTypeId);
       await fetchReportTypes();
       setNewTypeName(''); setNewTypeDescription(''); setIsAddDialogOpen(false);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to add report type');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add report type';
+      setError(errorMessage);
     } finally { setIsSaving(false); }
   };
 
@@ -155,13 +157,15 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       return;
     }
 
+    setError(null);
     try {
-      setError(null); setIsSaving(true);
+      setIsSaving(true);
       await reportTypeService.updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
       await fetchReportTypes();
       setIsEditDialogOpen(false); setSelectedType(null);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to update report type');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update report type';
+      setError(errorMessage);
     } finally { setIsSaving(false); }
   };
 

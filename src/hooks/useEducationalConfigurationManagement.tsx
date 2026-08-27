@@ -6,6 +6,7 @@ import { ConfigItem, CampusItem, ClassItem, SectionItem } from '@/contexts/types
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealTimeSubHook } from './useRealTimeSubHook';
+import { useLang } from './useLang';
 
 const VALID_SUB_TABS = ['campuses', 'classes', 'sections', 'facilities'];
 
@@ -14,6 +15,7 @@ export function useEducationalConfigurationManagement() {
   const [activeTab, setActiveTab] = useState('campuses');
   const { employeeData, user } = useAuth();
   const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id ?? null;
+  const { structure: s } = useLang();
   
   // Local states
   const [loading, setLoading] = useState(false);
@@ -197,7 +199,7 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => [...prev, { id: data.campus.id, name: data.campus.name }]);
-      toast.success("Campus added successfully");
+      toast.success(`${s.campus} added successfully`);
     } catch (error) {
       console.error("Error adding campus:", error);
       toast.error("Failed to add campus");

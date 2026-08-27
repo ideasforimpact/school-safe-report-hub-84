@@ -54,8 +54,38 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  
+
+  // Distinct Grade/Section/Campus values seen so far, used to populate the
+  // filter dropdowns. `students` is the *server-filtered* page of results, so
+  // deriving options directly from it means picking a value for one filter
+  // (e.g. Grade=Bsc) narrows `students` down to just that value — which in
+  // turn collapses the dropdown's own option list to only what's currently
+  // selected, making it impossible to switch to anything else. Accumulating
+  // every value we've ever seen (instead of recomputing from the current,
+  // filtered `students`) keeps the full set of choices available regardless
+  // of which filters are currently applied.
+  const [knownGrades, setKnownGrades] = useState<string[]>([]);
+  const [knownSections, setKnownSections] = useState<string[]>([]);
+  const [knownCampuses, setKnownCampuses] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (students.length === 0) return;
+    const mergeUnique = (prev: string[], next: string[]) =>
+      Array.from(new Set([...prev, ...next])).filter(Boolean).sort();
+
+    setKnownGrades(prev => mergeUnique(prev, students.map(s => s.grade)));
+    setKnownSections(prev => mergeUnique(prev, students.map(s => s.section)));
+    setKnownCampuses(prev => mergeUnique(prev, students.map(s => s.campus)));
+  }, [students]);
+
+  // Switching to a different client/organization means these values no
+  // longer apply - start the accumulated option lists over.
+  useEffect(() => {
+    setKnownGrades([]);
+    setKnownSections([]);
+    setKnownCampuses([]);
+  }, [employeeData?.clientId]);
+
   // Fetch students with current pagination and filters
   useEffect(() => {
     if (employeeData?.clientId) {
@@ -473,7 +503,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All {lang.structure.gradePlural}</SelectItem>
-                  {Array.from(new Set(students.map(s => s.grade))).sort().map(grade => (
+                  {knownGrades.map(grade => (
                     <SelectItem key={grade} value={grade}>{grade}</SelectItem>
                   ))}
                 </SelectContent>
@@ -486,7 +516,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All {lang.structure.sectionPlural}</SelectItem>
-                  {Array.from(new Set(students.map(s => s.section))).sort().map(section => (
+                  {knownSections.map(section => (
                     <SelectItem key={section} value={section}>{section}</SelectItem>
                   ))}
                 </SelectContent>
@@ -499,7 +529,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All {lang.structure.campusPlural}</SelectItem>
-                  {Array.from(new Set(students.map(s => s.campus))).sort().map(campus => (
+                  {knownCampuses.map(campus => (
                     <SelectItem key={campus} value={campus}>{campus}</SelectItem>
                   ))}
                 </SelectContent>
