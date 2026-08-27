@@ -469,14 +469,28 @@ serve(async (req) => {
         const fitnessField = latestLog.find((item: any) => item.field === 'fit_up_to')
         const insuranceField = latestLog.find((item: any) => item.field === 'insurance_upto')
         const pollutionField = latestLog.find((item: any) => item.field === 'pucc_upto')
+        const fuelTypeField = latestLog.find((item: any) => item.field === 'fuel_type')
 
         console.log(`Vehicle ${vehicle.id}: fitness=${fitnessField?.value}, insurance=${insuranceField?.value}, pollution=${pollutionField?.value}`)
+
+        // Electric vehicles are exempt from pollution (PUC) certification —
+        // mirrors isElectricVehicle in src/utils/transport-safety/documentStatusUtils.ts.
+        // Hybrids still carry an engine and need PUC, so they're excluded even
+        // though their fuel_type also contains "EV".
+        const fuelType = typeof fuelTypeField?.value === 'string' ? fuelTypeField.value.toUpperCase() : ''
+        const isElectricVehicle = !fuelType.includes('HYBRID') &&
+          (fuelType.includes('ELECTRIC') || fuelType.includes('BOV') || /\bEV\b/.test(fuelType))
 
         const currentDate = new Date()
         let hasExpiredOrMissing = false
 
-        // Check if any document is expired or missing
-        ;[fitnessField, insuranceField, pollutionField].forEach(field => {
+        // Check if any required document is expired or missing (pollution is
+        // skipped for electric vehicles, which have no PUC to check)
+        const fieldsToCheck = isElectricVehicle
+          ? [fitnessField, insuranceField]
+          : [fitnessField, insuranceField, pollutionField]
+
+        fieldsToCheck.forEach(field => {
           if (!field || !field.value) {
             hasExpiredOrMissing = true
             console.log(`Vehicle ${vehicle.id}: Missing field or value`)
