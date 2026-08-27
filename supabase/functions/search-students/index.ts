@@ -104,35 +104,39 @@ serve(async (req) => {
   try {
     const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
 
-    // Only allow GET method
-    if (req.method !== 'GET') {
+    // GET is kept for existing callers (query params); POST carries search/client_id
+    // in a JSON body instead, matching the other list/search edge functions in this project.
+    if (req.method !== 'GET' && req.method !== 'POST') {
       return new Response(
-        JSON.stringify({ error: 'Method not allowed. Only GET is supported.' }),
+        JSON.stringify({ error: 'Method not allowed. Only GET and POST are supported.' }),
         { status: 405, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
       );
     }
 
-  
-    
-   
+    let searchTerm: string;
+    let queryClientId: string;
 
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      searchTerm = (body?.search ?? '').trim();
+      queryClientId = (body?.client_id ?? '').trim();
+    } else {
+      const url = new URL(req.url);
+      searchTerm = url.searchParams.get('search')?.trim() || '';
+      queryClientId = url.searchParams.get('client_id')?.trim() || '';
+    }
 
-    // Get query parameters
-    const url = new URL(req.url);
-    const searchTerm = url.searchParams.get('search')?.trim() || '';
-    const queryClientId = url.searchParams.get('client_id')?.trim() || '';
-
-    // Validate query parameters
+    // Validate parameters
     if (!queryClientId) {
       return new Response(
-        JSON.stringify({ error: 'client_id query parameter is required' }),
+        JSON.stringify({ error: 'client_id is required' }),
         { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
       );
     }
 
     if (!searchTerm) {
       return new Response(
-        JSON.stringify({ error: 'search query parameter is required' }),
+        JSON.stringify({ error: 'search is required' }),
         { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
       );
     }
