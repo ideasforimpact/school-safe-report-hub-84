@@ -52,15 +52,32 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     location.pathname.startsWith('/edit-incident') ||
     (location.pathname.startsWith('/incident/') && location.pathname.endsWith('/edit'));
   const fetchInProgress = useRef(false);
+  // On a cold load (hard refresh) this context's own bootstrap effect below
+  // and the students page's own filter/pagination effect can both ask for a
+  // fetch around the same time, before clientId has "settled". The loser used
+  // to be silently dropped, which could leave the list stuck on stale/empty
+  // data if the fetch that "won" happened to be the one that lost a race with
+  // the Supabase session/auth context still finishing initialization. Instead
+  // of dropping it, remember the most recent request and run it once the
+  // in-flight one finishes.
+  const pendingFetchRef = useRef<{
+    page: number;
+    pageSize: number;
+    search?: string;
+    grade?: string;
+    section?: string;
+    campus?: string;
+  } | null>(null);
 
   // Fetch students function
   const fetchStudents = useCallback(async (
-    page: number = 1, 
-    pageSize: number = 10, 
+    page: number = 1,
+    pageSize: number = 10,
     search?: string,
     grade?: string,
     section?: string,
-    campus?: string
+    campus?: string,
+    isRetry: boolean = false
   ) => {
     if (!employeeData?.clientId) {
       console.log('No client ID available, skipping student fetch');
@@ -71,10 +88,12 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     }
 
     if (fetchInProgress.current) {
-      console.log('Fetch already in progress, skipping duplicate call');
+      console.log('Fetch already in progress, queuing latest request');
+      pendingFetchRef.current = { page, pageSize, search, grade, section, campus };
       return;
     }
 
+    let shouldRetry = false;
     try {
       fetchInProgress.current = true;
       setIsLoading(true);
@@ -94,12 +113,31 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       console.log(`Successfully fetched ${studentData.length} students (Total: ${totalCount})`);
     } catch (error) {
       console.error('Error fetching students:', error);
-      toast.error('Failed to load students');
-      setStudents([]);
-      setTotalStudents(0);
+      if (!isRetry) {
+        // A fetch failing right after a cold load often means the Supabase
+        // session/auth context wasn't fully ready yet (a transient race, not
+        // a real failure) - retry once before giving up rather than leaving
+        // the list stuck empty with no way to recover short of a manual
+        // refresh click.
+        shouldRetry = true;
+      } else {
+        toast.error('Failed to load students');
+        setStudents([]);
+        setTotalStudents(0);
+      }
     } finally {
       setIsLoading(false);
       fetchInProgress.current = false;
+
+      if (pendingFetchRef.current) {
+        const next = pendingFetchRef.current;
+        pendingFetchRef.current = null;
+        fetchStudents(next.page, next.pageSize, next.search, next.grade, next.section, next.campus);
+      } else if (shouldRetry) {
+        setTimeout(() => {
+          fetchStudents(page, pageSize, search, grade, section, campus, true);
+        }, 800);
+      }
     }
   }, [employeeData?.clientId, employeeData?.clientType?.id]);
 

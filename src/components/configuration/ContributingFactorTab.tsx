@@ -70,8 +70,9 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     title: string;
     description: string;
     itemName: string;
-    action: 'delete' | 'activate' | 'deactivate';
+    action: 'delete';
     onConfirm: () => void;
+    isLoading?: boolean;
     error: string | null;
   }>({
     open: false,
@@ -80,6 +81,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     itemName: '',
     action: 'delete',
     onConfirm: () => {},
+    isLoading: false,
     error: null,
   });
   
@@ -155,8 +157,8 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       return;
     }
 
+    setError(null);
     try {
-      setError(null);
       setIsAdding(true);
       // Strictly using contributingFactorService and passing clientId
       await contributingFactorService.addContributingFactor(
@@ -166,11 +168,11 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
         employeeData.clientId,
         clientTypeId
       );
-      
+
       // Refresh factors from service
       const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId, clientTypeId);
       setFactors(updatedFactors);
-      
+
       // Reset form and close dialog
       setCurrentName('');
       setCurrentDescription('');
@@ -178,7 +180,8 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       setIsAddDialogOpen(false);
     } catch (error) {
       console.error('Error adding contributing factor:', error);
-      setError(error instanceof Error ? error.message : 'Failed to add contributing factor');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add contributing factor';
+      setError(errorMessage);
     } finally {
       setIsAdding(false);
     }
@@ -200,26 +203,27 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       return;
     }
 
+    setError(null);
     try {
-      setError(null);
       setIsUpdating(true);
       // Strictly using contributingFactorService and passing clientId
       await contributingFactorService.updateContributingFactor(
-        currentId, 
-        currentName.trim(), 
-        currentDescription.trim(), 
+        currentId,
+        currentName.trim(),
+        currentDescription.trim(),
         currentWeight,
         employeeData.clientId
       );
-      
+
       // Refresh factors from service
       const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId, clientTypeId);
       setFactors(updatedFactors);
-      
+
       setIsEditDialogOpen(false);
     } catch (error) {
       console.error('Error updating contributing factor:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update contributing factor');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update contributing factor';
+      setError(errorMessage);
     } finally {
       setIsUpdating(false);
     }
@@ -258,25 +262,27 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       description: 'Please confirm that you want to proceed with this deletion. This action will immediately remove the contributing factor and cannot be recovered.',
       itemName: factorName,
       action: 'delete',
+      isLoading: false,
       error: null,
       onConfirm: async () => {
         try {
           setIsDeleting(true);
+          setConfirmationDialog(prev => ({ ...prev, isLoading: true, error: null }));
           // Strictly using contributingFactorService and passing clientId
           await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
-          
-          // Refresh factors from service 
+
+          // Refresh factors from service
           const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId, clientTypeId);
           setFactors(updatedFactors);
-          
+
           // Call the prop function to notify parent
           // propDeleteFactor(id);
-          
-          setConfirmationDialog(prev => ({ ...prev, open: false }));
+
+          setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
         } catch (error) {
           console.error('Error deleting contributing factor:', error);
           const errorMessage = error instanceof Error ? error.message : 'Failed to delete contributing factor';
-          setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
         } finally {
           setIsDeleting(false);
         }
@@ -322,9 +328,16 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Contributing Factors</h3>
         {canCreate && (
-          <Button 
-            variant="outline" 
-            onClick={() => setIsAddDialogOpen(true)}
+          <Button
+            variant="outline"
+            onClick={() => {
+              setCurrentId(null);
+              setCurrentName('');
+              setCurrentDescription('');
+              setCurrentWeight(null);
+              setError(null);
+              setIsAddDialogOpen(true);
+            }}
             disabled={loading}
           >
             <Plus className="h-4 w-4 mr-2" /> Add Factor
@@ -681,6 +694,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
         description={confirmationDialog.description}
         itemName={confirmationDialog.itemName}
         action={confirmationDialog.action}
+        isLoading={confirmationDialog.isLoading}
         error={confirmationDialog.error}
       />
     </div>

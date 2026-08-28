@@ -135,8 +135,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       return;
     }
 
+    setError(null);
     try {
-      setError(null);
       setIsSaving(true);
       // Pass client ID from auth context
       await priorityService.addPriority(
@@ -154,7 +154,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       setNewPriorityWeight('0');
       setIsAddDialogOpen(false);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to add priority');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add priority';
+      setError(errorMessage);
     } finally { setIsSaving(false); }
   };
 
@@ -169,13 +170,15 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       return;
     }
 
+    setError(null);
     try {
-      setError(null); setIsSaving(true);
+      setIsSaving(true);
       await priorityService.updatePriority(selectedPriority.id, editPriorityName.trim(), editPriorityDescription.trim(), editPriorityColor, parseInt(editPriorityWeight) || 0, clientTypeId);
       await refetch();
       setIsEditDialogOpen(false); setSelectedPriority(null);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to update priority');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update priority';
+      setError(errorMessage);
     } finally { setIsSaving(false); }
   };
 
