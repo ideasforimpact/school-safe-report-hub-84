@@ -176,37 +176,20 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     }
 
     try {
-      // Get session token
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      if (!token) {
-        console.error('[Search Students] No authentication token available');
-        return [];
-      }
-
-      // Build URL with query params
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const url = new URL(`${supabaseUrl}/functions/v1/search-students`);
-      url.searchParams.set('search', searchTerm);
-      url.searchParams.set('client_id', clientId);
-
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      // POST with the search term/client_id in the body, matching the pattern used
+      // by the other list/search edge functions in this project (e.g. list-assessments)
+      // rather than GET with query params.
+      const { data: result, error } = await supabase.functions.invoke('search-students', {
+        method: 'POST',
+        body: { search: searchTerm, client_id: clientId },
       });
 
-      if (!response.ok) {
-        console.error('[Search Students] API error:', response.status, response.statusText);
+      if (error) {
+        console.error('[Search Students] API error:', error);
         return [];
       }
 
-      const result = await response.json();
-      
-      if (result.success && Array.isArray(result.data)) {
+      if (result?.success && Array.isArray(result.data)) {
         // Return data in the same format as transformStudent from edge function
         // This ensures consistent format for both internal and external students
         return result.data.map((student: ApiStudent) => ({
@@ -250,7 +233,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       clearTimeout(searchTimeouts[index]);
     }
 
-    // For Student role, use edge function search
+    // For Student role, use edge function search. `fetchedStudents` is only the
+    // client's first page of students (see StudentContext.fetchStudents' default
+    // pageSize), not the full roster, so this call is needed for a correct search
+    // regardless of integration status - integration only adds external results on top.
     if (role === 'Student' && employeeData?.clientId) {
       if (value.length < 3) {
         // Clear search results if less than 3 characters

@@ -432,7 +432,19 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+      <form
+        onSubmit={(e) => {
+          // This form renders inside AddStudentDialog, which is itself rendered
+          // inside the Report/Edit Incident page's outer <form>. Radix's Dialog
+          // portals the DOM node to document.body, but React still bubbles the
+          // synthetic submit event along the *component* tree, so without this
+          // it also triggers the outer form's submit/validation right after a
+          // successful student save (stale peopleInvolved name not yet applied).
+          e.stopPropagation();
+          form.handleSubmit(handleFormSubmit)(e);
+        }}
+        className="space-y-4"
+      >
         <FormField
           control={form.control}
           name="studentId"
