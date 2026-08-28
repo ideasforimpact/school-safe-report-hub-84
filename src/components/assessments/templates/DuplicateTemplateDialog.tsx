@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { useAssessment } from '@/contexts/AssessmentContext';
-import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -27,45 +26,65 @@ const DuplicateTemplateDialog: React.FC<DuplicateTemplateDialogProps> = ({
   trigger,
   onDuplicate
 }) => {
-  const { createTemplate, addQuestion } = useAssessment();
-  
+  const { templates, createTemplate, addQuestion } = useAssessment();
+
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(`${template.title} (Copy)`);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [error, setError] = useState<string | null>(null);
+
   const handleDuplicate = async () => {
-    if (!title.trim()) {
-      toast.error('Please enter a title');
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setError('Please enter a title');
       return;
     }
-    
+
+    const isDuplicateTitle = templates.some(
+      t => t.title.trim().toLowerCase() === trimmedTitle.toLowerCase()
+    );
+    if (isDuplicateTitle) {
+      setError('A template with this name already exists');
+      return;
+    }
+
     try {
+      setError(null);
       setIsSubmitting(true);
-      
+
       // Create new template
       const newTemplateId = await createTemplate({
-        title,
+        title: trimmedTitle,
         description: template.description,
         type: template.type,
         category_id: template.category_id,
         questions: template.questions
       });
-      
+
       setOpen(false);
-      
+
       if (onDuplicate) {
         onDuplicate(newTemplateId);
       }
     } catch (error) {
       console.error('Error duplicating template:', error);
-      toast.error('Failed to duplicate template');
+      setError(error instanceof Error ? error.message : 'Failed to duplicate template');
     } finally {
       setIsSubmitting(false);
     }
   };
   
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) {
+          setTitle(`${template.title} (Copy)`);
+          setError(null);
+        }
+      }}
+    >
       <DialogTrigger asChild>
         {trigger || <Button variant="outline">Duplicate</Button>}
       </DialogTrigger>
@@ -84,11 +103,17 @@ const DuplicateTemplateDialog: React.FC<DuplicateTemplateDialogProps> = ({
             <Input
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (error) setError(null);
+              }}
               className="col-span-3"
               disabled={isSubmitting}
             />
           </div>
+          {error && (
+            <p className="text-sm text-red-600 col-span-4 text-center">{error}</p>
+          )}
         </div>
         <DialogFooter>
           <Button 

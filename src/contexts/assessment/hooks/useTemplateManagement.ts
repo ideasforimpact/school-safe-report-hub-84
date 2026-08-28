@@ -43,16 +43,24 @@ export const useTemplateManagement = (userId?: string, enabled: boolean = true) 
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
     try {
       console.log('Creating template with data:', templateData);
-      
-      const id = await templateService.createTemplate({
-        ...templateData,
+
+      // Routed through the create-assessment-template edge function so the
+      // duplicate-title check and insert happen server-side, instead of the
+      // browser issuing raw select/insert calls against the table directly.
+      const result = await templateService.createOrUpdateTemplate({
+        title: templateData.title,
+        description: templateData.description,
+        type: templateData.type,
+        isActive: true,
+        questions: templateData.questions,
         clientId: employeeData.clientId,
-        createdBy: employeeData.id
+        employeeId: employeeData.id,
+        clientTypeId: employeeData.clientType?.id
       });
-      console.log('Template created with ID:', id);
+      console.log('Template created with ID:', result.templateId);
       toast.success('Template created successfully');
       await loadTemplates(true);
-      return id;
+      return result.templateId;
     } catch (error) {
       console.error('Error creating template:', error);
       throw error;

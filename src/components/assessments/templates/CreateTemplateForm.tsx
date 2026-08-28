@@ -27,7 +27,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   isEditMode = false 
 }) => {
   const navigate = useNavigate();
-  const { createTemplate, updateTemplate, getTemplateById, refreshTemplates } = useAssessment();
+  const { templates, createTemplate, updateTemplate, getTemplateById, refreshTemplates } = useAssessment();
   const { user, employeeData } = useAuth();
   const clientTypeId = employeeData?.clientType?.id ?? user?.clientType?.id;
   
@@ -174,6 +174,14 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     const isValidTemplateTitle = new RegExp(`^[a-zA-Z0-9\\s]{1,${ASSESSMENT_TITLE}}$`).test(trimmedTitle);
     if (!isValidTemplateTitle) {
       setFormError('Template title can only contain letters, numbers, and spaces');
+      return false;
+    }
+
+    const isDuplicateTitle = templates.some(
+      t => t.id !== templateId && t.title.trim().toLowerCase() === trimmedTitle.toLowerCase()
+    );
+    if (isDuplicateTitle) {
+      setFormError('A template with this name already exists');
       return false;
     }
 
