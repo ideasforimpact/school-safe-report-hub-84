@@ -1,7 +1,7 @@
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { recordEmployeeVerificationApiCall } from "./employeeVerificationApiCalls.ts";
 
-type AadhaarOperation = "generate_otp" | "verify_otp";
+type AadhaarOperation = "generate_otp" | "verify_otp" | "digilocker_initialize" | "digilocker_download";
 type AadhaarProvider = "quickekyc" | "surepass";
 
 type RecordAadhaarApiCallEventInput = {

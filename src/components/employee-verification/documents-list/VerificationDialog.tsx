@@ -17,6 +17,42 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 import { VerificationDocument } from '@/types/employeeVerification';
+
+const DIGIBOOST_SDK_URL = 'https://cdn.jsdelivr.net/gh/surepassio/surepass-digiboost-web-sdk@latest/index.min.js';
+
+declare global {
+  interface Window {
+    DigiboostSdk?: (config: {
+      gateway: 'sandbox' | 'production';
+      token: string;
+      selector: string;
+      onSuccess: (data: unknown) => void;
+      onFailure: (error: unknown) => void;
+    }) => void;
+  }
+}
+
+// Module-level singleton so the CDN script is only ever injected once, even if the
+// verification dialog is opened/closed multiple times across the session.
+let digiboostSdkPromise: Promise<void> | null = null;
+function loadDigiboostSdk(): Promise<void> {
+  if (window.DigiboostSdk) return Promise.resolve();
+  if (!digiboostSdkPromise) {
+    digiboostSdkPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = DIGIBOOST_SDK_URL;
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        digiboostSdkPromise = null;
+        reject(new Error('Failed to load DigiLocker SDK script'));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return digiboostSdkPromise;
+}
+
 interface VerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -91,7 +127,26 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [otpExpired, setOtpExpired] = useState(false);
 
+  // Aadhaar verification mode: whether to run the OTP flow or the DigiLocker flow,
+  // decided server-side by the AADHAAR_VERIFICATION_MODE edge function secret.
+  const [verificationMode, setVerificationMode] = useState<'digilocker' | 'non_digilocker'>('non_digilocker');
+  const [isInitializingDigiLocker, setIsInitializingDigiLocker] = useState(false);
+  const [isDigiLockerButtonReady, setIsDigiLockerButtonReady] = useState(false);
+  const [isDownloadingAadhaar, setIsDownloadingAadhaar] = useState(false);
+  const [showDigiLockerButton, setShowDigiLockerButton] = useState(false);
+  const [digiLockerToken, setDigiLockerToken] = useState<string | null>(null);
+  const [digiLockerClientId, setDigiLockerClientId] = useState<string | null>(null);
+
   const autoStartedRef = useRef(false);
+  // Set when the user clicks "Verify" for DigiLocker before the SDK's own button has
+  // mounted yet (e.g. slow network). Once it does mount, we replay that click on it
+  // programmatically so the user's one click still opens the popup, instead of
+  // silently doing nothing and leaving them to click a second time.
+  const pendingDigiLockerClickRef = useRef(false);
+  // Synchronous in-flight guard for the DigiLocker initialize call — state updates
+  // (isInitializingDigiLocker) aren't synchronous, so a fast second call (background
+  // prefetch racing an immediate user click) could otherwise slip through and fire twice.
+  const digiLockerInitInFlightRef = useRef(false);
 
   // Get OTP validity from environment variable (in minutes), default to 10 minutes
   const OTP_VALIDITY_MINUTES = useMemo(() => {
@@ -180,6 +235,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setIsAadharManualVerifying(false);
       setIsOtherVerifying(false);
       setIsOtherRejecting(false);
+      setIsInitializingDigiLocker(false);
+      setIsDigiLockerButtonReady(false);
+      setIsDownloadingAadhaar(false);
+      setShowDigiLockerButton(false);
+      setDigiLockerToken(null);
+      setDigiLockerClientId(null);
+      pendingDigiLockerClickRef.current = false;
 
       // Note: Do NOT reset detail dialog states here.
       // We may need to immediately open a details dialog (e.g., Aadhaar) after
@@ -233,6 +295,119 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
     }
   }, [open, isAadhar, documentId, documents, OTP_VALIDITY_MINUTES, startCooldownTimer]);
+
+  // Resolve the Aadhaar verification mode (OTP vs DigiLocker) once per dialog open, and
+  // prefetch the DigiLocker token in the background so a fast network gives a genuine
+  // single click (the SDK's own button is already mounted by the time the user clicks).
+  // The Verify button itself stays enabled the whole time this loads (see the `disabled`
+  // prop below) — on a slow network the user can still click it right away; that click
+  // is replayed onto the SDK's button automatically once it finishes mounting.
+  useEffect(() => {
+    if (!open || !isAadhar) return;
+    let cancelled = false;
+    supabase.functions.invoke('aadhaar-digilocker-verification', { body: { action: 'getMode' } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const mode = !error && data?.success && data.mode === 'digilocker' ? 'digilocker' : 'non_digilocker';
+        setVerificationMode(mode);
+
+        if (mode === 'digilocker' && quickStartMethod === 'api' && !digiLockerInitInFlightRef.current) {
+          handleDigiLockerInitialize();
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setVerificationMode('non_digilocker');
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isAadhar]);
+
+  useEffect(() => {
+    if (!digiLockerToken) return;
+
+    let cancelled = false;
+    setIsDigiLockerButtonReady(false);
+
+    const onSuccess = async () => {
+      if (!digiLockerClientId) return;
+      setIsDownloadingAadhaar(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('aadhaar-digilocker-verification', {
+          body: { action: 'downloadAadhaar', digiLockerClientId, documentId },
+        });
+        if (error) throw new Error(error.message || 'Failed to download Aadhaar data');
+        if (!data?.success) throw new Error(data?.error || 'Failed to download Aadhaar data');
+
+        // Match the unwrapping convention used by the OTP flow above (data?.data?.data || data?.data || data)
+        const rawGovernmentData = data?.data?.data || data?.data || data;
+        onApiSuccess?.('aadhar', rawGovernmentData);
+        onOpenChange(false);
+      } catch (err) {
+        console.error('DigiLocker downloadAadhaar error:', err);
+        setErrorKey(null);
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to complete DigiLocker verification. Please try again.');
+        setShowDigiLockerButton(false);
+      } finally {
+        setIsDownloadingAadhaar(false);
+      }
+    };
+
+    const onFailure = (err: unknown) => {
+      console.error('DigiLocker SDK failure:', err);
+      setErrorKey(null);
+      setErrorMessage('DigiLocker verification failed. Please try again.');
+      setShowDigiLockerButton(false);
+    };
+
+    loadDigiboostSdk()
+      .then(() => {
+        if (cancelled) return;
+        window.DigiboostSdk?.({
+          gateway: 'production',
+          token: digiLockerToken,
+          selector: '#digilocker-sdk-trigger',
+          // Matches the app's green "success" button (the plain Verify button shown
+          // while this token is being prefetched) so there's no color flip once the
+          // SDK's own button takes over — same look, uninterrupted.
+          style: {
+            backgroundColor: '#22C55E',
+            color: '#ffffff',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+          },
+          onSuccess,
+          onFailure,
+        });
+        if (cancelled) return;
+        setIsDigiLockerButtonReady(true);
+
+        // The user may have already clicked "Verify" while this was still loading
+        // (slow network) — replay that click onto the SDK's own button now that it
+        // exists, so their one click still opens the popup instead of silently
+        // requiring a second one. A tick's delay covers the SDK mounting its button
+        // asynchronously right after this call returns.
+        if (pendingDigiLockerClickRef.current) {
+          pendingDigiLockerClickRef.current = false;
+          setTimeout(() => {
+            document.querySelector<HTMLElement>('#digilocker-sdk-trigger button')?.click();
+          }, 0);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load DigiLocker SDK:', err);
+        if (!cancelled) {
+          setErrorMessage('Failed to load DigiLocker. Please try again.');
+          setShowDigiLockerButton(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [digiLockerToken, digiLockerClientId, documentId]);
 
   // Separate handler for Bank Account API verification
   const handleBankAccountApiVerification = async () => {
@@ -965,7 +1140,42 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
+  const handleDigiLockerInitialize = async () => {
+    if (digiLockerInitInFlightRef.current) return;
+    digiLockerInitInFlightRef.current = true;
+    setIsInitializingDigiLocker(true);
+    setErrorKey(null);
+    setErrorMessage(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('aadhaar-digilocker-verification', {
+        body: { action: 'initialize', documentId },
+      });
+      if (error) throw new Error(error.message || 'Failed to start DigiLocker verification');
+      if (!data?.success || !data?.token) throw new Error(data?.error || 'Failed to start DigiLocker verification');
+
+      setDigiLockerClientId(data.client_id ? String(data.client_id) : null);
+      setShowDigiLockerButton(true);
+      setDigiLockerToken(String(data.token));
+    } catch (err) {
+      console.error('DigiLocker initialize error:', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to start DigiLocker verification. Please try again.');
+    } finally {
+      setIsInitializingDigiLocker(false);
+      digiLockerInitInFlightRef.current = false;
+    }
+  };
+
   const handleApiClick = async () => {
+    if (isAadhar && verificationMode === 'digilocker') {
+      // If the token isn't ready yet (background prefetch still in flight, or hasn't
+      // started), remember this click so it gets replayed onto the SDK's own button the
+      // moment that button finishes mounting — see the SDK-mount effect below.
+      pendingDigiLockerClickRef.current = true;
+      if (!digiLockerInitInFlightRef.current && !showDigiLockerButton) {
+        await handleDigiLockerInitialize();
+      }
+      return;
+    }
     if (isAadhar) {
       console.log('VerificationDialog - Aadhaar OTP flow');
       if (!documentNumber) {
@@ -1308,7 +1518,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsAadharManualVerifying(false);
     setIsOtherVerifying(false);
     setIsOtherRejecting(false);
-    
+    setIsInitializingDigiLocker(false);
+    setIsDigiLockerButtonReady(false);
+    setIsDownloadingAadhaar(false);
+    setShowDigiLockerButton(false);
+    setDigiLockerToken(null);
+    setDigiLockerClientId(null);
+    pendingDigiLockerClickRef.current = false;
+
     // Reset loading state
     setIsVerificationLoading?.(false);
     
@@ -1429,8 +1646,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           <div className="flex flex-col gap-4 py-4">
 
             <div className="text-sm text-muted-foreground text-center">
-              {isAadhar 
-                ? 'Click the verify button to open secure government portal for Aadhaar verification.'
+              {isAadhar
+                ? (verificationMode === 'digilocker'
+                    ? 'Click the verify button to start Aadhaar verification through DigiLocker.'
+                    : 'Click the verify button to open secure government portal for Aadhaar verification.')
                 : 'Click the verify button to fetch and validate employee data through our secure API.'
               }
             </div>
@@ -1484,7 +1703,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               <Button variant="outline" onClick={handleCancel} disabled={isVerifyingOtp}>
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleOtpSubmit}
                 disabled={isVerifyingOtp || otp.length !== 6}
                 className="ml-2"
@@ -1499,36 +1718,46 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 <Button onClick={handleCancel}>OK</Button>
               ) : (
                 <>
-                  <Button variant="outline" onClick={handleCancel}>
+                  <Button variant="outline" onClick={handleCancel} disabled={isDownloadingAadhaar}>
                     Cancel
                   </Button>
-                  <Button
-                    variant="success"
-                    onClick={handleApiClick}
-                    disabled={
-                      isRequestingOtp ||
+                  {showDigiLockerButton && (
+                    <div
+                      id="digilocker-sdk-trigger"
+                      className={cn('min-h-10 flex items-center', !isDigiLockerButtonReady && 'hidden')}
+                    />
+                  )}
+                  {(!showDigiLockerButton || !isDigiLockerButtonReady) && (
+                    <Button
+                      variant="success"
+                      onClick={handleApiClick}
+                      disabled={
+                        isRequestingOtp ||
+                        isPanVerifying ||
+                        isVoterIdVerifying ||
+                        isDrivingLicenseVerifying ||
+                        isPassportVerifying ||
+                        isBankAccountVerifying ||
+                        isAadharManualVerifying ||
+                        isOtherVerifying ||
+                        isOtherRejecting
+                      }
+                    >
+                      {isRequestingOtp ||
+                      isInitializingDigiLocker ||
+                      showDigiLockerButton ||
                       isPanVerifying ||
                       isVoterIdVerifying ||
                       isDrivingLicenseVerifying ||
                       isPassportVerifying ||
                       isBankAccountVerifying ||
                       isAadharManualVerifying ||
-                      isOtherVerifying ||
-                      isOtherRejecting
-                    }
-                  >
-                    {isRequestingOtp ||
-                    isPanVerifying ||
-                    isVoterIdVerifying ||
-                    isDrivingLicenseVerifying ||
-                    isPassportVerifying ||
-                    isBankAccountVerifying ||
-                    isAadharManualVerifying ||
-                    isOtherVerifying ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : null}
-                    Verify
-                  </Button>
+                      isOtherVerifying ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : null}
+                      Verify
+                    </Button>
+                  )}
                 </>
               )}
             </>
