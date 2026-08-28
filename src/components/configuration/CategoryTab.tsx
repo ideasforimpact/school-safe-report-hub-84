@@ -132,6 +132,7 @@ export const CategoryTab = ({
       id: category.id,
       name: category.name
     });
+    setError(null); // Clear any stale error (e.g. from a failed add) before opening
     setIsEditDialogOpen(true);
   };
 
