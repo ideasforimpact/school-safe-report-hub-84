@@ -64,7 +64,42 @@ export const normalizeApiData = (
       };
     }
 
-    case "aadhar":
+    case "aadhar": {
+      // DigiLocker responses nest the actual fields under aadhaar_xml_data /
+      // digilocker_metadata instead of the flat shape the OTP providers use.
+      const xml = data.aadhaar_xml_data as RawApiRecord | undefined;
+      const metadata = data.digilocker_metadata as RawApiRecord | undefined;
+
+      if (xml || metadata) {
+        const xmlAddress = xml?.address as Record<string, unknown> | undefined;
+        return {
+          name: xml?.full_name || metadata?.name,
+          dob: xml?.dob || metadata?.dob,
+          gender: xml?.gender || metadata?.gender,
+          aadharNumber: xml?.masked_aadhaar,
+          profileImage: xml?.profile_image,
+          state: xmlAddress?.state,
+          address:
+            xml?.full_address ||
+            (xmlAddress
+              ? [
+                  xmlAddress.house,
+                  xmlAddress.street,
+                  xmlAddress.landmark,
+                  xmlAddress.loc,
+                  xmlAddress.vtc,
+                  xmlAddress.subdist,
+                  xmlAddress.dist,
+                  xmlAddress.state,
+                  xml?.zip,
+                  xmlAddress.country,
+                ]
+                  .filter(Boolean)
+                  .join(", ")
+              : undefined),
+        };
+      }
+
       return {
         name: data.full_name || data.name,
         dob: data.dob,
@@ -85,6 +120,7 @@ export const normalizeApiData = (
               .join(", ")
           : undefined,
       };
+    }
 
     case "driving_license":
       return {
