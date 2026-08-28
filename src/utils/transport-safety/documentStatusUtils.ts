@@ -344,6 +344,27 @@ export const getVehicleRowClassName = (vehicle: Vehicle): string => {
 };
 
 /**
+ * Sort priority for a vehicle's row: red (expired/missing docs, and vehicles
+ * that have never had a safety check run) first, then yellow (expiring
+ * soon), then green (valid). A brand-new, never-verified vehicle needs a
+ * safety check just as urgently as one with expired documents, so it shares
+ * the top tier - the "New" badge (see VehiclesListView) is what tells the
+ * two apart, not sort position.
+ */
+export const getVehicleStatusSortPriority = (vehicle: Vehicle): number => {
+  if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
+    return 0;
+  }
+  if (hasExpiredDocuments(vehicle)) {
+    return 0;
+  }
+  if (hasExpiringDocuments(vehicle)) {
+    return 1;
+  }
+  return 2;
+};
+
+/**
  * Get RC verification status color classes (green=active, red=failed, orange=expired)
  */
 export const getRcStatusColor = (status: string): string => {

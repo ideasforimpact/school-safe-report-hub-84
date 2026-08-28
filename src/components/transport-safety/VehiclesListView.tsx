@@ -3,7 +3,7 @@ import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit, Eye, Car, Wrench } from 'lucide-react';
+import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit, Eye, Car, Wrench, CarFront } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
@@ -17,6 +17,7 @@ import {
   getDocumentStatusColor, 
   getCommonVehicleTypeIcon,
   getVehicleRowClassName,
+  getVehicleStatusSortPriority,
   getLatestVerificationLog
 } from '@/utils/transport-safety/documentStatusUtils';
 import { getPendingChallansFromVehicleChallans } from '@/services/transport-safety/vehicleService';
@@ -44,8 +45,13 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
 
     // `vehicles` is already the correctly paginated slice for the active
     // filter mode (server-paginated, or client-paginated over the full
-    // filtered set — see useVehicleFilters)
-    const paginatedItems = vehicles;
+    // filtered set — see useVehicleFilters). Sort within the page so
+    // red (expired) rows show first, then yellow (expiring soon), then
+    // green (valid).
+    const paginatedItems = React.useMemo(
+      () => [...vehicles].sort((a, b) => getVehicleStatusSortPriority(a) - getVehicleStatusSortPriority(b)),
+      [vehicles]
+    );
 
   const getDocumentIcon = (status: string) => {
     switch (status) {
@@ -143,12 +149,16 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           <TableBody>
             {paginatedItems.map(vehicle => {
               const hasVerification = hasVerificationData(vehicle);
+              const isNewVehicle = !hasVerification;
               const insuranceStatus = hasVerification ? getDocumentStatus(vehicle, 'insurance').status : 'unverified';
               const fcStatus = hasVerification ? getDocumentStatus(vehicle, 'fitness').status : 'unverified';
               const pollutionStatus = hasVerification ? getDocumentStatus(vehicle, 'pollution').status : 'unverified';
               const vehicleHasChallan = hasPendingChallans(vehicle);
               const pendingChallanCount = getPendingChallanCount(vehicle);
-              const rowClassName = hasVerification ? getVehicleRowClassName(vehicle) : "hover:bg-muted/50 border-l-4 border-l-gray-300";
+              // A never-verified vehicle needs a safety check just as urgently
+              // as one with expired documents, so it gets the same red
+              // highlight - the "New" badge is what distinguishes it.
+              const rowClassName = hasVerification ? getVehicleRowClassName(vehicle) : "hover:bg-muted/50 bg-red-50 border-l-4 border-l-red-500";
               const commonVehicleIcon = getCommonVehicleTypeIcon(vehicle);
               
               return <TableRow key={vehicle.id} className={rowClassName}>
@@ -185,7 +195,15 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     </div>
                   </TableCell>
                   <TableCell className="text-left">
-                    <div className="text-sm font-medium text-gray-700 text-left">{vehicle.registrationNumber}</div>
+                    <div className="text-left flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-gray-700">{vehicle.registrationNumber}</span>
+                      {isNewVehicle && (
+                        <Badge variant="outline" className="text-xs flex items-center gap-1 bg-blue-50 border-blue-200 text-blue-700">
+                          <CarFront className="h-3 w-3" />
+                          <span>New</span>
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   {/* <TableCell className="text-left">
                     <Badge 
