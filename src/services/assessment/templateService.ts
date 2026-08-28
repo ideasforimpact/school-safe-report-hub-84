@@ -31,6 +31,7 @@ export interface CreateTemplateRequest {
   clientId: string;
   employeeId: string;
   templateId?: string; // For updates
+  clientTypeId?: string;
 }
 
 export interface CreateTemplateResponse {
@@ -207,42 +208,6 @@ export const templateService = {
     }
   },
 
-  // Create template (legacy method for backward compatibility)
-  createTemplate: async (templateData: {
-    title: string;
-    description: string;
-    category_id: string;
-    questions?: AssessmentQuestion[];
-    clientId?: string;
-    createdBy?: string;
-  }): Promise<string> => {
-    try {
-      // This is a simplified version that doesn't handle files
-      // For file handling, use createOrUpdateTemplate instead
-      const { data, error } = await supabase
-        .from('assessment_templates')
-        .insert({
-          title: templateData.title,
-          description: templateData.description,
-          category_id: templateData.category_id,
-          questions: (templateData.questions || []) as unknown as Json,
-          created_by: templateData.createdBy || '',
-          client_id: templateData.clientId || ''
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(`Failed to create template: ${error.message}`);
-      }
-
-      return data.id;
-    } catch (error) {
-      console.error('Error in createTemplate:', error);
-      throw error;
-    }
-  },
-
   // Update template (legacy method for backward compatibility)
   updateTemplate: async (id: string, updates: {
     title?: string;
@@ -323,7 +288,8 @@ export const templateService = {
           questions: processedQuestions,
           clientId: request.clientId,
           employeeId: request.employeeId,
-          templateId: request.templateId // Will be undefined for creates
+          templateId: request.templateId, // Will be undefined for creates
+          clientTypeId: request.clientTypeId
         }
       });
 

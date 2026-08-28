@@ -134,6 +134,7 @@ export const SubcategoryTab = ({
       name: subcategory.name,
       categoryId: selectedCategoryId
     });
+    setError(null); // Clear any stale error (e.g. from a failed add) before opening
     setIsEditDialogOpen(true);
   };
 

@@ -182,6 +182,35 @@ serve(async (req) => {
       )
     }
 
+    // Check for duplicate template title within this client
+    const { data: existingTitleMatches, error: duplicateCheckError } = await supabaseClient
+      .from('assessment_templates')
+      .select('id')
+      .eq('client_id', clientId)
+      .ilike('title', title.trim())
+
+    if (duplicateCheckError) {
+      console.error('Duplicate title check error:', duplicateCheckError);
+      return new Response(
+        JSON.stringify({ error: `Failed to validate template title: ${duplicateCheckError.message}` }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const isDuplicateTitle = (existingTitleMatches ?? []).some((t: { id: string }) => t.id !== templateId);
+    if (isDuplicateTitle) {
+      return new Response(
+        JSON.stringify({ error: 'A template with this name already exists' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
     // Get category_id from template_categories table based on type
     const { data: categoryData, error: categoryError } = await supabaseClient
       .from('template_categories')
