@@ -404,7 +404,7 @@ const EditUserDialog = ({
       );
       setShowOtherDetails(hasExistingOtherDetails);
     }
-  }, [isOpen, currentUser?.id, formData.professionalOtherDetails]);
+  }, [isOpen, currentUser?.id]);
 
   useEffect(() => {
     if (currentStep > steps.length - 1) {
