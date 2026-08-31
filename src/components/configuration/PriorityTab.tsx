@@ -153,6 +153,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       setNewPriorityColor('#10B981');
       setNewPriorityWeight('0');
       setIsAddDialogOpen(false);
+      toast.success('Priority added successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to add priority';
       setError(errorMessage);
@@ -176,6 +177,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       await priorityService.updatePriority(selectedPriority.id, editPriorityName.trim(), editPriorityDescription.trim(), editPriorityColor, parseInt(editPriorityWeight) || 0, clientTypeId);
       await refetch();
       setIsEditDialogOpen(false); setSelectedPriority(null);
+      toast.success('Priority updated successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update priority';
       setError(errorMessage);
@@ -246,6 +248,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
           // Refresh data immediately
           await refetch();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success('Priority deleted successfully');
         } catch (error) {
           setConfirmationDialog(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Failed to delete', isLoading: false }));
         }

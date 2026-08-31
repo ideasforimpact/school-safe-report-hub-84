@@ -256,7 +256,7 @@ export const CampusTab = ({
                 </> 
               ) : (
                 <>
-                  <Plus className="mr-2 h-4 w-4" /> Add Campus
+                  <Plus className="mr-2 h-4 w-4" /> Add {s.campus}
                 </>
               )}
             </Button>
@@ -289,7 +289,7 @@ export const CampusTab = ({
         {/* Results Info */}
         {searchFilter && (
           <div className="mb-4 text-sm text-muted-foreground">
-            Showing {filteredCampuses.length} of {campuses.length} campuses
+            Showing {filteredCampuses.length} of {campuses.length} {s.campusPlural.toLowerCase()}
           </div>
         )}
         
@@ -451,7 +451,7 @@ export const CampusTab = ({
         <AlertDialog open={deleteDialogOpen && canCreate} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Campus</AlertDialogTitle>
+              <AlertDialogTitle>Delete {s.campus}</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete the {s.campus.toLowerCase()} &ldquo;{campusToDelete?.name}&rdquo;? 
                 This action cannot be undone. If this campus is linked to any incidents, 

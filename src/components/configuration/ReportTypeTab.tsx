@@ -140,6 +140,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       await reportTypeService.addReportType(newTypeName.trim(), newTypeDescription.trim(), employeeData.clientId, clientTypeId);
       await fetchReportTypes();
       setNewTypeName(''); setNewTypeDescription(''); setIsAddDialogOpen(false);
+      toast.success('Report type added successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to add report type';
       setError(errorMessage);
@@ -163,6 +164,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       await reportTypeService.updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
       await fetchReportTypes();
       setIsEditDialogOpen(false); setSelectedType(null);
+      toast.success('Report type updated successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update report type';
       setError(errorMessage);
@@ -229,6 +231,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           // Refresh data immediately
           await fetchReportTypes();
           setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success('Report type deleted successfully');
         } catch (error) {
           setConfirmationDialog(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Failed to delete', isLoading: false }));
         }
