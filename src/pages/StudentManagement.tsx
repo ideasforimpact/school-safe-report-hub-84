@@ -474,7 +474,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={refreshStudents}
+            onClick={() => refreshStudents(currentPage, itemsPerPage, debouncedSearchQuery, gradeFilter, sectionFilter, campusFilter)}
             disabled={isLoading}
             title="Refresh student list"
           >

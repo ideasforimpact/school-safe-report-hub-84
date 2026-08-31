@@ -223,7 +223,7 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => prev.map(c => c.id === id ? { ...c, name } : c));
-      toast.success("Campus updated successfully");
+      toast.success(`${s.campus} updated successfully`);
     } catch (error) {
       console.error("Error updating campus:", error);
       toast.error("Failed to update campus");
@@ -268,7 +268,7 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setCampuses(prev => prev.filter(c => c.id !== id));
-      toast.success("Campus deleted successfully");
+      toast.success(`${s.campus} deleted successfully`);
     } catch (error) {
       console.error("Error deleting campus:", error);
       toast.error("Failed to delete campus");
@@ -297,7 +297,7 @@ export function useEducationalConfigurationManagement() {
         name: data.grade.name,
         campusId: data.grade.campus_id
       }]);
-      toast.success("Grade added successfully");
+      toast.success(`${s.grade} added successfully`);
     } catch (error) {
       console.error("Error adding grade:", error);
       toast.error("Failed to add grade");
@@ -326,7 +326,7 @@ export function useEducationalConfigurationManagement() {
         campusId: data.grade.campus_id 
       } : c));
       
-      toast.success("Grade updated successfully");
+      toast.success(`${s.grade} updated successfully`);
     } catch (error) {
       console.error("Error updating grade:", error);
       toast.error("Failed to update grade");
@@ -357,7 +357,7 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setClasses(prev => prev.filter(c => c.id !== id));
-      toast.success("Grade deleted successfully");
+      toast.success(`${s.grade} deleted successfully`);
     } catch (error) {
       console.error("Error deleting grade:", error);
       toast.error("Failed to delete grade");
@@ -394,7 +394,7 @@ export function useEducationalConfigurationManagement() {
         classId: data.section.grade_id,
         campusId: data.section.campus_id
       }]);
-      toast.success("Section added successfully");
+      toast.success(`${s.section} added successfully`);
     } catch (error) {
       console.error("Error adding section:", error);
       toast.error("Failed to add section");
@@ -431,7 +431,7 @@ export function useEducationalConfigurationManagement() {
         campusId: data.section.campus_id
       } : section));
       
-      toast.success("Section updated successfully");
+      toast.success(`${s.section} updated successfully`);
     } catch (error) {
       console.error("Error updating section:", error);
       toast.error("Failed to update section");
@@ -455,7 +455,7 @@ export function useEducationalConfigurationManagement() {
       if (error) throw error;
       
       setSections(prev => prev.filter(section => section.id !== id));
-      toast.success("Section deleted successfully");
+      toast.success(`${s.section} deleted successfully`);
     } catch (error) {
       console.error("Error deleting section:", error);
       toast.error("Failed to delete section");
