@@ -206,6 +206,9 @@ async function handleInitialize(payload: any, supabaseClient: any) {
       success: true,
       client_id: data.data?.client_id,
       token: data.data?.token,
+      // Surepass's own validity window for this token/client_id pair — the frontend
+      // caches and reuses it for this long instead of re-initializing on every click.
+      expiry_seconds: data.data?.expiry_seconds,
     })
   } catch (error) {
     console.error('DigiLocker initialize error:', error)

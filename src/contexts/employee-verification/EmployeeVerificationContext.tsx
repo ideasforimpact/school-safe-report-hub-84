@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -13,6 +13,7 @@ import { useDocumentManagement } from './hooks/useDocumentManagement';
 import { initialDocumentTypes, initialDocumentStatuses } from './initialData';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useLocation } from 'react-router-dom';
+import { readDigiLockerSessionCache, writeDigiLockerSessionCache, clearDigiLockerSessionCache } from '@/lib/digilockerSessionStorage';
 
 const EmployeeVerificationContext = createContext<EmployeeVerificationContextType | undefined>(undefined);
 
@@ -154,6 +155,25 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     }
   };
 
+  // DigiLocker session cache — backed by sessionStorage (not just a ref) so it survives
+  // a page refresh mid-verification, not only dialog opens/closes and switching between
+  // employees. Reads/writes go through try/catch since storage access can throw
+  // (private browsing, storage disabled) — degrade to "no cache" rather than crash.
+  const getCachedDigiLockerSession = useCallback(() => {
+    const session = readDigiLockerSessionCache();
+    if (session && Date.now() < session.expiresAt) return session;
+    if (session) clearDigiLockerSessionCache();
+    return null;
+  }, []);
+
+  const setCachedDigiLockerSession = useCallback((token: string, clientId: string, expirySeconds: number) => {
+    writeDigiLockerSessionCache({ token, clientId, expiresAt: Date.now() + expirySeconds * 1000 });
+  }, []);
+
+  const clearCachedDigiLockerSession = useCallback(() => {
+    clearDigiLockerSessionCache();
+  }, []);
+
   // Use memoized value for context to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     // Original verification context values
@@ -192,6 +212,10 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     fetchDocumentStatuses,
 
     isLoading: isLoading || isEmployeeLoading || isDocumentLoading,
+
+    getCachedDigiLockerSession,
+    setCachedDigiLockerSession,
+    clearCachedDigiLockerSession,
   }), [
     isVerifying, verificationError,
     employees, addEmployee, updateEmployee, deleteEmployee, getEmployee, fetchEmployees,
@@ -200,6 +224,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     documents, addDocument, verifyDocument, deleteDocument, getEmployeeDocuments, fetchEmployeeDocuments,
     documentTypes, documentStatuses, fetchDocumentTypes, fetchDocumentStatuses,
     isLoading, isEmployeeLoading, isDocumentLoading,
+    getCachedDigiLockerSession, setCachedDigiLockerSession, clearCachedDigiLockerSession,
   ]);
 
   // Fetch initial reference data when entering the employee verification route — single combined call
