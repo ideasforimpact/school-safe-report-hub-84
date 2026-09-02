@@ -59,6 +59,11 @@ interface ApiResponse {
         message?: string;
         [key: string]: unknown;
     };
+    verificationDate?: string;
+    // true when vehicle-verify skipped the paid provider call and reused cached
+    // data instead (documents >15 days from expiry / challan checked within 48h).
+    document_status_up_to_date?: boolean;
+    challan_status_up_to_date?: boolean;
     [key: string]: unknown;
 }
 import { supabase } from '@/integrations/supabase/client';
@@ -218,6 +223,12 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     const shouldShowLatestChallanCheck = React.useMemo(() => {
         // If we don't have a known "latest successful" entry or any history, do nothing.
         if (!latestChallanSuccessLog?.timestamp) return false;
+
+        // Fresh run explicitly skipped the paid Challan API and reused this cached
+        // entry (still within the 48h cooldown after its last success) — that's
+        // definitely not this instant's live result, regardless of log timestamps.
+        if (apiResponse?.challan_status_up_to_date === true) return true;
+
         if (!latestLogTimestamp) return false;
 
         // When opening from History, a successful card already represents live data.
@@ -229,7 +240,11 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         // Otherwise, only show the indicator when the latest log is not a successful challan,
         // meaning we're displaying cached success data from a previous run.
         return latestChallanSuccessLog.timestamp !== latestLogTimestamp;
-    }, [latestChallanSuccessLog, latestLogTimestamp, challanSnapshot]);
+    }, [apiResponse?.challan_status_up_to_date, latestChallanSuccessLog, latestLogTimestamp, challanSnapshot]);
+
+    // Fresh run explicitly skipped the paid Document (RC/FC/Insurance/PUC) API and
+    // reused cached data — all three were still >15 days from expiry.
+    const isDocumentDataCached = apiResponse?.document_status_up_to_date === true;
 
 
     // Verification tab: show user-friendly error when API returned status error or 500,
@@ -504,13 +519,6 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             <DialogContent className="sm:max-w-[100vh] max-h-[80vh] flex flex-col p-0 rounded-lg overflow-hidden">
                 <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                     <DialogTitle>{title}</DialogTitle>
-                    {shouldShowLatestChallanCheck && (
-                    <div className="mt-1 text-xs text-gray-500 flex items-center">
-                        <Circle className="h-3.5 w-3.5 mr-1.5 fill-yellow-500 stroke-yellow-500" />
-                        Latest successful check •{" "}
-                        {formatDate(latestChallanSuccessLog.timestamp)}
-                    </div>
-                    )}
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 pb-4 no-scrollbar rounded-b-lg">
@@ -600,6 +608,11 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                     Something went wrong. Please contact administrator.
                                 </div>
                             )}
+                            {!hasVerificationError && isDocumentDataCached && (
+                                <div className="mb-3 flex items-center" title="Cached — Insurance/FC/PUC were already valid for 15+ days, so this data was reused instead of re-verified">
+                                    <Circle className="h-3.5 w-3.5 fill-yellow-500 stroke-yellow-500" />
+                                </div>
+                            )}
                             {!hasVerificationError && (
                                 <div className="border rounded-md divide-y">
                                     {rcDataForDisplay.length > 0 ? (
@@ -626,6 +639,11 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
 
                         {/* Challan */}
                         <TabsContent value="challan">
+                            {shouldShowLatestChallanCheck && (
+                                <div className="mb-3 flex items-center" title={`Latest successful check • ${formatDate(latestChallanSuccessLog.timestamp)}`}>
+                                    <Circle className="h-3.5 w-3.5 fill-yellow-500 stroke-yellow-500" />
+                                </div>
+                            )}
                             {challanErrorMessage && (
                                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4 text-center">
                                     {challanErrorMessage}
