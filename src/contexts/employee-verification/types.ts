@@ -42,6 +42,16 @@ export interface EmployeeVerificationContextType {
 
   // Loading state
   isLoading: boolean;
+
+  // DigiLocker session (client_id/token from Surepass's `initialize` call), cached here
+  // so an unconsumed session — Verify was clicked but the popup was closed or failed
+  // before completing — survives across VerificationDialog opens/closes and can be
+  // retried without minting a new (billable) session. Cleared the moment a session is
+  // actually consumed by a completed verification, since Surepass rejects reuse of one
+  // ("Access Denied") — confirmed live, not just documented behavior.
+  getCachedDigiLockerSession: () => { token: string; clientId: string } | null;
+  setCachedDigiLockerSession: (token: string, clientId: string, expirySeconds: number) => void;
+  clearCachedDigiLockerSession: () => void;
 }
 
 // Re-export types to avoid import confusion
