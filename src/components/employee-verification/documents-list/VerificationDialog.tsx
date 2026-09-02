@@ -128,8 +128,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [otpExpired, setOtpExpired] = useState(false);
 
   // Aadhaar verification mode: whether to run the OTP flow or the DigiLocker flow,
-  // decided server-side by the AADHAAR_VERIFICATION_MODE edge function secret.
-  const [verificationMode, setVerificationMode] = useState<'digilocker' | 'non_digilocker'>('non_digilocker');
+  // decided entirely on the frontend from this build-time env var — no edge-function
+  // round trip needed just to find out which flow to run.
+  const verificationMode = useMemo<'digilocker' | 'non_digilocker'>(() => {
+    return import.meta.env.VITE_AADHAAR_VERIFICATION_MODE === 'digilocker' ? 'digilocker' : 'non_digilocker';
+  }, []);
   const [isInitializingDigiLocker, setIsInitializingDigiLocker] = useState(false);
   const [isDigiLockerButtonReady, setIsDigiLockerButtonReady] = useState(false);
   const [isDownloadingAadhaar, setIsDownloadingAadhaar] = useState(false);
@@ -296,31 +299,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   }, [open, isAadhar, documentId, documents, OTP_VALIDITY_MINUTES, startCooldownTimer]);
 
-  // Resolve the Aadhaar verification mode (OTP vs DigiLocker) once per dialog open, and
-  // prefetch the DigiLocker token in the background so a fast network gives a genuine
-  // single click (the SDK's own button is already mounted by the time the user clicks).
-  // The Verify button itself stays enabled the whole time this loads (see the `disabled`
-  // prop below) — on a slow network the user can still click it right away; that click
-  // is replayed onto the SDK's button automatically once it finishes mounting.
+  // Prefetch the DigiLocker token in the background as soon as the dialog opens (for
+  // Aadhaar, in digilocker mode) so a fast network gives a genuine single click — the
+  // SDK's own button is already mounted by the time the user clicks. The Verify button
+  // itself stays enabled the whole time this loads (see the `disabled` prop below) — on
+  // a slow network the user can still click it right away; that click is replayed onto
+  // the SDK's button automatically once it finishes mounting.
   useEffect(() => {
-    if (!open || !isAadhar) return;
-    let cancelled = false;
-    supabase.functions.invoke('aadhaar-digilocker-verification', { body: { action: 'getMode' } })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        const mode = !error && data?.success && data.mode === 'digilocker' ? 'digilocker' : 'non_digilocker';
-        setVerificationMode(mode);
-
-        if (mode === 'digilocker' && quickStartMethod === 'api' && !digiLockerInitInFlightRef.current) {
-          handleDigiLockerInitialize();
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setVerificationMode('non_digilocker');
-      });
-    return () => { cancelled = true; };
+    if (!open || !isAadhar || verificationMode !== 'digilocker' || quickStartMethod !== 'api') return;
+    if (digiLockerInitInFlightRef.current) return;
+    handleDigiLockerInitialize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isAadhar]);
+  }, [open, isAadhar, verificationMode, quickStartMethod]);
 
   useEffect(() => {
     if (!digiLockerToken) return;

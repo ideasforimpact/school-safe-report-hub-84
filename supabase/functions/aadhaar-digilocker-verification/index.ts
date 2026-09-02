@@ -9,10 +9,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-function getVerificationMode(): string {
-  return (Deno.env.get('AADHAAR_VERIFICATION_MODE') || 'non_digilocker').toLowerCase()
-}
-
 function getSurepassConfig() {
   return {
     apiKey: Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || '',
@@ -41,8 +37,6 @@ serve(async (req) => {
     )
 
     switch (action) {
-      case 'getMode':
-        return jsonResponse({ success: true, mode: getVerificationMode() })
       case 'initialize':
         return await handleInitialize(payload, supabaseClient)
       case 'downloadAadhaar':
@@ -144,10 +138,6 @@ async function recordDigiLockerAttempt(
 async function handleInitialize(payload: any, supabaseClient: any) {
   const { documentId } = payload
 
-  if (getVerificationMode() !== 'digilocker') {
-    return jsonResponse({ success: false, error: 'DigiLocker verification is not enabled' })
-  }
-
   const context: DocumentContext = documentId
     ? await getDocumentContext(supabaseClient, documentId)
     : { employeeId: null, documentTypeId: null, documentNumber: null }
@@ -235,10 +225,6 @@ async function handleInitialize(payload: any, supabaseClient: any) {
 
 async function handleDownloadAadhaar(payload: any, supabaseClient: any) {
   const { digiLockerClientId, documentId } = payload
-
-  if (getVerificationMode() !== 'digilocker') {
-    return jsonResponse({ success: false, error: 'DigiLocker verification is not enabled' })
-  }
 
   if (!digiLockerClientId) {
     return jsonResponse({ success: false, error: 'digiLockerClientId is required' })
