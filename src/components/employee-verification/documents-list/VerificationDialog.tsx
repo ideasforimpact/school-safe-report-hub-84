@@ -17,6 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 import { VerificationDocument } from '@/types/employeeVerification';
+import DigiLockerRedirectOverlay from './DigiLockerRedirectOverlay';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 const DIGIBOOST_SDK_URL = 'https://cdn.jsdelivr.net/gh/surepassio/surepass-digiboost-web-sdk@latest/index.min.js';
 
@@ -87,7 +89,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   onApiSuccess,
 }) => {
   const { toast: shadcnToast } = useToast();
-  
+  const { getCachedDigiLockerSession, setCachedDigiLockerSession, clearCachedDigiLockerSession } = useEmployeeVerification();
+
   // Debug logging for props
   console.log('VerificationDialog - Received props:', { documentId, documentType, quickStartMethod });
   
@@ -139,6 +142,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [showDigiLockerButton, setShowDigiLockerButton] = useState(false);
   const [digiLockerToken, setDigiLockerToken] = useState<string | null>(null);
   const [digiLockerClientId, setDigiLockerClientId] = useState<string | null>(null);
+  // True from the moment the DigiLocker popup is actually opened until it reports
+  // success/failure (or the user cancels/it times out) — drives the full-page block.
+  const [isDigiLockerPopupOpen, setIsDigiLockerPopupOpen] = useState(false);
 
   const autoStartedRef = useRef(false);
   // Set when the user clicks "Verify" for DigiLocker before the SDK's own button has
@@ -147,8 +153,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   // silently doing nothing and leaving them to click a second time.
   const pendingDigiLockerClickRef = useRef(false);
   // Synchronous in-flight guard for the DigiLocker initialize call — state updates
-  // (isInitializingDigiLocker) aren't synchronous, so a fast second call (background
-  // prefetch racing an immediate user click) could otherwise slip through and fire twice.
+  // (isInitializingDigiLocker) aren't synchronous, so a rapid double-click could
+  // otherwise slip a second initialize() through before the first one's state lands.
   const digiLockerInitInFlightRef = useRef(false);
 
   // Get OTP validity from environment variable (in minutes), default to 10 minutes
@@ -244,6 +250,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setShowDigiLockerButton(false);
       setDigiLockerToken(null);
       setDigiLockerClientId(null);
+      setIsDigiLockerPopupOpen(false);
       pendingDigiLockerClickRef.current = false;
 
       // Note: Do NOT reset detail dialog states here.
@@ -299,19 +306,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   }, [open, isAadhar, documentId, documents, OTP_VALIDITY_MINUTES, startCooldownTimer]);
 
-  // Prefetch the DigiLocker token in the background as soon as the dialog opens (for
-  // Aadhaar, in digilocker mode) so a fast network gives a genuine single click — the
-  // SDK's own button is already mounted by the time the user clicks. The Verify button
-  // itself stays enabled the whole time this loads (see the `disabled` prop below) — on
-  // a slow network the user can still click it right away; that click is replayed onto
-  // the SDK's button automatically once it finishes mounting.
-  useEffect(() => {
-    if (!open || !isAadhar || verificationMode !== 'digilocker' || quickStartMethod !== 'api') return;
-    if (digiLockerInitInFlightRef.current) return;
-    handleDigiLockerInitialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isAadhar, verificationMode, quickStartMethod]);
-
   useEffect(() => {
     if (!digiLockerToken) return;
 
@@ -331,12 +325,32 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         // Match the unwrapping convention used by the OTP flow above (data?.data?.data || data?.data || data)
         const rawGovernmentData = data?.data?.data || data?.data || data;
         onApiSuccess?.('aadhar', rawGovernmentData);
+        setIsDigiLockerPopupOpen(false);
+        // Confirmed against live Surepass: once a client_id/token has been used for a
+        // completed consent, reusing it again — even for a different employee — comes
+        // back "Access Denied, please try again with a valid token". So a *successful*
+        // session is consumed and must not stay cached; only an unconsumed session
+        // (initialized but never completed, e.g. the popup was closed without finishing)
+        // is safe to reuse, which is the case the cache still covers after this.
+        clearCachedDigiLockerSession();
         onOpenChange(false);
       } catch (err) {
         console.error('DigiLocker downloadAadhaar error:', err);
         setErrorKey(null);
         setErrorMessage(err instanceof Error ? err.message : 'Failed to complete DigiLocker verification. Please try again.');
         setShowDigiLockerButton(false);
+        setIsDigiLockerPopupOpen(false);
+        // Reset the widget state fully, not just showDigiLockerButton — otherwise a
+        // retry that lands on the same token value (from cache, or Surepass reissuing
+        // one) is a no-op for React's state diff, the SDK-mount effect never re-runs,
+        // and isDigiLockerButtonReady stays stuck true from the last mount: the plain
+        // Verify button then stays hidden while the SDK slot is empty (nothing to click).
+        setIsDigiLockerButtonReady(false);
+        setDigiLockerToken(null);
+        setDigiLockerClientId(null);
+        // The cached session (if this download reused one) may be stale or already
+        // consumed — force the next Verify click to mint a fresh one from Surepass.
+        clearCachedDigiLockerSession();
       } finally {
         setIsDownloadingAadhaar(false);
       }
@@ -347,6 +361,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setErrorKey(null);
       setErrorMessage('DigiLocker verification failed. Please try again.');
       setShowDigiLockerButton(false);
+      setIsDigiLockerPopupOpen(false);
+      // Reset the widget state fully (see the matching comment in onSuccess's catch
+      // above) so the next click's setDigiLockerToken always registers as a real state
+      // change and the mount effect re-runs, even when it's reusing the identical
+      // cached token — otherwise the Verify button can end up hidden with nothing to
+      // click after a retry.
+      setIsDigiLockerButtonReady(false);
+      setDigiLockerToken(null);
+      setDigiLockerClientId(null);
+      // Deliberately NOT clearing the cached session here: this also fires when the
+      // user simply closes the DigiLocker tab without finishing, which doesn't mean
+      // the client_id/token is broken — no consent was given, so nothing was consumed.
+      // Keep it cached so the very next Verify click (a retry) reuses it instead of
+      // minting a brand-new session for what's often just a change of mind.
     };
 
     loadDigiboostSdk()
@@ -357,7 +385,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           token: digiLockerToken,
           selector: '#digilocker-sdk-trigger',
           // Matches the app's green "success" button (the plain Verify button shown
-          // while this token is being prefetched) so there's no color flip once the
+          // while this token is being fetched) so there's no color flip once the
           // SDK's own button takes over — same look, uninterrupted.
           style: {
             backgroundColor: '#22C55E',
@@ -1143,9 +1171,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       if (error) throw new Error(error.message || 'Failed to start DigiLocker verification');
       if (!data?.success || !data?.token) throw new Error(data?.error || 'Failed to start DigiLocker verification');
 
-      setDigiLockerClientId(data.client_id ? String(data.client_id) : null);
+      const clientId = data.client_id ? String(data.client_id) : null;
+      const token = String(data.token);
+      if (clientId) {
+        setCachedDigiLockerSession(token, clientId, typeof data.expiry_seconds === 'number' ? data.expiry_seconds : 600);
+      }
+      setDigiLockerClientId(clientId);
       setShowDigiLockerButton(true);
-      setDigiLockerToken(String(data.token));
+      setDigiLockerToken(token);
     } catch (err) {
       console.error('DigiLocker initialize error:', err);
       setErrorMessage(err instanceof Error ? err.message : 'Failed to start DigiLocker verification. Please try again.');
@@ -1155,14 +1188,31 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
+  // Gives control of the page back to the user (Cancel button on the block overlay, or
+  // its timeout) without assuming anything about the DigiLocker popup itself — it's a
+  // separate window we don't control, so it may still complete in the background; if it
+  // does, onSuccess/onFailure above still run normally.
+  const handleDigiLockerPopupCancel = () => {
+    setIsDigiLockerPopupOpen(false);
+  };
+
   const handleApiClick = async () => {
     if (isAadhar && verificationMode === 'digilocker') {
-      // If the token isn't ready yet (background prefetch still in flight, or hasn't
-      // started), remember this click so it gets replayed onto the SDK's own button the
-      // moment that button finishes mounting — see the SDK-mount effect below.
+      // Remember this click so it gets replayed onto the SDK's own button the moment
+      // that button finishes mounting — see the SDK-mount effect below.
       pendingDigiLockerClickRef.current = true;
       if (!digiLockerInitInFlightRef.current && !showDigiLockerButton) {
-        await handleDigiLockerInitialize();
+        // Reuse a still-valid cached session (from an earlier click, possibly for a
+        // different document) instead of calling Surepass again — this is the whole
+        // point of caching: initialize() only ever runs once per token lifetime.
+        const cachedSession = getCachedDigiLockerSession();
+        if (cachedSession) {
+          setDigiLockerClientId(cachedSession.clientId);
+          setShowDigiLockerButton(true);
+          setDigiLockerToken(cachedSession.token);
+        } else {
+          await handleDigiLockerInitialize();
+        }
       }
       return;
     }
@@ -1531,6 +1581,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   return (
+    <>
+    <DigiLockerRedirectOverlay isVisible={isDigiLockerPopupOpen} onCancel={handleDigiLockerPopupCancel} />
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
@@ -1715,6 +1767,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                     <div
                       id="digilocker-sdk-trigger"
                       className={cn('min-h-10 flex items-center', !isDigiLockerButtonReady && 'hidden')}
+                      // The SDK mounts its own <button> inside this div — a click on it
+                      // (real or our programmatic replay) bubbles up here, which is the
+                      // only reliable moment we know the DigiLocker popup is opening.
+                      onClick={() => setIsDigiLockerPopupOpen(true)}
                     />
                   )}
                   {(!showDigiLockerButton || !isDigiLockerButtonReady) && (
@@ -1759,6 +1815,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       {/* Removed separate ApiConsentDialog */}
     </Dialog>
+    </>
   );
 };
 

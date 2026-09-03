@@ -25,6 +25,7 @@ import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSessionRefresh } from '@/hooks/useSessionRefresh';
 import { authCoordinator } from '@/utils/authCoordinator';
+import { clearDigiLockerSessionCache } from '@/lib/digilockerSessionStorage';
 
 // Create the context with async logout
 export const AuthContext = createContext<AuthContextType>({
@@ -946,6 +947,9 @@ const handleLogoutBroadcast = useCallback(() => {
       dispatch(clearAuth());
       dispatch(resetEmployee());
       clearPersistedAuthState();
+      // Don't let the next person to log in on this tab inherit a cached DigiLocker
+      // session that isn't theirs — sessionStorage otherwise survives logout/login.
+      clearDigiLockerSessionCache();
       logoutUser();
       
       // Sign out from Supabase (for SSO users)
