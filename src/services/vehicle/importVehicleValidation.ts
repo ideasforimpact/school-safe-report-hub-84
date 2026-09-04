@@ -1,6 +1,6 @@
 import { RawVehicleData } from "./excelVehicleProcess";
+import { VEHICLE_REGISTRATION_REGEX } from "@/utils/transport-safety/vehicleRegistrationValidation";
 
-const REGISTRATION_REGEX = /^[A-Z]{2}\d{2}[A-Z]{2}\d{4}$/;
 const INTERNAL_NAME_REGEX = /^[A-Za-z0-9\s]+$/;
 
 const REQUIRED_FIELDS: Array<{
@@ -64,7 +64,7 @@ export const validateVehicleRows = (
         : '';
     if (!regNo) return;
 
-    if (!REGISTRATION_REGEX.test(regNo)) {
+    if (!VEHICLE_REGISTRATION_REGEX.test(regNo)) {
       errors.push(
         `Row ${rowNum}: Registration Number must be in format TN09AB1234`
       );
