@@ -18,6 +18,7 @@ import {
   getCommonVehicleTypeIcon,
   getVehicleRowClassName,
   getVehicleStatusSortPriority,
+  getLatestVerificationTimestamp,
   getLatestVerificationLog
 } from '@/utils/transport-safety/documentStatusUtils';
 import { getPendingChallansFromVehicleChallans } from '@/services/transport-safety/vehicleService';
@@ -46,10 +47,21 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     // `vehicles` is already the correctly paginated slice for the active
     // filter mode (server-paginated, or client-paginated over the full
     // filtered set — see useVehicleFilters). Sort within the page so
-    // red (expired) rows show first, then yellow (expiring soon), then
-    // green (valid).
+    // brand-new vehicles show first, then checked-expired, then expiring
+    // soon, then valid (see getVehicleStatusSortPriority). Within a tier,
+    // the most recently added (new) or most recently safety-checked
+    // (everything else) vehicle ranks first, so adding a vehicle or running
+    // a check visibly moves it to the front of its group.
     const paginatedItems = React.useMemo(
-      () => [...vehicles].sort((a, b) => getVehicleStatusSortPriority(a) - getVehicleStatusSortPriority(b)),
+      () => [...vehicles].sort((a, b) => {
+        const priorityDiff = getVehicleStatusSortPriority(a) - getVehicleStatusSortPriority(b);
+        if (priorityDiff !== 0) return priorityDiff;
+        const aIsNew = !a.verificationData || a.verificationData.length === 0;
+        if (aIsNew) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        return getLatestVerificationTimestamp(b) - getLatestVerificationTimestamp(a);
+      }),
       [vehicles]
     );
 
