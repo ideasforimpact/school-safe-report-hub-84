@@ -28,19 +28,19 @@ const EmployeeVerificationPage = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const isFirstLoadRef = React.useRef(true);
 
-  // Filter state
+  // Filter state — each is a list of selected values; an empty list means "all".
   const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState<string[]>([]);
   // Read the initial status straight from the URL so the very first fetch already uses
   // it — setting it later in an effect caused a race where an unfiltered "all employees"
   // fetch fired first and only settled to "pending" (etc.) on the next render.
-  const [documentStatusFilter, setDocumentStatusFilter] = useState(() => {
+  const [documentStatusFilter, setDocumentStatusFilter] = useState<string[]>(() => {
     const filterParam = searchParams.get('filter');
     return filterParam === 'verified' || filterParam === 'pending' || filterParam === 'failed'
-      ? filterParam
-      : 'all';
+      ? [filterParam]
+      : [];
   });
-  const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
+  const [documentTypeFilter, setDocumentTypeFilter] = useState<string[]>([]);
 
   const departments = useMemo(() => {
     const uniqueDepartments = new Set(
@@ -91,9 +91,9 @@ const EmployeeVerificationPage = () => {
 
   const handleClearFilters = () => {
     setSearchTerm('');
-    setDocumentStatusFilter('all');
-    setDocumentTypeFilter('all');
-    setDepartmentFilter('all');
+    setDocumentStatusFilter([]);
+    setDocumentTypeFilter([]);
+    setDepartmentFilter([]);
   };
   // Global counts across all pages — not just the currently loaded page of `employees`.
   const employeeAnalyticsStats = {
