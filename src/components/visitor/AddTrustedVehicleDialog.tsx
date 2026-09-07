@@ -20,6 +20,7 @@ import {
   getTrustedVehicleTypeMaxLength,
   getTrustedVehicleTypeMinLength,
 } from '@/constant/trustedVehicleConstant';
+import { VEHICLE_REGISTRATION_REGEX } from '@/utils/transport-safety/vehicleRegistrationValidation';
 
 interface TrustedVehicleFormData {
   name: string;
@@ -139,8 +140,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
     }
 
     // Basic Indian registration format validation (e.g. TN01AB1234)
-    const registrationPattern = /^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/;
-    if (!registrationPattern.test(cleaned)) {
+    if (!VEHICLE_REGISTRATION_REGEX.test(cleaned)) {
       return 'Please enter a valid vehicle registration number (e.g., TN01AB1234)';
     }
 

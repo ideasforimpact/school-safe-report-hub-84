@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
+import { VEHICLE_REGISTRATION_REGEX } from '@/utils/transport-safety/vehicleRegistrationValidation';
 import { useVehicleTypes } from '@/hooks/useVehicleTypes';
 
 interface AddVehicleDialogProps {
@@ -216,7 +217,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose,onSuc
                   required: "Registration number is required",
                   maxLength: { value: 10, message: "Registration number cannot exceed 10 characters" },
                   pattern: {
-                    value: /^([A-Z]{2}\d{2}[A-Z]{1,3}\d{4}|[A-Z]{2}\d{6})$/i,
+                    value: VEHICLE_REGISTRATION_REGEX,
                     message: "Please enter a valid vehicle registration number (e.g., TN01AB1234)"
                   },
                   onChange: (e) => {
