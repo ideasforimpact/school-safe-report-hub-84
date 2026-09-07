@@ -743,6 +743,7 @@ serve(async (req) => {
             document_status_id: governanceStatusId,
             verified_by: verified_by_employee_id,
             employee_docs_log: [...existingLogs, logEntry],
+            api_verification_status: 'completed',
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);
