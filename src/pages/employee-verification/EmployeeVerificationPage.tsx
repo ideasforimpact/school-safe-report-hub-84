@@ -83,7 +83,7 @@ const EmployeeVerificationPage = () => {
     setIsRefreshing(true);
 
   await Promise.all([
-    fetchEmployees(),
+    fetchEmployees(undefined, undefined, true),
     new Promise((resolve) => setTimeout(resolve, 500))
   ]);
     setIsRefreshing(false);

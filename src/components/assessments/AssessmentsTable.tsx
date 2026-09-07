@@ -667,6 +667,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({ onDataLoaded, onIni
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="new">New</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="submitted">Submitted</SelectItem>

@@ -538,12 +538,25 @@ serve(async (req) => {
     }
 
     // Get total employees for this client
-    const employeeIds = await supabase
+    const employeesForStatus = await supabase
         .from('employees')
-        .select('id')
+        .select('id, department:employee_departments(department_name)')
         .eq('client_id', client_id)
         .eq('status',true)
-        .then(res => res.data?.map(emp => emp.id) || [])
+        .then(res => res.data || [])
+
+    const employeeIds = employeesForStatus.map(emp => emp.id)
+
+    // Drivers must have a verified Driving License before they can count as
+    // "verified" — mirrors the rule enforced in employee-management/index.ts
+    // (handleList) so this dashboard tile always matches the Employee
+    // Verification page's counts.
+    const driverEmployeeIds = new Set(
+      employeesForStatus
+        .filter(emp => (emp.department?.department_name || '').toLowerCase() === 'driver')
+        .map(emp => emp.id)
+    )
+    const normalizeTypeKey = (name) => (name || '').toLowerCase().replace(/[\s_]+/g, '')
 
     // Fetch document status IDs for completed, governance, and rejected
     const { data: completedStatus } = await supabase
@@ -567,7 +580,7 @@ serve(async (req) => {
     // Get all employee documents to apply the same logic as employee-verification status column
     const { data: allEmployeeDocs, error: allDocsError } = await supabase
       .from('employee_documents')
-      .select('employee_id, verification_status')
+      .select('employee_id, verification_status, document_type:document_type_id(name)')
       .in('employee_id', employeeIds)
       .eq('is_delete', 0)
 
@@ -597,11 +610,16 @@ serve(async (req) => {
       const verified = docs.filter(doc => doc.verification_status === 'verified' || doc.verification_status === 'completed')
       const failed = docs.filter(doc => doc.verification_status === 'failed')
       const pending = docs.filter(doc => doc.verification_status === 'pending' || doc.verification_status === 'in-progress')
-      
+      const hasVerifiedLicense = docs.some(doc =>
+        normalizeTypeKey(doc?.document_type?.name) === 'drivinglicense' &&
+        (doc.verification_status === 'verified' || doc.verification_status === 'completed')
+      )
+      const driverForcesPending = driverEmployeeIds.has(employeeId) && !hasVerifiedLicense && failed.length === 0 && pending.length === 0
+
       // Priority: Failed > Pending > Verified
       if (failed.length > 0) {
         employeeStatusMap.set(employeeId, 'failed')
-      } else if (pending.length > 0) {
+      } else if (pending.length > 0 || driverForcesPending) {
         employeeStatusMap.set(employeeId, 'pending')
       } else if (verified.length > 0) {
         employeeStatusMap.set(employeeId, 'verified')

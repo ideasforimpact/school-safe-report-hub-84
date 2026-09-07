@@ -924,6 +924,12 @@ async function handleList(supabaseClient: any, requestData: any) {
     return 'pending';
   };
 
+  // Drivers must have a verified Driving License before they can count as
+  // "verified" — mirrors the badge rule in EmployeesList.tsx so that server-side
+  // filtering/stats always agree with what the row itself displays.
+  const normalizeTypeKey = (name: string | null | undefined) =>
+    (name || '').toLowerCase().replace(/[\s_]+/g, '');
+
   // === Pre-filters for document type and document status ===
   let docTypeEmpIds: string[] | null = null;
   let docStatusEmpIds: string[] | null = null;
@@ -940,22 +946,32 @@ async function handleList(supabaseClient: any, requestData: any) {
   if (filters.documentStatus && filters.documentStatus !== 'all') {
     const { data: allEmpRows } = await supabaseClient
       .from('employees')
-      .select('id')
+      .select('id, department:employee_departments(department_name)')
       .eq('client_id', clientId)
       .eq('status', true);
     const allClientEmpIds: string[] = (allEmpRows || []).map((e: any) => e.id);
+    const departmentByEmp = new Map<string, string>();
+    (allEmpRows || []).forEach((e: any) => {
+      departmentByEmp.set(e.id, (e.department?.department_name || '').toLowerCase());
+    });
 
     if (allClientEmpIds.length > 0) {
       const { data: allDocs } = await supabaseClient
         .from('employee_documents')
-        .select('employee_id, verification_status')
+        .select('employee_id, verification_status, document_type:document_type_id(name)')
         .in('employee_id', allClientEmpIds)
         .eq('is_delete', 0);
 
       const statusByEmp = new Map<string, string[]>();
+      const licenseVerifiedByEmp = new Set<string>();
       (allDocs || []).forEach((doc: any) => {
         if (!statusByEmp.has(doc.employee_id)) statusByEmp.set(doc.employee_id, []);
-        statusByEmp.get(doc.employee_id)!.push(doc.verification_status || 'pending');
+        const status = doc.verification_status || 'pending';
+        statusByEmp.get(doc.employee_id)!.push(status);
+        if (normalizeTypeKey(doc?.document_type?.name) === 'drivinglicense' &&
+          (status === 'verified' || status === 'completed')) {
+          licenseVerifiedByEmp.add(doc.employee_id);
+        }
       });
 
       docStatusEmpIds = [];
@@ -966,10 +982,13 @@ async function handleList(supabaseClient: any, requestData: any) {
         const hasPending = statuses.some((s: string) => s === 'pending' || s === 'in-progress');
         const hasVerified = statuses.some((s: string) => s === 'verified' || s === 'completed');
         const hasAny = statuses.length > 0;
+        const isDriver = departmentByEmp.get(empId) === 'driver';
+        const driverForcesPending = isDriver && !licenseVerifiedByEmp.has(empId) && !hasFailed && !hasPending;
+        const effectivePending = hasPending || driverForcesPending;
         if (requestedStatus === 'failed' && hasFailed) docStatusEmpIds!.push(empId);
         else if (requestedStatus === 'no-documents' && !hasAny) docStatusEmpIds!.push(empId);
-        else if (requestedStatus === 'pending' && !hasFailed && hasPending) docStatusEmpIds!.push(empId);
-        else if (requestedStatus === 'verified' && !hasFailed && !hasPending && hasVerified) docStatusEmpIds!.push(empId);
+        else if (requestedStatus === 'pending' && !hasFailed && effectivePending) docStatusEmpIds!.push(empId);
+        else if (requestedStatus === 'verified' && !hasFailed && !effectivePending && hasVerified) docStatusEmpIds!.push(empId);
       });
     } else {
       docStatusEmpIds = [];
@@ -1085,11 +1104,15 @@ async function handleList(supabaseClient: any, requestData: any) {
 
       const { data: allEmpForStats } = await supabaseClient
         .from('employees')
-        .select('id')
+        .select('id, department:employee_departments(department_name)')
         .eq('client_id', clientId)
         .eq('status', true);
 
       const allEmpIdsForStats: string[] = (allEmpForStats || []).map((e: any) => e.id);
+      const departmentByEmpForStats = new Map<string, string>();
+      (allEmpForStats || []).forEach((e: any) => {
+        departmentByEmpForStats.set(e.id, (e.department?.department_name || '').toLowerCase());
+      });
       let verifiedCount = 0;
       let unverifiedCount = 0;
       let noDocumentsCount = allEmpIdsForStats.length;
@@ -1097,24 +1120,34 @@ async function handleList(supabaseClient: any, requestData: any) {
       if (allEmpIdsForStats.length > 0) {
         const { data: allDocsForStats } = await supabaseClient
           .from('employee_documents')
-          .select('employee_id, verification_status')
+          .select('employee_id, verification_status, document_type:document_type_id(name)')
           .in('employee_id', allEmpIdsForStats)
           .eq('is_delete', 0);
 
         const docsByEmpForStats = new Map<string, string[]>();
+        const licenseVerifiedForStats = new Set<string>();
         (allDocsForStats || []).forEach((d: any) => {
           if (!docsByEmpForStats.has(d.employee_id)) docsByEmpForStats.set(d.employee_id, []);
-          docsByEmpForStats.get(d.employee_id)!.push(d.verification_status || 'pending');
+          const status = d.verification_status || 'pending';
+          docsByEmpForStats.get(d.employee_id)!.push(status);
+          if (normalizeTypeKey(d?.document_type?.name) === 'drivinglicense' &&
+            (status === 'verified' || status === 'completed')) {
+            licenseVerifiedForStats.add(d.employee_id);
+          }
         });
 
-        // Mirror the exact bucket logic used by the "documentStatus" list filter above,
-        // so this count always matches what filtering by "Pending" returns.
-        docsByEmpForStats.forEach((statuses) => {
+        // "Unverified" here means "not fully verified" — it covers both failed
+        // and pending documents, unlike the "documentStatus" list filter above
+        // which keeps Failed and Pending as separate dropdown options.
+        docsByEmpForStats.forEach((statuses, empId) => {
           const hasFailed = statuses.some((s: string) => s === 'failed' || s === 'rejected');
           const hasPending = statuses.some((s: string) => s === 'pending' || s === 'in-progress');
           const hasVerified = statuses.some((s: string) => s === 'verified' || s === 'completed');
-          if (!hasFailed && !hasPending && hasVerified) verifiedCount++;
-          else if (!hasFailed && hasPending) unverifiedCount++;
+          const isDriver = departmentByEmpForStats.get(empId) === 'driver';
+          const driverForcesPending = isDriver && !licenseVerifiedForStats.has(empId) && !hasFailed && !hasPending;
+          const effectivePending = hasPending || driverForcesPending;
+          if (!hasFailed && !effectivePending && hasVerified) verifiedCount++;
+          else if (hasFailed || effectivePending) unverifiedCount++;
         });
         noDocumentsCount = allEmpIdsForStats.length - docsByEmpForStats.size;
       }
