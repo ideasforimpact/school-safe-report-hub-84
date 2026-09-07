@@ -14,7 +14,7 @@ export interface EmployeeVerificationContextType {
   updateEmployee: (id: string, employee: Partial<Employee>) => Promise<Employee>;
   deleteEmployee: (id: string) => Promise<boolean>;
   getEmployee: (id: string) => Employee | undefined;
-  fetchEmployees: (filters?: EmployeeListFilters, page?: number) => Promise<Employee[]>;
+  fetchEmployees: (filters?: EmployeeListFilters, page?: number, forceStats?: boolean) => Promise<Employee[]>;
 
   // Server-side pagination
   currentPage: number;

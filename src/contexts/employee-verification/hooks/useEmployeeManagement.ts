@@ -109,7 +109,8 @@ export const useEmployeeManagement = () => {
   // Redux/auth state changes (which would previously create a duplicate list call).
   const fetchEmployees = useCallback(async (
     filters?: EmployeeListFilters,
-    page?: number
+    page?: number,
+    forceStats?: boolean
   ): Promise<Employee[]> => {
     const clientId = getClientIdRef.current();
 
@@ -129,7 +130,7 @@ export const useEmployeeManagement = () => {
 
     setIsLoading(true);
     try {
-      const includeStats = !statsLoadedRef.current;
+      const includeStats = forceStats || !statsLoadedRef.current;
 
       // Wrapped with a minimum duration so the loading spinner is reliably
       // visible even when the response is very fast — otherwise pagination

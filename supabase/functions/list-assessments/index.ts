@@ -161,7 +161,20 @@ async function handleList(body: RequestBody): Promise<Response> {
     } else if (search) {
       q = q.ilike("name", `%${search}%`);
     }
-    if (status !== "all")     q = q.ilike("status", status);
+    if (status === "active") {
+      // "Active" = Submitted (any date) + New/Draft not yet past their due date —
+      // mirrors the overdue split in dashboard-stats/index.ts so this filter matches
+      // the dashboard's "Active Assessments" count exactly (past-due New/Draft are
+      // "Overdue" there, not "Active").
+      const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+      q = q.or(
+        `status.ilike.submitted,` +
+        `and(status.ilike.new,or(target_completion_date.is.null,target_completion_date.gte.${todayStr})),` +
+        `and(status.ilike.draft,or(target_completion_date.is.null,target_completion_date.gte.${todayStr}))`
+      );
+    } else if (status !== "all") {
+      q = q.ilike("status", status);
+    }
     if (created_by !== "all") q = q.eq("created_by", created_by);
     if (assigned_to !== "all") q = q.eq("assigned_to", assigned_to);
     if (target_date_from)     q = q.gte("target_completion_date", target_date_from);

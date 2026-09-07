@@ -213,10 +213,10 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
         targetUrl = `${baseUrl}/incidents?filter=open`;
         break;
       case 'safe_employees':
-        targetUrl = `${baseUrl}/employee-verification?filter=pending`;
+        targetUrl = `${baseUrl}/employee-verification?filter=verified`;
         break;
       case 'active_assessments':
-        targetUrl = `${baseUrl}/assessments?filter=new`;
+        targetUrl = `${baseUrl}/assessments?filter=active`;
         break;
       case 'open_grievances':
         targetUrl = `${baseUrl}/forms?filter=open`;
@@ -388,7 +388,13 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     },
     {
       title: 'Number of Students Involved',
-      value: stats.IncidentRecordsExist ? (stats.studentsInvolved || 0) : 'N/A',
+      value: stats.IncidentRecordsExist ? (
+        <span className="flex items-end gap-1">
+          <span className="text-3xl font-bold">
+            {stats.studentsInvolved || 0}
+          </span>
+        </span>
+      ) : 'N/A',
       description: stats.IncidentRecordsExist ? 'Students involved in incidents' : 'No incident data available',
       icon: Users,
       color: stats.IncidentRecordsExist ? 'text-orange-600' : 'text-gray-500',
