@@ -57,7 +57,8 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
   const { user, employeeData } = useAuth();
   const { students } = useStudents();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [hasAttachmentError, setHasAttachmentError] = useState(false);
+
   // Get form configuration data from the new hook
   const { formData: configData, employees: configEmployees, loading: configLoading } = useIncidentFormData();
   const mappedEmployees = (configEmployees as ConfigEmployee[] || []).map((emp) => ({
@@ -75,6 +76,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     handleFilesChange,
     uploadAndSaveDocuments,
   } = useIncidentDocuments(id, incidentData.documents);
+  const existingDocumentsSize = documents.reduce((sum, doc) => sum + (doc.size || 0), 0);
 
   // Add validation hook
   const { validateForm } = useIncidentFormValidation();
@@ -667,10 +669,13 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               <Label className="text-sm font-medium text-gray-700">Supporting Files</Label>
               <ReusableFileUploader
                 onFilesChange={handleFilesChange}
+                onValidationChange={setHasAttachmentError}
                 initialFiles={supportingFiles}
                 maxFiles={5}
                 maxSize={10}
                 maxTotalSize={50}
+                reservedSize={existingDocumentsSize}
+                reservedCount={documents.length}
                 allowedTypes={['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']}
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="w-full"
@@ -732,9 +737,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
+            <Button
+              type="submit"
+              disabled={isSubmitting || hasAttachmentError}
               className="px-6 bg-blue-600 hover:bg-blue-700"
             >
               {isSubmitting ? "Saving..." : "Save Changes"}

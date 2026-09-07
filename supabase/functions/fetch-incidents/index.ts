@@ -700,16 +700,43 @@ serve(async (req) => {
       (status && status !== 'Reopen') ? supabaseClient.from('incident_status').select('id').eq('name', status).limit(1).maybeSingle() : Promise.resolve({ data: null }),
     ]);
 
-    let matchingTypeIds: string[] = [];
+    // Search matches only the fields the search placeholder advertises
+    // (Ticket ID, Category, Subcategory, Priority, Created By, Assigned To) —
+    // resolved here via name lookups on the related tables, then applied
+    // below as `.in()` filters on the incidents table's own FK columns.
+    let matchingCategoryIds: string[] = [];
+    let matchingSubcategoryIds: string[] = [];
+    let matchingPriorityIds: string[] = [];
+    let matchingEmployeeIds: string[] = [];
 
-      if (search.trim()) {
-        const { data: reportTypes } = await supabaseClient
-          .from("incident_report_types")
-          .select("id")
-          .ilike("name", `%${search.trim()}%`);
+    if (search.trim()) {
+      const text = search.trim();
 
-        matchingTypeIds = reportTypes?.map((x) => x.id) || [];
-      }
+      const [catMatches, subMatches, prMatches, empMatches] = await Promise.all([
+        (() => {
+          let q = supabaseClient.from('incident_categories').select('id').eq('client_id', clientId).ilike('name', `%${text}%`);
+          if (clientTypeId) q = q.eq('client_type_id', clientTypeId);
+          return q;
+        })(),
+        (() => {
+          let q = supabaseClient.from('incident_subcategories').select('id').eq('client_id', clientId).ilike('name', `%${text}%`);
+          if (clientTypeId) q = q.eq('client_type_id', clientTypeId);
+          return q;
+        })(),
+        (() => {
+          let q = supabaseClient.from('incident_priorities').select('id').eq('client_id', clientId).ilike('name', `%${text}%`);
+          if (clientTypeId) q = q.eq('client_type_id', clientTypeId);
+          return q;
+        })(),
+        supabaseClient.from('employees').select('id').eq('client_id', clientId)
+          .or(`first_name.ilike.%${text}%,last_name.ilike.%${text}%`),
+      ]);
+
+      matchingCategoryIds = catMatches.data?.map((x: { id: string }) => x.id) || [];
+      matchingSubcategoryIds = subMatches.data?.map((x: { id: string }) => x.id) || [];
+      matchingPriorityIds = prMatches.data?.map((x: { id: string }) => x.id) || [];
+      matchingEmployeeIds = empMatches.data?.map((x: { id: string }) => x.id) || [];
+    }
 
     let baseQuery = supabaseClient
       .from('incidents')
@@ -735,15 +762,20 @@ serve(async (req) => {
     if (search.trim()) {
       const text = search.trim();
 
-      const searchFilters = [
-        `ticket_id.ilike.%${text}%`,
-        `description.ilike.%${text}%`,
-        `root_cause_analysis.ilike.%${text}%`,
-        `learning_points.ilike.%${text}%`
-      ];
+      const searchFilters = [`ticket_id.ilike.%${text}%`];
 
-      if (matchingTypeIds.length > 0) {
-        searchFilters.push(`type_id.in.(${matchingTypeIds.join(",")})`);
+      if (matchingCategoryIds.length > 0) {
+        searchFilters.push(`category_id.in.(${matchingCategoryIds.join(",")})`);
+      }
+      if (matchingSubcategoryIds.length > 0) {
+        searchFilters.push(`subcategory_id.in.(${matchingSubcategoryIds.join(",")})`);
+      }
+      if (matchingPriorityIds.length > 0) {
+        searchFilters.push(`priority_id.in.(${matchingPriorityIds.join(",")})`);
+      }
+      if (matchingEmployeeIds.length > 0) {
+        searchFilters.push(`created_by.in.(${matchingEmployeeIds.join(",")})`);
+        searchFilters.push(`assigned_to.in.(${matchingEmployeeIds.join(",")})`);
       }
 
       baseQuery = baseQuery.or(searchFilters.join(","));

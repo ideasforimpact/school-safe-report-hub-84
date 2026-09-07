@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface DebouncedSearchInputProps {
@@ -51,6 +51,12 @@ const DebouncedSearchInput: React.FC<DebouncedSearchInputProps> = ({
     }
   };
 
+  const handleClear = () => {
+    setLocalValue('');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    onChange('');
+  };
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -65,9 +71,19 @@ const DebouncedSearchInput: React.FC<DebouncedSearchInputProps> = ({
         value={localValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        className="pl-10"
+        className={localValue ? 'pl-10 pr-9' : 'pl-10'}
         maxLength={maxLength}
       />
+      {localValue && (
+        <button
+          type="button"
+          onClick={handleClear}
+          aria-label="Clear search"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 };

@@ -285,11 +285,6 @@ const IncidentsList = () => {
     }
   }, [pagination.currentPage, pagination.totalPages, loading, filters, fetchIncidents]);
 
-  const changePageSize = useCallback((newPageSize: number) => {
-    setPagination(prev => ({ ...prev, pageSize: newPageSize }));
-    fetchIncidents(filters, false, 1);
-  }, [filters, fetchIncidents]);
-
   // Initial fetch and navigation handling with improved logic
   useEffect(() => {
     const clientIdentity = employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email || '';
@@ -469,7 +464,6 @@ const incidentAnalyticsStats = useMemo(() => {
             hasFetched={hasFetched}
             pagination={pagination}
             onPageChange={goToPage}
-            onPageSizeChange={changePageSize}
             onRefreshIncidents={refreshIncidents}
           />
         </div>

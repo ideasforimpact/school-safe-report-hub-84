@@ -19,12 +19,15 @@ interface ReusableFileUploaderProps {
   maxFiles?: number;
   maxSize?: number; // in MB, default 10MB
   maxTotalSize?: number; // in MB, default 10MB
+  reservedSize?: number; // bytes already consumed outside this widget (e.g. persisted documents), counted toward maxTotalSize
+  reservedCount?: number; // files already attached outside this widget (e.g. persisted documents), counted toward maxFiles
   allowedTypes?: string[]; // MIME types, default ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
   accept?: string; // HTML accept attribute, default '.pdf,image/*'
   showFileList?: boolean; // Show file list, default true
   className?: string;
   disabled?: boolean;
   removeIconVariant?: 'trash' | 'close';
+  onValidationChange?: (hasError: boolean) => void;
 }
 
 const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
@@ -33,12 +36,15 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
   maxFiles = 5,
   maxSize = 10, // Default 10MB
   maxTotalSize = 10, // Default 10MB total
+  reservedSize = 0,
+  reservedCount = 0,
   allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'],
   accept = '.pdf,image/*',
   showFileList = true,
   className = '',
   disabled = false,
   removeIconVariant = 'trash',
+  onValidationChange,
 }) => {
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -86,6 +92,13 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
     onFilesChange(files);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files]);
+
+  // Let the parent know whenever the current validation-error state changes,
+  // so it can gate a Save/Submit button until the error is resolved.
+  React.useEffect(() => {
+    onValidationChange?.(errorMessage !== null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errorMessage]);
 
   // Helper function to extract file extension from filename
   const getFileExtension = (filename: string): string => {
@@ -163,12 +176,14 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
     // Convert FileList to Array and validate each file
     const fileArray = Array.from(fileList);
     
-    // Check if adding new files would exceed the limit
-    const currentFileCount = files.length;
+    // Check if adding new files would exceed the limit (existing attachments
+    // outside this widget count toward the same maxFiles cap)
+    const currentFileCount = files.length + reservedCount;
     const newFileCount = fileArray.length;
-    
+
     if (currentFileCount + newFileCount > maxFiles) {
-      const errorMsg = `You can only upload a maximum of ${maxFiles} files. You currently have ${currentFileCount} file(s) selected.`;
+      const reservedNote = reservedCount > 0 ? ` (${reservedCount} already attached)` : '';
+      const errorMsg = `You can only upload a maximum of ${maxFiles} files in total${reservedNote}. You currently have ${currentFileCount} file(s) selected.`;
       setErrorMessage(errorMsg);
       toast({
         title: 'Too many files',
@@ -267,13 +282,18 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
         return;
       }
 
-      // Check total size before reading the file
+      // Check total size before reading the file (including anything already
+      // attached outside this widget, e.g. an incident's persisted documents)
       const maxTotalSizeBytes = maxTotalSize * 1024 * 1024;
       const currentTotalSize = files.reduce((sum, f) => sum + f.size, 0);
-      
-      if (currentTotalSize + file.size > maxTotalSizeBytes) {
-        const newTotalSize = currentTotalSize + file.size;
-        const errorMsg = `Adding "${file.name}" would exceed the ${maxTotalSize}MB total size limit. Current total: ${(currentTotalSize / 1024 / 1024).toFixed(2)} MB, adding this file would make it ${(newTotalSize / 1024 / 1024).toFixed(2)} MB. Please remove some files or select smaller files.`;
+      const combinedTotalSize = reservedSize + currentTotalSize;
+
+      if (combinedTotalSize + file.size > maxTotalSizeBytes) {
+        const newTotalSize = combinedTotalSize + file.size;
+        const reservedNote = reservedSize > 0
+          ? ` (including ${(reservedSize / 1024 / 1024).toFixed(2)} MB already attached)`
+          : '';
+        const errorMsg = `Adding "${file.name}" would exceed the ${maxTotalSize}MB total size limit${reservedNote}. Current total: ${(combinedTotalSize / 1024 / 1024).toFixed(2)} MB, adding this file would make it ${(newTotalSize / 1024 / 1024).toFixed(2)} MB. Please remove some files or select smaller files.`;
         setErrorMessage(errorMsg);
         toast({
           title: 'Total file size too large',
@@ -356,6 +376,7 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
   const totalSizeMB = formatFileSizetomb(totalSize);
+  const combinedSizeMB = formatFileSizetomb(totalSize + reservedSize);
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -373,7 +394,11 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
       {showFileList && files.length > 0 && (
         <div className="space-y-2 mb-3">
           <div className="text-xs text-gray-500 mb-2 px-1">
-            {files.length} of {maxFiles} {maxFiles === 1 ? 'file' : 'files'} selected • Total size: {totalSizeMB} MB
+            {reservedCount > 0
+              ? `${files.length + reservedCount} of ${maxFiles} ${maxFiles === 1 ? 'file' : 'files'} used (${reservedCount} already attached)`
+              : `${files.length} of ${maxFiles} ${maxFiles === 1 ? 'file' : 'files'} selected`} • {reservedSize > 0
+              ? `Total: ${totalSizeMB} MB new + ${formatFileSizetomb(reservedSize)} MB already attached = ${combinedSizeMB} MB of ${maxTotalSize}MB limit`
+              : `Total size: ${totalSizeMB} MB`}
           </div>
           <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 #f1f5f9' }}>
             {files.map((file) => {
@@ -481,7 +506,7 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
             size="sm"
             className="mt-2"
             onClick={() => document.getElementById('reusableFileUpload')?.click()}
-            disabled={disabled || isProcessing || files.length >= maxFiles}
+            disabled={disabled || isProcessing || files.length + reservedCount >= maxFiles}
           >
             {isProcessing ? 'Processing...' : 'Browse Files'}
           </Button>
