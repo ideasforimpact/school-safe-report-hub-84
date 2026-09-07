@@ -43,7 +43,7 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
         <DebouncedSearchInput
           value={filters.search || ''}
           onChange={(val) => onFilterChange('search', val)}
-          placeholder="Search tickets..."
+          placeholder="Search by Ticket ID, Category, Subcategory, Priority, Created By, or Assigned To"
           triggerOnEnter
         />
       </div>

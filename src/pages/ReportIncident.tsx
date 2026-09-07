@@ -70,6 +70,7 @@ const ReportIncident = () => {
   const { state: employeeState } = useEmployeeStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [hasAttachmentError, setHasAttachmentError] = useState(false);
   
   // Use the incident detail hook for edit mode
   const { incident: existingIncident, isLoading: isLoadingIncident, error: incidentError, getFormData } = useIncidentDetail(incidentId);
@@ -721,6 +722,7 @@ const ReportIncident = () => {
                   onDateTimeChange={handleDateTimeChange}
                   supportingFiles={supportingFiles}
                   onFilesChange={handleFilesChange}
+                  onAttachmentValidationChange={setHasAttachmentError}
                   configData={configData}
                 />
 
@@ -744,9 +746,9 @@ const ReportIncident = () => {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || hasAttachmentError}
                   className="px-6 bg-blue-600 hover:bg-blue-700"
                 >
                   {isSubmitting ? "Creating..." : "Submit Report"}
