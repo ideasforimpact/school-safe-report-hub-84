@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import DragDropFileUpload from '../file/DragDropFileUpload';
 import { DemoActionButton } from '@/components/incidents/DemoActionButton';
 import { getNextCommentScenario } from '@/demo_client/incident/auxiliaryDemo';
+import { COMMENT_MAX_LENGTH } from '@/components/constants';
 
 interface InlineCommentFormProps {
   incidentId: string;
@@ -38,6 +39,11 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
   const handleSubmit = async () => {
     if (!commentText.trim()) {
       toast.error('Please enter a comment');
+      return;
+    }
+
+    if (commentText.length > COMMENT_MAX_LENGTH) {
+      toast.error(`Comment cannot exceed ${COMMENT_MAX_LENGTH} characters`);
       return;
     }
 
@@ -92,7 +98,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
   // validation and Save-button-disabled state keep working.
   const handleDemoCommentApply = () => {
     const text = getNextCommentScenario();
-    if (text) setCommentText(text);
+    if (text) setCommentText(text.slice(0, COMMENT_MAX_LENGTH));
   };
 
   return (
@@ -111,13 +117,13 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
           <TextareaWithVoice
             placeholder="Type your comment here..."
             value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
+            onChange={(e) => setCommentText(e.target.value.slice(0, COMMENT_MAX_LENGTH))}
             className="min-h-[80px] w-full resize-none"
             disabled={isSubmitting}
-            maxLength={200}
+            maxLength={COMMENT_MAX_LENGTH}
           />
           <p className="text-xs text-gray-500 text-right">
-            {(commentText ?? '').length}/200 characters
+            {Math.min((commentText ?? '').length, COMMENT_MAX_LENGTH)}/{COMMENT_MAX_LENGTH} characters
           </p>
           
           {showFileUpload && (
@@ -145,7 +151,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
           
           <Button 
             onClick={handleSubmit}
-            disabled={!commentText.trim() || isSubmitting}
+            disabled={!commentText.trim() || commentText.length > COMMENT_MAX_LENGTH || isSubmitting}
             className="flex items-center gap-1 min-w-[140px]"
           >
             {isSubmitting ? (

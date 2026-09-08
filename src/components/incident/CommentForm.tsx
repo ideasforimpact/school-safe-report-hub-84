@@ -15,6 +15,7 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import { COMMENT_MAX_LENGTH } from '@/components/constants';
 
 interface CommentFormProps {
   users: { id: string; name: string }[];
@@ -41,9 +42,14 @@ const CommentForm: React.FC<CommentFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!commentText.trim()) {
       toast.error('Please enter a comment');
+      return;
+    }
+
+    if (commentText.length > COMMENT_MAX_LENGTH) {
+      toast.error(`Comment cannot exceed ${COMMENT_MAX_LENGTH} characters`);
       return;
     }
 
@@ -102,15 +108,15 @@ const CommentForm: React.FC<CommentFormProps> = ({
             <TextareaWithVoice
               id="description"
               value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
+              onChange={(e) => setCommentText(e.target.value.slice(0, COMMENT_MAX_LENGTH))}
               placeholder="Your comment"
               required
               className="min-h-[120px]"
               disabled={isLoading}
-              maxLength={200}
+              maxLength={COMMENT_MAX_LENGTH}
             />
             <p className="text-xs text-gray-500 text-right">
-              {commentText.length}/200 characters
+              {Math.min(commentText.length, COMMENT_MAX_LENGTH)}/{COMMENT_MAX_LENGTH} characters
             </p>
           </div>
 
@@ -134,7 +140,7 @@ const CommentForm: React.FC<CommentFormProps> = ({
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" disabled={isLoading || !commentText.trim()}>
+          <Button type="submit" disabled={isLoading || !commentText.trim() || commentText.length > COMMENT_MAX_LENGTH}>
             {isLoading && <Loader className="h-4 w-4 animate-spin mr-2" />}
             {isLoading ? 'Adding...' : submitLabel}
           </Button>
