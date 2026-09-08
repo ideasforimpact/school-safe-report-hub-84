@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Employee } from '@/types/employeeVerification';
+import { useEmployeeVerificationAccess } from '@/hooks/useModuleAccess';
 
 const UploadDocumentPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -20,6 +21,7 @@ const UploadDocumentPage = () => {
   const { state } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+  const { isSuperAdmin, hasEmployeeVerificationAdmin, currentEmployeeId } = useEmployeeVerificationAccess();
 
   const [localEmployee, setLocalEmployee] = useState<Employee | null>(null);
   const [isLoadingEmployee, setIsLoadingEmployee] = useState(true);
@@ -51,7 +53,13 @@ const UploadDocumentPage = () => {
     loadStartedRef.current = true;
     supabase.functions
       .invoke('employee-management', {
-        body: { operation: 'get_employee', employeeId, clientId },
+        body: {
+          operation: 'get_employee',
+          employeeId,
+          clientId,
+          requesterId: currentEmployeeId,
+          isAdmin: isSuperAdmin || hasEmployeeVerificationAdmin,
+        },
       })
       .then(({ data, error }) => {
         if (!error && data?.employee) {

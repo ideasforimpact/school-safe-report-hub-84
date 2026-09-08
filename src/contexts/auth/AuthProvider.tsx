@@ -279,7 +279,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [pendingClientChoices, setPendingClientChoicesState] = useState<PendingClientChoices | null>(null);
 
   // Import useAuthHandlers
-  const { handleUserAuthentication, completeAuthForEmployee } = useAuthHandlers({
+  const { handleUserAuthentication, completeAuthForEmployee, fetchConfiguredModules } = useAuthHandlers({
     user: currentUser,
     users,
     setUser: (user: User | null) => dispatch(setCurrentUser(user)),
@@ -906,9 +906,20 @@ const handleLogoutBroadcast = useCallback(() => {
                 clientManagementReadOnly: false,
                 switchedAccessLevel: 'W/R',
               }));
+
+              // Refetch this employee's module access fresh on every login —
+              // without this, a module added/removed via Edit User since the
+              // employee's last session would never show up until something
+              // else (e.g. a live realtime event) happened to refresh it.
+              const modules = await fetchConfiguredModules(
+                employee.id,
+                employee.clientId,
+                !!employee.isSuperAdmin
+              );
+              dispatch(setConfiguredModules(modules));
             }
           }
-          
+
           dispatch(setLoading(false));
         } catch (err) {
           console.error("Error fetching employee data for regular user:", err);

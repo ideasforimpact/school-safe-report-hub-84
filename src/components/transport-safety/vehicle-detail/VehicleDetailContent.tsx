@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
+import { useTransportSafetyAccess } from '@/hooks/useModuleAccess';
 import { getVehicleById } from '@/services/transport-safety/vehicleService';
 import { Vehicle } from '@/types/transportSafety';
 import VehicleHeader from './VehicleHeader';
@@ -19,6 +20,7 @@ const VehicleDetailContent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const clientId = employeeData?.clientId || user?.clientId;
+  const { isSuperAdmin, hasTransportSafetyAdmin, currentEmployeeId } = useTransportSafetyAccess();
 
   useEffect(() => {
     if (!vehicleId || !clientId) {
@@ -34,7 +36,10 @@ const VehicleDetailContent: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const fetchedVehicle = await getVehicleById(vehicleId, clientId);
+        const fetchedVehicle = await getVehicleById(vehicleId, clientId, {
+          employeeId: currentEmployeeId,
+          isAdmin: isSuperAdmin || hasTransportSafetyAdmin,
+        });
 
         if (cancelled) return;
 
@@ -57,7 +62,7 @@ const VehicleDetailContent: React.FC = () => {
     fetchVehicle();
 
     return () => { cancelled = true; };
-  }, [vehicleId, clientId]);
+  }, [vehicleId, clientId, currentEmployeeId, isSuperAdmin, hasTransportSafetyAdmin]);
 
   // Show loading state while data is being fetched
   if (loading) {

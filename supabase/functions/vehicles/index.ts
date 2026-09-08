@@ -116,6 +116,8 @@ async function queryVehiclesWithSearch(
   typeId: string,
   page: number,
   pageSize: number,
+  employeeId?: string | null,
+  isAdmin?: boolean,
 ) {
   const offset = (page - 1) * pageSize;
 
@@ -131,6 +133,7 @@ async function queryVehiclesWithSearch(
       if (clientId) query = query.eq('client_id', clientId);
       if (status && status !== 'all') query = query.eq('status', status);
       if (typeId && typeId !== 'all') query = query.eq('type', typeId);
+      if (!isAdmin && employeeId) query = query.eq('employee_id', employeeId);
 
       query = query.order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
       return query;
@@ -191,6 +194,8 @@ serve(async (req) => {
           search = '',
           status = '',
           typeId = '',
+          employeeId,
+          isAdmin,
         } = body;
 
         if (clientId) {
@@ -204,7 +209,7 @@ serve(async (req) => {
         }
 
         if (search && search.trim()) {
-          const result = await queryVehiclesWithSearch(supabase, clientId, search.trim(), status, typeId, page, pageSize);
+          const result = await queryVehiclesWithSearch(supabase, clientId, search.trim(), status, typeId, page, pageSize, employeeId, isAdmin);
           return new Response(JSON.stringify(result), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
@@ -223,6 +228,7 @@ serve(async (req) => {
             if (clientId) q = q.eq('client_id', clientId);
             if (status && status !== 'all') q = q.eq('status', status);
             if (typeId && typeId !== 'all') q = q.eq('type', typeId);
+            if (!isAdmin && employeeId) q = q.eq('employee_id', employeeId);
 
             return q.order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
           })(),
@@ -254,7 +260,7 @@ serve(async (req) => {
 
       // ── list_all (no pagination — for challans page, export, document-status filters, etc.) ─
       if (operation === 'list_all') {
-        const { clientId, search = '', status = '', typeId = '' } = body;
+        const { clientId, search = '', status = '', typeId = '', employeeId, isAdmin } = body;
 
         if (clientId) {
           const ipValidation = await validateIPWhitelist(supabase, req, clientId, url.pathname);
@@ -274,6 +280,7 @@ serve(async (req) => {
         }
         if (status && status !== 'all') query = query.eq('status', status);
         if (typeId && typeId !== 'all') query = query.eq('type', typeId);
+        if (!isAdmin && employeeId) query = query.eq('employee_id', employeeId);
         query = query.order('created_at', { ascending: false });
 
         const { data, error } = await query;
@@ -292,7 +299,7 @@ serve(async (req) => {
       // vehicle whose latest challans are all disposed/paid, so the response
       // already matches what the page displays — no fetch-all-then-filter. ──
       if (operation === 'list_with_challans') {
-        const { clientId } = body;
+        const { clientId, employeeId, isAdmin } = body;
 
         if (clientId) {
           const ipValidation = await validateIPWhitelist(supabase, req, clientId, url.pathname);
@@ -308,6 +315,7 @@ serve(async (req) => {
           .from('vehicles')
           .select('*, vehicle_challans!inner(*)');
         if (clientId) query = query.eq('client_id', clientId);
+        if (!isAdmin && employeeId) query = query.eq('employee_id', employeeId);
         query = query.order('created_at', { ascending: false });
 
         const { data, error } = await query;
@@ -325,7 +333,7 @@ serve(async (req) => {
 
       // ── get_by_id ──────────────────────────────────────────────────────────
       if (operation === 'get_by_id') {
-        const { id, clientId } = body;
+        const { id, clientId, employeeId, isAdmin } = body;
 
         let query = supabase
           .from('vehicles')
@@ -333,6 +341,7 @@ serve(async (req) => {
           .eq('id', id);
 
         if (clientId) query = query.eq('client_id', clientId);
+        if (!isAdmin && employeeId) query = query.eq('employee_id', employeeId);
 
         const { data, error } = await query.single();
         if (error) throw error;
