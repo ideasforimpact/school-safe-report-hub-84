@@ -25,6 +25,7 @@ import StudentsInvolvedTable from '@/components/incidents/StudentsInvolvedTable'
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { useModuleEnabled, useHasAnyDashboardModule } from '@/hooks/useModuleAccess';
 
 type PersonInvolved = { name?: string; role?: string; notes?: string };
 
@@ -158,6 +159,13 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [employeeState]);
 
+  // Hides dashboard cards for modules the employee doesn't have access to, not just
+  // show them with 'N/A' — except when the employee has no real module at all (only
+  // Dashboard, or nothing), where every card shows its N/A placeholder instead of the
+  // whole section disappearing.
+  const isModuleEnabled = useModuleEnabled();
+  const hasAnyDashboardModule = useHasAnyDashboardModule();
+
   const loadStudentsInvolvedIncidents = useCallback(async () => {
     const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.clientId;
     const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
@@ -198,7 +206,21 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     }
   }, [employeeState.employeeData, authEmployeeData, user?.clientId, hasIncidentAdmin]);
 
+  // Module a card's click-through depends on — "students_involved" is an incident
+  // breakdown, so it follows Incidents too. Cards for a disabled module render as
+  // N/A/empty and must not navigate anywhere when clicked.
+  const cardModule: Record<string, string> = {
+    open_incidents: 'incidents',
+    students_involved: 'incidents',
+    safe_employees: 'employee verification',
+    active_assessments: 'assessments',
+    open_grievances: 'grievances',
+    safety_vehicles: 'transport safety',
+  };
+
   const handleCardClick = (cardType: string) => {
+    if (!isModuleEnabled(cardModule[cardType])) return;
+
     if (cardType === 'students_involved') {
       setStudentsDialogOpen(true);
       loadStudentsInvolvedIncidents();
@@ -269,147 +291,160 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     ((stats.openIncidents <= 5 ? 100 - (stats.openIncidents * 10) : 50) * 0.3)
   );
 
+  // Treat a module the employee doesn't have access to the same as "no data" —
+  // the card stays visible but falls back to its existing empty ('N/A' / "No X data
+  // available") rendering below, rather than leaking real client-wide numbers.
+  const gatedStats = {
+    ...stats,
+    IncidentRecordsExist: stats.IncidentRecordsExist && isModuleEnabled('incidents'),
+    EmployeeRecordsExist: stats.EmployeeRecordsExist && isModuleEnabled('employee verification'),
+    AssessmentRecordsExist: stats.AssessmentRecordsExist && isModuleEnabled('assessments'),
+    FormSubmissionRecordsExist: stats.FormSubmissionRecordsExist && isModuleEnabled('grievances'),
+    VehicleRecordsExist: stats.VehicleRecordsExist && isModuleEnabled('transport safety'),
+  };
+
   const statsCards: StatsCard[] = [
     {
       title: 'Total Number of Open Incidents',
-      value: stats.IncidentRecordsExist ? (<span className="flex items-end gap-1">
+      value: gatedStats.IncidentRecordsExist ? (<span className="flex items-end gap-1">
           <span className="text-3xl font-bold">
-            {stats.openIncidents || 0}
+            {gatedStats.openIncidents || 0}
           </span>
         </span>) : 'N/A',
-      description: stats.IncidentRecordsExist ? 'Incident Overview' : 'No incident data available',
+      description: gatedStats.IncidentRecordsExist ? 'Incident Overview' : 'No incident data available',
       icon: BarChart3,
-      color: stats.IncidentRecordsExist ? 'text-blue-600' : 'text-gray-500',
-      bgColor: stats.IncidentRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
-      gradient: stats.IncidentRecordsExist ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100',
-      showBreakdown: stats.IncidentRecordsExist,
-      totalIncident: stats.totalIncidents ? (stats.totalIncidents || 0) : 0,
-      openIncidents: stats.IncidentRecordsExist ? (stats.openIncidents || 0) : 0,
-      closedIncidents: stats.IncidentRecordsExist ? (stats.closedIncidents || 0) : 0,
-      reopenedIncidents: stats.IncidentRecordsExist ? (stats.reopenedIncidents || 0) : 0,
+      color: gatedStats.IncidentRecordsExist ? 'text-blue-600' : 'text-gray-500',
+      bgColor: gatedStats.IncidentRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
+      gradient: gatedStats.IncidentRecordsExist ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100',
+      showBreakdown: gatedStats.IncidentRecordsExist,
+      totalIncident: gatedStats.totalIncidents ? (gatedStats.totalIncidents || 0) : 0,
+      openIncidents: gatedStats.IncidentRecordsExist ? (gatedStats.openIncidents || 0) : 0,
+      closedIncidents: gatedStats.IncidentRecordsExist ? (gatedStats.closedIncidents || 0) : 0,
+      reopenedIncidents: gatedStats.IncidentRecordsExist ? (gatedStats.reopenedIncidents || 0) : 0,
       cardType: 'open_incidents'
     },
     {
       title: 'Total Safe Employees',
-      value: stats.EmployeeRecordsExist ? (
+      value: gatedStats.EmployeeRecordsExist ? (
         <span className="flex items-end gap-1">
           <span className="text-3xl font-bold">
-            {stats.employeesVerified || 0}
+            {gatedStats.employeesVerified || 0}
           </span>
           <span className="text-sm pb-1 text-muted-foreground">
             Verified
           </span>
         </span>
       ) : 'N/A',
-      description: stats.EmployeeRecordsExist ? 'Employee verification status' : 'No employee data available',
+      description: gatedStats.EmployeeRecordsExist ? 'Employee verification status' : 'No employee data available',
       icon: ShieldCheck,
-      color: stats.EmployeeRecordsExist ? 'text-blue-600' : 'text-gray-500',
-      bgColor: stats.EmployeeRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
-      gradient: stats.EmployeeRecordsExist ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100',
-      showEmployeeBreakdown: stats.EmployeeRecordsExist,
-      totalEmployees: stats.EmployeeRecordsExist ? (stats.totalEmployees || 0) : 0,
-      verifiedEmployees: stats.EmployeeRecordsExist ? (stats.employeesVerified || 0) : 0,
-      failedEmployees: stats.EmployeeRecordsExist ? (stats.employeesFailed || 0) : 0,
-      pendingEmployees: stats.EmployeeRecordsExist ? (stats.employeesPending || 0) : 0,
-      toBeVerified: stats.EmployeeRecordsExist ? (stats.employeesVerified || 0) : 0,
+      color: gatedStats.EmployeeRecordsExist ? 'text-blue-600' : 'text-gray-500',
+      bgColor: gatedStats.EmployeeRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
+      gradient: gatedStats.EmployeeRecordsExist ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100',
+      showEmployeeBreakdown: gatedStats.EmployeeRecordsExist,
+      totalEmployees: gatedStats.EmployeeRecordsExist ? (gatedStats.totalEmployees || 0) : 0,
+      verifiedEmployees: gatedStats.EmployeeRecordsExist ? (gatedStats.employeesVerified || 0) : 0,
+      failedEmployees: gatedStats.EmployeeRecordsExist ? (gatedStats.employeesFailed || 0) : 0,
+      pendingEmployees: gatedStats.EmployeeRecordsExist ? (gatedStats.employeesPending || 0) : 0,
+      toBeVerified: gatedStats.EmployeeRecordsExist ? (gatedStats.employeesVerified || 0) : 0,
       cardType: 'safe_employees'
     },
     {
       title: 'Active Assessments',
-      value: stats.AssessmentRecordsExist ?  (<span className="flex items-end gap-1">
+      value: gatedStats.AssessmentRecordsExist ?  (<span className="flex items-end gap-1">
           <span className="text-3xl font-bold">
-            {stats.activeAssessments || 0}
+            {gatedStats.activeAssessments || 0}
           </span>
           <span className="text-sm pb-1 text-muted-foreground">
             Active
           </span>
         </span>) : 'N/A',
-      description: stats.AssessmentRecordsExist 
-        ? `${stats.overdueAssessments || 0} Assessments overdue`
+      description: gatedStats.AssessmentRecordsExist 
+        ? `${gatedStats.overdueAssessments || 0} Assessments overdue`
         : 'No assessment data available',
       icon: FileCheck,
-      color: stats.AssessmentRecordsExist ? 'text-purple-600' : 'text-gray-500',
-      bgColor: stats.AssessmentRecordsExist ? 'bg-purple-50' : 'bg-gray-50',
-      gradient: stats.AssessmentRecordsExist ? 'from-purple-50 to-purple-100' : 'from-gray-50 to-gray-100',
-      showAssessmentBreakdown: stats.AssessmentRecordsExist,
-      activeAssessments: stats.AssessmentRecordsExist ? (stats.activeAssessments || 0) : 0,
-      overdueAssessments: stats.AssessmentRecordsExist ? (stats.overdueAssessments || 0) : 0,
-      newAssessments: stats.AssessmentRecordsExist ? (stats.newAssessments || 0) : 0,
-      draftAssessments: stats.AssessmentRecordsExist ? (stats.draftAssessments || 0) : 0,
-      submittedAssessments: stats.AssessmentRecordsExist ? (stats.submittedAssessments || 0) : 0,
-      completedAssessments:stats.AssessmentRecordsExist ? (stats.completedAssessments || 0) : 0, // Don't show completed in active assessments breakdown
+      color: gatedStats.AssessmentRecordsExist ? 'text-purple-600' : 'text-gray-500',
+      bgColor: gatedStats.AssessmentRecordsExist ? 'bg-purple-50' : 'bg-gray-50',
+      gradient: gatedStats.AssessmentRecordsExist ? 'from-purple-50 to-purple-100' : 'from-gray-50 to-gray-100',
+      showAssessmentBreakdown: gatedStats.AssessmentRecordsExist,
+      activeAssessments: gatedStats.AssessmentRecordsExist ? (gatedStats.activeAssessments || 0) : 0,
+      overdueAssessments: gatedStats.AssessmentRecordsExist ? (gatedStats.overdueAssessments || 0) : 0,
+      newAssessments: gatedStats.AssessmentRecordsExist ? (gatedStats.newAssessments || 0) : 0,
+      draftAssessments: gatedStats.AssessmentRecordsExist ? (gatedStats.draftAssessments || 0) : 0,
+      submittedAssessments: gatedStats.AssessmentRecordsExist ? (gatedStats.submittedAssessments || 0) : 0,
+      completedAssessments:gatedStats.AssessmentRecordsExist ? (gatedStats.completedAssessments || 0) : 0, // Don't show completed in active assessments breakdown
       cardType: 'active_assessments'
     },
     {
       title: 'Number Of Open Grievances',
-      value: stats.FormSubmissionRecordsExist ? (<span className="flex items-end gap-1">
+      value: gatedStats.FormSubmissionRecordsExist ? (<span className="flex items-end gap-1">
           <span className="text-3xl font-bold">
-            {stats.totalUnacknowledged || 0}
+            {gatedStats.totalUnacknowledged || 0}
           </span>
           <span className="text-sm pb-1 text-muted-foreground">
             Pending
           </span>
         </span>) : 'N/A',
-      description: stats.FormSubmissionRecordsExist ? 'Grievances overview' : 'No grievance data available',
+      description: gatedStats.FormSubmissionRecordsExist ? 'Grievances overview' : 'No grievance data available',
       icon: FileCheck,
-      color: stats.FormSubmissionRecordsExist ? 'text-purple-600' : 'text-gray-500',
-      bgColor: stats.FormSubmissionRecordsExist ? 'bg-purple-50' : 'bg-gray-50',
-      gradient: stats.FormSubmissionRecordsExist ? 'from-purple-50 to-purple-100' : 'from-gray-50 to-gray-100',
-      showCustomFormsBreakdown: stats.FormSubmissionRecordsExist,
-      formSumitcount: stats.FormSubmissionRecordsExist ? (stats.formAknowledged || 0) : 0,
-      totalCustomForms: stats.FormSubmissionRecordsExist ? (stats.formSubmissions30Days || 0) : 0,
-      formSubmissions30Days: stats.FormSubmissionRecordsExist ? (stats.formSubmissions30Days || 0) : 0,
-      formSubmissions60Days: stats.FormSubmissionRecordsExist ? (stats.formSubmissions60Days || 0) : 0,
-      formSubmissions90Days: stats.FormSubmissionRecordsExist ? (stats.formSubmissions90Days || 0) : 0,
+      color: gatedStats.FormSubmissionRecordsExist ? 'text-purple-600' : 'text-gray-500',
+      bgColor: gatedStats.FormSubmissionRecordsExist ? 'bg-purple-50' : 'bg-gray-50',
+      gradient: gatedStats.FormSubmissionRecordsExist ? 'from-purple-50 to-purple-100' : 'from-gray-50 to-gray-100',
+      showCustomFormsBreakdown: gatedStats.FormSubmissionRecordsExist,
+      formSumitcount: gatedStats.FormSubmissionRecordsExist ? (gatedStats.formAknowledged || 0) : 0,
+      totalCustomForms: gatedStats.FormSubmissionRecordsExist ? (gatedStats.formSubmissions30Days || 0) : 0,
+      formSubmissions30Days: gatedStats.FormSubmissionRecordsExist ? (gatedStats.formSubmissions30Days || 0) : 0,
+      formSubmissions60Days: gatedStats.FormSubmissionRecordsExist ? (gatedStats.formSubmissions60Days || 0) : 0,
+      formSubmissions90Days: gatedStats.FormSubmissionRecordsExist ? (gatedStats.formSubmissions90Days || 0) : 0,
       cardType: 'open_grievances'
     },
     {
       title: 'Total Safety Vehicles',
-      value: stats.VehicleRecordsExist ?  (<span className="flex items-end gap-1">
+      value: gatedStats.VehicleRecordsExist ?  (<span className="flex items-end gap-1">
           <span className="text-3xl font-bold">
-            {stats.vehiclesFailedVerification || 0}
+            {gatedStats.vehiclesFailedVerification || 0}
           </span>
           <span className="text-sm pb-1 text-muted-foreground">
             Non-Compliant
           </span>
         </span>) : 'N/A',
-      description: stats.VehicleRecordsExist ? 'Vehicle verification status' : 'No vehicle data available',
+      description: gatedStats.VehicleRecordsExist ? 'Vehicle verification status' : 'No vehicle data available',
       icon: Truck,
-      color: stats.VehicleRecordsExist ? 'text-blue-600' : 'text-gray-500',
-      bgColor: stats.VehicleRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
-      gradient: stats.VehicleRecordsExist ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100',
-      showVehicleVerificationBreakdown: stats.VehicleRecordsExist,
-      totalVehicles: stats.VehicleRecordsExist ? (stats.totalVehicles || 0) : 0,
-      vehiclesToBeVerified: stats.VehicleRecordsExist ? (stats.vehiclesToBeVerified || 0) : 0,
-      vehiclesFailedVerification: stats.VehicleRecordsExist ? (stats.vehiclesFailedVerification || 0) : 0,
-      totalPendingChallanAmount: stats.VehicleRecordsExist ? (stats.totalPendingChallanAmount || 0): 0,
-      vehiclesVerified: stats.VehicleRecordsExist ? (stats.vehiclesVerified || 0) : 0,
+      color: gatedStats.VehicleRecordsExist ? 'text-blue-600' : 'text-gray-500',
+      bgColor: gatedStats.VehicleRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
+      gradient: gatedStats.VehicleRecordsExist ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100',
+      showVehicleVerificationBreakdown: gatedStats.VehicleRecordsExist,
+      totalVehicles: gatedStats.VehicleRecordsExist ? (gatedStats.totalVehicles || 0) : 0,
+      vehiclesToBeVerified: gatedStats.VehicleRecordsExist ? (gatedStats.vehiclesToBeVerified || 0) : 0,
+      vehiclesFailedVerification: gatedStats.VehicleRecordsExist ? (gatedStats.vehiclesFailedVerification || 0) : 0,
+      totalPendingChallanAmount: gatedStats.VehicleRecordsExist ? (gatedStats.totalPendingChallanAmount || 0): 0,
+      vehiclesVerified: gatedStats.VehicleRecordsExist ? (gatedStats.vehiclesVerified || 0) : 0,
       cardType: 'safety_vehicles'
     },
     {
       title: 'Number of Students Involved',
-      value: stats.IncidentRecordsExist ? (
-        <span className="flex items-end gap-1">
-          <span className="text-3xl font-bold">
-            {stats.studentsInvolved || 0}
-          </span>
-        </span>
-      ) : 'N/A',
-      description: stats.IncidentRecordsExist ? 'Students involved in incidents' : 'No incident data available',
+      value: gatedStats.IncidentRecordsExist ? (gatedStats.studentsInvolved || 0) : 'N/A',
+      description: gatedStats.IncidentRecordsExist ? 'Students involved in incidents' : 'No incident data available',
       icon: Users,
-      color: stats.IncidentRecordsExist ? 'text-orange-600' : 'text-gray-500',
-      bgColor: stats.IncidentRecordsExist ? 'bg-orange-50' : 'bg-gray-50',
-      gradient: stats.IncidentRecordsExist ? 'from-orange-50 to-orange-100' : 'from-gray-50 to-gray-100',
-      showStudentsBreakdown: stats.IncidentRecordsExist,
-      studentsInvolvedByCategory: stats.IncidentRecordsExist ? (stats.studentsInvolvedByCategory || []) : [],
+      color: gatedStats.IncidentRecordsExist ? 'text-orange-600' : 'text-gray-500',
+      bgColor: gatedStats.IncidentRecordsExist ? 'bg-orange-50' : 'bg-gray-50',
+      gradient: gatedStats.IncidentRecordsExist ? 'from-orange-50 to-orange-100' : 'from-gray-50 to-gray-100',
+      showStudentsBreakdown: gatedStats.IncidentRecordsExist,
+      studentsInvolvedByCategory: gatedStats.IncidentRecordsExist ? (gatedStats.studentsInvolvedByCategory || []) : [],
       cardType: 'students_involved'
     }
   ];
 
+  // Only show a card for a module the employee actually has access to — unless they
+  // have no real module at all, in which case show every card as its N/A placeholder
+  // rather than leaving the page blank.
+  const visibleStatsCards = hasAnyDashboardModule
+    ? statsCards.filter((card) => isModuleEnabled(cardModule[card.cardType]))
+    : statsCards;
+
   if (loading) {
     return (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, index) => (
+        {Array.from({ length: visibleStatsCards.length || 6 }).map((_, index) => (
           <Card key={index} className="animate-pulse">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -429,12 +464,15 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
   return (
     <>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {statsCards.map((card, index) => {
+        {visibleStatsCards.map((card, index) => {
           const Icon = card.icon;
+          const isClickable = isModuleEnabled(cardModule[card.cardType]);
           return (
-            <Card 
-              key={index} 
-              className={`bg-gradient-to-br ${card.gradient} border-l-4 border-primary hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
+            <Card
+              key={index}
+              className={`bg-gradient-to-br ${card.gradient} border-l-4 border-primary transition-all duration-300 ${
+                isClickable ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer' : 'cursor-default'
+              }`}
               onClick={() => handleCardClick(card.cardType)}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

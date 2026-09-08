@@ -171,7 +171,10 @@ console.log(shouldShow,'shouldShow');
         .map((row) => ({
           id: row.modules?.id || row.module_id,
           name: row.modules?.name || 'Module',
-          key: row.modules?.level || row.module_id,
+          // Must match the key fetchConfiguredModules (useAuthHandlers.ts) derives at
+          // login — name-derived, not module.level/module_id, or ModuleGuard can never
+          // match it once a client switch overwrites the session's module list.
+          key: row.modules?.name ? row.modules.name.toLowerCase().replace(/\s+/g, '_') : row.module_id,
           icon: row.modules?.icon || '',
           level: row.modules?.level || 'client',
           enabled: true,

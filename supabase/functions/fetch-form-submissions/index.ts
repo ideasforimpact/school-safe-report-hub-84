@@ -35,6 +35,8 @@ serve(async (req) => {
       date_from,
       date_to,
       search,
+      is_super_admin,
+      has_grievance_admin,
     } = await req.json();
 
     if (!form_id && !client_id) {
@@ -47,6 +49,26 @@ serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
+      );
+    }
+
+    // Grievances has no employee-ownership column (submitters are students/parents/
+    // staff via a public form, not tied to a specific staff account) — so unlike
+    // Incident/Assessment/etc. there's no "my own records" subset for a non-admin.
+    // Same principle as the rest of the app (no association = no visible records):
+    // a non-admin employee sees nothing here; only module Admin (or org super admin)
+    // unlocks the real grievance list.
+    if (is_super_admin !== true && has_grievance_admin !== true) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          total_pages: 1,
+          stats: { total: 0, pending: 0, acknowledged: 0 },
+          message: 'Submissions fetched successfully'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

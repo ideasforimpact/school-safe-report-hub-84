@@ -747,12 +747,22 @@ async function handleGetModuleAccess(supabaseClient: any, requestData: any) {
 }
 
 async function handleGetEmployee(supabaseClient: any, requestData: any) {
-  const { employeeId, clientId } = requestData;
+  const { employeeId, clientId, requesterId, isAdmin } = requestData;
 
   if (!employeeId || !clientId) {
     return new Response(
       JSON.stringify({ error: 'employeeId and clientId are required' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Both callers of get_employee (verification detail + document upload) are
+  // Employee Verification-only screens: a non-admin employee may only ever look
+  // up their own profile there.
+  if (isAdmin !== true && requesterId && requesterId !== employeeId) {
+    return new Response(
+      JSON.stringify({ error: 'Not authorized to view this employee' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
@@ -819,7 +829,12 @@ async function handleGetPermissions(supabaseClient: any, requestData: any) {
     return {
       id: moduleObj.id,
       name: moduleObj.name,
-      key: moduleObj.level,
+      // Must match the key fetchConfiguredModules (useAuthHandlers.ts) derives at
+      // login — name-derived, not moduleObj.level. Using .level here silently set
+      // every module's key to just 'user'/'backoffice', which ModuleGuard could
+      // never match, breaking module route protection for the rest of the session
+      // as soon as anything called this operation (e.g. visiting Settings).
+      key: moduleObj.name.toLowerCase().replace(/\s+/g, '_'),
       icon: moduleObj.icon || '',
       level: moduleObj.level,
       enabled: true,
@@ -912,6 +927,16 @@ async function handleList(supabaseClient: any, requestData: any) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // Employee Verification is a non-admin, self-view-only module: a non-admin employee
+  // may only see their own profile. This must ONLY ever apply when the caller explicitly
+  // identifies itself as the Employee Verification screen (moduleContext) — this same
+  // handler is also used by the unrelated User Management screen, which must keep seeing
+  // every employee regardless of the Employee Verification module's admin flag.
+  const moduleContext = requestData.moduleContext;
+  const employeeId = requestData.employeeId;
+  const isAdmin = requestData.isAdmin === true;
+  const scopeToSelf = moduleContext === 'employee_verification' && !isAdmin && !!employeeId;
+
   const toLabel = (value: string) =>
     value.split('_').filter(Boolean).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
 
@@ -1001,6 +1026,8 @@ async function handleList(supabaseClient: any, requestData: any) {
     .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name), personal_details:employee_personal_details(*), other_details:employee_other_details(*)', { count: 'exact' })
     .eq('client_id', clientId)
     .eq('is_secondary_super_admin', false);
+
+  if (scopeToSelf) query = query.eq('id', employeeId);
 
   // Employee Verification never sends `status` and expects active-only (existing
   // behaviour). User Management sends it explicitly and expects 'all' to include
@@ -1096,17 +1123,21 @@ async function handleList(supabaseClient: any, requestData: any) {
   let globalStats: { totalEmployees: number; verifiedEmployees: number; unverifiedEmployees: number; noDocumentsEmployees: number } | null = null;
   if (requestData.includeStats === true) {
     try {
-      const { count: totalActive } = await supabaseClient
+      let totalActiveQuery = supabaseClient
         .from('employees')
         .select('id', { count: 'exact', head: true })
         .eq('client_id', clientId)
         .eq('status', true);
+      if (scopeToSelf) totalActiveQuery = totalActiveQuery.eq('id', employeeId);
+      const { count: totalActive } = await totalActiveQuery;
 
-      const { data: allEmpForStats } = await supabaseClient
+      let allEmpForStatsQuery = supabaseClient
         .from('employees')
         .select('id, department:employee_departments(department_name)')
         .eq('client_id', clientId)
         .eq('status', true);
+      if (scopeToSelf) allEmpForStatsQuery = allEmpForStatsQuery.eq('id', employeeId);
+      const { data: allEmpForStats } = await allEmpForStatsQuery;
 
       const allEmpIdsForStats: string[] = (allEmpForStats || []).map((e: any) => e.id);
       const departmentByEmpForStats = new Map<string, string>();

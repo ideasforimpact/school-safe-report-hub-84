@@ -12,6 +12,7 @@ import {
 } from '@/services/transport-safety/vehicleService';
 import { VehicleTypeOption } from '@/types/transportSafety';
 import { useAuth } from '@/contexts/auth';
+import { useTransportSafetyAccess } from '@/hooks/useModuleAccess';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { ensureMinDuration } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
@@ -77,6 +78,12 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
   const clientIdRef = useRef(clientId);
   useEffect(() => { clientIdRef.current = clientId; }, [clientId]);
 
+  const { isSuperAdmin, hasTransportSafetyAdmin, currentEmployeeId } = useTransportSafetyAccess();
+  const accessRef = useRef({ employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasTransportSafetyAdmin });
+  useEffect(() => {
+    accessRef.current = { employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasTransportSafetyAdmin };
+  }, [currentEmployeeId, isSuperAdmin, hasTransportSafetyAdmin]);
+
   const getWriteGuardMessage = (err: unknown, fallback: string) => {
     const message = err instanceof Error ? err.message : '';
     if (message.includes('Switched client permission denied: delete')) {
@@ -129,6 +136,8 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
         search,
         status,
         typeId,
+        employeeId: accessRef.current.employeeId,
+        isAdmin: accessRef.current.isAdmin,
       }));
 
       // Drop result only if a newer request has superseded this one. Checking
@@ -370,7 +379,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
 
   const applySingleVehicleUpdate = useCallback(async (vehicleId: string) => {
     try {
-      const refreshed = await getVehicleById(vehicleId, clientIdRef.current);
+      const refreshed = await getVehicleById(vehicleId, clientIdRef.current, accessRef.current);
       if (!refreshed) { await fetchVehicles(); return; }
       if (refreshed.clientId !== clientIdRef.current) return;
 

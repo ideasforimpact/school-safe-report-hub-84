@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Employee, VerificationDocument } from '../types';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -6,6 +6,7 @@ import { getIsBackofficeUser } from '@/store/authSelectors';
 import { useSafeClient } from '@/hooks/useSafeClient';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureMinDuration } from '@/lib/utils';
+import { useEmployeeVerificationAccess } from '@/hooks/useModuleAccess';
 
 export interface EmployeeListFilters {
   search?: string;
@@ -83,13 +84,28 @@ export const useEmployeeManagement = () => {
 
   const { state } = useEmployeeStore();
   const { client } = useSafeClient();
-  
+
   // Get authentication state from Redux
   const isBackofficeUser = getIsBackofficeUser(state);
-
+  const { isSuperAdmin, hasEmployeeVerificationAdmin, currentEmployeeId } = useEmployeeVerificationAccess();
+  const accessRef = useRef({ employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasEmployeeVerificationAdmin });
   const lastFiltersRef = useRef<EmployeeListFilters>({});
   const lastPageRef = useRef(1);
   const statsLoadedRef = useRef(false);
+  useEffect(() => {
+    const nextAccess = { employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasEmployeeVerificationAdmin };
+    // Admin scope just changed (e.g. Admin access toggled mid-session) — the
+    // previously cached header stats belong to the old scope, so force the
+    // next fetchEmployees() call to request fresh stats instead of skipping
+    // them via statsLoadedRef.
+    if (
+      accessRef.current.employeeId !== nextAccess.employeeId ||
+      accessRef.current.isAdmin !== nextAccess.isAdmin
+    ) {
+      statsLoadedRef.current = false;
+    }
+    accessRef.current = nextAccess;
+  }, [currentEmployeeId, isSuperAdmin, hasEmployeeVerificationAdmin]);
   // Latest getClientId — updated every render so fetchEmployees (stable ref) always reads current value
   const getClientIdRef = useRef<() => string | null>(() => null);
   // Incremented on each call; lets us discard stale responses when a newer call wins
@@ -139,6 +155,9 @@ export const useEmployeeManagement = () => {
       const { data, error } = await ensureMinDuration(supabase.functions.invoke('employee-management', {
         body: {
           operation: 'list',
+          moduleContext: 'employee_verification',
+          employeeId: accessRef.current.employeeId,
+          isAdmin: accessRef.current.isAdmin,
           clientId,
           page: effectivePage,
           pageSize: PAGE_SIZE,

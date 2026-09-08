@@ -23,6 +23,7 @@ import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { capitalizeWords } from '@/lib/formatUtils';
 import Loader from '@/components/common/Loader';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { useEmployeeVerificationAccess } from '@/hooks/useModuleAccess';
 
 const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -31,6 +32,8 @@ const EmployeeDetailPage = () => {
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+  const { isSuperAdmin, hasEmployeeVerificationAdmin, currentEmployeeId } = useEmployeeVerificationAccess();
+  const verificationRequester = { requesterId: currentEmployeeId, isAdmin: isSuperAdmin || hasEmployeeVerificationAdmin };
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [documents, setDocuments] = useState<VerificationDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,7 +90,7 @@ const EmployeeDetailPage = () => {
     
     setIsLoading(true);
     try {
-      const data = await fetchEmployeeVerificationData(employeeId, clientId);
+      const data = await fetchEmployeeVerificationData(employeeId, clientId, verificationRequester);
       
       if (data.employee) {
         setEmployee(data.employee);
@@ -108,7 +111,7 @@ const EmployeeDetailPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [employeeId, clientId, toast]);
+  }, [employeeId, clientId, toast, verificationRequester.requesterId, verificationRequester.isAdmin]);
 
   // New function to refetch documents only
   const refetchDocuments = useCallback(async () => {
@@ -135,14 +138,14 @@ const EmployeeDetailPage = () => {
   const refetchEmployeeSilently = useCallback(async () => {
     if (!employeeId || !clientId) return;
     try {
-      const data = await fetchEmployeeVerificationData(employeeId, clientId);
+      const data = await fetchEmployeeVerificationData(employeeId, clientId, verificationRequester);
       if (data.employee) {
         setEmployee(data.employee);
       }
     } catch (error) {
       console.error('Error refetching employee data:', error);
     }
-  }, [employeeId, clientId]);
+  }, [employeeId, clientId, verificationRequester.requesterId, verificationRequester.isAdmin]);
 
   const refetchDocumentsAndEmployee = useCallback(async () => {
     await Promise.all([refetchDocuments(), refetchEmployeeSilently()]);
