@@ -29,6 +29,7 @@ import { FileItem } from '@/types/fileTypes';
 import { enqueueEmployeeDocumentUpload } from '@/services/employee/employeeDocumentUploadService';
 import GeneralVerificationUploader from './GeneralVerificationUploader';
 import DrugVerifactionUploader from './DrugVerifactionUploader';
+import { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from '@/constant/employeeConstant';
 
 interface DocumentFormValues {
   documentNumber?: string;
@@ -64,6 +65,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [documentNumber, setDocumentNumber] = useState('');
   const [documentImage, setDocumentImage] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date>();
+  const [dateOfBirthError, setDateOfBirthError] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
   const [otherType, setOtherType] = useState('');
@@ -126,6 +128,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       setAccountNumber('');
       setIfscCode('');
       setDateOfBirth(undefined);
+      setDateOfBirthError('');
       setOtherType('');
       setCustomDocumentName('');
       setCustomDocumentFiles([]);
@@ -626,9 +629,23 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     }
   };
 
+  // Delegates to the shared DOB rule (@/constant/employeeConstant) so every
+  // date-of-birth field in the app — Add/Edit User and this one — enforces
+  // the same 18-100 age range and future-date check automatically.
+  const getDateOfBirthError = (selectedDate: Date): string =>
+    getEmployeeDobValidationError(selectedDate);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if ((isDrivingLicense || isPassport) && dateOfBirth) {
+      const dobError = getDateOfBirthError(dateOfBirth);
+      if (dobError) {
+        setDateOfBirthError(dobError);
+        return;
+      }
+    }
+
     const values = {
       documentNumber,
       documentImage,
@@ -822,14 +839,29 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             <Input
               type="date"
               value={dateOfBirth ? format(dateOfBirth, 'yyyy-MM-dd') : ''}
-              onChange={(e) =>
-                setDateOfBirth(
-                  e.target.value ? new Date(e.target.value) : undefined
-                )
-              }
-              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (!value) {
+                  setDateOfBirth(undefined);
+                  setDateOfBirthError('');
+                  return;
+                }
+
+                const selectedDate = new Date(value);
+                setDateOfBirth(selectedDate);
+                setDateOfBirthError(getDateOfBirthError(selectedDate));
+              }}
+              min={getEmployeeDobMinDate()}
+              max={getEmployeeDobMaxDate()}
+              aria-invalid={!!dateOfBirthError}
+              className={cn(
+                dateOfBirthError && "border-red-500 focus-visible:ring-red-500"
+              )}
             />
           </div>
+          {dateOfBirthError && (
+            <p className="text-sm text-red-500 mt-1">{dateOfBirthError}</p>
+          )}
         </div>
       )}
 
@@ -905,7 +937,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || isProcessing || (!isBankAccount && genericFiles.length === 0)}
+            disabled={isSubmitting || isProcessing || (!isBankAccount && genericFiles.length === 0) || !!dateOfBirthError}
             className="flex-1"
           >
             {isSubmitting ? (
