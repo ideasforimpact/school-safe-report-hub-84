@@ -94,10 +94,7 @@ export const useEmployeeManagement = () => {
   const statsLoadedRef = useRef(false);
   useEffect(() => {
     const nextAccess = { employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasEmployeeVerificationAdmin };
-    // Admin scope just changed (e.g. Admin access toggled mid-session) — the
-    // previously cached header stats belong to the old scope, so force the
-    // next fetchEmployees() call to request fresh stats instead of skipping
-    // them via statsLoadedRef.
+    // Admin scope changed, so refresh the cached stats on the next fetch.
     if (
       accessRef.current.employeeId !== nextAccess.employeeId ||
       accessRef.current.isAdmin !== nextAccess.isAdmin

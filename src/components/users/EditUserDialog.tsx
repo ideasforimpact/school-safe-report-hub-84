@@ -15,9 +15,9 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS,
         EMPLOYEE_PERSONAL_INFO_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS,
-        getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate,
         isValidReligion, getReligionErrorMessage, isValidNationality, getNationalityErrorMessage } from '@/constant/employeeConstant';
 import { EmailValidationStatus, EmployeeIdValidationStatus } from './AddUserDialog';
+import EmployeeDobField, { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from './form/EmployeeDobField';
 import { useDebounce } from '@/hooks/useDebounce';
 import { checkEmployeeEmailExists, checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
@@ -152,10 +152,7 @@ const EditUserDialog = ({
   const debouncedEmployeeEmail = useDebounce(formData.email || '', 500);
   const joiningDateRef = useRef<HTMLInputElement>(null);
   const [joiningDateError, setJoiningDateError] = useState('');
-  // True while the native date input has a partially-filled DOB (e.g. day
-  // and month entered but year cleared) — the browser reports `.value` as
-  // '' in that state, which is indistinguishable from a genuinely empty
-  // field unless we also check `validity.badInput`.
+  // Detect partially entered DOB values that the browser reports as empty.
   const [dobIncomplete, setDobIncomplete] = useState(false);
   const [showOtherDetails, setShowOtherDetails] = useState(false);
   const personalDetails = formData.personalDetails || {};
@@ -1416,38 +1413,23 @@ const EditUserDialog = ({
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>DOB</Label>
-                        <Input
-                          type="date"
-                          value={personalDetails.dob || ''}
-                          onChange={(e) => {
-                            setDobIncomplete(e.target.validity.badInput);
-                            setFormData({
-                              ...formData,
-                              personalDetails: {
-                                ...personalDetails,
-                                dob: e.target.value
-                              }
-                            });
-                          }}
-                          onBlur={(e) => {
-                            // React only re-fires onChange when the DOM's
-                            // `.value` actually changes — clearing the last
-                            // remaining segment of an already-incomplete
-                            // date still reports value="", so onChange
-                            // never runs again and dobIncomplete can get
-                            // stuck at true. Re-check the live validity
-                            // state on blur to correct that.
-                            setDobIncomplete(e.target.validity.badInput);
-                          }}
-                          max={getEmployeeDobMaxDate()}
-                          min={getEmployeeDobMinDate()}
-                        />
-                    {personalDetailsErrors.dob && (
-                      <p className="text-xs text-red-500">{personalDetailsErrors.dob}</p>
-                    )}
-                  </div>
+                      <EmployeeDobField
+                        label="Date of Birth"
+                        value={personalDetails.dob || ''}
+                        min={getEmployeeDobMinDate()}
+                        max={getEmployeeDobMaxDate()}
+                        error={personalDetailsErrors.dob}
+                        onChange={(value) =>
+                          setFormData({
+                            ...formData,
+                            personalDetails: {
+                              ...personalDetails,
+                              dob: value
+                            }
+                          })
+                        }
+                        onIncompleteChange={setDobIncomplete}
+                      />
 
                       <div className="space-y-2">
                         <Label>Religion</Label>

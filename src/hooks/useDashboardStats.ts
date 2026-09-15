@@ -97,9 +97,7 @@ export const useDashboardStats = () => {
   const hasTransportSafetyAdmin = isModuleAdmin(state, 'transport safety');
   const hasEmployeeVerificationAdmin = isModuleAdmin(state, 'employee verification');
   const hasGrievanceAdmin = isModuleAdmin(state, 'grievances');
-  // Keyed on the admin flags too — configuredModules can finish loading slightly after
-  // clientId (both resolve async post-login), so a re-run once the real admin flags are
-  // in must still be allowed to fetch, not be skipped as "already fetched for this client".
+  // Re-fetch when admin flags finish loading, even if the client ID hasn't changed.
   const fetchedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -115,11 +113,7 @@ export const useDashboardStats = () => {
 
         console.log('Fetching dashboard stats for client:', clientId);
 
-        // Prepare request body with employee information for role-based filtering.
-        // Module-level Admin (not just org-wide super admin) unlocks full client-wide
-        // visibility for that module's card — matches how each module's own page scopes
-        // its data (see useIncidentPermissions / useAssessmentAccess / the transport-safety
-        // and employee-verification access hooks).
+        // Prepare employee details for role-based filtering; module Admins can view all records.
         const requestBody = {
           client_id: clientId,
           employee_id: employeeData?.id || null,

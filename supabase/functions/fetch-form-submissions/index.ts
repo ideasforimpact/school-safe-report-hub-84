@@ -52,12 +52,8 @@ serve(async (req) => {
       );
     }
 
-    // Grievances has no employee-ownership column (submitters are students/parents/
-    // staff via a public form, not tied to a specific staff account) — so unlike
-    // Incident/Assessment/etc. there's no "my own records" subset for a non-admin.
-    // Same principle as the rest of the app (no association = no visible records):
-    // a non-admin employee sees nothing here; only module Admin (or org super admin)
-    // unlocks the real grievance list.
+    // Grievances are not tied to individual employees, so non-admins see no records.
+    // Only module Admins or org super admins can view the grievance list.
     if (is_super_admin !== true && has_grievance_admin !== true) {
       return new Response(
         JSON.stringify({

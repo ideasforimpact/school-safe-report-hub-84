@@ -43,9 +43,7 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
     enabled: !!employeeData?.clientId && hasIncidents,
   });
 
-  // enabled:false only stops future fetches — it doesn't clear a previously
-  // cached result for this queryKey, so gate the rendered data on hasIncidents
-  // directly rather than trusting the query's returned data.
+  // Use hasIncidents to control displayed data, since disabling the query keeps cached results.
   const categoryData = hasIncidents ? fetchedCategoryData : [];
 
   // Colors for categories

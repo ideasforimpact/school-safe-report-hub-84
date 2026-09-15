@@ -380,9 +380,7 @@ Deno.serve(async (req) => {
           return {
             id: mod.id,
             name: mod.name,
-            // Must match the key fetchConfiguredModules (useAuthHandlers.ts) derives at
-            // login — name-derived, not mod.level, or ModuleGuard can never match it
-            // once a client switch overwrites the session's module list.
+            // Must match the module key derived during login.
             key: mod.name.toLowerCase().replace(/\s+/g, "_"),
             icon: mod.icon || "",
             level: mod.level,

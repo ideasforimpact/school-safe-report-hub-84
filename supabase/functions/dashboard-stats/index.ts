@@ -84,10 +84,7 @@ serve(async (req) => {
       )
     }
 
-    // Per-module admin scoping — module Admin (or org super admin) sees every
-    // client-wide record for that module; a non-admin sees only their own. Declared
-    // up here (not just further below) so the facility_risk_matrix/category_impact
-    // actions, which return early, are scoped the same way as the rest of this function.
+    // Apply module-level access: admins see all records, non-admins see only their own.
     const shouldFilterIncidentsByEmployee = is_super_admin === false && has_incident_admin !== true && !!employee_id;
     const shouldFilterAssessmentsByEmployee = is_super_admin === false && has_assessment_admin !== true && !!employee_id;
     const shouldFilterVehiclesByEmployee = is_super_admin === false && has_transport_safety_admin !== true && !!employee_id;

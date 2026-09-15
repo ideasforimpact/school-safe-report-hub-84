@@ -75,10 +75,7 @@ export const useRealtimeModuleSync = () => {
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            // Must match the key fetchConfiguredModules (useAuthHandlers.ts) derives at
-            // login — name-derived, not moduleObj.level, or ModuleGuard can never match
-            // it once a realtime sync overwrites the session's module list.
-            key: moduleObj.name.toLowerCase().replace(/\s+/g, '_'),
+            // Must match the module key derived during login so ModuleGuard continues to work.
             icon: moduleObj.icon || '',
             level: moduleObj.level,
             enabled: true,

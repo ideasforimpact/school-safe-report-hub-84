@@ -907,10 +907,7 @@ const handleLogoutBroadcast = useCallback(() => {
                 switchedAccessLevel: 'W/R',
               }));
 
-              // Refetch this employee's module access fresh on every login —
-              // without this, a module added/removed via Edit User since the
-              // employee's last session would never show up until something
-              // else (e.g. a live realtime event) happened to refresh it.
+              // Refresh module access on every login to ensure recent permission changes are applied.
               const modules = await fetchConfiguredModules(
                 employee.id,
                 employee.clientId,

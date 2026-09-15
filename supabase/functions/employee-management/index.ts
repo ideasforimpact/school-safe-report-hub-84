@@ -756,9 +756,7 @@ async function handleGetEmployee(supabaseClient: any, requestData: any) {
     );
   }
 
-  // Both callers of get_employee (verification detail + document upload) are
-  // Employee Verification-only screens: a non-admin employee may only ever look
-  // up their own profile there.
+  // Non-admin employees can only access their own profile in Employee Verification.
   if (isAdmin !== true && requesterId && requesterId !== employeeId) {
     return new Response(
       JSON.stringify({ error: 'Not authorized to view this employee' }),
@@ -829,11 +827,7 @@ async function handleGetPermissions(supabaseClient: any, requestData: any) {
     return {
       id: moduleObj.id,
       name: moduleObj.name,
-      // Must match the key fetchConfiguredModules (useAuthHandlers.ts) derives at
-      // login — name-derived, not moduleObj.level. Using .level here silently set
-      // every module's key to just 'user'/'backoffice', which ModuleGuard could
-      // never match, breaking module route protection for the rest of the session
-      // as soon as anything called this operation (e.g. visiting Settings).
+      // Must match the module key derived during login to keep ModuleGuard working.
       key: moduleObj.name.toLowerCase().replace(/\s+/g, '_'),
       icon: moduleObj.icon || '',
       level: moduleObj.level,
@@ -927,11 +921,8 @@ async function handleList(supabaseClient: any, requestData: any) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  // Employee Verification is a non-admin, self-view-only module: a non-admin employee
-  // may only see their own profile. This must ONLY ever apply when the caller explicitly
-  // identifies itself as the Employee Verification screen (moduleContext) — this same
-  // handler is also used by the unrelated User Management screen, which must keep seeing
-  // every employee regardless of the Employee Verification module's admin flag.
+  // Non-admins can only view their own profile in Employee Verification.
+  // Apply this restriction only when called from Employee Verification.
   const moduleContext = requestData.moduleContext;
   const employeeId = requestData.employeeId;
   const isAdmin = requestData.isAdmin === true;
