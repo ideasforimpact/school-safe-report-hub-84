@@ -29,7 +29,7 @@ import { FileItem } from '@/types/fileTypes';
 import { enqueueEmployeeDocumentUpload } from '@/services/employee/employeeDocumentUploadService';
 import GeneralVerificationUploader from './GeneralVerificationUploader';
 import DrugVerifactionUploader from './DrugVerifactionUploader';
-import { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from '@/constant/employeeConstant';
+import EmployeeDobField, { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from './EmployeeDobField';
 
 interface DocumentFormValues {
   documentNumber?: string;
@@ -629,17 +629,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     }
   };
 
-  // Delegates to the shared DOB rule (@/constant/employeeConstant) so every
-  // date-of-birth field in the app — Add/Edit User and this one — enforces
-  // the same 18-100 age range and future-date check automatically.
-  const getDateOfBirthError = (selectedDate: Date): string =>
-    getEmployeeDobValidationError(selectedDate);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if ((isDrivingLicense || isPassport) && dateOfBirth) {
-      const dobError = getDateOfBirthError(dateOfBirth);
+      const dobError = getEmployeeDobValidationError(dateOfBirth);
       if (dobError) {
         setDateOfBirthError(dobError);
         return;
@@ -831,38 +825,25 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
       {/* Date of Birth for Driving License/Passport */}
       {(isDrivingLicense || isPassport) && (
-        <div>
-          <Label className="text-sm font-medium">
-            Date of Birth <span className="text-red-500">*</span>
-          </Label>
-          <div className="mt-1">
-            <Input
-              type="date"
-              value={dateOfBirth ? format(dateOfBirth, 'yyyy-MM-dd') : ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (!value) {
-                  setDateOfBirth(undefined);
-                  setDateOfBirthError('');
-                  return;
-                }
+        <EmployeeDobField
+          label="Date of Birth"
+          required
+          value={dateOfBirth ? format(dateOfBirth, 'yyyy-MM-dd') : ''}
+          min={getEmployeeDobMinDate()}
+          max={getEmployeeDobMaxDate()}
+          error={dateOfBirthError}
+          onChange={(value) => {
+            if (!value) {
+              setDateOfBirth(undefined);
+              setDateOfBirthError('');
+              return;
+            }
 
-                const selectedDate = new Date(value);
-                setDateOfBirth(selectedDate);
-                setDateOfBirthError(getDateOfBirthError(selectedDate));
-              }}
-              min={getEmployeeDobMinDate()}
-              max={getEmployeeDobMaxDate()}
-              aria-invalid={!!dateOfBirthError}
-              className={cn(
-                dateOfBirthError && "border-red-500 focus-visible:ring-red-500"
-              )}
-            />
-          </div>
-          {dateOfBirthError && (
-            <p className="text-sm text-red-500 mt-1">{dateOfBirthError}</p>
-          )}
-        </div>
+            const selectedDate = new Date(value);
+            setDateOfBirth(selectedDate);
+            setDateOfBirthError(getEmployeeDobValidationError(selectedDate));
+          }}
+        />
       )}
 
       {/* Bank Account Details */}
