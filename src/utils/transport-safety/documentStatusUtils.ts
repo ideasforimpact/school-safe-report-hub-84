@@ -35,20 +35,19 @@ export const getLatestVerificationLog = (vehicle: Vehicle) => {
  * Epoch ms of the most recent safety check on this vehicle, or 0 if it has
  * never been checked. Used to rank a just-checked vehicle above others that
  * share its status color but were checked earlier.
+ *
+ * Reads `verificationDate`, not the `verification_log` timestamps inside
+ * `verificationData` — vehicle-verify's "documents already up to date" skip
+ * path (a still-valid vehicle within 15 days of any expiry) deliberately
+ * reuses cached RC data and never appends a new verification_log entry, but
+ * it DOES always advance verificationDate, on both the full-check and skip
+ * branches. Keying off verification_log would make a rechecked-but-still-
+ * valid vehicle look like it was never rechecked at all.
  */
 export const getLatestVerificationTimestamp = (vehicle: Vehicle): number => {
-  if (!vehicle.verificationData) return 0;
-
-  const logEntry = vehicle.verificationData.find((item) => item.field === 'verification_log');
-  if (!logEntry || !logEntry.value) return 0;
-
-  const timestamps = Object.keys(logEntry.value);
-  if (timestamps.length === 0) return 0;
-
-  return timestamps.reduce((latest, ts) => {
-    const time = new Date(ts).getTime();
-    return Number.isNaN(time) ? latest : Math.max(latest, time);
-  }, 0);
+  if (!vehicle.verificationDate) return 0;
+  const time = new Date(vehicle.verificationDate).getTime();
+  return Number.isNaN(time) ? 0 : time;
 };
 
 /**
