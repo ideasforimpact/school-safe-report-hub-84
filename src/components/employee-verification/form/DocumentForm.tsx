@@ -29,6 +29,7 @@ import { FileItem } from '@/types/fileTypes';
 import { enqueueEmployeeDocumentUpload } from '@/services/employee/employeeDocumentUploadService';
 import GeneralVerificationUploader from './GeneralVerificationUploader';
 import DrugVerifactionUploader from './DrugVerifactionUploader';
+import EmployeeDobField, { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from './EmployeeDobField';
 
 interface DocumentFormValues {
   documentNumber?: string;
@@ -64,6 +65,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [documentNumber, setDocumentNumber] = useState('');
   const [documentImage, setDocumentImage] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date>();
+  const [dateOfBirthError, setDateOfBirthError] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
   const [otherType, setOtherType] = useState('');
@@ -126,6 +128,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       setAccountNumber('');
       setIfscCode('');
       setDateOfBirth(undefined);
+      setDateOfBirthError('');
       setOtherType('');
       setCustomDocumentName('');
       setCustomDocumentFiles([]);
@@ -628,7 +631,15 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if ((isDrivingLicense || isPassport) && dateOfBirth) {
+      const dobError = getEmployeeDobValidationError(dateOfBirth);
+      if (dobError) {
+        setDateOfBirthError(dobError);
+        return;
+      }
+    }
+
     const values = {
       documentNumber,
       documentImage,
@@ -814,23 +825,25 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
       {/* Date of Birth for Driving License/Passport */}
       {(isDrivingLicense || isPassport) && (
-        <div>
-          <Label className="text-sm font-medium">
-            Date of Birth <span className="text-red-500">*</span>
-          </Label>
-          <div className="mt-1">
-            <Input
-              type="date"
-              value={dateOfBirth ? format(dateOfBirth, 'yyyy-MM-dd') : ''}
-              onChange={(e) =>
-                setDateOfBirth(
-                  e.target.value ? new Date(e.target.value) : undefined
-                )
-              }
-              max={new Date().toISOString().split('T')[0]}
-            />
-          </div>
-        </div>
+        <EmployeeDobField
+          label="Date of Birth"
+          required
+          value={dateOfBirth ? format(dateOfBirth, 'yyyy-MM-dd') : ''}
+          min={getEmployeeDobMinDate()}
+          max={getEmployeeDobMaxDate()}
+          error={dateOfBirthError}
+          onChange={(value) => {
+            if (!value) {
+              setDateOfBirth(undefined);
+              setDateOfBirthError('');
+              return;
+            }
+
+            const selectedDate = new Date(value);
+            setDateOfBirth(selectedDate);
+            setDateOfBirthError(getEmployeeDobValidationError(selectedDate));
+          }}
+        />
       )}
 
       {/* Bank Account Details */}
@@ -905,7 +918,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || isProcessing || (!isBankAccount && genericFiles.length === 0)}
+            disabled={isSubmitting || isProcessing || (!isBankAccount && genericFiles.length === 0) || !!dateOfBirthError}
             className="flex-1"
           >
             {isSubmitting ? (
