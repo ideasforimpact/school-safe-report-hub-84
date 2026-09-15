@@ -7,6 +7,7 @@ import VehiclesList from '@/components/transport-safety/VehiclesList';
 import AddVehicleDialog from '@/components/transport-safety/AddVehicleDialog';
 import { useAuth } from '@/contexts';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
+import { useTransportSafetyAccess } from '@/hooks/useModuleAccess';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import {
   getVehiclesWithChallans,
@@ -31,6 +32,8 @@ const TransportSafetyPage = () => {
 
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const navigate = useNavigate();
+  const { isSuperAdmin, hasTransportSafetyAdmin, currentEmployeeId } = useTransportSafetyAccess();
+  const hasFullVehicleAccess = isSuperAdmin || hasTransportSafetyAdmin;
 
   // Read the vehicle count straight from the shared context — the single
   // source of truth that VehiclesList itself reads from — instead of
@@ -63,7 +66,7 @@ const TransportSafetyPage = () => {
 
     const loadPendingChallans = async () => {
       try {
-        const vehicles = await getVehiclesWithChallans(employeeData.clientId);
+        const vehicles = await getVehiclesWithChallans(employeeData.clientId, { employeeId: currentEmployeeId, isAdmin: hasFullVehicleAccess });
         if (cancelled) return;
 
         let totalPendingAmount = 0;
@@ -102,7 +105,7 @@ const TransportSafetyPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, currentEmployeeId, hasFullVehicleAccess]);
 
   // Compliant/non-compliant counts must reflect every vehicle, not just the
   // current page of VehiclesList, so — same as pending challans above —
@@ -123,7 +126,7 @@ const TransportSafetyPage = () => {
 
     const loadCompliance = async () => {
       try {
-        const vehicles = await getAllVehicles(employeeData.clientId);
+        const vehicles = await getAllVehicles(employeeData.clientId, undefined, { employeeId: currentEmployeeId, isAdmin: hasFullVehicleAccess });
         if (cancelled) return;
 
         const isVerified = (vehicle: typeof vehicles[number]) =>
@@ -145,7 +148,7 @@ const TransportSafetyPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, currentEmployeeId, hasFullVehicleAccess]);
 
   // The page's first paint waits on ALL data sources before rendering
   // anything — vehicles (context: hasFetched), pending challans

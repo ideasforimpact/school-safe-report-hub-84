@@ -96,11 +96,21 @@ const uploadDocumentToStorage = async (base64Data: string, employeeId: string, d
   }
 };
 
-export const fetchEmployeeVerificationData = async (employeeId: string, clientId: string): Promise<EmployeeVerificationData> => {
+export const fetchEmployeeVerificationData = async (
+  employeeId: string,
+  clientId: string,
+  requester?: { requesterId?: string; isAdmin?: boolean },
+): Promise<EmployeeVerificationData> => {
   try {
     // Fetch employee details via edge function
     const { data: empData, error: empError } = await supabase.functions.invoke('employee-management', {
-      body: { operation: 'get_employee', employeeId, clientId },
+      body: {
+        operation: 'get_employee',
+        employeeId,
+        clientId,
+        requesterId: requester?.requesterId,
+        isAdmin: requester?.isAdmin,
+      },
     });
 
     if (empError || !empData?.employee) {

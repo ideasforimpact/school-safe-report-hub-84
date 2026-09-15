@@ -747,12 +747,20 @@ async function handleGetModuleAccess(supabaseClient: any, requestData: any) {
 }
 
 async function handleGetEmployee(supabaseClient: any, requestData: any) {
-  const { employeeId, clientId } = requestData;
+  const { employeeId, clientId, requesterId, isAdmin } = requestData;
 
   if (!employeeId || !clientId) {
     return new Response(
       JSON.stringify({ error: 'employeeId and clientId are required' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Non-admin employees can only access their own profile in Employee Verification.
+  if (isAdmin !== true && requesterId && requesterId !== employeeId) {
+    return new Response(
+      JSON.stringify({ error: 'Not authorized to view this employee' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
@@ -819,7 +827,8 @@ async function handleGetPermissions(supabaseClient: any, requestData: any) {
     return {
       id: moduleObj.id,
       name: moduleObj.name,
-      key: moduleObj.level,
+      // Must match the module key derived during login to keep ModuleGuard working.
+      key: moduleObj.name.toLowerCase().replace(/\s+/g, '_'),
       icon: moduleObj.icon || '',
       level: moduleObj.level,
       enabled: true,
@@ -911,6 +920,13 @@ async function handleList(supabaseClient: any, requestData: any) {
   const filters = requestData.filters || {};
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
+
+  // Non-admins can only view their own profile in Employee Verification.
+  // Apply this restriction only when called from Employee Verification.
+  const moduleContext = requestData.moduleContext;
+  const employeeId = requestData.employeeId;
+  const isAdmin = requestData.isAdmin === true;
+  const scopeToSelf = moduleContext === 'employee_verification' && !isAdmin && !!employeeId;
 
   const toLabel = (value: string) =>
     value.split('_').filter(Boolean).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
@@ -1016,6 +1032,8 @@ async function handleList(supabaseClient: any, requestData: any) {
     .eq('client_id', clientId)
     .eq('is_secondary_super_admin', false);
 
+  if (scopeToSelf) query = query.eq('id', employeeId);
+
   // Employee Verification never sends `status` and expects active-only (existing
   // behaviour). User Management sends it explicitly and expects 'all' to include
   // both active and inactive employees.
@@ -1111,17 +1129,21 @@ async function handleList(supabaseClient: any, requestData: any) {
   let globalStats: { totalEmployees: number; verifiedEmployees: number; unverifiedEmployees: number; noDocumentsEmployees: number } | null = null;
   if (requestData.includeStats === true) {
     try {
-      const { count: totalActive } = await supabaseClient
+      let totalActiveQuery = supabaseClient
         .from('employees')
         .select('id', { count: 'exact', head: true })
         .eq('client_id', clientId)
         .eq('status', true);
+      if (scopeToSelf) totalActiveQuery = totalActiveQuery.eq('id', employeeId);
+      const { count: totalActive } = await totalActiveQuery;
 
-      const { data: allEmpForStats } = await supabaseClient
+      let allEmpForStatsQuery = supabaseClient
         .from('employees')
         .select('id, department:employee_departments(department_name)')
         .eq('client_id', clientId)
         .eq('status', true);
+      if (scopeToSelf) allEmpForStatsQuery = allEmpForStatsQuery.eq('id', employeeId);
+      const { data: allEmpForStats } = await allEmpForStatsQuery;
 
       const allEmpIdsForStats: string[] = (allEmpForStats || []).map((e: any) => e.id);
       const departmentByEmpForStats = new Map<string, string>();

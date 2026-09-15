@@ -11,6 +11,7 @@ import { EmployeeProvider as EmployeeContextProvider } from './contexts/employee
 import { BackofficeClientProvider } from '@/components/providers/BackofficeClientProvider';
 import { TransportSafetyProvider } from '@/contexts/transport-safety/TransportSafetyContext';
 import RouteGuard from '@/components/RouteGuard';
+import ModuleGuard from '@/components/ModuleGuard';
 import ModuleSyncProvider from '@/components/employee/ModuleSyncProvider';
 
 // Pages
@@ -161,7 +162,7 @@ function App() {
                   
                   {/* Protected routes - require authentication */}
                   <Route path="/dashboard" element={<RouteGuard requireAuth={true}><Dashboard /></RouteGuard>} />
-                  <Route path="/users" element={<RouteGuard requireAuth={true}><UserManagement /></RouteGuard>} />
+                  <Route path="/users" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['users']}><UserManagement /></ModuleGuard></RouteGuard>} />
                   <Route path="/clients" element={<RouteGuard requireAuth={true}><ClientManagement /></RouteGuard>} />
                   <Route path="/employees" element={<RouteGuard requireAuth={true}><EmployeeManagement /></RouteGuard>} />
                   <Route path="/students" element={<RouteGuard requireAuth={true}><StudentManagement /></RouteGuard>} />
@@ -172,48 +173,49 @@ function App() {
                   <Route path="/incident-configuration" element={<RouteGuard requireAuth={true}><IncidentConfiguration /></RouteGuard>} />
                   
                   {/* Settings route */}
-                  <Route path="/settings" element={<RouteGuard requireAuth={true}><SettingsPage /></RouteGuard>} />
+                  <Route path="/settings" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['settings']}><SettingsPage /></ModuleGuard></RouteGuard>} />
 
                   {/* Compliance Documents - both aliases supported */}
-                  <Route path="/compliance_documents" element={<RouteGuard requireAuth={true}><ComplianceDocumentsPage /></RouteGuard>} />                  
+                  <Route path="/compliance_documents" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['compliance_documents']}><ComplianceDocumentsPage /></ModuleGuard></RouteGuard>} />
                   {/* Profile route */}
                   <Route path="/profile" element={<RouteGuard requireAuth={true}><ProfilePage /></RouteGuard>} />
 
-                  {/* Form routes */}
-                  <Route path="/forms" element={<RouteGuard requireAuth={true}><FormsPage /></RouteGuard>} />
-                  <Route path="/form-preview/:formId" element={<RouteGuard requireAuth={true}><FormPreviewPage /></RouteGuard>} />
+                  {/* Form routes — this is the real Grievances UI (module name "Grievances",
+                      key derived as 'grievances' by fetchConfiguredModules) */}
+                  <Route path="/forms" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['grievances']}><FormsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/form-preview/:formId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['grievances']}><FormPreviewPage /></ModuleGuard></RouteGuard>} />
         <Route path="/form/:previewUrl" element={<PublicFormPage />} />
 
                   {/* Incident routes - Updated to use IncidentsList */}
-                  <Route path="/incidents" element={<RouteGuard requireAuth={true}><IncidentsList /></RouteGuard>} />
-                  <Route path="/incidents/:id" element={<RouteGuard requireAuth={true}><IncidentDetail /></RouteGuard>} />
-                  <Route path="/incident/:id" element={<RouteGuard requireAuth={true}><IncidentDetail /></RouteGuard>} />
-                  <Route path="/report-incident" element={<RouteGuard requireAuth={true}><ReportIncident /></RouteGuard>} />
-                  <Route path="/incident/:id/edit" element={<RouteGuard requireAuth={true}><EditIncidentPage /></RouteGuard>} />
-                  <Route path="/edit-incident/:id" element={<RouteGuard requireAuth={true}><EditIncidentPage /></RouteGuard>} />
-                  <Route path="/insights" element={<RouteGuard requireAuth={true}><Insights /></RouteGuard>} />
+                  <Route path="/incidents" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['incidents']}><IncidentsList /></ModuleGuard></RouteGuard>} />
+                  <Route path="/incidents/:id" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['incidents']}><IncidentDetail /></ModuleGuard></RouteGuard>} />
+                  <Route path="/incident/:id" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['incidents']}><IncidentDetail /></ModuleGuard></RouteGuard>} />
+                  <Route path="/report-incident" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['incidents']}><ReportIncident /></ModuleGuard></RouteGuard>} />
+                  <Route path="/incident/:id/edit" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['incidents']}><EditIncidentPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/edit-incident/:id" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['incidents']}><EditIncidentPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/insights" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['incidents']}><Insights /></ModuleGuard></RouteGuard>} />
                   <Route path="/learning-points" element={<RouteGuard requireAuth={true} requireSuperAdmin={true}><LearningPoints /></RouteGuard>} />
-                  <Route path="/new-insights" element={<RouteGuard requireAuth={true}><NewInsights /></RouteGuard>} />
+                  <Route path="/new-insights" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['incidents']}><NewInsights /></ModuleGuard></RouteGuard>} />
 
                   {/* Assessment routes */}
-                  <Route path="/assessments" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
-                  <Route path="/assessments/templates" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
-                  <Route path="/assessments/templates/:templateId" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
-                  <Route path="/assessments/templates/new" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
-                  <Route path="/assessments/templates/:templateId/edit" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
-                  <Route path="/assessments/templates/:templateId/assign" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
-                  <Route path="/assessments/templates/:templateId/bulk-assign" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
-                  <Route path="/assessments/assignments" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
-                  <Route path="/assessments/results" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
-                  <Route path="/assessment/answer/:assessmentId" element={<RouteGuard requireAuth={true}><AssessmentAnswerPage /></RouteGuard>} />
-                  <Route path="/assessments/answer/:assessmentId" element={<RouteGuard requireAuth={true}><AnswerAssessmentPage /></RouteGuard>} />
-                  <Route path="/assessments/response/:assessmentId" element={<RouteGuard requireAuth={true}><AssessmentResponsePage /></RouteGuard>} />
-                  <Route path="/assessments/respond/:assignmentId" element={<RouteGuard requireAuth={true}><AssessmentResponsePage /></RouteGuard>} />
+                  <Route path="/assessments" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/templates" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/templates/:templateId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/templates/new" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/templates/:templateId/edit" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/templates/:templateId/assign" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/templates/:templateId/bulk-assign" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/assignments" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/results" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessment/answer/:assessmentId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentAnswerPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/answer/:assessmentId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AnswerAssessmentPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/response/:assessmentId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentResponsePage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/assessments/respond/:assignmentId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['assessments']}><AssessmentResponsePage /></ModuleGuard></RouteGuard>} />
 
                   {/* EduSafe routes */}
-                  <Route path="/edusafe" element={<RouteGuard requireAuth={true}><EduSafeResourcesPage /></RouteGuard>} />
-                  <Route path="/edusafe/upload" element={<RouteGuard requireAuth={true}><UploadResourcePage /></RouteGuard>} />
-                  <Route path="/edusafe/edit/:resourceId" element={<RouteGuard requireAuth={true}><EditResourcePage /></RouteGuard>} />
+                  <Route path="/edusafe" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['edusafe_resources']}><EduSafeResourcesPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/edusafe/upload" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['edusafe_resources']}><UploadResourcePage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/edusafe/edit/:resourceId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['edusafe_resources']}><EditResourcePage /></ModuleGuard></RouteGuard>} />
 
                   {/* Feedback routes */}
                   <Route path="/feedback" element={<RouteGuard requireAuth={true}><FeedbackPage /></RouteGuard>} />
@@ -227,38 +229,38 @@ function App() {
                   <Route path="/grievances/thank-you" element={<ThankYouPage />} />
 
                   {/* Transport Safety routes */}
-                  <Route path="/transport-safety" element={<RouteGuard requireAuth={true}><TransportSafetyPage /></RouteGuard>} />
-                  <Route path="/transport-safety/documents" element={<RouteGuard requireAuth={true}><DocumentsPage /></RouteGuard>} />
-                  <Route path="/transport-safety/challans" element={<RouteGuard requireAuth={true}><   TransportChallansPage /> </RouteGuard>} />
-                  <Route path="/transport-safety/:vehicleId" element={<RouteGuard requireAuth={true}><VehicleDetailPage /></RouteGuard>} />
-                  <Route path="/transport-safety/:vehicleId/documents" element={<RouteGuard requireAuth={true}><DocumentsPage /></RouteGuard>} />
-                  
+                  <Route path="/transport-safety" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['transport_safety']}><TransportSafetyPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/transport-safety/documents" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['transport_safety']}><DocumentsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/transport-safety/challans" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['transport_safety']}><   TransportChallansPage /> </ModuleGuard></RouteGuard>} />
+                  <Route path="/transport-safety/:vehicleId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['transport_safety']}><VehicleDetailPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/transport-safety/:vehicleId/documents" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['transport_safety']}><DocumentsPage /></ModuleGuard></RouteGuard>} />
+
                   {/* Employee Verification routes */}
-                  <Route path="/employee-verification" element={<RouteGuard requireAuth={true}><EmployeeVerificationPage /></RouteGuard>} />
-                  <Route path="/employee-verification/:employeeId" element={<RouteGuard requireAuth={true}><EmployeeDetailPage /></RouteGuard>} />
-                  <Route path="/employee-verification/:employeeId/upload-document" element={<RouteGuard requireAuth={true}><UploadDocumentPage /></RouteGuard>} />
-                  <Route path="/employee-verification/dashboard" element={<RouteGuard requireAuth={true}><VerificationDashboardPage /></RouteGuard> } />
+                  <Route path="/employee-verification" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['employee_verification']}><EmployeeVerificationPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/employee-verification/:employeeId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['employee_verification']}><EmployeeDetailPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/employee-verification/:employeeId/upload-document" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['employee_verification']}><UploadDocumentPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/employee-verification/dashboard" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['employee_verification']}><VerificationDashboardPage /></ModuleGuard></RouteGuard> } />
 
                   {/* Visitor routes */}
-                  <Route path="/visitor" element={<RouteGuard requireAuth={true}><VisitorsPage /></RouteGuard>} />
-                  <Route path="/visitors" element={<RouteGuard requireAuth={true}><VisitorsPage /></RouteGuard>} />
-                  <Route path="/visitors/trusted-vehicles" element={<RouteGuard requireAuth={true}><TrustedVehiclesPage /></RouteGuard> } />
+                  <Route path="/visitor" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['visitor']}><VisitorsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/visitors" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['visitor']}><VisitorsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/visitors/trusted-vehicles" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['visitor']}><TrustedVehiclesPage /></ModuleGuard></RouteGuard> } />
 
                   {/* SOP routes */}
-                  <Route path="/sops" element={<RouteGuard requireAuth={true}><SOPPage /></RouteGuard>} />
-                  <Route path="/sop" element={<RouteGuard requireAuth={true}><SOPPage /></RouteGuard>} />
-                  <Route path="/sops/assigned" element={<RouteGuard requireAuth={true}><AssignedSOPPage /></RouteGuard>} />
+                  <Route path="/sops" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['sop']}><SOPPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/sop" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['sop']}><SOPPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/sops/assigned" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['sop']}><AssignedSOPPage /></ModuleGuard></RouteGuard>} />
 
                   {/* Student Well-Being Management */}
-                  <Route path="/student-well-begin-management" element={<RouteGuard requireAuth={true}><StudentWellBeingPage /></RouteGuard>} />
+                  <Route path="/student-well-begin-management" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['student_well-being_management']}><StudentWellBeingPage /></ModuleGuard></RouteGuard>} />
 
                   {/* Child Audit */}
-                  <Route path="/child-audit" element={<RouteGuard requireAuth={true}><ChildAuditPage /></RouteGuard>} />
+                  <Route path="/child-audit" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['child_audit']}><ChildAuditPage /></ModuleGuard></RouteGuard>} />
 
                   {/* Committees */}
-                  <Route path="/committees" element={<RouteGuard requireAuth={true}><CommitteesPage /></RouteGuard>} />
-                  <Route path="/committees/:committeeId/events" element={<RouteGuard requireAuth={true}><CommitteeEventsPage /></RouteGuard>} />
-                  <Route path="/committees/:committeeId/events/:eventId" element={<RouteGuard requireAuth={true}><CommitteeEventViewPage /></RouteGuard>} />
+                  <Route path="/committees" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['committees']}><CommitteesPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/committees/:committeeId/events" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['committees']}><CommitteeEventsPage /></ModuleGuard></RouteGuard>} />
+                  <Route path="/committees/:committeeId/events/:eventId" element={<RouteGuard requireAuth={true}><ModuleGuard requiredModules={['committees']}><CommitteeEventViewPage /></ModuleGuard></RouteGuard>} />
 
                   {/* CPD Overview */}
                   <Route

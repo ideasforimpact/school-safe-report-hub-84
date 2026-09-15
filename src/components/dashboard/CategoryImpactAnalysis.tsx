@@ -6,6 +6,9 @@ import type { ValueType, NameType } from 'recharts/types/component/DefaultToolti
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModuleEnabled, useHasAnyDashboardModule } from '@/hooks/useModuleAccess';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { isEmployeeSuperAdmin, isModuleAdmin } from '@/store/employeeSelectors';
 
 interface CategoryImpactAnalysisProps {
   loading?: boolean;
@@ -13,19 +16,35 @@ interface CategoryImpactAnalysisProps {
 
 const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps) => {
   const { employeeData } = useAuth();
+  const { state } = useEmployeeStore();
+  const isModuleEnabled = useModuleEnabled();
+  const hasAnyDashboardModule = useHasAnyDashboardModule();
+  const hasIncidents = isModuleEnabled('incidents');
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
+  const hasIncidentAdmin = isModuleAdmin(state, 'incidents');
+  const currentEmployeeId = state.employeeData?.id;
 
-  const { data: categoryData = [], isLoading } = useQuery({
-    queryKey: ['category-impact-analysis', employeeData?.clientId],
+  const { data: fetchedCategoryData = [], isLoading } = useQuery({
+    queryKey: ['category-impact-analysis', employeeData?.clientId, currentEmployeeId, isSuperAdmin, hasIncidentAdmin],
     queryFn: async () => {
       if (!employeeData?.clientId) return [];
       const { data, error } = await supabase.functions.invoke('dashboard-stats', {
-        body: { action: 'category_impact', client_id: employeeData.clientId },
+        body: {
+          action: 'category_impact',
+          client_id: employeeData.clientId,
+          employee_id: currentEmployeeId,
+          is_super_admin: isSuperAdmin,
+          has_incident_admin: hasIncidentAdmin,
+        },
       });
       if (error) throw error;
       return data?.data ?? [];
     },
-    enabled: !!employeeData?.clientId,
+    enabled: !!employeeData?.clientId && hasIncidents,
   });
+
+  // Use hasIncidents to control displayed data, since disabling the query keeps cached results.
+  const categoryData = hasIncidents ? fetchedCategoryData : [];
 
   // Colors for categories
   const COLORS = [
@@ -63,6 +82,12 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
     }
     return null;
   };
+
+  // No Incidents access — hide the card entirely, unless the employee has no real
+  // module at all (only Dashboard, or nothing), where it shows its empty state instead.
+  if (!hasIncidents && hasAnyDashboardModule) {
+    return null;
+  }
 
   if (loading || isLoading) {
     return (

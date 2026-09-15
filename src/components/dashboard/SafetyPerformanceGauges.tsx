@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
+import { useModuleEnabled, useHasAnyDashboardModule } from '@/hooks/useModuleAccess';
 
 interface SafetyPerformanceGaugesProps {
   stats: {
@@ -26,6 +27,13 @@ interface SafetyPerformanceGaugesProps {
 }
 
 const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProps) => {
+  const isModuleEnabled = useModuleEnabled();
+  const hasAnyDashboardModule = useHasAnyDashboardModule();
+  const hasIncidents = isModuleEnabled('incidents');
+  const hasAssessments = isModuleEnabled('assessments');
+  const hasTransportSafety = isModuleEnabled('transport safety');
+  const hasEmployeeVerification = isModuleEnabled('employee verification');
+
   console.log('🔍 SafetyPerformanceGauges - Raw stats received at:', new Date().toISOString(), stats);
   console.log('🔍 SafetyPerformanceGauges - Key values:');
   console.log('  - stats.totalEmployees:', stats.totalEmployees);
@@ -35,15 +43,18 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
   console.log('  - stats.activeAssessments:', stats.activeAssessments);
   console.log('  - stats.openIncidents:', stats.openIncidents);
 
-  // Check if all required data exists
-  const allDataExists = stats.IncidentRecordsExist && 
-                       stats.AssessmentRecordsExist && 
-                       stats.VehicleRecordsExist && 
-                       stats.EmployeeRecordsExist 
+  // Check if all required data exists AND the employee actually has access to every
+  // module feeding the composite score — otherwise Overall Safety Score would blend in
+  // modules the employee can't see, misrepresenting it as their real safety posture.
+  const allDataExists = stats.IncidentRecordsExist &&
+                       stats.AssessmentRecordsExist &&
+                       stats.VehicleRecordsExist &&
+                       stats.EmployeeRecordsExist &&
+                       hasIncidents && hasAssessments && hasTransportSafety && hasEmployeeVerification
 
   // Calculate Employee Compliance score = 100 * (number of verified employees / number of active employees)
-  const employeeComplianceScore = stats.EmployeeRecordsExist && stats.totalEmployees > 0 
-    ? Math.round(100 * (stats.employeesVerified / stats.totalEmployees)) 
+  const employeeComplianceScore = stats.EmployeeRecordsExist && hasEmployeeVerification && stats.totalEmployees > 0
+    ? Math.round(100 * (stats.employeesVerified / stats.totalEmployees))
     : null;
 
   console.log('🔍 Employee Compliance Score Calculation:');
@@ -54,8 +65,8 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
   console.log('  - Overall status',stats)
 
   // Calculate Vehicle Compliance score = 100 * (number of verified vehicles / number of vehicles)
-  const vehicleComplianceScore = stats.VehicleRecordsExist && stats.totalVehicles > 0 
-    ? Math.round(100 * ((stats.vehiclesVerified || 0) / stats.totalVehicles)) 
+  const vehicleComplianceScore = stats.VehicleRecordsExist && hasTransportSafety && stats.totalVehicles > 0
+    ? Math.round(100 * ((stats.vehiclesVerified || 0) / stats.totalVehicles))
     : null;
 
   console.log('🔍 Vehicle Compliance Score Calculation:');
@@ -65,7 +76,7 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
   console.log('  - Final Vehicle Compliance Score:', vehicleComplianceScore);
 
   // Calculate Incidents Score = max(100 - 20 * Open Incidents, 0)
-  const incidentsScore = stats.IncidentRecordsExist 
+  const incidentsScore = stats.IncidentRecordsExist && hasIncidents
     ? Math.max(100 - 20 * (stats.openIncidentOlder7days || 0), 0)
     : null;
 
@@ -82,7 +93,7 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
   //      ELSE 100 * (OverdueAssessments / ActiveAssessments)
   const activeA = stats.AssessmentRecordsExist ? (stats.activeAssessments || 0) : 0;
   const overdueA = stats.AssessmentRecordsExist ? (stats.overdueAssessments || 0) : 0;
-  const assessmentActivityScore = stats.AssessmentRecordsExist 
+  const assessmentActivityScore = stats.AssessmentRecordsExist && hasAssessments
     ? (activeA === 0 || overdueA === 0
         ? 100
         : Math.min(100, Math.round(100 * (overdueA * 1.0 / activeA))))
@@ -166,36 +177,41 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
       value: overallSafetyScore,
       data: createGaugeData(overallSafetyScore, getScoreInfo(overallSafetyScore).color),
       description: allDataExists ? 'Comprehensive safety performance' : 'Setup Required',
-      scoreInfo: getScoreInfo(overallSafetyScore)
+      scoreInfo: getScoreInfo(overallSafetyScore),
+      // Composite of all 4 modules — only meaningful once the employee has access to each
+      visible: hasIncidents && hasAssessments && hasTransportSafety && hasEmployeeVerification,
     },
     {
       title: 'Employee Compliance',
       value: employeeComplianceScore,
       data: createGaugeData(employeeComplianceScore, getScoreInfo(employeeComplianceScore).color),
-      description: stats.EmployeeRecordsExist 
+      description: stats.EmployeeRecordsExist
         ? `${stats.employeesVerified}/${stats.totalEmployees} verified`
         : 'No employee data available',
-      scoreInfo: getScoreInfo(employeeComplianceScore)
+      scoreInfo: getScoreInfo(employeeComplianceScore),
+      visible: hasEmployeeVerification,
     },
     {
       title: 'Vehicle Compliance',
       value: vehicleComplianceScore,
       data: createGaugeData(vehicleComplianceScore, getScoreInfo(vehicleComplianceScore).color),
-      description: stats.VehicleRecordsExist 
+      description: stats.VehicleRecordsExist
         ? `${stats.vehiclesVerified || 0}/${stats.totalVehicles} compliant`
         : 'No vehicle data available',
-      scoreInfo: getScoreInfo(vehicleComplianceScore)
+      scoreInfo: getScoreInfo(vehicleComplianceScore),
+      visible: hasTransportSafety,
     },
     {
       title: 'Incident Management',
       value: incidentsScore,
       data: createGaugeData(incidentsScore, getScoreInfo(incidentsScore).color),
-      description: stats.IncidentRecordsExist 
+      description: stats.IncidentRecordsExist
         ? `${stats.openIncidents} open incidents`
         : 'No incident data available',
-      scoreInfo: getScoreInfo(incidentsScore)
+      scoreInfo: getScoreInfo(incidentsScore),
+      visible: hasIncidents,
     }
-  ];
+  ].filter((gauge) => hasAnyDashboardModule ? gauge.visible : true);
 
   const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
     if (active && payload && payload.length) {
@@ -209,6 +225,12 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
     return null;
   };
 
+  // No module the employee has access to feeds any gauge — hide the whole card
+  // rather than show an all-N/A performance summary.
+  if (gauges.length === 0) {
+    return null;
+  }
+
   if (loading) {
     return (
       <Card>
@@ -217,7 +239,7 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, index) => (
+            {Array.from({ length: gauges.length }).map((_, index) => (
               <div key={index} className="text-center space-y-4 animate-pulse">
                 <div className="h-32 w-32 bg-gray-200 rounded-full mx-auto"></div>
                 <div className="space-y-2">

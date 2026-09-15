@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useModuleEnabled, useHasAnyDashboardModule } from '@/hooks/useModuleAccess';
 
 interface MonthlyIncidentsChartProps {
   data: Array<{
@@ -14,6 +15,15 @@ interface MonthlyIncidentsChartProps {
 }
 
 const MonthlyIncidentsChart = ({ data, loading }: MonthlyIncidentsChartProps) => {
+  const isModuleEnabled = useModuleEnabled();
+  const hasAnyDashboardModule = useHasAnyDashboardModule();
+
+  // Incident data only — hide the card entirely, unless the employee has no real
+  // module at all (only Dashboard, or nothing), where it shows its empty chart instead.
+  if (!isModuleEnabled('incidents') && hasAnyDashboardModule) {
+    return null;
+  }
+
   if (loading) {
     return (
       <Card className="animate-pulse">

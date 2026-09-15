@@ -35,6 +35,8 @@ serve(async (req) => {
       date_from,
       date_to,
       search,
+      is_super_admin,
+      has_grievance_admin,
     } = await req.json();
 
     if (!form_id && !client_id) {
@@ -47,6 +49,22 @@ serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
+      );
+    }
+
+    // Grievances are not tied to individual employees, so non-admins see no records.
+    // Only module Admins or org super admins can view the grievance list.
+    if (is_super_admin !== true && has_grievance_admin !== true) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          total_pages: 1,
+          stats: { total: 0, pending: 0, acknowledged: 0 },
+          message: 'Submissions fetched successfully'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

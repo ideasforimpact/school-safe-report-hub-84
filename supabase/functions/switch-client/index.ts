@@ -380,7 +380,8 @@ Deno.serve(async (req) => {
           return {
             id: mod.id,
             name: mod.name,
-            key: mod.level,
+            // Must match the module key derived during login.
+            key: mod.name.toLowerCase().replace(/\s+/g, "_"),
             icon: mod.icon || "",
             level: mod.level,
             enabled: true,

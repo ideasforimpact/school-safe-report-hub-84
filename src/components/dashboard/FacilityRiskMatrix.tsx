@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModuleEnabled, useHasAnyDashboardModule } from '@/hooks/useModuleAccess';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { isEmployeeSuperAdmin, isModuleAdmin } from '@/store/employeeSelectors';
 
 
 interface FacilityRiskMatrixProps {
@@ -11,20 +14,38 @@ interface FacilityRiskMatrixProps {
 
 const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
   const { employeeData } = useAuth();
+  const { state } = useEmployeeStore();
+  const isModuleEnabled = useModuleEnabled();
+  const hasAnyDashboardModule = useHasAnyDashboardModule();
+  const hasIncidents = isModuleEnabled('incidents');
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
+  const hasIncidentAdmin = isModuleAdmin(state, 'incidents');
+  const currentEmployeeId = state.employeeData?.id;
 
-  const { data: facilityRiskData = [], isLoading } = useQuery({
-    queryKey: ['facility-risk-matrix', employeeData?.clientId],
+  const { data: fetchedFacilityRiskData = [], isLoading } = useQuery({
+    queryKey: ['facility-risk-matrix', employeeData?.clientId, currentEmployeeId, isSuperAdmin, hasIncidentAdmin],
     queryFn: async () => {
       if (!employeeData?.clientId) return [];
 
       const { data, error } = await supabase.functions.invoke('dashboard-stats', {
-        body: { action: 'facility_risk_matrix', client_id: employeeData.clientId },
+        body: {
+          action: 'facility_risk_matrix',
+          client_id: employeeData.clientId,
+          employee_id: currentEmployeeId,
+          is_super_admin: isSuperAdmin,
+          has_incident_admin: hasIncidentAdmin,
+        },
       });
       if (error) throw error;
       return data?.data ?? [];
     },
-    enabled: !!employeeData?.clientId,
+    enabled: !!employeeData?.clientId && hasIncidents,
   });
+
+  // enabled:false only stops future fetches — it doesn't clear a previously
+  // cached result for this queryKey, so gate the rendered data on hasIncidents
+  // directly rather than trusting the query's returned data.
+  const facilityRiskData = hasIncidents ? fetchedFacilityRiskData : [];
 
   const maxRiskScore = Math.max(...facilityRiskData.map(f => f.riskScore || 0), 1);
 
@@ -45,6 +66,12 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
         return '';
     }
   };
+
+  // No Incidents access — hide the card entirely, unless the employee has no real
+  // module at all (only Dashboard, or nothing), where it shows its empty state instead.
+  if (!hasIncidents && hasAnyDashboardModule) {
+    return null;
+  }
 
   if (loading || isLoading) {
     return (

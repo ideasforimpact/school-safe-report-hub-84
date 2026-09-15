@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { isModuleAdmin } from '@/store/employeeSelectors';
 
 interface DashboardStats {
   openIncidents: number;
@@ -91,13 +92,20 @@ export const useDashboardStats = () => {
   // using them alone left the dashboard showing home-client stats after a switch
   // while other modules (e.g. Employee Verification) correctly followed the switch.
   const clientId = state.activeClientId || state.clientId || employeeData?.clientId || user?.clientId;
-  const fetchedForClientRef = useRef<string | null>(null);
+  const hasIncidentAdmin = isModuleAdmin(state, 'incidents');
+  const hasAssessmentAdmin = isModuleAdmin(state, 'assessments');
+  const hasTransportSafetyAdmin = isModuleAdmin(state, 'transport safety');
+  const hasEmployeeVerificationAdmin = isModuleAdmin(state, 'employee verification');
+  const hasGrievanceAdmin = isModuleAdmin(state, 'grievances');
+  // Re-fetch when admin flags finish loading, even if the client ID hasn't changed.
+  const fetchedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const fetchKey = `${clientId}:${hasIncidentAdmin}:${hasAssessmentAdmin}:${hasTransportSafetyAdmin}:${hasEmployeeVerificationAdmin}:${hasGrievanceAdmin}`;
     const fetchStats = async () => {
       if (!clientId) return;
-      if (fetchedForClientRef.current === clientId) return;
-      fetchedForClientRef.current = clientId;
+      if (fetchedKeyRef.current === fetchKey) return;
+      fetchedKeyRef.current = fetchKey;
 
       try {
         setLoading(true);
@@ -105,11 +113,16 @@ export const useDashboardStats = () => {
 
         console.log('Fetching dashboard stats for client:', clientId);
 
-        // Prepare request body with employee information for role-based filtering
+        // Prepare employee details for role-based filtering; module Admins can view all records.
         const requestBody = {
           client_id: clientId,
           employee_id: employeeData?.id || null,
-          is_super_admin: employeeData?.isSuperAdmin || false
+          is_super_admin: employeeData?.isSuperAdmin || false,
+          has_incident_admin: hasIncidentAdmin,
+          has_assessment_admin: hasAssessmentAdmin,
+          has_transport_safety_admin: hasTransportSafetyAdmin,
+          has_employee_verification_admin: hasEmployeeVerificationAdmin,
+          has_grievance_admin: hasGrievanceAdmin,
         };
 
         console.log('Dashboard stats request:', requestBody);
@@ -134,7 +147,7 @@ export const useDashboardStats = () => {
     };
 
     fetchStats();
-  }, [clientId, employeeData?.id, employeeData?.isSuperAdmin]);
+  }, [clientId, employeeData?.id, employeeData?.isSuperAdmin, hasIncidentAdmin, hasAssessmentAdmin, hasTransportSafetyAdmin, hasEmployeeVerificationAdmin, hasGrievanceAdmin]);
 
   return {
     stats,

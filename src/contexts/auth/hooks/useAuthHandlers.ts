@@ -269,7 +269,7 @@ export const useAuthHandlers = ({
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level, // Using level as key
+            key: moduleObj.name.toLowerCase().replace(/\s+/g, '_'),
             icon: moduleObj.icon || '',
             level: moduleObj.level, // Include the level property
             enabled: true,
@@ -336,7 +336,7 @@ export const useAuthHandlers = ({
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level,
+            key: moduleObj.name.toLowerCase().replace(/\s+/g, '_'),
             icon: moduleObj.icon || '',
             level: moduleObj.level,
             enabled: true,
@@ -973,6 +973,7 @@ export const useAuthHandlers = ({
 
   return {
     handleUserAuthentication,
-    completeAuthForEmployee
+    completeAuthForEmployee,
+    fetchConfiguredModules
   };
 };
