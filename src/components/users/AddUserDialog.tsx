@@ -24,7 +24,7 @@ import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmpl
   EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_PERSONAL_INFO_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS,
   isValidReligion, getReligionErrorMessage, isValidNationality, getNationalityErrorMessage } from '@/constant/employeeConstant';
 import { capitalizeWords } from '@/lib/formatUtils';
-import EmployeeDobField, { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from './form/EmployeeDobField';
+import EmployeeDobField, { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from '@/components/employee-verification/form/EmployeeDobField';
 
 type AddUserFormData = {
   firstName: string;
