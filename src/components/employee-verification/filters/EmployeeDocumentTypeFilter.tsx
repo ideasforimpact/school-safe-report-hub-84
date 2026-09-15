@@ -1,16 +1,10 @@
 import React from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
+import MultiSelectFilter from '@/components/common/MultiSelectFilter';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 interface Props {
-  value: string;
-  onChange: (value: string) => void;
+  value: string[];          // selected document type ids; empty = all
+  onChange: (value: string[]) => void;
 }
 
 const EmployeeDocumentTypeFilter: React.FC<Props> = ({ value, onChange }) => {
@@ -26,22 +20,19 @@ const EmployeeDocumentTypeFilter: React.FC<Props> = ({ value, onChange }) => {
     return result;
   }, [documentTypes]);
 
+  const options = orderedTypes.map((type) => ({
+    value: type.id,
+    label: type.name.replace('_', ' ').toUpperCase(),
+  }));
+
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-[220px]">
-        <SelectValue placeholder="All Documents" />
-      </SelectTrigger>
-
-      <SelectContent>
-        <SelectItem value="all">All Documents</SelectItem>
-
-        {orderedTypes.map((type) => (
-          <SelectItem key={type.id} value={type.id}>
-            {type.name.replace('_', ' ').toUpperCase()}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <MultiSelectFilter
+      options={options}
+      selected={value}
+      onChange={onChange}
+      placeholder="All Documents"
+      className="w-[220px]"
+    />
   );
 };
 
