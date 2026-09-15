@@ -17,7 +17,7 @@ import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmpl
         EMPLOYEE_PERSONAL_INFO_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS,
         isValidReligion, getReligionErrorMessage, isValidNationality, getNationalityErrorMessage } from '@/constant/employeeConstant';
 import { EmailValidationStatus, EmployeeIdValidationStatus } from './AddUserDialog';
-import EmployeeDobField, { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from './form/EmployeeDobField';
+import EmployeeDobField, { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from '@/components/employee-verification/form/EmployeeDobField';
 import { useDebounce } from '@/hooks/useDebounce';
 import { checkEmployeeEmailExists, checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
