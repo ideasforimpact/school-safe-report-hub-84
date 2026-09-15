@@ -16,13 +16,13 @@ export interface DepartmentOption {
 interface FilterBarProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  documentStatusFilter: string;
-  onDocumentStatusChange: (value: string) => void;
+  documentStatusFilter: string[];
+  onDocumentStatusChange: (value: string[]) => void;
   onClearFilters: () => void;
-  documentTypeFilter: string;
-  onDocumentTypeChange: (value: string) => void;
-  departmentFilter: string;   // UUID or 'all'
-  onDepartmentChange: (value: string) => void;
+  documentTypeFilter: string[];
+  onDocumentTypeChange: (value: string[]) => void;
+  departmentFilter: string[];   // UUIDs, empty = all
+  onDepartmentChange: (value: string[]) => void;
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({
@@ -52,12 +52,11 @@ const FilterBar: React.FC<FilterBarProps> = ({
     fetchDepartments();
   }, [fetchDepartments]);
 
-  const activeFilterCount = [
-    searchTerm,
-    documentStatusFilter !== 'all' ? documentStatusFilter : '',
-    documentTypeFilter !== 'all' ? documentTypeFilter : '',
-    departmentFilter !== 'all' ? departmentFilter : '',
-  ].filter(v => typeof v === 'string' && v.trim() !== '').length;
+  const activeFilterCount =
+    (searchTerm.trim() !== '' ? 1 : 0) +
+    documentStatusFilter.length +
+    documentTypeFilter.length +
+    departmentFilter.length;
 
   const hasActiveFilters = activeFilterCount > 0;
 

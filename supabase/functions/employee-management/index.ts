@@ -946,20 +946,32 @@ async function handleList(supabaseClient: any, requestData: any) {
   const normalizeTypeKey = (name: string | null | undefined) =>
     (name || '').toLowerCase().replace(/[\s_]+/g, '');
 
+  // Accepts either an array of selected values or the legacy single scalar
+  // ('all' or one id/status) so client and edge function can roll out independently.
+  const toFilterList = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.filter(Boolean) as string[];
+    if (value && value !== 'all') return [value as string];
+    return [];
+  };
+
+  const departmentIds = toFilterList(filters.departmentId);
+  const documentTypeIds = toFilterList(filters.documentTypeId);
+  const documentStatuses = toFilterList(filters.documentStatus);
+
   // === Pre-filters for document type and document status ===
   let docTypeEmpIds: string[] | null = null;
   let docStatusEmpIds: string[] | null = null;
 
-  if (filters.documentTypeId && filters.documentTypeId !== 'all') {
+  if (documentTypeIds.length > 0) {
     const { data: dtRows } = await supabaseClient
       .from('employee_documents')
       .select('employee_id')
-      .eq('document_type_id', filters.documentTypeId)
+      .in('document_type_id', documentTypeIds)
       .eq('is_delete', 0);
     docTypeEmpIds = [...new Set((dtRows || []).map((d: any) => d.employee_id).filter(Boolean))] as string[];
   }
 
-  if (filters.documentStatus && filters.documentStatus !== 'all') {
+  if (documentStatuses.length > 0) {
     const { data: allEmpRows } = await supabaseClient
       .from('employees')
       .select('id, department:employee_departments(department_name)')
@@ -991,7 +1003,7 @@ async function handleList(supabaseClient: any, requestData: any) {
       });
 
       docStatusEmpIds = [];
-      const requestedStatus = filters.documentStatus;
+      const requestedStatuses = new Set(documentStatuses);
       allClientEmpIds.forEach((empId: string) => {
         const statuses = statusByEmp.get(empId) || [];
         const hasFailed = statuses.some((s: string) => s === 'failed' || s === 'rejected');
@@ -1001,10 +1013,12 @@ async function handleList(supabaseClient: any, requestData: any) {
         const isDriver = departmentByEmp.get(empId) === 'driver';
         const driverForcesPending = isDriver && !licenseVerifiedByEmp.has(empId) && !hasFailed && !hasPending;
         const effectivePending = hasPending || driverForcesPending;
-        if (requestedStatus === 'failed' && hasFailed) docStatusEmpIds!.push(empId);
-        else if (requestedStatus === 'no-documents' && !hasAny) docStatusEmpIds!.push(empId);
-        else if (requestedStatus === 'pending' && !hasFailed && effectivePending) docStatusEmpIds!.push(empId);
-        else if (requestedStatus === 'verified' && !hasFailed && !effectivePending && hasVerified) docStatusEmpIds!.push(empId);
+        const matches =
+          (requestedStatuses.has('failed') && hasFailed) ||
+          (requestedStatuses.has('no-documents') && !hasAny) ||
+          (requestedStatuses.has('pending') && !hasFailed && effectivePending) ||
+          (requestedStatuses.has('verified') && !hasFailed && !effectivePending && hasVerified);
+        if (matches) docStatusEmpIds!.push(empId);
       });
     } else {
       docStatusEmpIds = [];
@@ -1029,10 +1043,11 @@ async function handleList(supabaseClient: any, requestData: any) {
     query = query.eq('status', false);
   }
 
-  if (filters.departmentId && filters.departmentId !== 'all') {
+  if (departmentIds.length > 0) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRegex.test(filters.departmentId)) {
-      query = query.eq('department', filters.departmentId);
+    const validDepartmentIds = departmentIds.filter((id: string) => uuidRegex.test(id));
+    if (validDepartmentIds.length > 0) {
+      query = query.in('department', validDepartmentIds);
     }
   }
 

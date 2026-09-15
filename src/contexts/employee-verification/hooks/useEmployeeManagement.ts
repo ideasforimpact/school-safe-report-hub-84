@@ -10,9 +10,9 @@ import { useEmployeeVerificationAccess } from '@/hooks/useModuleAccess';
 
 export interface EmployeeListFilters {
   search?: string;
-  departmentId?: string;
-  documentTypeId?: string;
-  documentStatus?: string;
+  departmentId?: string[];
+  documentTypeId?: string[];
+  documentStatus?: string[];
 }
 
 const PAGE_SIZE = 10;
@@ -161,9 +161,9 @@ export const useEmployeeManagement = () => {
           includeStats,
           filters: {
             search: effectiveFilters.search || '',
-            departmentId: effectiveFilters.departmentId || 'all',
-            documentTypeId: effectiveFilters.documentTypeId || 'all',
-            documentStatus: effectiveFilters.documentStatus || 'all',
+            departmentId: effectiveFilters.departmentId || [],
+            documentTypeId: effectiveFilters.documentTypeId || [],
+            documentStatus: effectiveFilters.documentStatus || [],
           },
         },
       }));

@@ -150,6 +150,7 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
       setIsLoading(false);
       setError(null);
       setResult(null);
+      setActiveTab('immediate');
     }
     // Run only when the dialog opens/closes. `incident`, `incidentJson`, and
     // `callEdgeFunction` are read from the closure captured at that moment -
@@ -355,8 +356,9 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
               if (onRefresh) {
                 await onRefresh();
               }
+              setActiveTab('immediate');
               onOpenChange(false);
-            }} 
+            }}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             OK
