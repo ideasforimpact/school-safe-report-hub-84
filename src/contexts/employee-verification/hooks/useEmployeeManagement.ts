@@ -92,17 +92,8 @@ export const useEmployeeManagement = () => {
   const lastFiltersRef = useRef<EmployeeListFilters>({});
   const lastPageRef = useRef(1);
   const statsLoadedRef = useRef(false);
-  useEffect(() => {
-    const nextAccess = { employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasEmployeeVerificationAdmin };
-    // Admin scope changed, so refresh the cached stats on the next fetch.
-    if (
-      accessRef.current.employeeId !== nextAccess.employeeId ||
-      accessRef.current.isAdmin !== nextAccess.isAdmin
-    ) {
-      statsLoadedRef.current = false;
-    }
-    accessRef.current = nextAccess;
-  }, [currentEmployeeId, isSuperAdmin, hasEmployeeVerificationAdmin]);
+  // Skip the refetch on mount; the initial-load effect already performs the first fetch.
+  const isFirstAccessEffectRef = useRef(true);
   // Latest getClientId — updated every render so fetchEmployees (stable ref) always reads current value
   const getClientIdRef = useRef<() => string | null>(() => null);
   // Incremented on each call; lets us discard stale responses when a newer call wins
@@ -199,6 +190,24 @@ export const useEmployeeManagement = () => {
     }
    
   }, []); // intentionally empty — reads latest values via refs
+
+  useEffect(() => {
+    const nextAccess = { employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasEmployeeVerificationAdmin };
+    const accessChanged =
+      accessRef.current.employeeId !== nextAccess.employeeId ||
+      accessRef.current.isAdmin !== nextAccess.isAdmin;
+    accessRef.current = nextAccess;
+
+    if (accessChanged) {
+      // Admin scope changed, so refresh the cached stats on the next fetch.
+      statsLoadedRef.current = false;
+      // Refetch employees when module access changes to apply the updated scope.
+      if (!isFirstAccessEffectRef.current) {
+        fetchEmployees(lastFiltersRef.current, lastPageRef.current, true);
+      }
+    }
+    isFirstAccessEffectRef.current = false;
+  }, [currentEmployeeId, isSuperAdmin, hasEmployeeVerificationAdmin, fetchEmployees]);
 
   const updateEmployee = useCallback(async (id: string, updates: Partial<Employee>) => {
     setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, ...updates } : emp));

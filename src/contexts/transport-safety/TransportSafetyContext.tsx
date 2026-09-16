@@ -80,9 +80,8 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
 
   const { isSuperAdmin, hasTransportSafetyAdmin, currentEmployeeId } = useTransportSafetyAccess();
   const accessRef = useRef({ employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasTransportSafetyAdmin });
-  useEffect(() => {
-    accessRef.current = { employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasTransportSafetyAdmin };
-  }, [currentEmployeeId, isSuperAdmin, hasTransportSafetyAdmin]);
+  // Skip the forced refetch on mount; the module-entry effect already performs the first fetch.
+  const isFirstAccessEffectRef = useRef(true);
 
   const getWriteGuardMessage = (err: unknown, fallback: string) => {
     const message = err instanceof Error ? err.message : '';
@@ -166,6 +165,20 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       }
     }
   }, []); // no deps — reads everything from refs
+
+  useEffect(() => {
+    const nextAccess = { employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasTransportSafetyAdmin };
+    const accessChanged =
+      accessRef.current.employeeId !== nextAccess.employeeId ||
+      accessRef.current.isAdmin !== nextAccess.isAdmin;
+    accessRef.current = nextAccess;
+
+    // Refetch vehicles when module access changes so the list reflects the updated scope.
+    if (accessChanged && !isFirstAccessEffectRef.current && isTransportListRoute) {
+      fetchVehicles({ page: 1 });
+    }
+    isFirstAccessEffectRef.current = false;
+  }, [currentEmployeeId, isSuperAdmin, hasTransportSafetyAdmin, isTransportListRoute, fetchVehicles]);
 
   // Fetch on mount, clientId change, or when user navigates INTO the transport safety module
   useEffect(() => {

@@ -436,7 +436,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         return;
       }
 
-      const employeeData: RawEmployeeListItem[] = paginatedRes?.employees || [];
+      const employeeData: RawEmployeeListItem[] = (paginatedRes?.employees || []).filter(Boolean);
       setTotalUsers(Number(paginatedRes?.total || 0));
 
       console.log(employeeData, "employeeData124");
@@ -500,19 +500,33 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       }
       console.error("Error fetching employees:", error);
       toast.error("Failed to fetch employee data");
+      // Keep the displayed count in sync with the list — otherwise a failed
+      // fetch leaves a stale non-zero total next to an empty table.
+      setTotalUsers(0);
       setEmployeeUsers([]);
+      return false;
     } finally {
       if (!signal?.aborted) {
         setIsLoading(false);
       }
     }
+    return true;
   }, [clientId, pageSize, debouncedSearchQuery, statusFilter, departmentFilter, joiningDateFrom, joiningDateTo]);
 
-  // Fetch employees — triggered by page changes or filter version bumps
+  // Retry the first fetch once to handle transient post-login session/RLS delays.
   useEffect(() => {
     if (!clientId) return;
     const ac = new AbortController();
-    fetchEmployeesList(currentPage, ac.signal).finally(() => {
+    const isFirstFetch = !hasFetchedOnceRef.current;
+
+    fetchEmployeesList(currentPage, ac.signal).then((succeeded) => {
+      if (ac.signal.aborted) return;
+      if (succeeded === false && isFirstFetch) {
+        return new Promise((resolve) => setTimeout(resolve, 800)).then(() =>
+          ac.signal.aborted ? undefined : fetchEmployeesList(currentPage, ac.signal)
+        );
+      }
+    }).finally(() => {
       if (!hasFetchedOnceRef.current) {
         hasFetchedOnceRef.current = true;
         setIsInitialLoading(false);
@@ -632,7 +646,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               }
               else{
                   console.log("Employee created via edge function:", data);
-                  toast.success("Employee record created successfully");
+                  toast.success("Employee created successfully");
               }
               
             } catch (edgeFuncError) {

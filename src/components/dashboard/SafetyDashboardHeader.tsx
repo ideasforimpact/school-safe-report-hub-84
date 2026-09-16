@@ -4,6 +4,7 @@ import { Shield, Calendar, Clock, AlertTriangle, LayoutDashboard } from 'lucide-
 import { useAuth } from '@/contexts/AuthContext';
 import { employeeTypeName } from '@/services/employeeNameHelpers';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
+import { useModuleEnabled } from '@/hooks/useModuleAccess';
 import MonthlyReportDownload from '../reports/MonthlyReportDownload';
  
 import { formatDate } from '@/lib/Dateformat';
@@ -32,14 +33,20 @@ interface SafetyDashboardHeaderProps {
 const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) => {
   const { employeeData } = useAuth();
   const { employeeTypes } = useEmployeeTypes();
+  const isModuleEnabled = useModuleEnabled();
+  const hasIncidents = isModuleEnabled('incidents');
+  const hasAssessments = isModuleEnabled('assessments');
+  const hasTransportSafety = isModuleEnabled('transport safety');
+  const hasEmployeeVerification = isModuleEnabled('employee verification');
   // Use direct client object from employeeData
   const userClient = employeeData?.client || null;
- 
-  // Check if all required data exists
+
+// Ensure all required data and module access are available before calculating the score.
   const allDataExists = stats.IncidentRecordsExist &&
                        stats.AssessmentRecordsExist &&
                        stats.VehicleRecordsExist &&
-                       stats.EmployeeRecordsExist
+                       stats.EmployeeRecordsExist &&
+                       hasIncidents && hasAssessments && hasTransportSafety && hasEmployeeVerification
  
   // Calculate Employee Compliance score = 100 * (number of verified employees / number of active employees)
   const employeeComplianceScore = stats.EmployeeRecordsExist && stats.totalEmployees > 0

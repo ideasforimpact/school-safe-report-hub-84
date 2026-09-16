@@ -296,7 +296,8 @@ const IncidentsList = () => {
     if (filterParam === 'open') tableFilters.status = 'Open';
     if (filterParam === 'closed') tableFilters.status = 'Closed';
 
-    const initKey = `${clientIdentity}_${location.pathname}_${tableFilters.status || 'all'}`;
+   // Include admin access in the key so scope changes trigger a fresh fetch.
+    const initKey = `${clientIdentity}_${location.pathname}_${tableFilters.status || 'all'}_${hasIncidentAdmin}`;
     if (initFetchKeyRef.current === initKey) return;
     
     // Only proceed if we have a proper identity
