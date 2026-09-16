@@ -411,7 +411,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
   };
 
   const handleCancel = () => {
-    navigate(`/incident/${id}`);
+    navigate('/incidents');
   };
 
   if (configLoading) {
