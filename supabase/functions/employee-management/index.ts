@@ -1011,7 +1011,7 @@ async function handleList(supabaseClient: any, requestData: any) {
         const hasVerified = statuses.some((s: string) => s === 'verified' || s === 'completed');
         const hasAny = statuses.length > 0;
         const isDriver = departmentByEmp.get(empId) === 'driver';
-        const driverForcesPending = isDriver && !licenseVerifiedByEmp.has(empId) && !hasFailed && !hasPending;
+        const driverForcesPending = hasAny && isDriver && !licenseVerifiedByEmp.has(empId) && !hasFailed && !hasPending;
         const effectivePending = hasPending || driverForcesPending;
         const matches =
           (requestedStatuses.has('failed') && hasFailed) ||
