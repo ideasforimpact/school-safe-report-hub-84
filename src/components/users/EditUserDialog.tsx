@@ -1006,7 +1006,7 @@ const EditUserDialog = ({
         return;
       }
       
-      toast.success("User updated successfully");
+      toast.success("Employee updated successfully");
       // Refresh list first so when dialog closes, list has latest data (e.g. is_cpd_involved)
       if (typeof onSubmit === 'function') {
         await Promise.resolve(onSubmit());

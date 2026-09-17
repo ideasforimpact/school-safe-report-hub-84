@@ -1110,31 +1110,47 @@ const normalizeTypeKey = (name) =>
       monthlyIncidentsData
     }
 
-    // Check if data exists for each table based on client_id
-    const { data: incidentRecords, error: incidentRecordsError } = await supabase
+    // Check record existence using the same employee-scope rules as the counts.
+    let incidentRecordsQuery = supabase
       .from('incidents')
       .select('id')
       .eq('client_id', client_id)
       .limit(1)
+    if (shouldFilterIncidentsByEmployee) {
+      incidentRecordsQuery = incidentRecordsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+    }
+    const { data: incidentRecords, error: incidentRecordsError } = await incidentRecordsQuery
 
-    const { data: assessmentRecords, error: assessmentRecordsError } = await supabase
+    let assessmentRecordsQuery = supabase
       .from('assessments')
       .select('id')
       .eq('client_id', client_id)
       .limit(1)
+    if (shouldFilterAssessmentsByEmployee) {
+      assessmentRecordsQuery = assessmentRecordsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+    }
+    const { data: assessmentRecords, error: assessmentRecordsError } = await assessmentRecordsQuery
 
-    const { data: vehicleRecords, error: vehicleRecordsError } = await supabase
+    let vehicleRecordsQuery = supabase
       .from('vehicles')
       .select('id')
       .eq('client_id', client_id)
       .eq('active', true)
       .limit(1)
+    if (shouldFilterVehiclesByEmployee) {
+      vehicleRecordsQuery = vehicleRecordsQuery.eq('employee_id', employee_id)
+    }
+    const { data: vehicleRecords, error: vehicleRecordsError } = await vehicleRecordsQuery
 
-    const { data: employeeRecords, error: employeeRecordsError } = await supabase
+    let employeeRecordsQuery = supabase
       .from('employees')
       .select('id')
       .eq('client_id', client_id)
       .limit(1)
+    if (shouldFilterEmployeesByEmployee) {
+      employeeRecordsQuery = employeeRecordsQuery.eq('id', employee_id)
+    }
+    const { data: employeeRecords, error: employeeRecordsError } = await employeeRecordsQuery
 
     const { data: formSubmissionRecords, error: formSubmissionRecordsError } = await supabase
       .from('form_submissions')
