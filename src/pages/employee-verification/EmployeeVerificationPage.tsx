@@ -64,12 +64,13 @@ const EmployeeVerificationPage = () => {
   // like "pending" get scattered across pages instead of appearing together.
   useEffect(() => {
     const loadEmployees = async () => {
+      const isFirstLoadThisMount = isFirstLoadRef.current;
       await fetchEmployees({
         search: searchTerm,
         departmentId: departmentFilter,
         documentTypeId: documentTypeFilter,
         documentStatus: documentStatusFilter,
-      }, 1);
+      }, 1, isFirstLoadThisMount);
       if (isFirstLoadRef.current) {
         isFirstLoadRef.current = false;
         setIsInitialLoading(false);
@@ -110,7 +111,7 @@ const EmployeeVerificationPage = () => {
     }
 
     realtimeTimeoutRef.current = setTimeout(() => {
-      fetchEmployees();
+      fetchEmployees(undefined, undefined, true);
     }, 300);
   }, [fetchEmployees]);
 

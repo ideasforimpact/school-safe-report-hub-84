@@ -1133,7 +1133,8 @@ async function handleList(supabaseClient: any, requestData: any) {
         .from('employees')
         .select('id', { count: 'exact', head: true })
         .eq('client_id', clientId)
-        .eq('status', true);
+        .eq('status', true)
+        .eq('is_secondary_super_admin', false);
       if (scopeToSelf) totalActiveQuery = totalActiveQuery.eq('id', employeeId);
       const { count: totalActive } = await totalActiveQuery;
 
@@ -1141,7 +1142,8 @@ async function handleList(supabaseClient: any, requestData: any) {
         .from('employees')
         .select('id, department:employee_departments(department_name)')
         .eq('client_id', clientId)
-        .eq('status', true);
+        .eq('status', true)
+        .eq('is_secondary_super_admin', false);
       if (scopeToSelf) allEmpForStatsQuery = allEmpForStatsQuery.eq('id', employeeId);
       const { data: allEmpForStats } = await allEmpForStatsQuery;
 
