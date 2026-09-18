@@ -25,7 +25,7 @@ import StudentsInvolvedTable from '@/components/incidents/StudentsInvolvedTable'
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
-import { useModuleEnabled, useHasAnyDashboardModule } from '@/hooks/useModuleAccess';
+import { useModuleEnabled } from '@/hooks/useModuleAccess';
 
 type PersonInvolved = { name?: string; role?: string; notes?: string };
 
@@ -38,6 +38,7 @@ interface StatsCard {
   bgColor: string;
   gradient: string;
   cardType: string;
+  hasData: boolean;
   // trend
   trend?: number;
   // incident breakdown
@@ -159,12 +160,11 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [employeeState]);
 
-  // Hides dashboard cards for modules the employee doesn't have access to, not just
-  // show them with 'N/A' — except when the employee has no real module at all (only
-  // Dashboard, or nothing), where every card shows its N/A placeholder instead of the
-  // whole section disappearing.
+  // Every module card is always shown, even when the employee has no access to it —
+  // a disabled module's card renders its 'N/A' placeholder (via gatedStats below).
+  // Clicking is gated by hasData (see statsCards/handleCardClick), not by access
+  // alone, so a card without data yet stays disabled even when the module is enabled.
   const isModuleEnabled = useModuleEnabled();
-  const hasAnyDashboardModule = useHasAnyDashboardModule();
 
   const loadStudentsInvolvedIncidents = useCallback(async () => {
     const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.clientId;
@@ -206,20 +206,10 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     }
   }, [employeeState.employeeData, authEmployeeData, user?.clientId, hasIncidentAdmin]);
 
-  // Module a card's click-through depends on — "students_involved" is an incident
-  // breakdown, so it follows Incidents too. Cards for a disabled module render as
-  // N/A/empty and must not navigate anywhere when clicked.
-  const cardModule: Record<string, string> = {
-    open_incidents: 'incidents',
-    students_involved: 'incidents',
-    safe_employees: 'employee verification',
-    active_assessments: 'assessments',
-    open_grievances: 'grievances',
-    safety_vehicles: 'transport safety',
-  };
-
+  // A card only navigates once it actually has data to show — a card showing 'N/A'
+  // disabled instead of taking the employee into an empty module.
   const handleCardClick = (cardType: string) => {
-    if (!isModuleEnabled(cardModule[cardType])) return;
+    if (!statsCards.find((card) => card.cardType === cardType)?.hasData) return;
 
     if (cardType === 'students_involved') {
       setStudentsDialogOpen(true);
@@ -321,7 +311,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       openIncidents: gatedStats.IncidentRecordsExist ? (gatedStats.openIncidents || 0) : 0,
       closedIncidents: gatedStats.IncidentRecordsExist ? (gatedStats.closedIncidents || 0) : 0,
       reopenedIncidents: gatedStats.IncidentRecordsExist ? (gatedStats.reopenedIncidents || 0) : 0,
-      cardType: 'open_incidents'
+      cardType: 'open_incidents',
+      hasData: gatedStats.IncidentRecordsExist
     },
     {
       title: 'Total Safe Employees',
@@ -346,7 +337,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       failedEmployees: gatedStats.EmployeeRecordsExist ? (gatedStats.employeesFailed || 0) : 0,
       pendingEmployees: gatedStats.EmployeeRecordsExist ? (gatedStats.employeesPending || 0) : 0,
       toBeVerified: gatedStats.EmployeeRecordsExist ? (gatedStats.employeesVerified || 0) : 0,
-      cardType: 'safe_employees'
+      cardType: 'safe_employees',
+      hasData: gatedStats.EmployeeRecordsExist
     },
     {
       title: 'Active Assessments',
@@ -372,7 +364,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       draftAssessments: gatedStats.AssessmentRecordsExist ? (gatedStats.draftAssessments || 0) : 0,
       submittedAssessments: gatedStats.AssessmentRecordsExist ? (gatedStats.submittedAssessments || 0) : 0,
       completedAssessments:gatedStats.AssessmentRecordsExist ? (gatedStats.completedAssessments || 0) : 0, // Don't show completed in active assessments breakdown
-      cardType: 'active_assessments'
+      cardType: 'active_assessments',
+      hasData: gatedStats.AssessmentRecordsExist
     },
     {
       title: 'Number Of Open Grievances',
@@ -395,7 +388,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       formSubmissions30Days: gatedStats.FormSubmissionRecordsExist ? (gatedStats.formSubmissions30Days || 0) : 0,
       formSubmissions60Days: gatedStats.FormSubmissionRecordsExist ? (gatedStats.formSubmissions60Days || 0) : 0,
       formSubmissions90Days: gatedStats.FormSubmissionRecordsExist ? (gatedStats.formSubmissions90Days || 0) : 0,
-      cardType: 'open_grievances'
+      cardType: 'open_grievances',
+      hasData: gatedStats.FormSubmissionRecordsExist
     },
     {
       title: 'Total Safety Vehicles',
@@ -418,7 +412,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       vehiclesFailedVerification: gatedStats.VehicleRecordsExist ? (gatedStats.vehiclesFailedVerification || 0) : 0,
       totalPendingChallanAmount: gatedStats.VehicleRecordsExist ? (gatedStats.totalPendingChallanAmount || 0): 0,
       vehiclesVerified: gatedStats.VehicleRecordsExist ? (gatedStats.vehiclesVerified || 0) : 0,
-      cardType: 'safety_vehicles'
+      cardType: 'safety_vehicles',
+      hasData: gatedStats.VehicleRecordsExist
     },
     {
       title: 'Number of Students Involved',
@@ -430,16 +425,14 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       gradient: gatedStats.IncidentRecordsExist ? 'from-orange-50 to-orange-100' : 'from-gray-50 to-gray-100',
       showStudentsBreakdown: gatedStats.IncidentRecordsExist,
       studentsInvolvedByCategory: gatedStats.IncidentRecordsExist ? (gatedStats.studentsInvolvedByCategory || []) : [],
-      cardType: 'students_involved'
+      cardType: 'students_involved',
+      hasData: gatedStats.IncidentRecordsExist
     }
   ];
 
-  // Only show a card for a module the employee actually has access to — unless they
-  // have no real module at all, in which case show every card as its N/A placeholder
-  // rather than leaving the page blank.
-  const visibleStatsCards = hasAnyDashboardModule
-    ? statsCards.filter((card) => isModuleEnabled(cardModule[card.cardType]))
-    : statsCards;
+  // Always show all module cards; access-gating is handled per-card via gatedStats
+  // (N/A placeholder) and isClickable (non-clickable) below.
+  const visibleStatsCards = statsCards;
 
   if (loading) {
     return (
@@ -466,7 +459,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {visibleStatsCards.map((card, index) => {
           const Icon = card.icon;
-          const isClickable = isModuleEnabled(cardModule[card.cardType]);
+          const isClickable = card.hasData;
           return (
             <Card
               key={index}
