@@ -1152,11 +1152,17 @@ const normalizeTypeKey = (name) =>
     }
     const { data: employeeRecords, error: employeeRecordsError } = await employeeRecordsQuery
 
-    const { data: formSubmissionRecords, error: formSubmissionRecordsError } = await supabase
-      .from('form_submissions')
-      .select('id')
-      .eq('client_id', client_id)
-      .limit(1)
+    let formSubmissionRecords: { id: string }[] | null = null;
+    let formSubmissionRecordsError: unknown = null;
+    if (!hideGrievancesFromEmployee) {
+      const result = await supabase
+        .from('form_submissions')
+        .select('id')
+        .eq('client_id', client_id)
+        .limit(1)
+      formSubmissionRecords = result.data
+      formSubmissionRecordsError = result.error
+    }
 
     // Boolean existence checks
     const IncidentRecordsExist = !incidentRecordsError && incidentRecords && incidentRecords.length > 0

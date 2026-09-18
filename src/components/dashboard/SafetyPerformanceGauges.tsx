@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
-import { useModuleEnabled, useHasAnyDashboardModule } from '@/hooks/useModuleAccess';
+import { useModuleEnabled } from '@/hooks/useModuleAccess';
 
 interface SafetyPerformanceGaugesProps {
   stats: {
@@ -28,7 +28,6 @@ interface SafetyPerformanceGaugesProps {
 
 const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProps) => {
   const isModuleEnabled = useModuleEnabled();
-  const hasAnyDashboardModule = useHasAnyDashboardModule();
   const hasIncidents = isModuleEnabled('incidents');
   const hasAssessments = isModuleEnabled('assessments');
   const hasTransportSafety = isModuleEnabled('transport safety');
@@ -170,7 +169,7 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
       return { color: '#10b981', status: 'Excellent', textColor: 'text-green-600', bgColor: 'bg-green-100', textBgColor: 'text-green-800' }; // green
     }
   };
-
+  
   const gauges = [
     {
       title: 'Overall Safety Score',
@@ -178,40 +177,35 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
       data: createGaugeData(overallSafetyScore, getScoreInfo(overallSafetyScore).color),
       description: allDataExists ? 'Comprehensive safety performance' : 'Setup Required',
       scoreInfo: getScoreInfo(overallSafetyScore),
-      // Composite of all 4 modules — only meaningful once the employee has access to each
-      visible: hasIncidents && hasAssessments && hasTransportSafety && hasEmployeeVerification,
     },
     {
       title: 'Employee Compliance',
       value: employeeComplianceScore,
       data: createGaugeData(employeeComplianceScore, getScoreInfo(employeeComplianceScore).color),
-      description: stats.EmployeeRecordsExist
+      description: stats.EmployeeRecordsExist && hasEmployeeVerification
         ? `${stats.employeesVerified}/${stats.totalEmployees} verified`
         : 'No employee data available',
       scoreInfo: getScoreInfo(employeeComplianceScore),
-      visible: hasEmployeeVerification,
     },
     {
       title: 'Vehicle Compliance',
       value: vehicleComplianceScore,
       data: createGaugeData(vehicleComplianceScore, getScoreInfo(vehicleComplianceScore).color),
-      description: stats.VehicleRecordsExist
+      description: stats.VehicleRecordsExist && hasTransportSafety
         ? `${stats.vehiclesVerified || 0}/${stats.totalVehicles} compliant`
         : 'No vehicle data available',
       scoreInfo: getScoreInfo(vehicleComplianceScore),
-      visible: hasTransportSafety,
     },
     {
       title: 'Incident Management',
       value: incidentsScore,
       data: createGaugeData(incidentsScore, getScoreInfo(incidentsScore).color),
-      description: stats.IncidentRecordsExist
+      description: stats.IncidentRecordsExist && hasIncidents
         ? `${stats.openIncidents} open incidents`
         : 'No incident data available',
       scoreInfo: getScoreInfo(incidentsScore),
-      visible: hasIncidents,
     }
-  ].filter((gauge) => hasAnyDashboardModule ? gauge.visible : true);
+  ];
 
   const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
     if (active && payload && payload.length) {
@@ -224,12 +218,6 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
     }
     return null;
   };
-
-  // No module the employee has access to feeds any gauge — hide the whole card
-  // rather than show an all-N/A performance summary.
-  if (gauges.length === 0) {
-    return null;
-  }
 
   if (loading) {
     return (
