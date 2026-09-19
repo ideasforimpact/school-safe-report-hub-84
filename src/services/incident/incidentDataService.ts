@@ -258,7 +258,7 @@ class IncidentDataService {
     // were the complete dataset — showing page 2's rows mislabeled as page 1).
     const filterKey = JSON.stringify(filters);
     const userKey = `${employeeData.id}_${employeeData.isSuperAdmin}_${hasIncidentAdmin}`;
-    const cacheKey = `${clientId}_${userKey}_${filterKey}_p${page}_s${pageSize}`;
+    const cacheKey = `${clientId}_${userKey}_${filterKey}_p${page}_s${pageSize}_all${returnAllData}`;
 
     console.log(`   - Cache key: ${cacheKey}`);
 
@@ -301,7 +301,8 @@ class IncidentDataService {
           location: filters.location || '',
           facility: filters.facility || '',
           dateFrom: filters.dateFrom || '',
-          dateTo: filters.dateTo || ''
+          dateTo: filters.dateTo || '',
+          returnAllData
         },
       });
 

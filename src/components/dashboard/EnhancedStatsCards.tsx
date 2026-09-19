@@ -417,7 +417,11 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     },
     {
       title: 'Number of Students Involved',
-      value: gatedStats.IncidentRecordsExist ? (gatedStats.studentsInvolved || 0) : 'N/A',
+      value: gatedStats.IncidentRecordsExist ? (
+        <span className="text-3xl font-bold">
+          {gatedStats.studentsInvolved || 0}
+        </span>
+      ) : 'N/A',
       description: gatedStats.IncidentRecordsExist ? 'Students involved in incidents' : 'No incident data available',
       icon: Users,
       color: gatedStats.IncidentRecordsExist ? 'text-orange-600' : 'text-gray-500',
