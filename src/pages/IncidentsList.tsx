@@ -207,7 +207,7 @@ const IncidentsList = () => {
         hasIncidentAdmin,
         { page, pageSize: pagination.pageSize },
         serverFilters,
-        true // We still use returnAllData = true logic but it's now server-side paginated
+        false
       ));
 
       // A newer fetch (e.g. a pagination click) was issued while this one was
