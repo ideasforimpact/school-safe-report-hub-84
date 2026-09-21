@@ -31,6 +31,7 @@ serve(async (req) => {
       clientTypeId,
       page = 1,
       pageSize = 10,
+      returnAllData = false,
       search = '',
       category = '',
       subcategory = '',
@@ -794,11 +795,13 @@ serve(async (req) => {
     if (dateFrom) baseQuery = baseQuery.gte('date', dateFrom);
     if (dateTo) baseQuery = baseQuery.lte('date', toInclusiveDateTo(dateTo));
 
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    const { data: incidents, error: incError, count } = await baseQuery
-      .order('created_at', { ascending: false })
-      .range(from, to);
+    baseQuery = baseQuery.order('created_at', { ascending: false });
+    if (!returnAllData) {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      baseQuery = baseQuery.range(from, to);
+    }
+    const { data: incidents, error: incError, count } = await baseQuery;
 
     if (incError) throw incError;
 
@@ -837,7 +840,7 @@ serve(async (req) => {
     ]);
 
     const totalCount = count ?? 0;
-    const totalPages = Math.ceil(totalCount / pageSize);
+    const totalPages = returnAllData ? 1 : Math.ceil(totalCount / pageSize);
 
     return new Response(
       JSON.stringify({
@@ -846,7 +849,7 @@ serve(async (req) => {
         totalCount,
         currentPage: page,
         totalPages,
-        hasMore: page < totalPages,
+        hasMore: returnAllData ? false : page < totalPages,
         config: {
           reportTypes: rtRes.data || [],
           categories: catRes.data || [],
