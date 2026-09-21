@@ -207,7 +207,7 @@ const IncidentsList = () => {
         hasIncidentAdmin,
         { page, pageSize: pagination.pageSize },
         serverFilters,
-        true // We still use returnAllData = true logic but it's now server-side paginated
+        false
       ));
 
       // A newer fetch (e.g. a pagination click) was issued while this one was
@@ -285,11 +285,6 @@ const IncidentsList = () => {
     }
   }, [pagination.currentPage, pagination.totalPages, loading, filters, fetchIncidents]);
 
-  const changePageSize = useCallback((newPageSize: number) => {
-    setPagination(prev => ({ ...prev, pageSize: newPageSize }));
-    fetchIncidents(filters, false, 1);
-  }, [filters, fetchIncidents]);
-
   // Initial fetch and navigation handling with improved logic
   useEffect(() => {
     const clientIdentity = employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email || '';
@@ -301,7 +296,8 @@ const IncidentsList = () => {
     if (filterParam === 'open') tableFilters.status = 'Open';
     if (filterParam === 'closed') tableFilters.status = 'Closed';
 
-    const initKey = `${clientIdentity}_${location.pathname}_${tableFilters.status || 'all'}`;
+   // Include admin access in the key so scope changes trigger a fresh fetch.
+    const initKey = `${clientIdentity}_${location.pathname}_${tableFilters.status || 'all'}_${hasIncidentAdmin}`;
     if (initFetchKeyRef.current === initKey) return;
     
     // Only proceed if we have a proper identity
@@ -469,7 +465,6 @@ const incidentAnalyticsStats = useMemo(() => {
             hasFetched={hasFetched}
             pagination={pagination}
             onPageChange={goToPage}
-            onPageSizeChange={changePageSize}
             onRefreshIncidents={refreshIncidents}
           />
         </div>

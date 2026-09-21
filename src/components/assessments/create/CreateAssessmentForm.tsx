@@ -64,6 +64,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   const navigate = useNavigate();
   const { user, employeeData } = useAuth();
   const { templates } = useAssessment();
+  const activeTemplates = templates.filter(template => template.isActive);
 
   // Employee management state
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -498,7 +499,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                 </SelectTrigger>
 
                 <SelectContent>
-                  {templates.map(template => (
+                  {activeTemplates.map(template => (
                     <SelectItem
                       key={template.id}
                       value={template.id}
@@ -509,7 +510,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                 </SelectContent>
               </Select>
 
-              {templates.length === 0 && (
+              {activeTemplates.length === 0 && (
                 <p className="text-sm text-gray-500">
                   No templates available. Please create a template first.
                 </p>
@@ -655,7 +656,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
               type="submit"
               disabled={
                 isSubmitting ||
-                templates.length === 0 ||
+                activeTemplates.length === 0 ||
                 employees.length === 0 ||
                 !!nameError ||
                 !formData.name.trim() ||

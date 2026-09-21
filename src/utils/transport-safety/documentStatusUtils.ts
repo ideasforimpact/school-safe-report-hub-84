@@ -32,6 +32,25 @@ export const getLatestVerificationLog = (vehicle: Vehicle) => {
 };
 
 /**
+ * Epoch ms of the most recent safety check on this vehicle, or 0 if it has
+ * never been checked. Used to rank a just-checked vehicle above others that
+ * share its status color but were checked earlier.
+ *
+ * Reads `verificationDate`, not the `verification_log` timestamps inside
+ * `verificationData` — vehicle-verify's "documents already up to date" skip
+ * path (a still-valid vehicle within 15 days of any expiry) deliberately
+ * reuses cached RC data and never appends a new verification_log entry, but
+ * it DOES always advance verificationDate, on both the full-check and skip
+ * branches. Keying off verification_log would make a rechecked-but-still-
+ * valid vehicle look like it was never rechecked at all.
+ */
+export const getLatestVerificationTimestamp = (vehicle: Vehicle): number => {
+  if (!vehicle.verificationDate) return 0;
+  const time = new Date(vehicle.verificationDate).getTime();
+  return Number.isNaN(time) ? 0 : time;
+};
+
+/**
  * Find a specific field in the verification log
  */
 export const findVerificationField = (
@@ -344,24 +363,27 @@ export const getVehicleRowClassName = (vehicle: Vehicle): string => {
 };
 
 /**
- * Sort priority for a vehicle's row: red (expired/missing docs, and vehicles
- * that have never had a safety check run) first, then yellow (expiring
- * soon), then green (valid). A brand-new, never-verified vehicle needs a
- * safety check just as urgently as one with expired documents, so it shares
- * the top tier - the "New" badge (see VehiclesListView) is what tells the
- * two apart, not sort position.
+ * Sort priority for a vehicle's row, red group first (0-1), then yellow
+ * (expiring soon), then green (valid):
+ *   0 - brand-new, never safety-checked (still shown red, "New" badge)
+ *   1 - checked and expired/missing documents
+ *   2 - expiring soon
+ *   3 - valid
+ * New vehicles rank above already-checked expired ones so adding a vehicle
+ * always surfaces it at the very top of the list, ahead of anything that
+ * merely needs re-checking.
  */
 export const getVehicleStatusSortPriority = (vehicle: Vehicle): number => {
   if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
     return 0;
   }
   if (hasExpiredDocuments(vehicle)) {
-    return 0;
-  }
-  if (hasExpiringDocuments(vehicle)) {
     return 1;
   }
-  return 2;
+  if (hasExpiringDocuments(vehicle)) {
+    return 2;
+  }
+  return 3;
 };
 
 /**

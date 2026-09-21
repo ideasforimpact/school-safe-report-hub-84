@@ -31,6 +31,8 @@ import Loader from '@/components/common/Loader';
 import DebouncedSearchInput from '@/components/common/DebouncedSearchInput';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
 import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { isEmployeeSuperAdmin, isModuleAdmin } from '@/store/employeeSelectors';
 
 const FormsPage = () => {
   const location = useLocation();
@@ -40,6 +42,11 @@ const FormsPage = () => {
   const { client, clients, loading: clientsLoading } = useClient();
   const { user, employeeData } = useAuth();
   const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+  const { state: employeeState } = useEmployeeStore();
+  // Backoffice manages forms across every client — not gated by a school employee's
+  // Grievances module admin flag, so treat it as always-admin for this check.
+  const isSuperAdminForSubmissions = isBackoffice || isEmployeeSuperAdmin(employeeState);
+  const hasGrievanceAdmin = isBackoffice || isModuleAdmin(employeeState, 'grievances');
   const [selectedClientId, setSelectedClientId] = useState<string>(''); // used only for backoffice
   const authClientId = (employeeData as Record<string, unknown>)?.clientId || (user as Record<string, unknown>)?.clientId;
   const effectiveClientId = isBackoffice ? selectedClientId : (authClientId ?? client?.id ?? '');
@@ -177,7 +184,16 @@ const FormsPage = () => {
   const { submissions, loading: submissionsLoading, refetch: refetchSubmissions, total: submissionsTotal, totalPages, stats: submissionsStats } = useFormSubmissions(
     selectedForm?.id || null,
     effectiveClientId || null,
-    { page: currentPage, pageSize: PAGE_SIZE, status: statusFilter, dateFrom, dateTo, search: searchTerm }
+    {
+      page: currentPage,
+      pageSize: PAGE_SIZE,
+      status: statusFilter,
+      dateFrom,
+      dateTo,
+      search: searchTerm,
+      isSuperAdmin: isSuperAdminForSubmissions,
+      hasGrievanceAdmin,
+    }
   );
 
   useEffect(() => {

@@ -23,6 +23,8 @@ interface UseFormSubmissionsOptions {
   dateFrom?: Date;
   dateTo?: Date;
   search?: string;
+  isSuperAdmin?: boolean;
+  hasGrievanceAdmin?: boolean;
 }
 
 export const useFormSubmissions = (
@@ -37,7 +39,7 @@ export const useFormSubmissions = (
   const [totalPages, setTotalPages] = useState(0);
   const [stats, setStats] = useState<{ pending: number; acknowledged: number; total: number }>({ pending: 0, acknowledged: 0, total: 0 });
 
-  const { page = 1, pageSize = 10, status, dateFrom, dateTo, search } = options || {};
+  const { page = 1, pageSize = 10, status, dateFrom, dateTo, search, isSuperAdmin, hasGrievanceAdmin } = options || {};
   const fetchKey = useRef<string>('');
 
   const fetchSubmissions = useCallback(async () => {
@@ -62,6 +64,8 @@ export const useFormSubmissions = (
         body.date_to = end.toISOString();
       }
       if (search && search.trim()) body.search = search.trim();
+      body.is_super_admin = isSuperAdmin;
+      body.has_grievance_admin = hasGrievanceAdmin;
 
       const { data, error } = await supabase.functions.invoke('fetch-form-submissions', { body });
 
@@ -78,17 +82,17 @@ export const useFormSubmissions = (
     } finally {
       setLoading(false);
     }
-  }, [formId, clientId, page, pageSize, status, dateFrom, dateTo, search]);
+  }, [formId, clientId, page, pageSize, status, dateFrom, dateTo, search, isSuperAdmin, hasGrievanceAdmin]);
 
   const dateFromISO = dateFrom?.toISOString();
   const dateToISO = dateTo?.toISOString();
 
   useEffect(() => {
-    const key = [formId, clientId, page, pageSize, status, dateFromISO, dateToISO, search].join('|');
+    const key = [formId, clientId, page, pageSize, status, dateFromISO, dateToISO, search, isSuperAdmin, hasGrievanceAdmin].join('|');
     if (key === fetchKey.current) return;
     fetchKey.current = key;
     fetchSubmissions();
-  }, [formId, clientId, page, pageSize, status, dateFromISO, dateToISO, search, fetchSubmissions]);
+  }, [formId, clientId, page, pageSize, status, dateFromISO, dateToISO, search, isSuperAdmin, hasGrievanceAdmin, fetchSubmissions]);
 
   return {
     submissions,

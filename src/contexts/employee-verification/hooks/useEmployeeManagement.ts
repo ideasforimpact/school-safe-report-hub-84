@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Employee, VerificationDocument } from '../types';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -6,12 +6,13 @@ import { getIsBackofficeUser } from '@/store/authSelectors';
 import { useSafeClient } from '@/hooks/useSafeClient';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureMinDuration } from '@/lib/utils';
+import { useEmployeeVerificationAccess } from '@/hooks/useModuleAccess';
 
 export interface EmployeeListFilters {
   search?: string;
-  departmentId?: string;
-  documentTypeId?: string;
-  documentStatus?: string;
+  departmentId?: string[];
+  documentTypeId?: string[];
+  documentStatus?: string[];
 }
 
 const PAGE_SIZE = 10;
@@ -83,13 +84,16 @@ export const useEmployeeManagement = () => {
 
   const { state } = useEmployeeStore();
   const { client } = useSafeClient();
-  
+
   // Get authentication state from Redux
   const isBackofficeUser = getIsBackofficeUser(state);
-
+  const { isSuperAdmin, hasEmployeeVerificationAdmin, currentEmployeeId } = useEmployeeVerificationAccess();
+  const accessRef = useRef({ employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasEmployeeVerificationAdmin });
   const lastFiltersRef = useRef<EmployeeListFilters>({});
   const lastPageRef = useRef(1);
   const statsLoadedRef = useRef(false);
+  // Skip the refetch on mount; the initial-load effect already performs the first fetch.
+  const isFirstAccessEffectRef = useRef(true);
   // Latest getClientId — updated every render so fetchEmployees (stable ref) always reads current value
   const getClientIdRef = useRef<() => string | null>(() => null);
   // Incremented on each call; lets us discard stale responses when a newer call wins
@@ -109,7 +113,8 @@ export const useEmployeeManagement = () => {
   // Redux/auth state changes (which would previously create a duplicate list call).
   const fetchEmployees = useCallback(async (
     filters?: EmployeeListFilters,
-    page?: number
+    page?: number,
+    forceStats?: boolean
   ): Promise<Employee[]> => {
     const clientId = getClientIdRef.current();
 
@@ -129,7 +134,7 @@ export const useEmployeeManagement = () => {
 
     setIsLoading(true);
     try {
-      const includeStats = !statsLoadedRef.current;
+      const includeStats = forceStats || !statsLoadedRef.current;
 
       // Wrapped with a minimum duration so the loading spinner is reliably
       // visible even when the response is very fast — otherwise pagination
@@ -138,15 +143,18 @@ export const useEmployeeManagement = () => {
       const { data, error } = await ensureMinDuration(supabase.functions.invoke('employee-management', {
         body: {
           operation: 'list',
+          moduleContext: 'employee_verification',
+          employeeId: accessRef.current.employeeId,
+          isAdmin: accessRef.current.isAdmin,
           clientId,
           page: effectivePage,
           pageSize: PAGE_SIZE,
           includeStats,
           filters: {
             search: effectiveFilters.search || '',
-            departmentId: effectiveFilters.departmentId || 'all',
-            documentTypeId: effectiveFilters.documentTypeId || 'all',
-            documentStatus: effectiveFilters.documentStatus || 'all',
+            departmentId: effectiveFilters.departmentId || [],
+            documentTypeId: effectiveFilters.documentTypeId || [],
+            documentStatus: effectiveFilters.documentStatus || [],
           },
         },
       }));
@@ -182,6 +190,24 @@ export const useEmployeeManagement = () => {
     }
    
   }, []); // intentionally empty — reads latest values via refs
+
+  useEffect(() => {
+    const nextAccess = { employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasEmployeeVerificationAdmin };
+    const accessChanged =
+      accessRef.current.employeeId !== nextAccess.employeeId ||
+      accessRef.current.isAdmin !== nextAccess.isAdmin;
+    accessRef.current = nextAccess;
+
+    if (accessChanged) {
+      // Admin scope changed, so refresh the cached stats on the next fetch.
+      statsLoadedRef.current = false;
+      // Refetch employees when module access changes to apply the updated scope.
+      if (!isFirstAccessEffectRef.current) {
+        fetchEmployees(lastFiltersRef.current, lastPageRef.current, true);
+      }
+    }
+    isFirstAccessEffectRef.current = false;
+  }, [currentEmployeeId, isSuperAdmin, hasEmployeeVerificationAdmin, fetchEmployees]);
 
   const updateEmployee = useCallback(async (id: string, updates: Partial<Employee>) => {
     setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, ...updates } : emp));

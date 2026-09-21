@@ -75,7 +75,7 @@ export const useRealtimeModuleSync = () => {
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level,
+            // Must match the module key derived during login so ModuleGuard continues to work.
             icon: moduleObj.icon || '',
             level: moduleObj.level,
             enabled: true,
@@ -84,7 +84,7 @@ export const useRealtimeModuleSync = () => {
             url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}`
           };
         }).filter(Boolean) || [];
-        
+
       } else {
         // First fetch all client modules to understand what's available
         const { data: clientModules, error: clientModulesError } = await supabase
@@ -141,7 +141,8 @@ export const useRealtimeModuleSync = () => {
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level,
+            // Same fix as the super-admin branch above — key must be name-derived.
+            key: moduleObj.name.toLowerCase().replace(/\s+/g, '_'),
             icon: moduleObj.icon || '',
             level: moduleObj.level,
             enabled: true,

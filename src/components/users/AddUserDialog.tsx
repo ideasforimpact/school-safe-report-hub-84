@@ -24,6 +24,7 @@ import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmpl
   EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_PERSONAL_INFO_CONSTANTS, BIOMETRIC_USER_ID_CONSTANTS, EXPERIENCE_CONSTANTS,
   isValidReligion, getReligionErrorMessage, isValidNationality, getNationalityErrorMessage } from '@/constant/employeeConstant';
 import { capitalizeWords } from '@/lib/formatUtils';
+import EmployeeDobField, { getEmployeeDobValidationError, getEmployeeDobMinDate, getEmployeeDobMaxDate } from '@/components/employee-verification/form/EmployeeDobField';
 
 type AddUserFormData = {
   firstName: string;
@@ -120,6 +121,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const joiningDateRef = useRef<HTMLInputElement>(null);
   const documentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [joiningDateError, setJoiningDateError] = useState('');
+  /// Detect partially entered DOB values that the browser reports as empty.
+  const [dobIncomplete, setDobIncomplete] = useState(false);
   const [showOtherDetails, setShowOtherDetails] = useState(false);
   const personalDetails = formData.personalDetails || {};
   const professionalOtherDetails = formData.professionalOtherDetails || {};
@@ -150,6 +153,15 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const debouncedEmployeeId = useDebounce(formData.employeeId || '', 500);
   const debouncedEmployeeEmail = useDebounce(formData.email || '', 500);
   
+  // Reset the partial-DOB-entry flag whenever the dialog (re)opens, so a
+  // leftover incomplete state from a previous Add User session can't bleed
+  // into the next one.
+  useEffect(() => {
+    if (isOpen) {
+      setDobIncomplete(false);
+    }
+  }, [isOpen]);
+
   // Reset selectedModules when dialog opens to ensure clean state
   useEffect(() => {
   if (isOpen) {
@@ -508,14 +520,15 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const hasProfessionalOtherDetailsErrors = Object.values(professionalOtherDetailsErrors).some(Boolean);
 
   // Name validation function (letters and spaces only, no special characters)
-  const isValidName = (name: string) => {
+  const isValidName = (name: string, minLength = 1, maxLength = 25) => {
     const trimmed = name.trim();
     if (!trimmed) return false;
-    const nameRegex = /^[a-zA-Z\s]{1,25}$/;
+    const nameRegex = new RegExp(`^[a-zA-Z\\s]{${minLength},${maxLength}}$`);
     return nameRegex.test(name);
   };
 
   const isValidLettersAndSpaces = (value: string) => /^[a-zA-Z\s]+$/.test(value);
+
 
   const getPersonalDetailsErrors = () => {
     const minLength = 3;
@@ -564,10 +577,9 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
           )
           ? 'Blood group must be in format A+, O-, AB+, B-'
           : '',
-      dob:
-        personalDetails.dob && personalDetails.dob > new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]
-          ? 'Employee must be at least 18 years old'
-          : '',
+      dob: dobIncomplete
+        ? 'Please enter a complete date of birth'
+        : getEmployeeDobValidationError(personalDetails.dob),
 
       residenceAddress:
         (personalDetails.residenceAddress || '').trim().length > 100
@@ -717,11 +729,11 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     
   return (
     formData.firstName &&
-    formData.firstName.length <= 25 &&
-    isValidName(formData.firstName) &&
+    formData.firstName.length <= EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH &&
+    isValidName(formData.firstName, EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH, EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH) &&
     formData.lastName &&
-    formData.lastName.length <= 25 &&
-    isValidName(formData.lastName) &&
+    formData.lastName.length <= EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH &&
+    isValidName(formData.lastName, EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH, EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH) &&
     hasValidEmail &&
     isEmailUnique &&
     (!formData.phone || isValidPhone(formData.phone)) &&
@@ -748,10 +760,10 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     return (
       !!formData.firstName &&
       formData.firstName.length <= EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH &&
-      isValidName(formData.firstName) &&
+      isValidName(formData.firstName, EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH, EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH) &&
       !!formData.lastName &&
       formData.lastName.length <= EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH &&
-      isValidName(formData.lastName) &&
+      isValidName(formData.lastName, EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH, EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH) &&
       hasValidEmail &&
       isEmailUnique &&
       (!formData.phone || isValidPhone(formData.phone))
@@ -1164,26 +1176,23 @@ const canProceedToNextStep = () => {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>DOB </Label>
-                    <Input
-                      type="date"
-                      value={personalDetails.dob || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          personalDetails: {
-                            ...personalDetails,
-                            dob: e.target.value
-                          }
-                        })
-                      }
-                      max={new Date().toISOString().split('T')[0]}
-                    />
-                    {personalDetailsErrors.dob && (
-                      <p className="text-xs text-red-500">{personalDetailsErrors.dob}</p>
-                    )}
-                  </div>
+                  <EmployeeDobField
+                    label="Date of Birth"
+                    value={personalDetails.dob || ''}
+                    min={getEmployeeDobMinDate()}
+                    max={getEmployeeDobMaxDate()}
+                    error={personalDetailsErrors.dob}
+                    onChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        personalDetails: {
+                          ...personalDetails,
+                          dob: value
+                        }
+                      })
+                    }
+                    onIncompleteChange={setDobIncomplete}
+                  />
 
                   <div className="space-y-2">
                     <Label>Religion</Label>

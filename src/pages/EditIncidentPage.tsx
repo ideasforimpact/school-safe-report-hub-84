@@ -88,13 +88,8 @@ const EditIncidentPage = () => {
     console.log('EditIncidentPage - Still loading incident data');
     return (
       <Layout>
-        <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
-          <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
-            <div className="max-w-7xl mx-auto">
-              <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
-              <Loader text="Loading incident details..." />
-            </div>
-          </div>
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading incident details..." />
         </div>
       </Layout>
     );

@@ -1,28 +1,29 @@
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import MultiSelectFilter from '@/components/common/MultiSelectFilter';
 
 interface DocumentStatusFilterProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: string[];          // selected statuses; empty = all
+  onChange: (value: string[]) => void;
 }
 
-const DocumentStatusFilter: React.FC<DocumentStatusFilterProps> = ({ 
-  value, 
-  onChange 
+const STATUS_OPTIONS = [
+  { value: 'no-documents', label: 'No Documents' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'failed', label: 'Failed' },
+];
+
+const DocumentStatusFilter: React.FC<DocumentStatusFilterProps> = ({
+  value,
+  onChange
 }) => {
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-[180px]">
-        <SelectValue placeholder="All Status" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Status</SelectItem>
-        <SelectItem value="no-documents">No Documents</SelectItem>
-        <SelectItem value="verified">Verified</SelectItem>
-        <SelectItem value="pending">Pending</SelectItem>
-        <SelectItem value="failed">Failed</SelectItem>
-      </SelectContent>
-    </Select>
+    <MultiSelectFilter
+      options={STATUS_OPTIONS}
+      selected={value}
+      onChange={onChange}
+      placeholder="All Status"
+    />
   );
 };
 

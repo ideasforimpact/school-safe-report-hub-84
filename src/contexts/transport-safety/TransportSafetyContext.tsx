@@ -12,6 +12,7 @@ import {
 } from '@/services/transport-safety/vehicleService';
 import { VehicleTypeOption } from '@/types/transportSafety';
 import { useAuth } from '@/contexts/auth';
+import { useTransportSafetyAccess } from '@/hooks/useModuleAccess';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { ensureMinDuration } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
@@ -77,6 +78,11 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
   const clientIdRef = useRef(clientId);
   useEffect(() => { clientIdRef.current = clientId; }, [clientId]);
 
+  const { isSuperAdmin, hasTransportSafetyAdmin, currentEmployeeId } = useTransportSafetyAccess();
+  const accessRef = useRef({ employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasTransportSafetyAdmin });
+  // Skip the forced refetch on mount; the module-entry effect already performs the first fetch.
+  const isFirstAccessEffectRef = useRef(true);
+
   const getWriteGuardMessage = (err: unknown, fallback: string) => {
     const message = err instanceof Error ? err.message : '';
     if (message.includes('Switched client permission denied: delete')) {
@@ -129,6 +135,8 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
         search,
         status,
         typeId,
+        employeeId: accessRef.current.employeeId,
+        isAdmin: accessRef.current.isAdmin,
       }));
 
       // Drop result only if a newer request has superseded this one. Checking
@@ -157,6 +165,20 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       }
     }
   }, []); // no deps — reads everything from refs
+
+  useEffect(() => {
+    const nextAccess = { employeeId: currentEmployeeId, isAdmin: isSuperAdmin || hasTransportSafetyAdmin };
+    const accessChanged =
+      accessRef.current.employeeId !== nextAccess.employeeId ||
+      accessRef.current.isAdmin !== nextAccess.isAdmin;
+    accessRef.current = nextAccess;
+
+    // Refetch vehicles when module access changes so the list reflects the updated scope.
+    if (accessChanged && !isFirstAccessEffectRef.current && isTransportListRoute) {
+      fetchVehicles({ page: 1 });
+    }
+    isFirstAccessEffectRef.current = false;
+  }, [currentEmployeeId, isSuperAdmin, hasTransportSafetyAdmin, isTransportListRoute, fetchVehicles]);
 
   // Fetch on mount, clientId change, or when user navigates INTO the transport safety module
   useEffect(() => {
@@ -370,7 +392,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
 
   const applySingleVehicleUpdate = useCallback(async (vehicleId: string) => {
     try {
-      const refreshed = await getVehicleById(vehicleId, clientIdRef.current);
+      const refreshed = await getVehicleById(vehicleId, clientIdRef.current, accessRef.current);
       if (!refreshed) { await fetchVehicles(); return; }
       if (refreshed.clientId !== clientIdRef.current) return;
 

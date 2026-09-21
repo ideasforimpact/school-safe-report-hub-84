@@ -211,7 +211,9 @@ const IncidentDetail = () => {
   if (isLoading || isFetchingIncident) {
     return (
       <Layout>
-        <Loader text="Loading incident details..." />
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <Loader text="Loading incident details..." />
+        </div>
       </Layout>
     );
   }

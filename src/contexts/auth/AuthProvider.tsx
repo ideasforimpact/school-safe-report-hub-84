@@ -279,7 +279,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [pendingClientChoices, setPendingClientChoicesState] = useState<PendingClientChoices | null>(null);
 
   // Import useAuthHandlers
-  const { handleUserAuthentication, completeAuthForEmployee } = useAuthHandlers({
+  const { handleUserAuthentication, completeAuthForEmployee, fetchConfiguredModules } = useAuthHandlers({
     user: currentUser,
     users,
     setUser: (user: User | null) => dispatch(setCurrentUser(user)),
@@ -906,9 +906,17 @@ const handleLogoutBroadcast = useCallback(() => {
                 clientManagementReadOnly: false,
                 switchedAccessLevel: 'W/R',
               }));
+
+              // Refresh module access on every login to ensure recent permission changes are applied.
+              const modules = await fetchConfiguredModules(
+                employee.id,
+                employee.clientId,
+                !!employee.isSuperAdmin
+              );
+              dispatch(setConfiguredModules(modules));
             }
           }
-          
+
           dispatch(setLoading(false));
         } catch (err) {
           console.error("Error fetching employee data for regular user:", err);

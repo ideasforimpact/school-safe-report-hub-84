@@ -36,6 +36,7 @@ interface IncidentDetailsFormProps {
   onDateTimeChange: (date: Date | undefined, timeString?: string) => void;
   supportingFiles: FileItem[];
   onFilesChange: (files: FileItem[]) => void;
+  onAttachmentValidationChange?: (hasError: boolean) => void;
   configData?: IncidentFormData;
   configLoading?: boolean;
 }
@@ -48,6 +49,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   onDateTimeChange,
   supportingFiles,
   onFilesChange,
+  onAttachmentValidationChange,
   configData: propConfigData,
   configLoading: propConfigLoading,
 }) => {
@@ -346,6 +348,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           <Label className="text-sm font-medium text-gray-700">Supporting Files</Label>
           <ReusableFileUploader
             onFilesChange={onFilesChange}
+            onValidationChange={onAttachmentValidationChange}
             initialFiles={supportingFiles}
             maxFiles={5}
             maxSize={10}

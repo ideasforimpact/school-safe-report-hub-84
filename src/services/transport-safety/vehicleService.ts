@@ -153,6 +153,10 @@ export interface FetchVehiclesParams {
   search?: string;
   status?: string;
   typeId?: string;
+  // Non-admin employees are scoped to vehicles.employee_id === employeeId; admins
+  // (module-level Transport Safety admin, or org super admin) see the full fleet.
+  employeeId?: string;
+  isAdmin?: boolean;
 }
 
 export interface FetchVehiclesResult {
@@ -165,7 +169,7 @@ export interface FetchVehiclesResult {
 }
 
 export const fetchVehiclesPaginated = async (params: FetchVehiclesParams): Promise<FetchVehiclesResult> => {
-  const { clientId, page = 1, pageSize = 10, search = '', status = '', typeId = '' } = params;
+  const { clientId, page = 1, pageSize = 10, search = '', status = '', typeId = '', employeeId, isAdmin } = params;
 
   const data = await invokeVehicles<{
     vehicles: VehicleRow[];
@@ -174,7 +178,7 @@ export const fetchVehiclesPaginated = async (params: FetchVehiclesParams): Promi
     page: number;
     page_size: number;
     total_pages: number;
-  }>('list', { clientId, page, pageSize, search, status, typeId });
+  }>('list', { clientId, page, pageSize, search, status, typeId, employeeId, isAdmin });
 
   return {
     vehicles: (data.vehicles || []).map(mapVehicle),
@@ -194,11 +198,17 @@ export interface FetchAllVehiclesFilters {
   typeId?: string;
 }
 
+export interface VehicleAccessScope {
+  employeeId?: string;
+  isAdmin?: boolean;
+}
+
 export const getAllVehicles = async (
   clientId?: string,
   filters?: FetchAllVehiclesFilters,
+  scope?: VehicleAccessScope,
 ): Promise<Vehicle[]> => {
-  const cacheKey = `${clientId || ''}:${filters?.search ?? ''}:${filters?.status ?? ''}:${filters?.typeId ?? ''}`;
+  const cacheKey = `${clientId || ''}:${filters?.search ?? ''}:${filters?.status ?? ''}:${filters?.typeId ?? ''}:${scope?.employeeId ?? ''}:${scope?.isAdmin ?? ''}`;
   const recent = allVehiclesRecent.get(cacheKey);
   if (recent && Date.now() - recent.at < DETAIL_READ_DEDUPE_MS) return recent.value;
 
@@ -211,6 +221,8 @@ export const getAllVehicles = async (
       search: filters?.search ?? '',
       status: filters?.status ?? '',
       typeId: filters?.typeId ?? '',
+      employeeId: scope?.employeeId,
+      isAdmin: scope?.isAdmin,
     });
     const vehicles = (data.vehicles || []).map(mapVehicle);
     allVehiclesRecent.set(cacheKey, { at: Date.now(), value: vehicles });
@@ -225,8 +237,8 @@ export const getAllVehicles = async (
 
 // ─── Get vehicle by ID ────────────────────────────────────────────────────────
 
-export const getVehicleById = async (id: string, clientId?: string): Promise<Vehicle | null> => {
-  const cacheKey = `${clientId || ''}:${id}`;
+export const getVehicleById = async (id: string, clientId?: string, scope?: VehicleAccessScope): Promise<Vehicle | null> => {
+  const cacheKey = `${clientId || ''}:${id}:${scope?.employeeId ?? ''}:${scope?.isAdmin ?? ''}`;
   const recent = vehicleByIdRecent.get(cacheKey);
   if (recent && Date.now() - recent.at < DETAIL_READ_DEDUPE_MS) return recent.value;
 
@@ -235,7 +247,12 @@ export const getVehicleById = async (id: string, clientId?: string): Promise<Veh
 
   const request = (async () => {
     try {
-      const data = await invokeVehicles<{ vehicle: VehicleRow | null }>('get_by_id', { id, clientId });
+      const data = await invokeVehicles<{ vehicle: VehicleRow | null }>('get_by_id', {
+        id,
+        clientId,
+        employeeId: scope?.employeeId,
+        isAdmin: scope?.isAdmin,
+      });
       const vehicle = data.vehicle ? mapVehicle(data.vehicle) : null;
       vehicleByIdRecent.set(cacheKey, { at: Date.now(), value: vehicle });
       return vehicle;
@@ -734,32 +751,8 @@ export const getPendingChallans = (verificationData: VehicleVerificationData[] |
   );
 };
 
-export const getVehiclesWithPendingChallans = async (clientId: string): Promise<Vehicle[]> => {
-  const recent = vehiclesWithChallansRecent.get(clientId);
-  if (recent && Date.now() - recent.at < DETAIL_READ_DEDUPE_MS) return recent.value;
-
-  const inflight = vehiclesWithChallansInflight.get(clientId);
-  if (inflight) return inflight;
-
-  const request = (async () => {
-    const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_with_challans', { clientId });
-    const vehicles = (data.vehicles || []).map(mapVehicle).filter(vehicle => {
-      const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
-      return pending.length > 0;
-    });
-    vehiclesWithChallansRecent.set(clientId, { at: Date.now(), value: vehicles });
-    return vehicles;
-  })().finally(() => {
-    vehiclesWithChallansInflight.delete(clientId);
-  });
-
-  vehiclesWithChallansInflight.set(clientId, request);
-  return request;
-};
-
-// Vehicles with any challans on record — pending or already paid/disposed.
-export const getVehiclesWithChallans = async (clientId: string): Promise<Vehicle[]> => {
-  const cacheKey = `all:${clientId}`;
+export const getVehiclesWithPendingChallans = async (clientId: string, scope?: VehicleAccessScope): Promise<Vehicle[]> => {
+  const cacheKey = `${clientId}:${scope?.employeeId ?? ''}:${scope?.isAdmin ?? ''}`;
   const recent = vehiclesWithChallansRecent.get(cacheKey);
   if (recent && Date.now() - recent.at < DETAIL_READ_DEDUPE_MS) return recent.value;
 
@@ -767,7 +760,40 @@ export const getVehiclesWithChallans = async (clientId: string): Promise<Vehicle
   if (inflight) return inflight;
 
   const request = (async () => {
-    const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_with_challans', { clientId });
+    const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_with_challans', {
+      clientId,
+      employeeId: scope?.employeeId,
+      isAdmin: scope?.isAdmin,
+    });
+    const vehicles = (data.vehicles || []).map(mapVehicle).filter(vehicle => {
+      const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+      return pending.length > 0;
+    });
+    vehiclesWithChallansRecent.set(cacheKey, { at: Date.now(), value: vehicles });
+    return vehicles;
+  })().finally(() => {
+    vehiclesWithChallansInflight.delete(cacheKey);
+  });
+
+  vehiclesWithChallansInflight.set(cacheKey, request);
+  return request;
+};
+
+// Vehicles with any challans on record — pending or already paid/disposed.
+export const getVehiclesWithChallans = async (clientId: string, scope?: VehicleAccessScope): Promise<Vehicle[]> => {
+  const cacheKey = `all:${clientId}:${scope?.employeeId ?? ''}:${scope?.isAdmin ?? ''}`;
+  const recent = vehiclesWithChallansRecent.get(cacheKey);
+  if (recent && Date.now() - recent.at < DETAIL_READ_DEDUPE_MS) return recent.value;
+
+  const inflight = vehiclesWithChallansInflight.get(cacheKey);
+  if (inflight) return inflight;
+
+  const request = (async () => {
+    const data = await invokeVehicles<{ vehicles: VehicleRow[] }>('list_with_challans', {
+      clientId,
+      employeeId: scope?.employeeId,
+      isAdmin: scope?.isAdmin,
+    });
     const vehicles = (data.vehicles || []).map(mapVehicle).filter(vehicle => {
       const all = getAllChallansFromVehicleChallans(vehicle.vehicleChallans || null);
       return all.length > 0;

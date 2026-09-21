@@ -14,6 +14,114 @@ const supabaseServiceKey = getSupabaseServiceRoleKey();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// ─── Status-priority sort (mirrors src/utils/transport-safety/documentStatusUtils.ts
+// getVehicleStatusSortPriority / hasExpiredDocuments / hasExpiringDocuments /
+// getLatestVerificationTimestamp — kept in sync so pagination reflects the same
+// "most urgent first" ordering the client would compute. This has to happen
+// server-side, BEFORE the page is sliced: sorting only the rows a page already
+// contains can reorder them within that page, but it can never move a row onto
+// or off of page 1 when its status changes — only sorting the whole filtered
+// set first and then slicing can do that.) ────────────────────────────────────
+function getLatestVerificationLogRow(row: any): any[] | null {
+  const data = row.verification_data;
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const logEntry = data.find((item: any) => item?.field === 'verification_log');
+  if (!logEntry || !logEntry.value || typeof logEntry.value !== 'object') return null;
+  const timestamps = Object.keys(logEntry.value);
+  if (timestamps.length === 0) return null;
+  timestamps.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  return logEntry.value[timestamps[0]] || null;
+}
+
+// Uses `verification_date`, not the `verification_log` timestamps inside
+// `verification_data` — vehicle-verify's "documents already up to date" skip
+// path (still-valid vehicles within 15 days of any expiry) deliberately
+// reuses cached RC data and never appends a new verification_log entry, but
+// it DOES always advance verification_date (see vehicle-verify/index.ts, both
+// the full-check and skip branches). Keying off verification_log would make a
+// rechecked-but-still-valid vehicle look like it was never rechecked at all.
+function getLatestVerificationTimestampRow(row: any): number {
+  if (!row.verification_date) return 0;
+  const time = new Date(row.verification_date).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function findVerificationFieldRow(log: any[] | null, fieldName: string): any {
+  if (!log) return undefined;
+  return log.find((item: any) => item?.field === fieldName);
+}
+
+function getDocumentStatusFromDateRow(expiryDateStr: unknown): 'valid' | 'expired' | 'expiring_soon' | 'missing' {
+  if (!expiryDateStr) return 'missing';
+  const expiryDate = new Date(String(expiryDateStr));
+  if (isNaN(expiryDate.getTime())) return 'missing';
+  const currentDate = new Date();
+  if (expiryDate < currentDate) return 'expired';
+  const thirtyDaysFromNow = new Date();
+  thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
+  if (expiryDate < thirtyDaysFromNow) return 'expiring_soon';
+  return 'valid';
+}
+
+function isElectricVehicleRow(row: any): boolean {
+  const field = findVerificationFieldRow(getLatestVerificationLogRow(row), 'fuel_type');
+  const fuelType = field?.value;
+  if (typeof fuelType !== 'string') return false;
+  const normalized = fuelType.toUpperCase();
+  if (normalized.includes('HYBRID')) return false;
+  return normalized.includes('ELECTRIC') || normalized.includes('BOV') || /\bEV\b/.test(normalized);
+}
+
+function getDocumentStatusRow(row: any, docType: 'fitness' | 'insurance' | 'pollution'): 'valid' | 'expired' | 'expiring_soon' | 'missing' | 'not_applicable' {
+  const data = row.verification_data;
+  if (!Array.isArray(data) || data.length === 0) return 'missing';
+  if (docType === 'pollution' && isElectricVehicleRow(row)) return 'not_applicable';
+  const fieldName = docType === 'fitness' ? 'fit_up_to' : docType === 'insurance' ? 'insurance_upto' : 'pucc_upto';
+  const field = findVerificationFieldRow(getLatestVerificationLogRow(row), fieldName);
+  if (!field || !field.value) return 'missing';
+  return getDocumentStatusFromDateRow(field.value);
+}
+
+function hasExpiredDocumentsRow(row: any): boolean {
+  const data = row.verification_data;
+  if (!Array.isArray(data) || data.length === 0) return false;
+  return (['fitness', 'insurance', 'pollution'] as const).some((docType) => {
+    const status = getDocumentStatusRow(row, docType);
+    return status === 'expired' || status === 'missing';
+  });
+}
+
+function hasExpiringDocumentsRow(row: any): boolean {
+  const data = row.verification_data;
+  if (!Array.isArray(data) || data.length === 0) return false;
+  return (['fitness', 'insurance', 'pollution'] as const).some(
+    (docType) => getDocumentStatusRow(row, docType) === 'expiring_soon',
+  );
+}
+
+// 0 - brand-new, never safety-checked; 1 - checked and expired/missing;
+// 2 - expiring soon; 3 - valid. New vehicles rank above already-checked
+// expired ones so adding a vehicle always surfaces it at the very top.
+function getVehicleStatusSortPriorityRow(row: any): number {
+  const data = row.verification_data;
+  if (!Array.isArray(data) || data.length === 0) return 0;
+  if (hasExpiredDocumentsRow(row)) return 1;
+  if (hasExpiringDocumentsRow(row)) return 2;
+  return 3;
+}
+
+function sortVehiclesByStatusPriority(rows: any[]): any[] {
+  return [...rows].sort((a, b) => {
+    const priorityDiff = getVehicleStatusSortPriorityRow(a) - getVehicleStatusSortPriorityRow(b);
+    if (priorityDiff !== 0) return priorityDiff;
+    const aIsNew = !Array.isArray(a.verification_data) || a.verification_data.length === 0;
+    if (aIsNew) {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+    return getLatestVerificationTimestampRow(b) - getLatestVerificationTimestampRow(a);
+  });
+}
+
 // ─── Pending-challan detection (mirrors src/services/transport-safety/vehicleService.ts
 // getPendingChallansFromVehicleChallans — kept in sync so the badge/count/filter logic
 // agrees between the edge function and the client) ──────────────────────────────
@@ -116,37 +224,43 @@ async function queryVehiclesWithSearch(
   typeId: string,
   page: number,
   pageSize: number,
+  employeeId?: string | null,
+  isAdmin?: boolean,
 ) {
   const offset = (page - 1) * pageSize;
 
-  // Fetch vehicle types and vehicles in parallel
+  // Fetch vehicle types and ALL matching vehicles (unpaginated) in parallel —
+  // pagination is applied below, AFTER sorting by status priority, so a row
+  // can actually move onto/off of a page when its status changes.
   const [{ map: vehicleTypeMap, list: vehicleTypeList }, queryResult] = await Promise.all([
     fetchAllVehicleTypes(supabase),
     (async () => {
       let query = supabase
         .from('vehicles')
-        .select('*, vehicle_challans(*)', { count: 'exact' })
+        .select('*, vehicle_challans(*)')
         .or(`registration_number.ilike.%${search}%,make.ilike.%${search}%,model.ilike.%${search}%,internal_vehicle_name.ilike.%${search}%`);
 
       if (clientId) query = query.eq('client_id', clientId);
       if (status && status !== 'all') query = query.eq('status', status);
       if (typeId && typeId !== 'all') query = query.eq('type', typeId);
+      if (!isAdmin && employeeId) query = query.eq('employee_id', employeeId);
 
-      query = query.order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
       return query;
     })(),
   ]);
 
-  const { data, error, count } = queryResult;
+  const { data, error } = queryResult;
   if (error) throw error;
 
-  const enriched = (data || []).map((v: any) => {
+  const sorted = sortVehiclesByStatusPriority(data || []);
+  const totalCount = sorted.length;
+  const pageRows = sorted.slice(offset, offset + pageSize);
+
+  const enriched = pageRows.map((v: any) => {
     const vt = vehicleTypeMap.get(v.type);
     const challans = Array.isArray(v.vehicle_challans) ? v.vehicle_challans : [];
     return { ...v, vehicle_type_name: vt?.name ?? null, vehicle_type_icon: vt?.icon ?? null, vehicle_challans: challans.length > 0 ? challans[0] : null };
   });
-
-  const totalCount = count ?? 0;
 
   return {
     vehicles: enriched,
@@ -191,6 +305,8 @@ serve(async (req) => {
           search = '',
           status = '',
           typeId = '',
+          employeeId,
+          isAdmin,
         } = body;
 
         if (clientId) {
@@ -204,7 +320,7 @@ serve(async (req) => {
         }
 
         if (search && search.trim()) {
-          const result = await queryVehiclesWithSearch(supabase, clientId, search.trim(), status, typeId, page, pageSize);
+          const result = await queryVehiclesWithSearch(supabase, clientId, search.trim(), status, typeId, page, pageSize, employeeId, isAdmin);
           return new Response(JSON.stringify(result), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
@@ -212,32 +328,40 @@ serve(async (req) => {
 
         const offset = (page - 1) * pageSize;
 
-        // Fetch vehicle types and paginated vehicles in parallel — ONE round trip
+        // Fetch vehicle types and ALL matching vehicles (unpaginated) in
+        // parallel — ONE round trip. Pagination is applied below, AFTER
+        // sorting by status priority (see sortVehiclesByStatusPriority above),
+        // so a vehicle that's added or safety-checked actually moves onto/off
+        // of page 1 instead of just reordering within whatever page a
+        // recency-only DB query happened to return.
         const [{ map: vehicleTypeMap, list: vehicleTypeList }, queryResult] = await Promise.all([
           fetchAllVehicleTypes(supabase),
           (async () => {
             let q = supabase
               .from('vehicles')
-              .select('*, vehicle_challans(*)', { count: 'exact' });
+              .select('*, vehicle_challans(*)');
 
             if (clientId) q = q.eq('client_id', clientId);
             if (status && status !== 'all') q = q.eq('status', status);
             if (typeId && typeId !== 'all') q = q.eq('type', typeId);
+            if (!isAdmin && employeeId) q = q.eq('employee_id', employeeId);
 
-            return q.order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
+            return q;
           })(),
         ]);
 
-        const { data, error, count } = queryResult;
+        const { data, error } = queryResult;
         if (error) throw error;
 
-        const enriched = (data || []).map((v: any) => {
+        const sorted = sortVehiclesByStatusPriority(data || []);
+        const totalCount = sorted.length;
+        const pageRows = sorted.slice(offset, offset + pageSize);
+
+        const enriched = pageRows.map((v: any) => {
           const vt = vehicleTypeMap.get(v.type);
           const challans = Array.isArray(v.vehicle_challans) ? v.vehicle_challans : [];
           return { ...v, vehicle_type_name: vt?.name ?? null, vehicle_type_icon: vt?.icon ?? null, vehicle_challans: challans.length > 0 ? challans[0] : null };
         });
-
-        const totalCount = count ?? 0;
 
         return new Response(
           JSON.stringify({
@@ -254,7 +378,7 @@ serve(async (req) => {
 
       // ── list_all (no pagination — for challans page, export, document-status filters, etc.) ─
       if (operation === 'list_all') {
-        const { clientId, search = '', status = '', typeId = '' } = body;
+        const { clientId, search = '', status = '', typeId = '', employeeId, isAdmin } = body;
 
         if (clientId) {
           const ipValidation = await validateIPWhitelist(supabase, req, clientId, url.pathname);
@@ -274,12 +398,15 @@ serve(async (req) => {
         }
         if (status && status !== 'all') query = query.eq('status', status);
         if (typeId && typeId !== 'all') query = query.eq('type', typeId);
+        if (!isAdmin && employeeId) query = query.eq('employee_id', employeeId);
         query = query.order('created_at', { ascending: false });
 
         const { data, error } = await query;
         if (error) throw error;
 
-        const enriched = await enrichWithVehicleTypes(supabase, data || []);
+        // Keep ordering consistent with the paginated `list`/search queries above.
+        const sorted = sortVehiclesByStatusPriority(data || []);
+        const enriched = await enrichWithVehicleTypes(supabase, sorted);
         return new Response(JSON.stringify({ vehicles: enriched }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -292,7 +419,7 @@ serve(async (req) => {
       // vehicle whose latest challans are all disposed/paid, so the response
       // already matches what the page displays — no fetch-all-then-filter. ──
       if (operation === 'list_with_challans') {
-        const { clientId } = body;
+        const { clientId, employeeId, isAdmin } = body;
 
         if (clientId) {
           const ipValidation = await validateIPWhitelist(supabase, req, clientId, url.pathname);
@@ -308,6 +435,7 @@ serve(async (req) => {
           .from('vehicles')
           .select('*, vehicle_challans!inner(*)');
         if (clientId) query = query.eq('client_id', clientId);
+        if (!isAdmin && employeeId) query = query.eq('employee_id', employeeId);
         query = query.order('created_at', { ascending: false });
 
         const { data, error } = await query;
@@ -325,7 +453,7 @@ serve(async (req) => {
 
       // ── get_by_id ──────────────────────────────────────────────────────────
       if (operation === 'get_by_id') {
-        const { id, clientId } = body;
+        const { id, clientId, employeeId, isAdmin } = body;
 
         let query = supabase
           .from('vehicles')
@@ -333,6 +461,7 @@ serve(async (req) => {
           .eq('id', id);
 
         if (clientId) query = query.eq('client_id', clientId);
+        if (!isAdmin && employeeId) query = query.eq('employee_id', employeeId);
 
         const { data, error } = await query.single();
         if (error) throw error;

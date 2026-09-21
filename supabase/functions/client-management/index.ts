@@ -313,15 +313,6 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
   }
 }
 
-// Feature 2 (multi super admin) — reconciles the client's secondary super
-// admin employees against the email list sent from the edit form.
-// - Emails no longer in the list get demoted (is_super_admin and
-//   is_secondary_super_admin both set to false) rather than deleted, since
-//   the underlying employees table row may be a real staff member.
-// - Emails newly added to the list are created fresh. An email that already
-//   belongs to an employee of this client is REJECTED, not promoted — a
-//   secondary super admin must be a new person for the client.
-// - Emails already present as a secondary are left untouched.
 async function syncSecondarySuperAdminEmployees(clientId: string, secondaryEmails: string[]) {
   const desiredEmails = Array.from(
     new Set((secondaryEmails || []).map((e) => (e || '').trim().toLowerCase()).filter((e) => e.length > 0))
@@ -343,17 +334,39 @@ async function syncSecondarySuperAdminEmployees(clientId: string, secondaryEmail
   );
   const currentSecondaries = clientEmployees.filter((row) => row.is_secondary_super_admin === true);
 
-  // Demote secondaries that were removed from the incoming list.
-  const toDemote = currentSecondaries.filter((row) => !desiredEmails.includes((row.email || '').toLowerCase()));
-  if (toDemote.length > 0) {
-    const { error: demoteError } = await supabase
-      .from('employees')
-      .update({ is_super_admin: false, is_secondary_super_admin: false })
-      .in('id', toDemote.map((row) => row.id));
+  const toRemove = currentSecondaries.filter((row) => !desiredEmails.includes((row.email || '').toLowerCase()));
+  if (toRemove.length > 0) {
+    const removeIds = toRemove.map((row) => row.id);
 
-    if (demoteError) {
-      console.error('Error demoting removed secondary super admins:', demoteError);
-      throw new Error(`Failed to remove secondary super admin(s): ${demoteError.message}`);
+    const { error: moduleError } = await supabase
+      .from('employee_modules')
+      .delete()
+      .in('employee_id', removeIds);
+
+    if (moduleError) {
+      console.error('Error deleting module permissions for removed secondary super admins:', moduleError);
+    }
+
+    const { error: deleteError } = await supabase
+      .from('employees')
+      .delete()
+      .in('id', removeIds);
+
+    if (deleteError) {
+      if (deleteError.code === '23503') {
+        const { error: deactivateError } = await supabase
+          .from('employees')
+          .update({ is_super_admin: false, is_secondary_super_admin: false, status: false })
+          .in('id', removeIds);
+
+        if (deactivateError) {
+          console.error('Error deactivating removed secondary super admins after delete failed:', deactivateError);
+          throw new Error(`Failed to remove secondary super admin(s): ${deactivateError.message}`);
+        }
+      } else {
+        console.error('Error deleting removed secondary super admins:', deleteError);
+        throw new Error(`Failed to remove secondary super admin(s): ${deleteError.message}`);
+      }
     }
   }
 

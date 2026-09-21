@@ -74,7 +74,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
       doc => (doc.documentTypeName || '').toLowerCase().replace(/[\s_]+/g, '') === 'drivinglicense' &&
         (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed')
     );
-    if (isDriver && !hasVerifiedLicense && failed === 0 && pending === 0) {
+    if (employeeDocuments.length > 0 && isDriver && !hasVerifiedLicense && failed === 0 && pending === 0) {
       pending = 1;
     }
     return {

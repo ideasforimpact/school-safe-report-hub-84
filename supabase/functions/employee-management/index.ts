@@ -747,12 +747,20 @@ async function handleGetModuleAccess(supabaseClient: any, requestData: any) {
 }
 
 async function handleGetEmployee(supabaseClient: any, requestData: any) {
-  const { employeeId, clientId } = requestData;
+  const { employeeId, clientId, requesterId, isAdmin } = requestData;
 
   if (!employeeId || !clientId) {
     return new Response(
       JSON.stringify({ error: 'employeeId and clientId are required' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Non-admin employees can only access their own profile in Employee Verification.
+  if (isAdmin !== true && requesterId && requesterId !== employeeId) {
+    return new Response(
+      JSON.stringify({ error: 'Not authorized to view this employee' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
@@ -819,7 +827,8 @@ async function handleGetPermissions(supabaseClient: any, requestData: any) {
     return {
       id: moduleObj.id,
       name: moduleObj.name,
-      key: moduleObj.level,
+      // Must match the module key derived during login to keep ModuleGuard working.
+      key: moduleObj.name.toLowerCase().replace(/\s+/g, '_'),
       icon: moduleObj.icon || '',
       level: moduleObj.level,
       enabled: true,
@@ -912,6 +921,13 @@ async function handleList(supabaseClient: any, requestData: any) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // Non-admins can only view their own profile in Employee Verification.
+  // Apply this restriction only when called from Employee Verification.
+  const moduleContext = requestData.moduleContext;
+  const employeeId = requestData.employeeId;
+  const isAdmin = requestData.isAdmin === true;
+  const scopeToSelf = moduleContext === 'employee_verification' && !isAdmin && !!employeeId;
+
   const toLabel = (value: string) =>
     value.split('_').filter(Boolean).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
 
@@ -924,52 +940,85 @@ async function handleList(supabaseClient: any, requestData: any) {
     return 'pending';
   };
 
+  // Drivers must have a verified Driving License before they can count as
+  // "verified" — mirrors the badge rule in EmployeesList.tsx so that server-side
+  // filtering/stats always agree with what the row itself displays.
+  const normalizeTypeKey = (name: string | null | undefined) =>
+    (name || '').toLowerCase().replace(/[\s_]+/g, '');
+
+  // Accepts either an array of selected values or the legacy single scalar
+  // ('all' or one id/status) so client and edge function can roll out independently.
+  const toFilterList = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.filter(Boolean) as string[];
+    if (value && value !== 'all') return [value as string];
+    return [];
+  };
+
+  const departmentIds = toFilterList(filters.departmentId);
+  const documentTypeIds = toFilterList(filters.documentTypeId);
+  const documentStatuses = toFilterList(filters.documentStatus);
+
   // === Pre-filters for document type and document status ===
   let docTypeEmpIds: string[] | null = null;
   let docStatusEmpIds: string[] | null = null;
 
-  if (filters.documentTypeId && filters.documentTypeId !== 'all') {
+  if (documentTypeIds.length > 0) {
     const { data: dtRows } = await supabaseClient
       .from('employee_documents')
       .select('employee_id')
-      .eq('document_type_id', filters.documentTypeId)
+      .in('document_type_id', documentTypeIds)
       .eq('is_delete', 0);
     docTypeEmpIds = [...new Set((dtRows || []).map((d: any) => d.employee_id).filter(Boolean))] as string[];
   }
 
-  if (filters.documentStatus && filters.documentStatus !== 'all') {
+  if (documentStatuses.length > 0) {
     const { data: allEmpRows } = await supabaseClient
       .from('employees')
-      .select('id')
+      .select('id, department:employee_departments(department_name)')
       .eq('client_id', clientId)
       .eq('status', true);
     const allClientEmpIds: string[] = (allEmpRows || []).map((e: any) => e.id);
+    const departmentByEmp = new Map<string, string>();
+    (allEmpRows || []).forEach((e: any) => {
+      departmentByEmp.set(e.id, (e.department?.department_name || '').toLowerCase());
+    });
 
     if (allClientEmpIds.length > 0) {
       const { data: allDocs } = await supabaseClient
         .from('employee_documents')
-        .select('employee_id, verification_status')
+        .select('employee_id, verification_status, document_type:document_type_id(name)')
         .in('employee_id', allClientEmpIds)
         .eq('is_delete', 0);
 
       const statusByEmp = new Map<string, string[]>();
+      const licenseVerifiedByEmp = new Set<string>();
       (allDocs || []).forEach((doc: any) => {
         if (!statusByEmp.has(doc.employee_id)) statusByEmp.set(doc.employee_id, []);
-        statusByEmp.get(doc.employee_id)!.push(doc.verification_status || 'pending');
+        const status = doc.verification_status || 'pending';
+        statusByEmp.get(doc.employee_id)!.push(status);
+        if (normalizeTypeKey(doc?.document_type?.name) === 'drivinglicense' &&
+          (status === 'verified' || status === 'completed')) {
+          licenseVerifiedByEmp.add(doc.employee_id);
+        }
       });
 
       docStatusEmpIds = [];
-      const requestedStatus = filters.documentStatus;
+      const requestedStatuses = new Set(documentStatuses);
       allClientEmpIds.forEach((empId: string) => {
         const statuses = statusByEmp.get(empId) || [];
         const hasFailed = statuses.some((s: string) => s === 'failed' || s === 'rejected');
         const hasPending = statuses.some((s: string) => s === 'pending' || s === 'in-progress');
         const hasVerified = statuses.some((s: string) => s === 'verified' || s === 'completed');
         const hasAny = statuses.length > 0;
-        if (requestedStatus === 'failed' && hasFailed) docStatusEmpIds!.push(empId);
-        else if (requestedStatus === 'no-documents' && !hasAny) docStatusEmpIds!.push(empId);
-        else if (requestedStatus === 'pending' && !hasFailed && hasPending) docStatusEmpIds!.push(empId);
-        else if (requestedStatus === 'verified' && !hasFailed && !hasPending && hasVerified) docStatusEmpIds!.push(empId);
+        const isDriver = departmentByEmp.get(empId) === 'driver';
+        const driverForcesPending = hasAny && isDriver && !licenseVerifiedByEmp.has(empId) && !hasFailed && !hasPending;
+        const effectivePending = hasPending || driverForcesPending;
+        const matches =
+          (requestedStatuses.has('failed') && hasFailed) ||
+          (requestedStatuses.has('no-documents') && !hasAny) ||
+          (requestedStatuses.has('pending') && !hasFailed && effectivePending) ||
+          (requestedStatuses.has('verified') && !hasFailed && !effectivePending && hasVerified);
+        if (matches) docStatusEmpIds!.push(empId);
       });
     } else {
       docStatusEmpIds = [];
@@ -983,6 +1032,8 @@ async function handleList(supabaseClient: any, requestData: any) {
     .eq('client_id', clientId)
     .eq('is_secondary_super_admin', false);
 
+  if (scopeToSelf) query = query.eq('id', employeeId);
+
   // Employee Verification never sends `status` and expects active-only (existing
   // behaviour). User Management sends it explicitly and expects 'all' to include
   // both active and inactive employees.
@@ -992,10 +1043,11 @@ async function handleList(supabaseClient: any, requestData: any) {
     query = query.eq('status', false);
   }
 
-  if (filters.departmentId && filters.departmentId !== 'all') {
+  if (departmentIds.length > 0) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRegex.test(filters.departmentId)) {
-      query = query.eq('department', filters.departmentId);
+    const validDepartmentIds = departmentIds.filter((id: string) => uuidRegex.test(id));
+    if (validDepartmentIds.length > 0) {
+      query = query.in('department', validDepartmentIds);
     }
   }
 
@@ -1077,19 +1129,29 @@ async function handleList(supabaseClient: any, requestData: any) {
   let globalStats: { totalEmployees: number; verifiedEmployees: number; unverifiedEmployees: number; noDocumentsEmployees: number } | null = null;
   if (requestData.includeStats === true) {
     try {
-      const { count: totalActive } = await supabaseClient
+      let totalActiveQuery = supabaseClient
         .from('employees')
         .select('id', { count: 'exact', head: true })
         .eq('client_id', clientId)
-        .eq('status', true);
+        .eq('status', true)
+        .eq('is_secondary_super_admin', false);
+      if (scopeToSelf) totalActiveQuery = totalActiveQuery.eq('id', employeeId);
+      const { count: totalActive } = await totalActiveQuery;
 
-      const { data: allEmpForStats } = await supabaseClient
+      let allEmpForStatsQuery = supabaseClient
         .from('employees')
-        .select('id')
+        .select('id, department:employee_departments(department_name)')
         .eq('client_id', clientId)
-        .eq('status', true);
+        .eq('status', true)
+        .eq('is_secondary_super_admin', false);
+      if (scopeToSelf) allEmpForStatsQuery = allEmpForStatsQuery.eq('id', employeeId);
+      const { data: allEmpForStats } = await allEmpForStatsQuery;
 
       const allEmpIdsForStats: string[] = (allEmpForStats || []).map((e: any) => e.id);
+      const departmentByEmpForStats = new Map<string, string>();
+      (allEmpForStats || []).forEach((e: any) => {
+        departmentByEmpForStats.set(e.id, (e.department?.department_name || '').toLowerCase());
+      });
       let verifiedCount = 0;
       let unverifiedCount = 0;
       let noDocumentsCount = allEmpIdsForStats.length;
@@ -1097,24 +1159,34 @@ async function handleList(supabaseClient: any, requestData: any) {
       if (allEmpIdsForStats.length > 0) {
         const { data: allDocsForStats } = await supabaseClient
           .from('employee_documents')
-          .select('employee_id, verification_status')
+          .select('employee_id, verification_status, document_type:document_type_id(name)')
           .in('employee_id', allEmpIdsForStats)
           .eq('is_delete', 0);
 
         const docsByEmpForStats = new Map<string, string[]>();
+        const licenseVerifiedForStats = new Set<string>();
         (allDocsForStats || []).forEach((d: any) => {
           if (!docsByEmpForStats.has(d.employee_id)) docsByEmpForStats.set(d.employee_id, []);
-          docsByEmpForStats.get(d.employee_id)!.push(d.verification_status || 'pending');
+          const status = d.verification_status || 'pending';
+          docsByEmpForStats.get(d.employee_id)!.push(status);
+          if (normalizeTypeKey(d?.document_type?.name) === 'drivinglicense' &&
+            (status === 'verified' || status === 'completed')) {
+            licenseVerifiedForStats.add(d.employee_id);
+          }
         });
 
-        // Mirror the exact bucket logic used by the "documentStatus" list filter above,
-        // so this count always matches what filtering by "Pending" returns.
-        docsByEmpForStats.forEach((statuses) => {
+        // "Unverified" here means "not fully verified" — it covers both failed
+        // and pending documents, unlike the "documentStatus" list filter above
+        // which keeps Failed and Pending as separate dropdown options.
+        docsByEmpForStats.forEach((statuses, empId) => {
           const hasFailed = statuses.some((s: string) => s === 'failed' || s === 'rejected');
           const hasPending = statuses.some((s: string) => s === 'pending' || s === 'in-progress');
           const hasVerified = statuses.some((s: string) => s === 'verified' || s === 'completed');
-          if (!hasFailed && !hasPending && hasVerified) verifiedCount++;
-          else if (!hasFailed && hasPending) unverifiedCount++;
+          const isDriver = departmentByEmpForStats.get(empId) === 'driver';
+          const driverForcesPending = isDriver && !licenseVerifiedForStats.has(empId) && !hasFailed && !hasPending;
+          const effectivePending = hasPending || driverForcesPending;
+          if (!hasFailed && !effectivePending && hasVerified) verifiedCount++;
+          else if (hasFailed || effectivePending) unverifiedCount++;
         });
         noDocumentsCount = allEmpIdsForStats.length - docsByEmpForStats.size;
       }

@@ -62,7 +62,17 @@ serve(async (req) => {
   try {
     const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey())
 
-    const { client_id, employee_id, is_super_admin, action } = await req.json()
+    const {
+      client_id,
+      employee_id,
+      is_super_admin,
+      action,
+      has_incident_admin,
+      has_assessment_admin,
+      has_transport_safety_admin,
+      has_employee_verification_admin,
+      has_grievance_admin,
+    } = await req.json()
 
     if (!client_id) {
       return new Response(
@@ -74,11 +84,25 @@ serve(async (req) => {
       )
     }
 
+    // Apply module-level access: admins see all records, non-admins see only their own.
+    const shouldFilterIncidentsByEmployee = is_super_admin === false && has_incident_admin !== true && !!employee_id;
+    const shouldFilterAssessmentsByEmployee = is_super_admin === false && has_assessment_admin !== true && !!employee_id;
+    const shouldFilterVehiclesByEmployee = is_super_admin === false && has_transport_safety_admin !== true && !!employee_id;
+    const shouldFilterEmployeesByEmployee = is_super_admin === false && has_employee_verification_admin !== true && !!employee_id;
+    // Grievances has no employee-ownership column, so there's no "my own records"
+    // subset for a non-admin — same principle as the rest of the app applied to its
+    // logical conclusion: no association means no visible records at all.
+    const hideGrievancesFromEmployee = is_super_admin !== true && has_grievance_admin !== true;
+
     if (action === 'facility_risk_matrix') {
-      const { data: incidents, error } = await supabase
+      let incidentsQuery = supabase
         .from('incidents')
         .select('id, facility_id, priority_id, facilities!inner(id, name), incident_priorities!inner(id, name, weight)')
         .eq('client_id', client_id);
+      if (shouldFilterIncidentsByEmployee) {
+        incidentsQuery = incidentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`);
+      }
+      const { data: incidents, error } = await incidentsQuery;
       if (error) throw error;
 
       const facilityMap = new Map<string, Record<string, number>>();
@@ -106,10 +130,14 @@ serve(async (req) => {
     }
 
     if (action === 'category_impact') {
-      const { data: incidents, error } = await supabase
+      let incidentsQuery = supabase
         .from('incidents')
         .select('id, category_id, subcategory_id, incident_categories!inner(id, name), incident_subcategories(id, name)')
         .eq('client_id', client_id);
+      if (shouldFilterIncidentsByEmployee) {
+        incidentsQuery = incidentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`);
+      }
+      const { data: incidents, error } = await incidentsQuery;
       if (error) throw error;
 
       const categoryMap = new Map<string, any>();
@@ -165,9 +193,6 @@ serve(async (req) => {
 
     console.log('Fetching dashboard stats for client:', client_id, 'employee:', employee_id, 'is_super_admin:', is_super_admin)
 
-    // Determine if we should apply employee filtering (default to super admin behavior if not specified)
-    const shouldFilterByEmployee = is_super_admin === false && employee_id;
-
     // Get all incident statuses for debugging
     const { data: allIncidentStatuses } = await supabase
       .from('incident_status')
@@ -200,8 +225,8 @@ serve(async (req) => {
       // Only include incidents that have been open for more than 7 days
       // .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
 
-    if (shouldFilterByEmployee) {
-      openIncidentsQuery = openIncidentsQuery.eq('created_by', employee_id)
+    if (shouldFilterIncidentsByEmployee) {
+      openIncidentsQuery = openIncidentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -219,8 +244,8 @@ serve(async (req) => {
       // Only include incidents that have been open for more than 7 days
       // .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
 
-      if (shouldFilterByEmployee) {
-        openIncidentOlder7daysQuery = openIncidentOlder7daysQuery.eq('created_by', employee_id)
+      if (shouldFilterIncidentsByEmployee) {
+        openIncidentOlder7daysQuery = openIncidentOlder7daysQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
       }
 
 
@@ -314,8 +339,8 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .neq('status', 'Completed')
 
-    if (shouldFilterByEmployee) {
-      activeAssessmentsQuery = activeAssessmentsQuery.eq('created_by', employee_id)
+    if (shouldFilterAssessmentsByEmployee) {
+      activeAssessmentsQuery = activeAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
     const { data: activeAssessments, error: activeAssessmentsError } = await activeAssessmentsQuery
@@ -376,23 +401,32 @@ serve(async (req) => {
     // Filtered by status (not acknowledged_at) to match the Grievances module's own
     // pending count in fetch-form-submissions — the two columns can drift out of sync,
     // and status is the field the module treats as authoritative.
-    const { data: allUnacknowledgedSubmissions, error: allSubmissionsError } = await supabase
-      .from('form_submissions')
-      .select('id, created_at')
-      .eq('client_id', client_id)
-      .eq('status', 'pending')
+    // A non-admin employee sees no grievance data at all (see hideGrievancesFromEmployee).
+    let allUnacknowledgedSubmissions: { id: string; created_at: string }[] = [];
+    let acknowledgedCount = 0;
 
-    if (allSubmissionsError) {
-      console.error('Error fetching all unacknowledged submissions:', allSubmissionsError)
-    }
-    const { count: acknowledgedCount, error: acknowledgedError } = await supabase
-      .from('form_submissions')
-      .select('id', { count: 'exact', head: true })
-      .eq('client_id', client_id)
-      .eq('status', 'acknowledged')
-    
-    if (acknowledgedError) {
-      console.error('Error fetching acknowledged submissions:', acknowledgedError)
+    if (!hideGrievancesFromEmployee) {
+      const { data: unacknowledgedData, error: allSubmissionsError } = await supabase
+        .from('form_submissions')
+        .select('id, created_at')
+        .eq('client_id', client_id)
+        .eq('status', 'pending')
+
+      if (allSubmissionsError) {
+        console.error('Error fetching all unacknowledged submissions:', allSubmissionsError)
+      }
+      allUnacknowledgedSubmissions = unacknowledgedData || [];
+
+      const { count, error: acknowledgedError } = await supabase
+        .from('form_submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', client_id)
+        .eq('status', 'acknowledged')
+
+      if (acknowledgedError) {
+        console.error('Error fetching acknowledged submissions:', acknowledgedError)
+      }
+      acknowledgedCount = count || 0;
     }
     
     const formSumitcount = acknowledgedCount || 0;
@@ -419,12 +453,18 @@ serve(async (req) => {
 
     // Get vehicle verification stats (only active vehicles, excluding those
     // currently in maintenance — they shouldn't count toward the compliance score)
-    const { data: allVehicles, error: vehiclesError } = await supabase
+    let allVehiclesQuery = supabase
       .from('vehicles')
       .select('id, verification_data')
       .eq('client_id', client_id)
       .eq('active', true)
       .neq('status', 'maintenance')
+
+    if (shouldFilterVehiclesByEmployee) {
+      allVehiclesQuery = allVehiclesQuery.eq('employee_id', employee_id)
+    }
+
+    const { data: allVehicles, error: vehiclesError } = await allVehiclesQuery
 
     if (vehiclesError) {
       console.error('Error fetching vehicles for verification stats:', vehiclesError)
@@ -529,22 +569,47 @@ serve(async (req) => {
 
     // Get total employees for the client (always client-wide)
     const { data: totalEmployees, error: totalEmployeesError } = await supabase
-      .from('employees')
-      .select('id', { count: 'exact' })
-      .eq('client_id', client_id)
+  .from('employees')
+  .select('id', { count: 'exact' })
+  .eq('client_id', client_id)
 
-    if (totalEmployeesError) {
-      console.error('Error fetching total employees:', totalEmployeesError)
-    }
+if (totalEmployeesError) {
+  console.error('Error fetching total employees:', totalEmployeesError)
+}
 
-    // Get total employees for this client
-    const employeeIds = await supabase
-        .from('employees')
-        .select('id')
-        .eq('client_id', client_id)
-        .eq('status',true)
-        .then(res => res.data?.map(emp => emp.id) || [])
+// Get total employees for this client
+// Self-only for a non-admin Employee Verification viewer,
+// matching how the Employee Verification module itself scopes.
+let employeeIdsQuery = supabase
+  .from('employees')
+  .select('id, department:employee_departments(department_name)')
+  .eq('client_id', client_id)
+  .eq('status', true)
 
+if (shouldFilterEmployeesByEmployee) {
+  employeeIdsQuery = employeeIdsQuery.eq('id', employee_id)
+}
+
+const employeesForStatus = await employeeIdsQuery
+  .then(res => res.data || [])
+
+const employeeIds = employeesForStatus.map(emp => emp.id)
+
+// Drivers must have a verified Driving License before they can count as
+// "verified" — mirrors the rule enforced in employee-management/index.ts
+// (handleList) so this dashboard tile always matches the Employee
+// Verification page's counts.
+const driverEmployeeIds = new Set(
+  employeesForStatus
+    .filter(
+      emp =>
+        (emp.department?.department_name || '').toLowerCase() === 'driver'
+    )
+    .map(emp => emp.id)
+)
+
+const normalizeTypeKey = (name) =>
+  (name || '').toLowerCase().replace(/[\s_]+/g, '')
     // Fetch document status IDs for completed, governance, and rejected
     const { data: completedStatus } = await supabase
       .from('document_status')
@@ -567,7 +632,7 @@ serve(async (req) => {
     // Get all employee documents to apply the same logic as employee-verification status column
     const { data: allEmployeeDocs, error: allDocsError } = await supabase
       .from('employee_documents')
-      .select('employee_id, verification_status')
+      .select('employee_id, verification_status, document_type:document_type_id(name)')
       .in('employee_id', employeeIds)
       .eq('is_delete', 0)
 
@@ -597,11 +662,16 @@ serve(async (req) => {
       const verified = docs.filter(doc => doc.verification_status === 'verified' || doc.verification_status === 'completed')
       const failed = docs.filter(doc => doc.verification_status === 'failed')
       const pending = docs.filter(doc => doc.verification_status === 'pending' || doc.verification_status === 'in-progress')
-      
+      const hasVerifiedLicense = docs.some(doc =>
+        normalizeTypeKey(doc?.document_type?.name) === 'drivinglicense' &&
+        (doc.verification_status === 'verified' || doc.verification_status === 'completed')
+      )
+      const driverForcesPending = driverEmployeeIds.has(employeeId) && !hasVerifiedLicense && failed.length === 0 && pending.length === 0
+
       // Priority: Failed > Pending > Verified
       if (failed.length > 0) {
         employeeStatusMap.set(employeeId, 'failed')
-      } else if (pending.length > 0) {
+      } else if (pending.length > 0 || driverForcesPending) {
         employeeStatusMap.set(employeeId, 'pending')
       } else if (verified.length > 0) {
         employeeStatusMap.set(employeeId, 'verified')
@@ -640,7 +710,7 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .eq('active', true)
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterVehiclesByEmployee) {
       totalVehiclesQuery = totalVehiclesQuery.eq('employee_id', employee_id)
     }
 
@@ -657,7 +727,7 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .eq('active', true)
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterVehiclesByEmployee) {
       vehicleIdsQuery = vehicleIdsQuery.eq('employee_id', employee_id)
     }
 
@@ -731,7 +801,7 @@ serve(async (req) => {
       .eq('status', 'active')
       .eq('active', true)
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterVehiclesByEmployee) {
       activeVehiclesQuery = activeVehiclesQuery.eq('employee_id', employee_id)
     }
 
@@ -749,7 +819,7 @@ serve(async (req) => {
       .eq('status', 'maintenance')
       .eq('active', true)
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterVehiclesByEmployee) {
       maintenanceVehiclesQuery = maintenanceVehiclesQuery.eq('employee_id', employee_id)
     }
 
@@ -766,7 +836,7 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .eq('status', 'inactive')
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterVehiclesByEmployee) {
       inactiveVehiclesQuery = inactiveVehiclesQuery.eq('employee_id', employee_id)
     }
 
@@ -782,7 +852,7 @@ serve(async (req) => {
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterAssessmentsByEmployee) {
       totalAssessmentsQuery = totalAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
@@ -798,7 +868,7 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .eq('status', 'New')
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterAssessmentsByEmployee) {
       newAssessmentsQuery = newAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
@@ -814,7 +884,7 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .eq('status', 'Completed')
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterAssessmentsByEmployee) {
       completedAssessmentsQuery = completedAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
@@ -830,7 +900,7 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .eq('status', 'Draft')
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterAssessmentsByEmployee) {
       draftAssessmentsQuery = draftAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
@@ -850,7 +920,7 @@ serve(async (req) => {
       .neq('status', 'Completed')
       .lt('target_completion_date', currentDate)
 
-    if (shouldFilterByEmployee) {
+    if (shouldFilterAssessmentsByEmployee) {
       overdueAssessmentsQuery = overdueAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
@@ -870,8 +940,8 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .gte('created_at', oneMonthAgo.toISOString())
 
-    if (shouldFilterByEmployee) {
-      incidentsLastMonthQuery = incidentsLastMonthQuery.eq('created_by', employee_id)
+    if (shouldFilterIncidentsByEmployee) {
+      incidentsLastMonthQuery = incidentsLastMonthQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
     const { data: incidentsLastMonth, error: incidentsLastMonthError } = await incidentsLastMonthQuery
@@ -890,8 +960,8 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .gte('created_at', sixMonthsAgo.toISOString())
 
-    if (shouldFilterByEmployee) {
-      incidentsLast6MonthsQuery = incidentsLast6MonthsQuery.eq('created_by', employee_id)
+    if (shouldFilterIncidentsByEmployee) {
+      incidentsLast6MonthsQuery = incidentsLast6MonthsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
     const { data: incidentsLast6Months, error: incidentsLast6MonthsError } = await incidentsLast6MonthsQuery
@@ -916,8 +986,8 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .eq('status_id', closedStatusId)
 
-    if (shouldFilterByEmployee) {
-      closedIncidentsQuery = closedIncidentsQuery.eq('created_by', employee_id)
+    if (shouldFilterIncidentsByEmployee) {
+      closedIncidentsQuery = closedIncidentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
     const { data: closedIncidents, error: closedIncidentsError } = await closedIncidentsQuery
@@ -938,8 +1008,8 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .eq('reopen', 1)
 
-    if (shouldFilterByEmployee) {
-      reopenedIncidentsQuery = reopenedIncidentsQuery.eq('created_by', employee_id)
+    if (shouldFilterIncidentsByEmployee) {
+      reopenedIncidentsQuery = reopenedIncidentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
     }
 
     const { data: reopenedIncidents, error: reopenedIncidentsError } = await reopenedIncidentsQuery
@@ -973,8 +1043,8 @@ serve(async (req) => {
         .gte('date', monthStart.toISOString())
         .lte('date', monthEnd.toISOString())
 
-      if (shouldFilterByEmployee) {
-        monthIncidentsQuery = monthIncidentsQuery.eq('created_by', employee_id)
+      if (shouldFilterIncidentsByEmployee) {
+        monthIncidentsQuery = monthIncidentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
       }
 
       const { data: monthIncidents } = await monthIncidentsQuery
@@ -1040,37 +1110,59 @@ serve(async (req) => {
       monthlyIncidentsData
     }
 
-    // Check if data exists for each table based on client_id
-    const { data: incidentRecords, error: incidentRecordsError } = await supabase
+    // Check record existence using the same employee-scope rules as the counts.
+    let incidentRecordsQuery = supabase
       .from('incidents')
       .select('id')
       .eq('client_id', client_id)
       .limit(1)
+    if (shouldFilterIncidentsByEmployee) {
+      incidentRecordsQuery = incidentRecordsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+    }
+    const { data: incidentRecords, error: incidentRecordsError } = await incidentRecordsQuery
 
-    const { data: assessmentRecords, error: assessmentRecordsError } = await supabase
+    let assessmentRecordsQuery = supabase
       .from('assessments')
       .select('id')
       .eq('client_id', client_id)
       .limit(1)
+    if (shouldFilterAssessmentsByEmployee) {
+      assessmentRecordsQuery = assessmentRecordsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+    }
+    const { data: assessmentRecords, error: assessmentRecordsError } = await assessmentRecordsQuery
 
-    const { data: vehicleRecords, error: vehicleRecordsError } = await supabase
+    let vehicleRecordsQuery = supabase
       .from('vehicles')
       .select('id')
       .eq('client_id', client_id)
       .eq('active', true)
       .limit(1)
+    if (shouldFilterVehiclesByEmployee) {
+      vehicleRecordsQuery = vehicleRecordsQuery.eq('employee_id', employee_id)
+    }
+    const { data: vehicleRecords, error: vehicleRecordsError } = await vehicleRecordsQuery
 
-    const { data: employeeRecords, error: employeeRecordsError } = await supabase
+    let employeeRecordsQuery = supabase
       .from('employees')
       .select('id')
       .eq('client_id', client_id)
       .limit(1)
+    if (shouldFilterEmployeesByEmployee) {
+      employeeRecordsQuery = employeeRecordsQuery.eq('id', employee_id)
+    }
+    const { data: employeeRecords, error: employeeRecordsError } = await employeeRecordsQuery
 
-    const { data: formSubmissionRecords, error: formSubmissionRecordsError } = await supabase
-      .from('form_submissions')
-      .select('id')
-      .eq('client_id', client_id)
-      .limit(1)
+    let formSubmissionRecords: { id: string }[] | null = null;
+    let formSubmissionRecordsError: unknown = null;
+    if (!hideGrievancesFromEmployee) {
+      const result = await supabase
+        .from('form_submissions')
+        .select('id')
+        .eq('client_id', client_id)
+        .limit(1)
+      formSubmissionRecords = result.data
+      formSubmissionRecordsError = result.error
+    }
 
     // Boolean existence checks
     const IncidentRecordsExist = !incidentRecordsError && incidentRecords && incidentRecords.length > 0

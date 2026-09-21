@@ -11,6 +11,7 @@ import { getDocumentStatus } from '@/utils/transport-safety/documentStatusUtils'
 import { useVehicleTypes } from '@/hooks/useVehicleTypes';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { useAuth } from '@/contexts/auth';
+import { useTransportSafetyAccess } from '@/hooks/useModuleAccess';
 import { getAllVehicles } from '@/services/transport-safety/vehicleService';
 
 interface DocumentStatusFilters {
@@ -44,6 +45,8 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
 
   const { user, employeeData } = useAuth();
   const clientId = employeeData?.clientId || user?.clientId;
+  const { isSuperAdmin, hasTransportSafetyAdmin, currentEmployeeId } = useTransportSafetyAccess();
+  const hasFullVehicleAccess = isSuperAdmin || hasTransportSafetyAdmin;
 
   const [searchParams] = useSearchParams();
   const { vehicleTypes } = useVehicleTypes();
@@ -98,7 +101,11 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
     let cancelled = false;
 
     setIsFetchingAllMatching(true);
-    getAllVehicles(clientId, { search: searchQuery, status: statusFilter, typeId: typeFilter })
+    getAllVehicles(
+      clientId,
+      { search: searchQuery, status: statusFilter, typeId: typeFilter },
+      { employeeId: currentEmployeeId, isAdmin: hasFullVehicleAccess },
+    )
       .then(result => {
         if (!cancelled) setAllMatchingVehicles(result);
       })
@@ -112,7 +119,7 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
     return () => {
       cancelled = true;
     };
-  }, [isClientFilterActive, clientId, searchQuery, statusFilter, typeFilter, documentStatusFilters, documentTypeFilter]);
+  }, [isClientFilterActive, clientId, searchQuery, statusFilter, typeFilter, documentStatusFilters, documentTypeFilter, currentEmployeeId, hasFullVehicleAccess]);
 
   // Reset back to page 1 whenever the active filter set changes
   useEffect(() => {

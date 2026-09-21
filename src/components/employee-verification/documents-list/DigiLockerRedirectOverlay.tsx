@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 interface DigiLockerRedirectOverlayProps {
   isVisible: boolean;
@@ -30,7 +30,7 @@ const DigiLockerRedirectOverlay = ({ isVisible, onCancel }: DigiLockerRedirectOv
         <p className="text-sm text-gray-600 mb-6">
           Complete the verification in the DigiLocker window. This page will unlock automatically once it's done.
         </p>
-        <Loader2 className="h-6 w-6 animate-spin text-primary-600 mx-auto mb-6" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-6" />
       </div>
     </div>
   );

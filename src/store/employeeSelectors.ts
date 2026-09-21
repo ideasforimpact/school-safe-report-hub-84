@@ -35,12 +35,30 @@ export const hasAnyModulePermission = (state: EmployeeState): boolean => {
 export const hasModulePermission = (state: EmployeeState, moduleKey: keyof ModulePermissions): boolean => {
   // Super admins have access to everything
   if (isEmployeeSuperAdmin(state)) return true;
-  
+
   // Otherwise check if the module exists and is enabled in configured modules
   const modules = state.configuredModules;
   if (!modules || modules.length === 0) return false;
-  
-  return modules.some(module => 
+
+  return modules.some(module =>
     module.key === moduleKey && module.enabled === true
   );
+};
+
+// Helper function to check whether the employee has "Admin" access level for a
+// specific module (matched by name, case-insensitive) — same pattern used by
+// useIncidentPermissions/useAssessmentAccess for Incident/Assessment. Admin
+// scope means "see all client records for this module" vs. own-records-only.
+export const isModuleAdmin = (state: EmployeeState, moduleName: string): boolean => {
+  if (isEmployeeSuperAdmin(state)) return true;
+
+  const modules = state.configuredModules;
+  if (!modules || modules.length === 0) return false;
+
+  const target = moduleName.toLowerCase();
+  const module = modules.find(m => m.name?.toLowerCase() === target);
+  if (!module) return false;
+
+  const level = (module.accessLevel ?? module.level) as unknown as { is_admin?: boolean; isAdmin?: boolean } | null;
+  return level?.is_admin === true || level?.isAdmin === true;
 };

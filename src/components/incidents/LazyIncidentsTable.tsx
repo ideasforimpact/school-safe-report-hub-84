@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Sparkles } from 'lucide-react';
 import TablePaginationBar from '@/components/common/TablePaginationBar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIncidentPermissions } from '@/utils/incidentPermissions';
 import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
 import { formatDate } from "@/lib/Dateformat";
@@ -28,17 +27,15 @@ interface LazyIncidentsTableProps {
   hasFetched: boolean;
   pagination?: PaginationInfo;
   onPageChange?: (page: number) => void;
-  onPageSizeChange?: (pageSize: number) => void;
   onRefreshIncidents?: () => void | Promise<void>; // Callback to refresh incident list
 }
 
-const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ 
-  incidents, 
-  loading, 
+const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
+  incidents,
+  loading,
   hasFetched,
   pagination,
   onPageChange,
-  onPageSizeChange,
   onRefreshIncidents
 }) => {
   const navigate = useNavigate();
@@ -182,46 +179,14 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
         <Loader text="Loading incidents..." />
       </div>
     );
-  } else if (incidents.length === 0) {
-    // Show no results message if no incidents and not loading
-    content = (
-      <div className="p-8 text-center">
-        <p className="text-gray-500">No incidents found matching your filters</p>
-      </div>
-    );
   } else {
-    console.log('LazyIncidentsTable - Pagination data:', pagination);
-    console.log('LazyIncidentsTable - Has pagination handlers:', { onPageChange: !!onPageChange, onPageSizeChange: !!onPageSizeChange });
-
     content = (
       <>
-      {/* Page size selector */}
-      {pagination && onPageSizeChange && (
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-700">Show</span>
-            <Select 
-              value={pagination.pageSize.toString()} 
-              onValueChange={(value) => onPageSizeChange(parseInt(value))}
-            >
-              <SelectTrigger className="w-20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-            <span className="text-sm text-gray-700">entries</span>
-          </div>
-          <div className="text-sm text-gray-500">
-            Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of {pagination.totalCount} incidents
-          </div>
+      {incidents.length === 0 ? (
+        <div className="p-8 text-center">
+          <p className="text-gray-500">No incidents found matching your filters</p>
         </div>
-      )}
-
+      ) : (
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -340,7 +305,8 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
           </TableBody>
         </Table>
       </div>
-      
+      )}
+
       {/* Pagination */}
       {pagination && onPageChange && (
         <TablePaginationBar
